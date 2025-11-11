@@ -1,0 +1,343 @@
+# ==============================================================================
+# .GITIGNORE FOR DJANGO REST FRAMEWORK PROJECT
+# ==============================================================================
+
+# ==============================================================================
+# PYTHON
+# ==============================================================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+.pdm-python
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# ==============================================================================
+# VIRTUAL ENVIRONMENTS
+# ==============================================================================
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+virtualenv/
+.virtualenv/
+
+# ==============================================================================
+# DJANGO CORE
+# ==============================================================================
+# Django specific
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Static files (collected by collectstatic)
+/static/
+/staticfiles/
+staticfiles/
+
+# Media files
+/media/
+media/
+
+# Django migrations (uncomment if you don't want to track migrations)
+# **/migrations/*.py
+# **/migrations/*.pyc
+# !**/migrations/__init__.py
+
+# Django secret key and settings
+settings/local.py
+local_settings.py
+secret_settings.py
+
+# ==============================================================================
+# DJANGO REST FRAMEWORK
+# ==============================================================================
+# DRF specific
+*.pyc
+
+# ==============================================================================
+# DATABASES
+# ==============================================================================
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# PostgreSQL
+*.sql
+
+# MySQL
+*.sql
+
+# MongoDB
+dump/
+
+# Redis
+dump.rdb
+
+# ==============================================================================
+# ENVIRONMENT VARIABLES
+# ==============================================================================
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.test
+*.env
+!.env.example
+!.env.template
+
+# ==============================================================================
+# IDEs & EDITORS
+# ==============================================================================
+# VSCode
+.vscode/
+*.code-workspace
+.history/
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.netrwhist
+tags
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Eclipse
+.project
+.pydevproject
+.settings/
+
+# ==============================================================================
+# OPERATING SYSTEMS
+# ==============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ==============================================================================
+# LOGS & TEMPORARY FILES
+# ==============================================================================
+*.log
+logs/
+log/
+tmp/
+temp/
+
+# ==============================================================================
+# TESTING & COVERAGE
+# ==============================================================================
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.pytest_cache/
+.hypothesis/
+coverage.xml
+*.cover
+nosetests.xml
+
+# ==============================================================================
+# SECURITY & CREDENTIALS
+# ==============================================================================
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
+.secret
+secrets.json
+credentials.json
+service-account*.json
+
+# ==============================================================================
+# CELERY (Task Queue)
+# ==============================================================================
+celerybeat-schedule
+celerybeat.pid
+
+# ==============================================================================
+# CACHE
+# ==============================================================================
+.cache/
+__pycache__/
+
+# ==============================================================================
+# NODE.JS (if using frontend with Django)
+# ==============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+.npm/
+
+# ==============================================================================
+# DOCKER (optional)
+# ==============================================================================
+# Uncomment if you don't want to track Docker files
+# Dockerfile
+# docker-compose.yml
+# .dockerignore
+
+# ==============================================================================
+# BACKUP FILES
+# ==============================================================================
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+
+# ==============================================================================
+# PROJECT SPECIFIC
+# ==============================================================================
+# Add your custom ignores here
+# uploads/
+# downloads/
+# data/

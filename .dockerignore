@@ -1,0 +1,45 @@
+# Entorno virtual de Python
+venv/
+env/
+ENV/
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+
+# Base de datos local
+*.sqlite3
+db.sqlite3
+
+# Variables de entorno
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tests
+htmlcov/
+.coverage
+.pytest_cache/

@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip --version)",
+      "Bash(cat requirements.txt)",
+      "Bash(if [ -d \"venv\" ])",
+      "Bash(then rm -rf venv)",
+      "Bash(else echo \"No existe carpeta venv\")",
+      "Bash(fi)",
+      "Bash(python -m venv venv)",
+      "Bash(psql --version)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
