@@ -341,3 +341,6 @@ yarn.lock
 # uploads/
 # downloads/
 # data/
+
+# Claude IA
+.claude/
