@@ -1,4 +1,5 @@
 from rest_framework import permissions
+from users.models import Role
 
 
 class IsAdminUser(permissions.BasePermission):
@@ -11,21 +12,21 @@ class IsAdminUser(permissions.BasePermission):
             request.user and
             request.user.is_authenticated and
             request.user.role and
-            request.user.role.name == 'admin'
+            request.user.role.name == Role.ADMINISTRADOR
         )
 
 
-class IsManagerOrAdmin(permissions.BasePermission):
+class IsBackOfficeOrAdmin(permissions.BasePermission):
     """
-    Permiso para verificar si el usuario es Manager o Admin
+    Permiso para verificar si el usuario es BackOffice o Administrador
     """
-    
+
     def has_permission(self, request, view):
         return (
             request.user and
             request.user.is_authenticated and
             request.user.role and
-            request.user.role.name in ['admin', 'manager']
+            request.user.role.name in [Role.ADMINISTRADOR, Role.BACKOFFICE]
         )
 
 
@@ -93,7 +94,7 @@ class HasModulePermission(permissions.BasePermission):
 class CanManageUsers(permissions.BasePermission):
     """
     Permiso específico para gestión de usuarios.
-    Los operadores no pueden gestionar usuarios.
+    Requiere permisos específicos del módulo users.
     """
     
     def has_permission(self, request, view):
@@ -139,15 +140,15 @@ class CanManageUsers(permissions.BasePermission):
 class CanManageRoles(permissions.BasePermission):
     """
     Permiso para gestión de roles.
-    Solo Admin puede gestionar roles.
+    Solo Administrador puede gestionar roles.
     """
-    
+
     def has_permission(self, request, view):
         if request.user.is_superuser:
             return True
-        
-        # Solo Admin puede gestionar roles
-        if not (request.user.role and request.user.role.name == 'admin'):
+
+        # Solo Administrador puede gestionar roles
+        if not (request.user.role and request.user.role.name == Role.ADMINISTRADOR):
             return False
         
         # Verificar permiso específico
@@ -173,15 +174,15 @@ class IsSelfOrAdmin(permissions.BasePermission):
     """
     
     def has_object_permission(self, request, view, obj):
-        # Superusuarios y admins pueden acceder
+        # Superusuarios y administradores pueden acceder
         if request.user.is_superuser:
             return True
-        
-        if request.user.role and request.user.role.name == 'admin':
+
+        if request.user.role and request.user.role.name == Role.ADMINISTRADOR:
             return True
-        
+
         # El usuario puede acceder a sus propios datos
         if hasattr(obj, 'id'):
             return obj.id == request.user.id
-        
+
         return obj == request.user

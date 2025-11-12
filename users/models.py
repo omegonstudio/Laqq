@@ -35,14 +35,12 @@ class UserManager(BaseUserManager):
 class Role(models.Model):
     """Modelo de Roles del sistema"""
     
-    ADMIN = 'admin'
-    MANAGER = 'manager'
-    OPERADOR = 'operador'
-    
+    ADMINISTRADOR = 'administrador'
+    BACKOFFICE = 'backoffice'
+
     ROLE_CHOICES = [
-        (ADMIN, 'Administrador'),
-        (MANAGER, 'Manager'),
-        (OPERADOR, 'Operador'),
+        (ADMINISTRADOR, 'Administrador'),
+        (BACKOFFICE, 'BackOffice'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -192,14 +190,32 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False, verbose_name='Es Staff')
     is_verified = models.BooleanField(default=False, verbose_name='Email Verificado')
     two_factor_enabled = models.BooleanField(default=False, verbose_name='2FA Habilitado')
-    
+
     date_joined = models.DateTimeField(default=timezone.now, verbose_name='Fecha de Registro')
     last_login = models.DateTimeField(null=True, blank=True, verbose_name='Último Login')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de Creación')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Fecha de Actualización')
-    
+
+    # Override groups and user_permissions to avoid clashes with auth.User
+    groups = models.ManyToManyField(
+        'auth.Group',
+        verbose_name='Grupos',
+        blank=True,
+        help_text='Los grupos a los que pertenece este usuario.',
+        related_name='custom_user_set',
+        related_query_name='custom_user',
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        verbose_name='Permisos de usuario',
+        blank=True,
+        help_text='Permisos específicos para este usuario.',
+        related_name='custom_user_set',
+        related_query_name='custom_user',
+    )
+
     objects = UserManager()
-    
+
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']
     

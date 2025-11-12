@@ -11,16 +11,12 @@ class Command(BaseCommand):
         # Crear roles
         roles_data = [
             {
-                'name': Role.ADMIN,
+                'name': Role.ADMINISTRADOR,
                 'description': 'Administrador con acceso total al sistema'
             },
             {
-                'name': Role.MANAGER,
-                'description': 'Manager con permisos de gestión limitados'
-            },
-            {
-                'name': Role.OPERADOR,
-                'description': 'Operador con permisos básicos de lectura y creación'
+                'name': Role.BACKOFFICE,
+                'description': 'BackOffice con permisos de gestión operativa'
             }
         ]
         
@@ -69,20 +65,20 @@ class Command(BaseCommand):
         
         # Asignar permisos a roles
         self.stdout.write(self.style.SUCCESS('\nAsignando permisos a roles...'))
-        
-        # ADMIN: Todos los permisos
-        admin_role = roles[Role.ADMIN]
+
+        # ADMINISTRADOR: Todos los permisos
+        admin_role = roles[Role.ADMINISTRADOR]
         for permission in permissions.values():
             _, created = RolePermission.objects.get_or_create(
                 role=admin_role,
                 permission=permission
             )
             if created:
-                self.stdout.write(f"  Admin: {permission.codename}")
-        
-        # MANAGER: Todos excepto eliminar usuarios y gestionar roles
-        manager_role = roles[Role.MANAGER]
-        manager_permissions = [
+                self.stdout.write(f"  Administrador: {permission.codename}")
+
+        # BACKOFFICE: Todos los permisos excepto eliminar usuarios
+        backoffice_role = roles[Role.BACKOFFICE]
+        backoffice_permissions = [
             # Usuarios: leer, crear, actualizar (no eliminar)
             'users_read', 'users_create', 'users_update',
             # Productos: todos
@@ -92,39 +88,17 @@ class Command(BaseCommand):
             # Clientes: todos
             'clients_create', 'clients_read', 'clients_update', 'clients_delete',
         ]
-        
-        for perm_code in manager_permissions:
+
+        for perm_code in backoffice_permissions:
             if perm_code in permissions:
                 _, created = RolePermission.objects.get_or_create(
-                    role=manager_role,
+                    role=backoffice_role,
                     permission=permissions[perm_code]
                 )
                 if created:
-                    self.stdout.write(f"  Manager: {perm_code}")
+                    self.stdout.write(f"  BackOffice: {perm_code}")
         
-        # OPERADOR: Solo lectura y creación (no actualizar ni eliminar)
-        operador_role = roles[Role.OPERADOR]
-        operador_permissions = [
-            # Usuarios: solo lectura
-            'users_read',
-            # Productos: leer y crear
-            'products_read', 'products_create',
-            # Pedidos: leer y crear
-            'orders_read', 'orders_create',
-            # Clientes: leer y crear
-            'clients_read', 'clients_create',
-        ]
-        
-        for perm_code in operador_permissions:
-            if perm_code in permissions:
-                _, created = RolePermission.objects.get_or_create(
-                    role=operador_role,
-                    permission=permissions[perm_code]
-                )
-                if created:
-                    self.stdout.write(f"  Operador: {perm_code}")
-        
-        self.stdout.write(self.style.SUCCESS('\n✓ Roles y permisos inicializados correctamente'))
+        self.stdout.write(self.style.SUCCESS('\n[OK] Roles y permisos inicializados correctamente'))
         
         # Mostrar resumen
         self.stdout.write(self.style.SUCCESS('\nResumen:'))
