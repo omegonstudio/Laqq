@@ -48,6 +48,15 @@ INSTALLED_APPS = [
     'corsheaders',
     # Local apps
     'users',
+    'contacts',
+    'attachments',
+    'tickets',
+    'products',
+    'accessories',
+    'quotes',
+    'notes',
+
+
 ]
 
 MIDDLEWARE = [
@@ -140,8 +149,6 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Custom User Model
-AUTH_USER_MODEL = 'users.User'
 
 # Authentication Backends
 AUTHENTICATION_BACKENDS = [
