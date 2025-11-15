@@ -16,7 +16,7 @@ class Command(BaseCommand):
             },
             {
                 'name': Role.BACKOFFICE,
-                'description': 'BackOffice con permisos de gestión operativa'
+                'description': 'BackOffice que solo puede enviar presupuestos, sin permisos para modificar productos'
             }
         ]
         
@@ -76,17 +76,15 @@ class Command(BaseCommand):
             if created:
                 self.stdout.write(f"  Administrador: {permission.codename}")
 
-        # BACKOFFICE: Todos los permisos excepto eliminar usuarios
+        # BACKOFFICE: Solo puede enviar presupuestos (crear pedidos), no puede modificar productos
         backoffice_role = roles[Role.BACKOFFICE]
         backoffice_permissions = [
-            # Usuarios: leer, crear, actualizar (no eliminar)
-            'users_read', 'users_create', 'users_update',
-            # Productos: todos
-            'products_create', 'products_read', 'products_update', 'products_delete',
-            # Pedidos: todos
-            'orders_create', 'orders_read', 'orders_update', 'orders_delete',
-            # Clientes: todos
-            'clients_create', 'clients_read', 'clients_update', 'clients_delete',
+            # Productos: SOLO lectura (no puede crear, actualizar ni eliminar)
+            'products_read',
+            # Pedidos: crear y leer (enviar presupuestos)
+            'orders_create', 'orders_read',
+            # Clientes: leer (para poder ver clientes al crear pedidos)
+            'clients_read',
         ]
 
         for perm_code in backoffice_permissions:
