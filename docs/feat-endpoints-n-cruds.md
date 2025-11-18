@@ -16,6 +16,7 @@
 6. [Mejoras en permisos](#5-mejoras-en-permisos)
 7. [Tests unitarios](#6-tests-unitarios)
 8. [Cómo usar los nuevos endpoints](#7-cómo-usar-los-nuevos-endpoints)
+9. [Merge con rama db-models](#8-merge-con-rama-db-models-custom-user-model)
 
 ---
 
@@ -1225,6 +1226,220 @@ Para facilitar el testing, puedes importar esta colección en Postman:
     ]
 }
 ```
+
+---
+
+## 8. Merge con rama db-models (Custom User Model)
+
+**Fecha:** 2025-11-18
+
+Se realizó un merge con la rama `db-models` que incluye cambios importantes en el modelo de usuario.
+
+### Cambios incorporados del merge:
+
+#### 1. Custom User Model
+
+Ahora existe un modelo `User` personalizado que extiende `AbstractUser`:
+
+**Archivo:** `users/models.py`
+
+```python
+class User(AbstractUser):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_type = models.ForeignKey(UserType, on_delete=models.PROTECT, null=True, blank=True)
+    state = models.ForeignKey(UserState, on_delete=models.PROTECT, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    USERNAME_FIELD = 'username'
+    REQUIRED_FIELDS = ['email']
+
+    class Meta:
+        db_table = 'users'
+```
+
+**Beneficios:**
+- ✅ UUID como primary key
+- ✅ Conexión directa con `UserType` (admin, back)
+- ✅ Conexión directa con `UserState` (active, inactive)
+- ✅ Timestamps automáticos
+
+---
+
+#### 2. UserCreateSerializer
+
+Nuevo serializer para crear usuarios con password:
+
+**Archivo:** `users/serializers.py`
+
+```python
+class UserCreateSerializer(UserSerializer):
+    password = serializers.CharField(write_only=True, required=True)
+
+    class Meta(UserSerializer.Meta):
+        fields = UserSerializer.Meta.fields + ['password']
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user
+```
+
+**Uso:**
+```bash
+POST /users/users/
+{
+    "username": "nuevo_usuario",
+    "email": "usuario@ejemplo.com",
+    "password": "contraseña_segura",
+    "user_type": "back",
+    "state": "active"
+}
+```
+
+---
+
+#### 3. Permisos actualizados
+
+Los permisos ahora usan directamente `user.user_type_id` sin necesidad de fallbacks:
+
+**Archivo:** `products/permissions.py`
+
+```python
+class IsAdminUserType(BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        if user.is_superuser:
+            return True
+        return user.user_type_id == 'admin'
+
+class IsReadOnlyOrAdmin(BasePermission):
+    def has_permission(self, request, view):
+        if request.method in ['GET', 'HEAD', 'OPTIONS']:
+            return True
+        user = request.user
+        if user.is_superuser:
+            return True
+        return user.user_type_id == 'admin'
+```
+
+**Archivo:** `quotes/permissions.py`
+
+```python
+class CanCreateOrAdmin(BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        if user.is_superuser:
+            return True
+        if request.method in ['POST']:
+            return user.user_type_id in ['admin', 'back']
+        if request.method in SAFE_METHODS:
+            return True
+        return user.user_type_id == 'admin'
+```
+
+---
+
+#### 4. UserViewSet actualizado
+
+Combina filtros, permisos y el nuevo serializer:
+
+**Archivo:** `users/views.py`
+
+```python
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['is_active', 'is_staff', 'is_superuser', 'user_type', 'state']
+    search_fields = ['username', 'email', 'first_name', 'last_name']
+    ordering_fields = ['username', 'email', 'date_joined', 'created_at']
+    ordering = ['-created_at']
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return UserCreateSerializer
+        return UserSerializer
+```
+
+---
+
+### Comportamiento final de permisos
+
+| Tipo de Usuario | GET | POST | PUT/PATCH/DELETE |
+|-----------------|-----|------|------------------|
+| `is_superuser=True` | ✅ | ✅ | ✅ |
+| `user_type_id='admin'` | ✅ | ✅ | ✅ |
+| `user_type_id='back'` | ✅ | ✅ (solo crear) | ❌ |
+| Usuario autenticado sin tipo | ✅ | ❌ | ❌ |
+| Sin autenticar | ❌ | ❌ | ❌ |
+
+---
+
+### Configuración inicial requerida
+
+Antes de usar el sistema, crear los tipos y estados de usuario:
+
+```python
+python manage.py shell
+
+from users.models import UserType, UserState
+
+# Crear tipos de usuario
+UserType.objects.create(id='admin', name='Administrador')
+UserType.objects.create(id='back', name='Backoffice')
+
+# Crear estados de usuario
+UserState.objects.create(id='active', name='Activo')
+UserState.objects.create(id='inactive', name='Inactivo')
+
+exit()
+```
+
+---
+
+### Lista de endpoints para testing manual
+
+Loguearse primero en `http://localhost:8000/admin/` y luego probar:
+
+**Users:**
+- `http://localhost:8000/users/usertypes/`
+- `http://localhost:8000/users/userstates/`
+- `http://localhost:8000/users/users/`
+
+**Products:**
+- `http://localhost:8000/products/brands/`
+- `http://localhost:8000/products/categories/`
+- `http://localhost:8000/products/products/`
+- `http://localhost:8000/products/productspecs/`
+
+**Contacts:**
+- `http://localhost:8000/contacts/contactstates/`
+- `http://localhost:8000/contacts/contacts/`
+- `http://localhost:8000/contacts/messages/`
+
+**Quotes:**
+- `http://localhost:8000/quotes/quotetypes/`
+- `http://localhost:8000/quotes/quotestates/`
+- `http://localhost:8000/quotes/quotes/`
+- `http://localhost:8000/quotes/quoteitems/`
+
+**Tickets:**
+- `http://localhost:8000/tickets/servicetickets/`
+
+**Notes:**
+- `http://localhost:8000/notes/notetypes/`
+- `http://localhost:8000/notes/notestates/`
+- `http://localhost:8000/notes/notes/`
+
+**Accessories:**
+- `http://localhost:8000/accessories/accessories/`
+- `http://localhost:8000/accessories/productaccessories/`
+
+**Attachments:**
+- `http://localhost:8000/attachments/attachments/`
 
 ---
 
