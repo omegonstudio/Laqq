@@ -1,18 +1,25 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, permissions
+from django.contrib.auth import get_user_model
 from .models import UserType, UserState
-from .serializers import UserTypeSerializer, UserStateSerializer
-from django.contrib.auth.models import User
-from .serializers import UserSerializer  # Si tienes un serializer para el User estándar
+from .serializers import UserSerializer, UserCreateSerializer, UserTypeSerializer, UserStateSerializer
+
+User = get_user_model()
 
 class UserTypeViewSet(viewsets.ModelViewSet):
     queryset = UserType.objects.all()
     serializer_class = UserTypeSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 class UserStateViewSet(viewsets.ModelViewSet):
     queryset = UserState.objects.all()
     serializer_class = UserStateSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
-# Si quieres exponer usuarios vía API
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return UserCreateSerializer
+        return UserSerializer

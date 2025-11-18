@@ -1,6 +1,7 @@
-from django.db import models
-from django.contrib.auth.models import User
 import uuid
+from django.db import models
+from django.conf import settings    
+
 
 class NoteType(models.Model):
     id = models.CharField(max_length=50, primary_key=True)
@@ -22,7 +23,7 @@ class Note(models.Model):
     content = models.TextField(blank=True, null=True)
     note_type = models.ForeignKey(NoteType, on_delete=models.PROTECT)
     state = models.ForeignKey(NoteState, on_delete=models.PROTECT)
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     published_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
