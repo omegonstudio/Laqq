@@ -1,7 +1,7 @@
+import uuid
 from django.db import models
 from contacts.models import Contact
-from django.contrib.auth.models import User
-import uuid
+from django.conf import settings
 
 class QuoteType(models.Model):
     id = models.CharField(max_length=50, primary_key=True)
@@ -20,7 +20,7 @@ class Quote(models.Model):
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
     quote_number = models.CharField(max_length=100, unique=True)
     contact = models.ForeignKey(Contact, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, blank=True, null=True, on_delete=models.SET_NULL)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=models.SET_NULL)
     quote_type = models.ForeignKey(QuoteType, on_delete=models.PROTECT)
     state = models.ForeignKey(QuoteState, on_delete=models.PROTECT)
     message = models.TextField(blank=True, null=True)

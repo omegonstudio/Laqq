@@ -1,6 +1,6 @@
-from django.db import models
-from django.contrib.auth.models import User
 import uuid
+from django.conf import settings    
+from django.db import models
 
 class ContactState(models.Model):
     id = models.CharField(max_length=50, primary_key=True)
@@ -19,7 +19,7 @@ class Contact(models.Model):
     country = models.CharField(max_length=80, blank=True, null=True)
     message = models.TextField(blank=True, null=True)
     state = models.ForeignKey(ContactState, on_delete=models.PROTECT)
-    assigned_user = models.ForeignKey(User, blank=True, null=True, on_delete=models.SET_NULL)
+    assigned_user = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -31,6 +31,6 @@ class Message(models.Model):
     country = models.CharField(max_length=80, blank=True, null=True)
     message = models.TextField()
     state = models.ForeignKey(ContactState, on_delete=models.PROTECT)
-    assigned_user = models.ForeignKey(User, blank=True, null=True, on_delete=models.SET_NULL)
+    assigned_user = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

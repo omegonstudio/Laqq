@@ -6,11 +6,10 @@ class CanCreateOrAdmin(BasePermission):
     """
     def has_permission(self, request, view):
         user = request.user
-        # Allow superuser or staff as fallback for testing
-        if user.is_superuser or user.is_staff:
+        if user.is_superuser:
             return True
         if request.method in ['POST']:
-            return getattr(user, 'user_type_id', None) in ['admin', 'back']
+            return user.user_type_id in ['admin', 'back']
         if request.method in SAFE_METHODS:
             return True
-        return getattr(user, 'user_type_id', None) == 'admin'
+        return user.user_type_id == 'admin'
