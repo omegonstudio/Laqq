@@ -8,6 +8,8 @@ User = get_user_model()
 
 
 class ContactAPITestCase(APITestCase):
+    """Tests para el CRUD de Contactos (clientes/prospectos)"""
+
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username='testuser', password='testpass123')
@@ -23,11 +25,13 @@ class ContactAPITestCase(APITestCase):
         )
 
     def test_list_contacts(self):
-        response = self.client.get('/contacts/contacts/')
+        """Listar todos los contactos con paginación"""
+        response = self.client.get('/contacts/list/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
     def test_create_contact(self):
+        """Crear un nuevo contacto con empresa, nombre y email"""
         data = {
             'company_name': 'New Company',
             'first_name': 'Jane',
@@ -35,11 +39,12 @@ class ContactAPITestCase(APITestCase):
             'email': 'jane@example.com',
             'state': self.contact_state.id
         }
-        response = self.client.post('/contacts/contacts/', data)
+        response = self.client.post('/contacts/list/', data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Contact.objects.count(), 2)
 
     def test_validate_invalid_email(self):
+        """Validar que el email tenga formato correcto"""
         data = {
             'company_name': 'Test Company',
             'first_name': 'John',
@@ -47,10 +52,11 @@ class ContactAPITestCase(APITestCase):
             'email': 'invalid-email',
             'state': self.contact_state.id
         }
-        response = self.client.post('/contacts/contacts/', data)
+        response = self.client.post('/contacts/list/', data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_validate_short_phone(self):
+        """Validar que el teléfono tenga al menos 7 caracteres"""
         data = {
             'company_name': 'Test Company',
             'first_name': 'John',
@@ -59,28 +65,33 @@ class ContactAPITestCase(APITestCase):
             'phone': '123',
             'state': self.contact_state.id
         }
-        response = self.client.post('/contacts/contacts/', data)
+        response = self.client.post('/contacts/list/', data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_filter_by_state(self):
-        response = self.client.get(f'/contacts/contacts/?state={self.contact_state.id}')
+        """Filtrar contactos por estado (activo, inactivo, etc.)"""
+        response = self.client.get(f'/contacts/list/?state={self.contact_state.id}')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
     def test_search_contact(self):
-        response = self.client.get('/contacts/contacts/?search=John')
+        """Buscar contactos por nombre, empresa o email"""
+        response = self.client.get('/contacts/list/?search=John')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
     def test_filter_by_assigned_user(self):
+        """Filtrar contactos por usuario asignado"""
         self.contact.assigned_user = self.user
         self.contact.save()
-        response = self.client.get(f'/contacts/contacts/?assigned_user={self.user.id}')
+        response = self.client.get(f'/contacts/list/?assigned_user={self.user.id}')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
 
 class MessageAPITestCase(APITestCase):
+    """Tests para el CRUD de Mensajes de contacto (formulario web)"""
+
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username='testuser', password='testpass123')
@@ -95,11 +106,13 @@ class MessageAPITestCase(APITestCase):
         )
 
     def test_list_messages(self):
+        """Listar todos los mensajes recibidos con paginación"""
         response = self.client.get('/contacts/messages/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
     def test_create_message(self):
+        """Crear un nuevo mensaje desde formulario de contacto"""
         data = {
             'company_name': 'New Company',
             'message': 'This is a new message with enough characters to pass validation.',
@@ -110,6 +123,7 @@ class MessageAPITestCase(APITestCase):
         self.assertEqual(Message.objects.count(), 2)
 
     def test_validate_short_message(self):
+        """Validar que el mensaje tenga al menos 10 caracteres"""
         data = {
             'company_name': 'Test Company',
             'message': 'Short',
@@ -119,6 +133,7 @@ class MessageAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_search_message(self):
+        """Buscar mensajes por contenido o empresa"""
         response = self.client.get('/contacts/messages/?search=test')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)

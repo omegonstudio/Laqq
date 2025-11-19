@@ -231,3 +231,6 @@ OTP_TOTP_ISSUER = 'LAQQ System'
 # Internationalization
 LANGUAGE_CODE = 'es-ar'
 TIME_ZONE = 'America/Argentina/Buenos_Aires'
+
+# Test Runner with detailed report
+TEST_RUNNER = 'config.test_runner.DetailedReportTestRunner'

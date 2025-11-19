@@ -11,35 +11,35 @@ def api_root(request):
     return Response({
         'admin': request.build_absolute_uri('/admin/'),
         'users': {
-            'list': request.build_absolute_uri('/users/'),
+            'list': request.build_absolute_uri('/users/list/'),
             'types': request.build_absolute_uri('/users/types/'),
             'states': request.build_absolute_uri('/users/states/'),
             'token': request.build_absolute_uri('/users/token/'),
             'token-refresh': request.build_absolute_uri('/users/token/refresh/'),
         },
         'products': {
-            'list': request.build_absolute_uri('/products/'),
+            'list': request.build_absolute_uri('/products/list/'),
             'brands': request.build_absolute_uri('/products/brands/'),
             'categories': request.build_absolute_uri('/products/categories/'),
             'specs': request.build_absolute_uri('/products/specs/'),
         },
         'accessories': {
-            'list': request.build_absolute_uri('/accessories/'),
+            'list': request.build_absolute_uri('/accessories/list/'),
             'product-accessories': request.build_absolute_uri('/accessories/product-accessories/'),
         },
         'contacts': {
-            'list': request.build_absolute_uri('/contacts/'),
+            'list': request.build_absolute_uri('/contacts/list/'),
             'states': request.build_absolute_uri('/contacts/states/'),
             'messages': request.build_absolute_uri('/contacts/messages/'),
         },
         'quotes': {
-            'list': request.build_absolute_uri('/quotes/'),
+            'list': request.build_absolute_uri('/quotes/list/'),
             'types': request.build_absolute_uri('/quotes/types/'),
             'states': request.build_absolute_uri('/quotes/states/'),
             'items': request.build_absolute_uri('/quotes/items/'),
         },
         'notes': {
-            'list': request.build_absolute_uri('/notes/'),
+            'list': request.build_absolute_uri('/notes/list/'),
             'types': request.build_absolute_uri('/notes/types/'),
             'states': request.build_absolute_uri('/notes/states/'),
         },
