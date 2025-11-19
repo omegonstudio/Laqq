@@ -3,9 +3,9 @@ version: '3.8'
 services:
   db:
     image: postgres:15-alpine
-    container_name: laqq_db
+    container_name: laqq_db_dev
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_dev:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=${DB_NAME:-laqq_db}
       - POSTGRES_USER=${DB_USER:-postgres}
@@ -18,40 +18,37 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - laqq_network
+      - laqq_network_dev
 
   web:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: laqq_web
+      dockerfile: Dockerfile.dev
+    container_name: laqq_web_dev
+    command: python manage.py runserver 0.0.0.0:8000
     volumes:
-      - static_volume:/app/staticfiles
-      - media_volume:/app/mediafiles
+      - .:/app
+      - /app/__pycache__
     ports:
       - "8000:8000"
     environment:
-      - DEBUG=${DEBUG:-False}
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
+      - DEBUG=True
+      - SECRET_KEY=dev-secret-key-not-for-production
       - DB_NAME=${DB_NAME:-laqq_db}
       - DB_USER=${DB_USER:-postgres}
       - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - DB_HOST=db
       - DB_PORT=5432
-      - DJANGO_ENV=${DJANGO_ENV:-production}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - DJANGO_ENV=development
     depends_on:
       db:
         condition: service_healthy
     networks:
-      - laqq_network
-    restart: unless-stopped
+      - laqq_network_dev
 
 volumes:
-  postgres_data:
-  static_volume:
-  media_volume:
+  postgres_data_dev:
 
 networks:
-  laqq_network:
+  laqq_network_dev:
     driver: bridge
