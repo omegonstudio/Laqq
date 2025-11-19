@@ -43,6 +43,12 @@ docker-compose -f docker-compose.dev.yml up --build
 - API: http://localhost:8000
 - Admin: http://localhost:8000/admin/
 
+### Hacer migraciones de Database
+```bash
+docker-compose -f docker-compose.dev.yml exec web python manage.py makemigrations
+docker-compose -f docker-compose.dev.yml exec web python manage.py migrate
+```
+
 ### Crear superusuario (primera vez)
 ```bash
 docker-compose -f docker-compose.dev.yml exec web python manage.py createsuperuser
