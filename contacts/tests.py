@@ -1,8 +1,10 @@
 from django.test import TestCase
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from .models import ContactState, Contact, Message
+
+User = get_user_model()
 
 
 class ContactAPITestCase(APITestCase):

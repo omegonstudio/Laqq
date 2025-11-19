@@ -1,10 +1,12 @@
 from django.test import TestCase
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from .models import Brand, Category, Product, ProductSpec
 from attachments.models import Attachment
 from users.models import UserType
+
+User = get_user_model()
 
 
 class BrandAPITestCase(APITestCase):

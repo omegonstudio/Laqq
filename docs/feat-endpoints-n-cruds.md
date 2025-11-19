@@ -17,6 +17,8 @@
 7. [Tests unitarios](#6-tests-unitarios)
 8. [Cómo usar los nuevos endpoints](#7-cómo-usar-los-nuevos-endpoints)
 9. [Merge con rama db-models](#8-merge-con-rama-db-models-custom-user-model)
+10. [Registro de modelos en Django Admin](#9-registro-de-modelos-en-django-admin)
+11. [API Root y simplificación de URLs](#10-api-root-y-simplificación-de-urls)
 
 ---
 
@@ -31,6 +33,9 @@ Esta rama implementa todos los CRUDs necesarios para el funcionamiento del front
 - ✅ Cálculo automático de subtotales
 - ✅ Tests unitarios completos (48 tests)
 - ✅ Compatibilidad con sistema de permisos existente
+- ✅ Registro de todos los modelos en Django Admin
+- ✅ API Root con lista de endpoints disponibles
+- ✅ Simplificación de URLs (eliminación de rutas duplicadas)
 
 ---
 
@@ -1469,6 +1474,243 @@ Si tienes preguntas sobre estos cambios o necesitas ayuda para implementar algo 
 
 ---
 
-**Última actualización:** 2025-11-18
+---
+
+## 9. Registro de modelos en Django Admin
+
+**Fecha:** 2025-11-19
+
+Se registraron todos los modelos del proyecto en el Django Admin para poder gestionarlos desde `/admin/`.
+
+### Archivos modificados
+
+- `products/admin.py`
+- `contacts/admin.py`
+- `quotes/admin.py`
+- `tickets/admin.py`
+- `notes/admin.py`
+- `accessories/admin.py`
+- `attachments/admin.py`
+
+### Modelos registrados
+
+| App | Modelos |
+|-----|---------|
+| **Products** | Brand, Category, Product, ProductSpec |
+| **Contacts** | ContactState, Contact, Message |
+| **Quotes** | QuoteType, QuoteState, Quote, QuoteItem |
+| **Tickets** | ServiceTicket |
+| **Notes** | NoteType, NoteState, Note |
+| **Accessories** | Accessory, ProductAccessory |
+| **Attachments** | Attachment |
+
+### Ejemplo de registro
+
+**Archivo:** `quotes/admin.py`
+
+```python
+from django.contrib import admin
+from .models import QuoteType, QuoteState, Quote, QuoteItem
+
+@admin.register(QuoteType)
+class QuoteTypeAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'description', 'created_at']
+    search_fields = ['name', 'description']
+    ordering = ['name']
+
+@admin.register(Quote)
+class QuoteAdmin(admin.ModelAdmin):
+    list_display = ['quote_number', 'contact', 'user', 'quote_type', 'state', 'total_amount', 'created_at']
+    search_fields = ['quote_number', 'message']
+    list_filter = ['quote_type', 'state', 'user']
+    ordering = ['-created_at']
+```
+
+### Funcionalidades del Admin
+
+Cada modelo registrado tiene configurado:
+
+- **list_display**: Columnas visibles en la lista
+- **search_fields**: Campos de búsqueda
+- **list_filter**: Filtros laterales
+- **ordering**: Ordenamiento por defecto
+
+---
+
+## 10. API Root y simplificación de URLs
+
+**Fecha:** 2025-11-19
+
+Se implementó una vista raíz de la API y se simplificaron las URLs eliminando duplicaciones.
+
+### API Root
+
+Se creó una vista en `/` que muestra todos los endpoints disponibles organizados por módulo.
+
+**Archivo:** `config/urls.py`
+
+```python
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+@api_view(['GET'])
+def api_root(request):
+    """
+    API Root - Lista de todos los endpoints disponibles
+    """
+    return Response({
+        'admin': request.build_absolute_uri('/admin/'),
+        'users': {
+            'list': request.build_absolute_uri('/users/'),
+            'types': request.build_absolute_uri('/users/types/'),
+            'states': request.build_absolute_uri('/users/states/'),
+            'token': request.build_absolute_uri('/users/token/'),
+            'token-refresh': request.build_absolute_uri('/users/token/refresh/'),
+        },
+        'products': {
+            'list': request.build_absolute_uri('/products/'),
+            'brands': request.build_absolute_uri('/products/brands/'),
+            'categories': request.build_absolute_uri('/products/categories/'),
+            'specs': request.build_absolute_uri('/products/specs/'),
+        },
+        # ... más endpoints
+    })
+```
+
+### Simplificación de URLs
+
+Se eliminaron las rutas duplicadas registrando el recurso principal con string vacío.
+
+**Antes:**
+```
+/attachments/attachments/
+/products/products/
+/contacts/contacts/
+/quotes/quotes/
+```
+
+**Después:**
+```
+/attachments/
+/products/
+/contacts/
+/quotes/
+```
+
+### Cambios en URLs por app
+
+| App | Antes | Después |
+|-----|-------|---------|
+| **Users** | `/users/users/` | `/users/` |
+| | `/users/usertypes/` | `/users/types/` |
+| | `/users/userstates/` | `/users/states/` |
+| **Products** | `/products/products/` | `/products/` |
+| | `/products/productspecs/` | `/products/specs/` |
+| **Contacts** | `/contacts/contacts/` | `/contacts/` |
+| | `/contacts/contactstates/` | `/contacts/states/` |
+| **Quotes** | `/quotes/quotes/` | `/quotes/` |
+| | `/quotes/quotetypes/` | `/quotes/types/` |
+| | `/quotes/quotestates/` | `/quotes/states/` |
+| | `/quotes/quoteitems/` | `/quotes/items/` |
+| **Notes** | `/notes/notes/` | `/notes/` |
+| | `/notes/notetypes/` | `/notes/types/` |
+| | `/notes/notestates/` | `/notes/states/` |
+| **Tickets** | `/tickets/servicetickets/` | `/tickets/` |
+| **Accessories** | `/accessories/accessories/` | `/accessories/` |
+| | `/accessories/productaccessories/` | `/accessories/product-accessories/` |
+| **Attachments** | `/attachments/attachments/` | `/attachments/` |
+
+### Ejemplo de cambio en urls.py
+
+**Archivo:** `quotes/urls.py`
+
+**Antes:**
+```python
+router = DefaultRouter()
+router.register(r'quotetypes', QuoteTypeViewSet)
+router.register(r'quotestates', QuoteStateViewSet)
+router.register(r'quotes', QuoteViewSet)
+router.register(r'quoteitems', QuoteItemViewSet)
+```
+
+**Después:**
+```python
+router = DefaultRouter()
+router.register(r'', QuoteViewSet, basename='quote')
+router.register(r'types', QuoteTypeViewSet)
+router.register(r'states', QuoteStateViewSet)
+router.register(r'items', QuoteItemViewSet)
+```
+
+### Lista actualizada de endpoints
+
+**Users:**
+- `http://localhost:8000/users/` - Lista de usuarios
+- `http://localhost:8000/users/types/` - Tipos de usuario
+- `http://localhost:8000/users/states/` - Estados de usuario
+- `http://localhost:8000/users/token/` - Obtener token JWT
+- `http://localhost:8000/users/token/refresh/` - Refrescar token
+
+**Products:**
+- `http://localhost:8000/products/` - Lista de productos
+- `http://localhost:8000/products/brands/` - Marcas
+- `http://localhost:8000/products/categories/` - Categorías
+- `http://localhost:8000/products/specs/` - Especificaciones
+
+**Contacts:**
+- `http://localhost:8000/contacts/` - Lista de contactos
+- `http://localhost:8000/contacts/states/` - Estados de contacto
+- `http://localhost:8000/contacts/messages/` - Mensajes
+
+**Quotes:**
+- `http://localhost:8000/quotes/` - Lista de cotizaciones
+- `http://localhost:8000/quotes/types/` - Tipos de cotización
+- `http://localhost:8000/quotes/states/` - Estados de cotización
+- `http://localhost:8000/quotes/items/` - Items de cotización
+
+**Notes:**
+- `http://localhost:8000/notes/` - Lista de notas
+- `http://localhost:8000/notes/types/` - Tipos de nota
+- `http://localhost:8000/notes/states/` - Estados de nota
+
+**Tickets:**
+- `http://localhost:8000/tickets/` - Lista de tickets de servicio
+
+**Accessories:**
+- `http://localhost:8000/accessories/` - Lista de accesorios
+- `http://localhost:8000/accessories/product-accessories/` - Relación producto-accesorio
+
+**Attachments:**
+- `http://localhost:8000/attachments/` - Lista de adjuntos
+
+---
+
+## Próximos pasos
+
+Esta documentación se irá actualizando con todos los cambios que hagamos en esta rama `feat-endpoints-n-cruds`.
+
+### Para agregar nuevos cambios:
+
+1. Hacer los cambios en el código
+2. Actualizar esta documentación en `docs/feat-endpoints-n-cruds.md`
+3. Incluir:
+   - Descripción del cambio
+   - Código antes/después
+   - Ejemplos de uso
+   - Tests relacionados
+
+---
+
+## Contacto y soporte
+
+Si tienes preguntas sobre estos cambios o necesitas ayuda para implementar algo similar:
+
+- Revisar los archivos de tests para ver ejemplos de uso
+- Consultar la documentación de Django REST Framework
+- Revisar los serializers para entender las validaciones
+
+---
+
+**Última actualización:** 2025-11-19
 **Versión de Django:** 4.2.7
 **Versión de DRF:** 3.14.0

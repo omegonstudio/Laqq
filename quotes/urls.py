@@ -2,9 +2,9 @@ from rest_framework.routers import DefaultRouter
 from .views import QuoteTypeViewSet, QuoteStateViewSet, QuoteViewSet, QuoteItemViewSet
 
 router = DefaultRouter()
-router.register(r'quotetypes', QuoteTypeViewSet)
-router.register(r'quotestates', QuoteStateViewSet)
-router.register(r'quotes', QuoteViewSet)
-router.register(r'quoteitems', QuoteItemViewSet)
+router.register(r'', QuoteViewSet, basename='quote')
+router.register(r'types', QuoteTypeViewSet)
+router.register(r'states', QuoteStateViewSet)
+router.register(r'items', QuoteItemViewSet)
 
 urlpatterns = router.urls
