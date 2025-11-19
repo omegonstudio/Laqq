@@ -1,3 +1,29 @@
 from django.contrib import admin
+from .models import Brand, Category, Product, ProductSpec
 
-# Register your models here.
+@admin.register(Brand)
+class BrandAdmin(admin.ModelAdmin):
+    list_display = ['name', 'description', 'created_at']
+    search_fields = ['name', 'description']
+    ordering = ['name']
+
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ['name', 'parent', 'display_order', 'created_at']
+    search_fields = ['name', 'description']
+    list_filter = ['parent']
+    ordering = ['display_order', 'name']
+
+@admin.register(Product)
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ['name', 'brand', 'category', 'is_active', 'created_at']
+    search_fields = ['name', 'description']
+    list_filter = ['brand', 'category', 'is_active']
+    ordering = ['-created_at']
+
+@admin.register(ProductSpec)
+class ProductSpecAdmin(admin.ModelAdmin):
+    list_display = ['code', 'product', 'volume', 'dimensions', 'created_at']
+    search_fields = ['code', 'volume']
+    list_filter = ['product']
+    ordering = ['-created_at']
