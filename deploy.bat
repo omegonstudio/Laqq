@@ -1,7 +1,7 @@
 @echo off
-echo ================================
-echo   Laqq - Docker Deployment
-echo ================================
+echo ========================================
+echo   LAQQ - Docker Deployment
+echo ========================================
 echo.
 
 REM Verificar si Docker esta corriendo
@@ -15,9 +15,17 @@ if errorlevel 1 (
 echo [OK] Docker esta corriendo
 echo.
 
-REM Detener contenedores anteriores si existen
-echo Deteniendo contenedores anteriores...
-docker-compose down
+REM Verificar si existe .env
+if not exist .env (
+    echo [INFO] Creando archivo .env desde .env.example...
+    copy .env.example .env >nul
+    echo [OK] Archivo .env creado
+    echo.
+)
+
+REM Detener contenedores anteriores y limpiar volúmenes
+echo Deteniendo contenedores y limpiando datos anteriores...
+docker-compose down -v 2>nul
 
 echo.
 echo Construyendo imagenes...
@@ -28,19 +36,30 @@ echo Iniciando servicios...
 docker-compose up -d
 
 echo.
-echo Esperando que los servicios esten listos...
-timeout /t 10 /nobreak >nul
+echo Esperando inicializacion (migraciones, superuser)...
+echo Puedes ver el progreso con: docker-compose logs -f web
+timeout /t 15 /nobreak >nul
 
 echo.
-echo ================================
+echo ========================================
 echo   Deployment completado!
-echo ================================
+echo ========================================
 echo.
-echo Aplicacion: http://localhost:8000
-echo Base de datos: localhost:5432
+echo   API:    http://localhost:8000
+echo   Admin:  http://localhost:8000/admin/
+echo   DB:     localhost:5432
 echo.
-echo Para ver logs: docker-compose logs -f
-echo Para detener: docker-compose down
+echo   ---- Credenciales Admin ----
+echo   Email: laqq@gmail.com
+echo   Password: laqq
+echo.
+echo ========================================
+echo.
+echo Comandos utiles:
+echo   - Ver logs:    docker-compose logs -f
+echo   - Detener:     docker-compose down
+echo   - Reiniciar:   docker-compose restart
+echo   - Tests:       docker-compose exec web python manage.py test
 echo.
 
 pause

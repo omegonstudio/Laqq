@@ -1,5 +1,25 @@
 # Guía de Deploy - LAQQ
 
+## Quick Start (Windows)
+
+**Doble click en `deploy.bat`** y listo. La aplicación se levanta automáticamente con:
+- Base de datos PostgreSQL
+- Migraciones ejecutadas
+- Superusuario creado
+- API funcionando
+
+### Credenciales por defecto
+```
+URL API:   http://localhost:8000
+URL Admin: http://localhost:8000/admin/
+Email:     laqq@gmail.com
+Password:  laqq
+```
+
+> **IMPORTANTE**: Cambiar estas credenciales en producción.
+
+---
+
 ## Requisitos Previos
 
 - Docker y Docker Compose instalados
@@ -10,13 +30,21 @@
 
 ## 1. Deploy Local (Desarrollo)
 
-### Clonar el repositorio
+### Opción A: Con deploy.bat (Recomendado para Windows)
+```
+Doble click en deploy.bat
+```
+Esto hace todo automáticamente: build, migraciones, superusuario.
+
+### Opción B: Manual
+
+#### Clonar el repositorio
 ```bash
 git clone https://github.com/omegonstudio/Laqq.git
 cd Laqq
 ```
 
-### Configurar variables de entorno
+#### Configurar variables de entorno
 ```bash
 cp .env.example .env
 ```
@@ -34,25 +62,18 @@ DJANGO_ENV=development
 ALLOWED_HOSTS=localhost,127.0.0.1
 ```
 
-### Levantar con Docker Compose
+#### Levantar con Docker Compose
 ```bash
-docker-compose -f docker-compose.dev.yml up --build
+docker-compose up --build
 ```
 
 ### Acceder a la aplicación
 - API: http://localhost:8000
 - Admin: http://localhost:8000/admin/
+- Email: `laqq@gmail.com`
+- Password: `laqq`
 
-### Hacer migraciones de Database
-```bash
-docker-compose -f docker-compose.dev.yml exec web python manage.py makemigrations
-docker-compose -f docker-compose.dev.yml exec web python manage.py migrate
-```
-
-### Crear superusuario (primera vez)
-```bash
-docker-compose -f docker-compose.dev.yml exec web python manage.py createsuperuser
-```
+> **Nota**: Las migraciones y el superusuario se crean automáticamente al iniciar.
 
 ---
 
@@ -119,15 +140,21 @@ docker-compose up -d
 docker-compose logs -f web
 ```
 
-### 2.5 Configuración inicial
+### 2.5 Verificar deploy
+
+El superusuario se crea automáticamente. Verificar que todo esté funcionando:
 
 ```bash
-# Crear superusuario
-docker-compose exec web python manage.py createsuperuser
+# Ver logs para confirmar que arrancó bien
+docker-compose logs -f web
 
-# Cargar datos iniciales (si los hay)
-docker-compose exec web python manage.py loaddata initial_data.json
+# Acceder al admin
+# http://tu-servidor:8000/admin/
+# Email: laqq@gmail.com
+# Password: laqq
 ```
+
+> **IMPORTANTE**: Cambiar la contraseña del superusuario en producción desde el admin.
 
 ---
 
@@ -136,8 +163,6 @@ docker-compose exec web python manage.py loaddata initial_data.json
 ### 3.1 Crear docker-compose.prod.yml
 
 ```yaml
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
