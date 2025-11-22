@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'django_otp.plugins.otp_totp',
     'django_filters',
     'corsheaders',
+    'drf_yasg',
     # Local apps
     'users',
     'contacts',
