@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     'django_otp.plugins.otp_totp',
     'django_filters',
     'corsheaders',
-    'drf_yasg',
+    # 'drf_yasg',  # Comentado temporalmente - instalar si se necesita: pip install drf-yasg
     # Local apps
     'users',
     'contacts',
@@ -63,7 +63,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    # 'whitenoise.middleware.WhiteNoiseMiddleware',  # Comentado - instalar si se necesita: pip install whitenoise
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
