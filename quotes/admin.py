@@ -22,7 +22,7 @@ class QuoteAdmin(admin.ModelAdmin):
 
 @admin.register(QuoteItem)
 class QuoteItemAdmin(admin.ModelAdmin):
-    list_display = ['quote', 'product_name', 'product_code', 'quantity', 'unit_price', 'subtotal', 'created_at']
+    list_display = ['quote', 'product', 'quantity', 'unit_price', 'subtotal', 'created_at']
     search_fields = ['product_name', 'product_code']
     list_filter = ['quote']
     ordering = ['-created_at']
