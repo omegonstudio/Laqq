@@ -13,6 +13,10 @@ class Accessory(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Accessory"
+        verbose_name_plural = "Accessories"
 
 class ProductAccessory(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
@@ -20,3 +24,5 @@ class ProductAccessory(models.Model):
 
     class Meta:
         unique_together = ('product', 'accessory')
+        verbose_name = "Product Accessory"
+        verbose_name_plural = "Product Accessories"

@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from contacts.models import Contact
+from products.models import Product
 from django.conf import settings
 
 class QuoteType(models.Model):
@@ -31,8 +32,7 @@ class Quote(models.Model):
 class QuoteItem(models.Model):
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
     quote = models.ForeignKey(Quote, on_delete=models.CASCADE)
-    product_name = models.CharField(max_length=120)
-    product_code = models.CharField(max_length=120, blank=True, null=True)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
     unit_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
     subtotal = models.DecimalField(max_digits=14, decimal_places=2, blank=True, null=True)

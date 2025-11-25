@@ -1,5 +1,10 @@
 from django.contrib import admin
-from .models import Brand, Category, Product, ProductSpec
+from .models import Brand, Category, Product, ProductSpec, ProductRelation
+
+class ProductRelationInline(admin.TabularInline):
+    model = ProductRelation
+    fk_name = 'from_product'
+    extra = 1
 
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
@@ -17,6 +22,7 @@ class CategoryAdmin(admin.ModelAdmin):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = ['name', 'brand', 'category', 'is_active', 'created_at']
+    inlines = [ProductRelationInline]
     search_fields = ['name', 'description']
     list_filter = ['brand', 'category', 'is_active']
     ordering = ['-created_at']

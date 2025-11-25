@@ -3,22 +3,22 @@ from django.urls import path, include
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import permissions
-# from drf_yasg.views import get_schema_view
-# from drf_yasg import openapi
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
 
 
-# api_info = openapi.Info(
-#     title="Mi API",
-#     default_version='v1',
-#     description="Documentación API - Swagger",
-#     contact=openapi.Contact(email="dev@miempresa.com"),
-# )
+api_info = openapi.Info(
+    title="Mi API",
+    default_version='v1',
+    description="Documentación API - Swagger",
+    contact=openapi.Contact(email="dev@miempresa.com"),
+)
 
-# schema_view = get_schema_view(
-#     api_info,
-#     public=True,
-#     permission_classes=(permissions.AllowAny,),  # podes limitar cuando no DEBUG
-# )
+schema_view = get_schema_view(
+    api_info,
+    public=True,
+    permission_classes=(permissions.AllowAny,),  # podes limitar cuando no DEBUG
+)
 
 @api_view(['GET'])
 def api_root(request):
@@ -85,8 +85,8 @@ urlpatterns = [
     # If you want a single "api/" aggregator, uncomment the next line and create project-level api/urls.py
     # path('api/', include('api.urls')),
 
-    # Swagger/OpenAPI endpoints: (Comentado - instalar drf-yasg si se necesita)
-    # path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
-    # path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    # path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    # Swagger/OpenAPI endpoints:
+    path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]
