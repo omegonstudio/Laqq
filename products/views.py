@@ -24,8 +24,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
     ordering = ['display_order']
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
+    queryset = Product.objects.all().prefetch_related('from_relations__to_product')    
+    serializer_class = ProductSerializer    
     permission_classes = [IsReadOnlyOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['brand', 'category', 'is_active']

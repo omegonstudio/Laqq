@@ -58,20 +58,27 @@ users/
 
 ```
 1. Login Request
-   POST /api/auth/login/
-   {email, password}
+   POST /users/token/
+   {username, password}
         ↓
-2. EmailBackend.authenticate()
-   - Busca usuario por email
+2. TokenObtainPairView (JWT)
+   - Busca usuario por username
    - Verifica contraseña
-   - Verifica 2FA (si está habilitado)
+   - Genera tokens JWT
         ↓
 3. Generate JWT Tokens
-   - Access Token (1 hora)
-   - Refresh Token (7 días)
+   - Access Token (configurable en settings)
+   - Refresh Token (configurable en settings)
         ↓
 4. Return to Client
-   {access, refresh, user}
+   {access, refresh}
+
+5. Refresh Token
+   POST /users/token/refresh/
+   {refresh}
+        ↓
+6. Return new Access Token
+   {access}
 ```
 
 ### Flujo de Verificación de Permisos
@@ -163,20 +170,22 @@ CREATE TABLE role_permissions (
 ### Creación de Usuario
 
 ```
-1. POST /api/users/
-   {email, password, first_name, last_name, role_id}
+1. POST /users/list/
+   {username, email, password, first_name, last_name, user_type, state}
         ↓
-2. UserSerializer.validate()
+2. UserCreateSerializer.validate()
+   - Valida username único
    - Valida email único
    - Valida contraseña fuerte
-   - Valida rol existe
+   - Valida user_type existe (Admin/Backoffice)
         ↓
-3. User.objects.create()
-   - Hash password con Argon2
-   - Asigna rol
+3. User.objects.create_user()
+   - Hash password
+   - Asigna user_type
+   - Asigna state
         ↓
 4. Return User Data
-   {id, email, full_name, role, is_active}
+   {id, username, email, full_name, user_type, state, is_active}
 ```
 
 ### Verificación de Permiso en API

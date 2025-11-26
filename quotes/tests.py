@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from .models import QuoteType, QuoteState, Quote, QuoteItem
 from contacts.models import Contact, ContactState
 from users.models import UserType
+from products.models import Product, Brand, Category
 
 User = get_user_model()
 
@@ -133,9 +134,18 @@ class QuoteItemAPITestCase(APITestCase):
             state=self.quote_state
         )
 
+        # Create product for quote items
+        self.brand = Brand.objects.create(name='Test Brand')
+        self.category = Category.objects.create(name='Test Category')
+        self.product = Product.objects.create(
+            name='Test Product',
+            brand=self.brand,
+            category=self.category
+        )
+
         self.quote_item = QuoteItem.objects.create(
             quote=self.quote,
-            product_name='Test Product',
+            product=self.product,
             quantity=2,
             unit_price=100.00,
             subtotal=200.00
@@ -149,9 +159,14 @@ class QuoteItemAPITestCase(APITestCase):
 
     def test_create_quote_item_auto_subtotal(self):
         """Crear item con cálculo automático de subtotal (cantidad x precio)"""
+        new_product = Product.objects.create(
+            name='New Product',
+            brand=self.brand,
+            category=self.category
+        )
         data = {
             'quote': self.quote.id,
-            'product_name': 'New Product',
+            'product': new_product.id,
             'quantity': 3,
             'unit_price': 50.00
         }
@@ -163,7 +178,7 @@ class QuoteItemAPITestCase(APITestCase):
         """Validar que la cantidad sea mayor a cero"""
         data = {
             'quote': self.quote.id,
-            'product_name': 'Test Product',
+            'product': self.product.id,
             'quantity': 0,
             'unit_price': 100.00
         }
@@ -174,7 +189,7 @@ class QuoteItemAPITestCase(APITestCase):
         """Validar que el precio unitario no sea negativo"""
         data = {
             'quote': self.quote.id,
-            'product_name': 'Test Product',
+            'product': self.product.id,
             'quantity': 1,
             'unit_price': -50.00
         }

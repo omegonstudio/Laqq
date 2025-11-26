@@ -15,15 +15,22 @@ class UserStateSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class UserSerializer(serializers.ModelSerializer):
-    user_type = serializers.PrimaryKeyRelatedField(queryset=UserType.objects.all(), allow_null=True, required=False)
-    state = serializers.PrimaryKeyRelatedField(queryset=UserState.objects.all(), allow_null=True, required=False)
+    user_type = UserTypeSerializer(read_only=True)
+    state = UserStateSerializer(read_only=True)
+    user_type_id = serializers.PrimaryKeyRelatedField(
+        queryset=UserType.objects.all(), source='user_type', write_only=True, allow_null=True, required=False
+    )
+    state_id = serializers.PrimaryKeyRelatedField(
+        queryset=UserState.objects.all(), source='state', write_only=True, allow_null=True, required=False
+    )
 
     class Meta:
         model = User
         # expose relevant fields; avoid exposing password hash directly
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
-            'user_type', 'state', 'is_active', 'is_staff', 'is_superuser',
+            'user_type', 'user_type_id', 'state', 'state_id',
+            'is_active', 'is_staff', 'is_superuser',
             'last_login', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'last_login', 'created_at', 'updated_at']
