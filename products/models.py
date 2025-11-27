@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from django.utils.text import slugify
 from attachments.models import Attachment
 
 class Brand(models.Model):
@@ -21,6 +22,7 @@ class Category(models.Model):
 
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
+    product_code = models.CharField(max_length=64, unique=True)
     name = models.CharField(max_length=255)
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE)
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
@@ -37,6 +39,23 @@ class Product(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def _generate_product_code(self):
+        base = slugify(self.name)[:48] or str(uuid.uuid4())[:12]
+        candidate = base
+        # add suffix until unique
+        while Product.objects.filter(product_code=candidate).exists():
+            candidate = f"{base}-{uuid.uuid4().hex[:6]}"
+        return candidate
+
+    def save(self, *args, **kwargs):
+        # ensure product_code exists
+        if not getattr(self, 'product_code', None):
+            self.product_code = self._generate_product_code()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.name} ({self.product_code})"
 
 class ProductRelation(models.Model):
     """

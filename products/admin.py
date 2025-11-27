@@ -21,9 +21,9 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['name', 'brand', 'category', 'is_active', 'created_at']
+    list_display = ['product_code', 'name', 'brand', 'category', 'is_active', 'created_at']
     inlines = [ProductRelationInline]
-    search_fields = ['name', 'description']
+    search_fields = ['product_code', 'name', 'description']
     list_filter = ['brand', 'category', 'is_active']
     ordering = ['-created_at']
 
