@@ -87,3 +87,12 @@ class ProductSpec(models.Model):
     precision = models.CharField(max_length=100, blank=True, null=True)
     additional_specs = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Evita duplicados por producto+code a nivel DB
+        constraints = [
+            models.UniqueConstraint(fields=['product', 'code'], name='unique_product_spec_per_product_code')
+        ]
+
+    def __str__(self):
+        return f"{self.product} - {self.code}"
