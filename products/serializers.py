@@ -52,6 +52,9 @@ class ProductSerializer(serializers.ModelSerializer):
             'specs', 'related_product_ids', 'related_product_codes', 'related_products'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'related_products']
+        extra_kwargs = {
+            'product_code': {'required': False, 'allow_blank': True}
+        }
 
     def get_related_products(self, obj):
         return [{'id': str(r.to_product.id), 'product_code': r.to_product.product_code, 'name': r.to_product.name, 'relation_type': r.relation_type}

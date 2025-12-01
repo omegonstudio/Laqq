@@ -22,7 +22,7 @@ class Category(models.Model):
 
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
-    product_code = models.CharField(max_length=64, unique=True)
+    product_code = models.CharField(max_length=64, unique=True, blank=True, default='')
     name = models.CharField(max_length=255)
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE)
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
