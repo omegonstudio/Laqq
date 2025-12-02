@@ -5,8 +5,8 @@
   <h1>Carga masiva de Productos</h1>
 
   <div id="import-area">
-    <label for="csv_file">Archivo CSV:</label>
-    <input type="file" id="csv_file" name="csv_file" accept=".csv" />
+    <label for="csv_file">Archivo CSV/XLSX:</label>
+    <input type="file" id="csv_file" name="csv_file" accept=".csv,.xlsx" />
 
     <div style="margin-top:8px;">
       <label><input type="checkbox" id="create_missing" checked /> Crear marcas/categorías faltantes</label>
@@ -16,7 +16,7 @@
     </div>
 
     <div style="margin-top:12px;">
-      <button id="upload-btn" class="default">Subir CSV</button>
+      <button id="upload-btn" class="default">Subir CSV/XLSX.</button>
     </div>
 
     <div id="progress" style="margin-top:12px; display:none;">
