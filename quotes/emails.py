@@ -101,13 +101,9 @@ def send_quote_to_business(quote):
         )
         email.attach_alternative(html_content, "text/html")
 
-        # Send email
-        email.send(fail_silently=False)
-        logger.info(f"Quote #{quote.quote_number} email sent to business: {settings.BUSINESS_EMAIL}")
-
-        # Print email content to console for debugging
+        # Print email content to console for debugging (BEFORE sending)
         safe_print("\n" + "="*80)
-        safe_print(f"EMAIL SENT TO BUSINESS: {settings.BUSINESS_EMAIL}")
+        safe_print(f"EMAIL TO BUSINESS (preview): {settings.BUSINESS_EMAIL}")
         safe_print("="*80)
         safe_print(f"Subject: {subject}")
         safe_print(f"From: {from_email}")
@@ -121,6 +117,10 @@ def send_quote_to_business(quote):
         safe_print("-"*80)
         safe_print(html_content)
         safe_print("="*80 + "\n")
+
+        # Send email (may fail if SMTP not configured, but quote will still be created)
+        email.send(fail_silently=False)
+        logger.info(f"Quote #{quote.quote_number} email sent to business: {settings.BUSINESS_EMAIL}")
 
         return True
 
@@ -183,13 +183,9 @@ def send_quote_to_customer(quote):
         )
         email.attach_alternative(html_content, "text/html")
 
-        # Send email
-        email.send(fail_silently=False)
-        logger.info(f"Quote #{quote.quote_number} confirmation sent to customer: {quote.contact.email}")
-
-        # Print email content to console for debugging
+        # Print email content to console for debugging (BEFORE sending)
         safe_print("\n" + "="*80)
-        safe_print(f"EMAIL SENT TO CUSTOMER: {quote.contact.email}")
+        safe_print(f"EMAIL TO CUSTOMER (preview): {quote.contact.email}")
         safe_print("="*80)
         safe_print(f"Subject: {subject}")
         safe_print(f"From: {from_email}")
@@ -203,6 +199,10 @@ def send_quote_to_customer(quote):
         safe_print("-"*80)
         safe_print(html_content)
         safe_print("="*80 + "\n")
+
+        # Send email (may fail if SMTP not configured, but quote will still be created)
+        email.send(fail_silently=False)
+        logger.info(f"Quote #{quote.quote_number} confirmation sent to customer: {quote.contact.email}")
 
         return True
 
