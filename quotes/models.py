@@ -22,7 +22,7 @@ class QuoteState(models.Model):
 
 class Quote(models.Model):
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
-    quote_number = models.CharField(max_length=100, unique=True)
+    quote_number = models.CharField(max_length=100, unique=True, blank=True)
     contact = models.ForeignKey(Contact, on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=models.SET_NULL)
     quote_type = models.ForeignKey(QuoteType, on_delete=models.PROTECT)
@@ -34,12 +34,29 @@ class Quote(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        Override save to send email notifications when a new quote is created.
+        Override save to:
+        1. Auto-generate quote_number if not provided
+        2. Send email notifications when a new quote is created
         Works for both API and Django Admin.
         """
         # Check if this is a new quote (not an update)
         # Use _state.adding which is more reliable than checking pk
         is_new = self._state.adding
+
+        # Auto-generate quote_number if not provided
+        if is_new and not self.quote_number:
+            from datetime import datetime
+            year = datetime.now().year
+            last_quote = Quote.objects.filter(quote_number__startswith=f'Q-{year}').order_by('-created_at').first()
+            if last_quote and last_quote.quote_number:
+                try:
+                    last_number = int(last_quote.quote_number.split('-')[-1])
+                    new_number = last_number + 1
+                except (ValueError, IndexError):
+                    new_number = 1
+            else:
+                new_number = 1
+            self.quote_number = f'Q-{year}-{new_number:05d}'
 
         # Save the quote first
         super().save(*args, **kwargs)

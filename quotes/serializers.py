@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from .models import QuoteType, QuoteState, Quote, QuoteItem
-from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -58,27 +57,11 @@ class QuoteSerializer(serializers.ModelSerializer):
         model = Quote
         fields = '__all__'
         read_only_fields = ['quote_number']
+        extra_kwargs = {
+            'quote_number': {'required': False, 'allow_blank': True}
+        }
 
     def validate_total_amount(self, value):
         if value is not None and value < 0:
             raise serializers.ValidationError("Total amount cannot be negative")
         return value
-
-    def create(self, validated_data):
-        # Auto-generate quote_number
-        if not validated_data.get('quote_number'):
-            year = datetime.now().year
-            last_quote = Quote.objects.filter(quote_number__startswith=f'Q-{year}').order_by('-created_at').first()
-            if last_quote and last_quote.quote_number:
-                try:
-                    last_number = int(last_quote.quote_number.split('-')[-1])
-                    new_number = last_number + 1
-                except (ValueError, IndexError):
-                    new_number = 1
-            else:
-                new_number = 1
-            validated_data['quote_number'] = f'Q-{year}-{new_number:05d}'
-
-        # Create quote (email will be sent automatically by model's save() method)
-        quote = super().create(validated_data)
-        return quote
