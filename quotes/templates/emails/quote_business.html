@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Cotización {{ quote_number }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .email-container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+            margin: -30px -30px 30px -30px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            opacity: 0.9;
+        }
+        .section {
+            margin-bottom: 25px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        .info-row {
+            display: flex;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .info-label {
+            font-weight: bold;
+            width: 150px;
+            color: #666;
+        }
+        .info-value {
+            flex: 1;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        thead {
+            background-color: #667eea;
+            color: white;
+        }
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        tbody tr:hover {
+            background-color: #f9f9f9;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .total-row {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .total-row td {
+            border-bottom: none;
+            padding: 15px 12px;
+        }
+        .message-box {
+            background-color: #fff9e6;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        .btn:hover {
+            background-color: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>🎯 Nueva Cotización Recibida</h1>
+            <p>{{ business_name }} - {{ created_at|date:"d/m/Y H:i" }}</p>
+        </div>
+
+        <!-- Quote Information -->
+        <div class="section">
+            <div class="section-title">📋 Información de la Cotización</div>
+            <div class="info-row">
+                <span class="info-label">Número:</span>
+                <span class="info-value"><strong>{{ quote_number }}</strong></span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Fecha:</span>
+                <span class="info-value">{{ created_at|date:"d/m/Y H:i" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Estado:</span>
+                <span class="info-value">{{ quote.state.name }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Tipo:</span>
+                <span class="info-value">{{ quote.quote_type.name }}</span>
+            </div>
+            {% if user %}
+            <div class="info-row">
+                <span class="info-label">Usuario Asignado:</span>
+                <span class="info-value">{{ user.get_full_name }} ({{ user.email }})</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Customer Information -->
+        <div class="section">
+            <div class="section-title">👤 Información del Cliente</div>
+            {% if contact.company_name %}
+            <div class="info-row">
+                <span class="info-label">Empresa:</span>
+                <span class="info-value"><strong>{{ contact.company_name }}</strong></span>
+            </div>
+            {% endif %}
+            <div class="info-row">
+                <span class="info-label">Nombre:</span>
+                <span class="info-value">{{ contact.first_name }} {{ contact.last_name }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Email:</span>
+                <span class="info-value"><a href="mailto:{{ contact.email }}">{{ contact.email }}</a></span>
+            </div>
+            {% if contact.phone %}
+            <div class="info-row">
+                <span class="info-label">Teléfono:</span>
+                <span class="info-value">{{ contact.phone }}</span>
+            </div>
+            {% endif %}
+            {% if contact.address %}
+            <div class="info-row">
+                <span class="info-label">Dirección:</span>
+                <span class="info-value">{{ contact.address }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Quote Items -->
+        <div class="section">
+            <div class="section-title">🛒 Productos Solicitados</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Código</th>
+                        <th class="text-right">Cantidad</th>
+                        <th class="text-right">Precio Unit.</th>
+                        <th class="text-right">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>
+                            <strong>{{ item.product.name }}</strong>
+                            {% if item.product.brand %}
+                            <br><small style="color: #666;">{{ item.product.brand.name }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.product.product_code|default:"-" }}</td>
+                        <td class="text-right">{{ item.quantity }}</td>
+                        <td class="text-right">
+                            {% if item.unit_price %}
+                            ${{ item.unit_price|floatformat:2 }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="text-right">
+                            {% if item.subtotal %}
+                            ${{ item.subtotal|floatformat:2 }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <td colspan="4" class="text-right">TOTAL:</td>
+                        <td class="text-right">
+                            {% if total_amount %}
+                            ${{ total_amount|floatformat:2 }}
+                            {% else %}
+                            A cotizar
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Customer Message -->
+        {% if message %}
+        <div class="section">
+            <div class="section-title">💬 Mensaje del Cliente</div>
+            <div class="message-box">
+                {{ message|linebreaks }}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Action Button -->
+        <div style="text-align: center;">
+            <p><strong>Próximos pasos:</strong> Revisar la cotización y responder al cliente lo antes posible.</p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Este email fue generado automáticamente por el sistema {{ business_name }}.</p>
+            <p style="font-size: 12px; color: #999;">
+                Cotización #{{ quote_number }} | {{ created_at|date:"d/m/Y H:i" }}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

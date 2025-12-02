@@ -1,0 +1,68 @@
+════════════════════════════════════════════════════════════
+   SOLICITUD DE COTIZACIÓN RECIBIDA
+   {{ business_name }}
+════════════════════════════════════════════════════════════
+
+Hola {{ customer_name }},
+
+¡Gracias por contactarnos! Hemos recibido correctamente tu
+solicitud de cotización y nuestro equipo está revisando los
+detalles.
+
+✓ TU SOLICITUD HA SIDO REGISTRADA EXITOSAMENTE
+
+Número de Cotización: {{ quote_number }}
+
+────────────────────────────────────────────────────────────
+
+TIEMPO ESTIMADO DE RESPUESTA: {{ response_time }}
+Te enviaremos la cotización detallada a: {{ contact.email }}
+
+────────────────────────────────────────────────────────────
+
+RESUMEN DE PRODUCTOS SOLICITADOS ({{ total_items }} item{{ total_items|pluralize }})
+{% for item in items %}
+{{ forloop.counter }}. {{ item.product.name }}
+   Cantidad: {{ item.quantity }} unidad{{ item.quantity|pluralize:"es" }}{% if item.product.product_code %}
+   Código: {{ item.product.product_code }}{% endif %}
+{% endfor %}
+
+────────────────────────────────────────────────────────────
+{% if message %}
+TU MENSAJE
+
+{{ message }}
+
+────────────────────────────────────────────────────────────
+{% endif %}
+PRÓXIMOS PASOS
+
+1. Nuestro equipo revisará tu solicitud en detalle
+2. Verificaremos disponibilidad de productos y precios actuales
+3. Te enviaremos la cotización completa dentro de {{ response_time }}
+4. Podrás revisar, consultar dudas y confirmar tu pedido
+
+────────────────────────────────────────────────────────────
+
+¿NECESITAS AYUDA O TIENES CONSULTAS?
+
+No dudes en contactarnos:
+
+Email:      {{ business_email }}
+{% if business_phone %}Teléfono:   {{ business_phone }}
+{% endif %}{% if business_address %}Dirección:  {{ business_address }}
+{% endif %}
+────────────────────────────────────────────────────────────
+
+Gracias por confiar en {{ business_name }}.
+¡Esperamos poder servirte pronto!
+
+
+────────────────────────────────────────────────────────────
+{{ business_name }}
+
+Este es un mensaje automático, por favor no respondas a este
+correo.
+
+Cotización #{{ quote_number }} | {{ created_at|date:"d/m/Y H:i" }}
+════════════════════════════════════════════════════════════

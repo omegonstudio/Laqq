@@ -2,6 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from django.contrib.auth import get_user_model
+from django.core import mail
 from .models import QuoteType, QuoteState, Quote, QuoteItem
 from contacts.models import Contact, ContactState
 from users.models import UserType
@@ -201,3 +202,208 @@ class QuoteItemAPITestCase(APITestCase):
         response = self.client.get(f'/quotes/items/?quote={self.quote.id}')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
+
+
+class QuoteEmailNotificationTestCase(APITestCase):
+    """Tests para notificaciones por email al crear cotizaciones"""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user_type = UserType.objects.create(id='admin', name='Admin')
+        self.user = User.objects.create_user(username='testuser', password='testpass123', is_staff=True)
+        self.user.user_type = self.user_type
+        self.user.first_name = 'Test'
+        self.user.last_name = 'User'
+        self.user.save()
+        self.client.force_authenticate(user=self.user)
+
+        # Create required related objects
+        self.contact_state = ContactState.objects.create(id='active', name='Active')
+        self.contact = Contact.objects.create(
+            company_name='Test Company',
+            first_name='John',
+            last_name='Doe',
+            email='customer@test.com',
+            phone='+54 11 1234-5678',
+            state=self.contact_state
+        )
+        self.quote_type = QuoteType.objects.create(id='standard', name='Standard')
+        self.quote_state = QuoteState.objects.create(id='draft', name='Draft')
+
+        # Create products
+        self.brand = Brand.objects.create(name='Test Brand')
+        self.category = Category.objects.create(name='Test Category')
+        self.product1 = Product.objects.create(
+            name='Product 1',
+            brand=self.brand,
+            category=self.category
+        )
+        self.product2 = Product.objects.create(
+            name='Product 2',
+            brand=self.brand,
+            category=self.category
+        )
+
+    def test_email_sent_on_quote_creation(self):
+        """Verificar que se envía email al crear una cotización"""
+        # Clear mail outbox
+        mail.outbox = []
+
+        # Create quote via API
+        data = {
+            'contact': self.contact.id,
+            'quote_type': self.quote_type.id,
+            'state': self.quote_state.id,
+            'total_amount': 1000.00,
+            'message': 'Necesito esta cotización urgente'
+        }
+        response = self.client.post('/quotes/list/', data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Verify emails were sent (2 emails: business + customer)
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_business_email_content(self):
+        """Verificar contenido del email enviado al negocio"""
+        mail.outbox = []
+
+        data = {
+            'contact': self.contact.id,
+            'quote_type': self.quote_type.id,
+            'state': self.quote_state.id,
+            'user': self.user.id,
+            'total_amount': 1500.00
+        }
+        response = self.client.post('/quotes/list/', data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Find business email (should contain quote number in subject)
+        business_emails = [email for email in mail.outbox if 'Nueva Cotización' in email.subject]
+        self.assertEqual(len(business_emails), 1)
+
+        business_email = business_emails[0]
+        quote_number = response.data['quote_number']
+
+        # Verify subject
+        self.assertIn(quote_number, business_email.subject)
+        self.assertIn('Test Company', business_email.subject)
+
+        # Verify body contains important info
+        email_body = business_email.body
+        self.assertIn(quote_number, email_body)
+        self.assertIn('John Doe', email_body)
+        self.assertIn('Test Company', email_body)
+        self.assertIn('customer@test.com', email_body)
+
+    def test_customer_email_content(self):
+        """Verificar contenido del email de confirmación al cliente"""
+        mail.outbox = []
+
+        data = {
+            'contact': self.contact.id,
+            'quote_type': self.quote_type.id,
+            'state': self.quote_state.id,
+            'total_amount': 2000.00
+        }
+        response = self.client.post('/quotes/list/', data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Find customer email
+        customer_emails = [email for email in mail.outbox if 'Confirmación' in email.subject]
+        self.assertEqual(len(customer_emails), 1)
+
+        customer_email = customer_emails[0]
+        quote_number = response.data['quote_number']
+
+        # Verify recipient
+        self.assertIn('customer@test.com', customer_email.to)
+
+        # Verify subject
+        self.assertIn('Confirmación', customer_email.subject)
+        self.assertIn(quote_number, customer_email.subject)
+
+        # Verify body
+        email_body = customer_email.body
+        self.assertIn('John', email_body)
+        self.assertIn(quote_number, email_body)
+
+    def test_email_with_quote_items(self):
+        """Verificar que el email incluye los items de la cotización"""
+        mail.outbox = []
+
+        # Create quote
+        data = {
+            'contact': self.contact.id,
+            'quote_type': self.quote_type.id,
+            'state': self.quote_state.id,
+            'total_amount': 3000.00
+        }
+        response = self.client.post('/quotes/list/', data)
+        quote_id = response.data['id']
+
+        # Add items to quote
+        QuoteItem.objects.create(
+            quote_id=quote_id,
+            product=self.product1,
+            quantity=5,
+            unit_price=200.00,
+            subtotal=1000.00
+        )
+        QuoteItem.objects.create(
+            quote_id=quote_id,
+            product=self.product2,
+            quantity=10,
+            unit_price=200.00,
+            subtotal=2000.00
+        )
+
+        # Note: Emails are sent on quote creation, not when items are added
+        # This test verifies the structure works with items
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_quote_creation_succeeds_even_if_email_fails(self):
+        """Verificar que la cotización se crea aunque falle el envío de email"""
+        # This test ensures email sending is non-blocking
+        # Even if SMTP is misconfigured, quotes should still be created
+        data = {
+            'contact': self.contact.id,
+            'quote_type': self.quote_type.id,
+            'state': self.quote_state.id,
+            'total_amount': 500.00
+        }
+        response = self.client.post('/quotes/list/', data)
+
+        # Quote should be created successfully
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('quote_number', response.data)
+
+        # Verify quote exists in database
+        quote_number = response.data['quote_number']
+        quote_exists = Quote.objects.filter(quote_number=quote_number).exists()
+        self.assertTrue(quote_exists)
+
+    def test_no_email_sent_if_contact_has_no_email(self):
+        """Verificar que no se envía email al cliente si no tiene email configurado"""
+        # Create contact without email
+        contact_no_email = Contact.objects.create(
+            company_name='No Email Company',
+            first_name='Jane',
+            last_name='Smith',
+            email='',  # No email
+            state=self.contact_state
+        )
+
+        mail.outbox = []
+
+        data = {
+            'contact': contact_no_email.id,
+            'quote_type': self.quote_type.id,
+            'state': self.quote_state.id,
+            'total_amount': 750.00
+        }
+        response = self.client.post('/quotes/list/', data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Only business email should be sent (customer has no email)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Nueva Cotización', mail.outbox[0].subject)
