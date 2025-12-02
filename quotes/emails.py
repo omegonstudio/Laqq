@@ -158,6 +158,7 @@ def send_quote_to_customer(quote):
             'business_address': settings.BUSINESS_ADDRESS,
             'response_time': settings.QUOTE_RESPONSE_TIME,
             'created_at': quote.created_at,
+            'message': quote.message,
         }
 
         # Render HTML and text versions

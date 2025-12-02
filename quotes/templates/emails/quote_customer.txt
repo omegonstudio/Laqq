@@ -28,7 +28,13 @@ RESUMEN DE PRODUCTOS SOLICITADOS ({{ total_items }} item{{ total_items|pluralize
 {% endfor %}
 
 ────────────────────────────────────────────────────────────
+{% if message %}
+TU MENSAJE
 
+{{ message }}
+
+────────────────────────────────────────────────────────────
+{% endif %}
 PRÓXIMOS PASOS
 
 1. Nuestro equipo revisará tu solicitud en detalle

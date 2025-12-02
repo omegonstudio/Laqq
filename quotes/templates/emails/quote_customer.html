@@ -106,6 +106,13 @@
         .info-box strong {
             color: #0d6efd;
         }
+        .message-box {
+            background-color: #fff9e6;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
         .contact-section {
             background-color: #fff9e6;
             border: 2px solid #ffc107;
@@ -187,6 +194,19 @@
                 {% endfor %}
             </ul>
         </div>
+
+        <!-- Customer Message -->
+        {% if message %}
+        <div class="section">
+            <div class="section-title">
+                <span class="icon">💬</span>
+                Tu Mensaje
+            </div>
+            <div class="message-box">
+                {{ message|linebreaks }}
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Next Steps -->
         <div class="section">
