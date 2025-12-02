@@ -3,12 +3,22 @@ Email notifications for quote management.
 Sends professional HTML emails to business and customers when quotes are created.
 """
 import logging
+import sys
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils.html import strip_tags
 
 logger = logging.getLogger(__name__)
+
+
+def safe_print(text):
+    """Print text with proper encoding handling for different consoles."""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        # Fallback for Windows console that can't handle UTF-8
+        sys.stdout.buffer.write((text + '\n').encode('utf-8', errors='replace'))
 
 
 def send_quote_created_email(quote):
@@ -94,6 +104,24 @@ def send_quote_to_business(quote):
         # Send email
         email.send(fail_silently=False)
         logger.info(f"Quote #{quote.quote_number} email sent to business: {settings.BUSINESS_EMAIL}")
+
+        # Print email content to console for debugging
+        safe_print("\n" + "="*80)
+        safe_print(f"EMAIL SENT TO BUSINESS: {settings.BUSINESS_EMAIL}")
+        safe_print("="*80)
+        safe_print(f"Subject: {subject}")
+        safe_print(f"From: {from_email}")
+        safe_print(f"To: {to_email}")
+        safe_print("-"*80)
+        safe_print("TEXT CONTENT:")
+        safe_print("-"*80)
+        safe_print(text_content)
+        safe_print("-"*80)
+        safe_print("HTML CONTENT:")
+        safe_print("-"*80)
+        safe_print(html_content)
+        safe_print("="*80 + "\n")
+
         return True
 
     except Exception as e:
@@ -158,6 +186,24 @@ def send_quote_to_customer(quote):
         # Send email
         email.send(fail_silently=False)
         logger.info(f"Quote #{quote.quote_number} confirmation sent to customer: {quote.contact.email}")
+
+        # Print email content to console for debugging
+        safe_print("\n" + "="*80)
+        safe_print(f"EMAIL SENT TO CUSTOMER: {quote.contact.email}")
+        safe_print("="*80)
+        safe_print(f"Subject: {subject}")
+        safe_print(f"From: {from_email}")
+        safe_print(f"To: {to_email}")
+        safe_print("-"*80)
+        safe_print("TEXT CONTENT:")
+        safe_print("-"*80)
+        safe_print(text_content)
+        safe_print("-"*80)
+        safe_print("HTML CONTENT:")
+        safe_print("-"*80)
+        safe_print(html_content)
+        safe_print("="*80 + "\n")
+
         return True
 
     except Exception as e:
