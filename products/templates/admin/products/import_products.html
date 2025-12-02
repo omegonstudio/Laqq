@@ -1,0 +1,165 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+  <h1>Carga masiva de Productos</h1>
+
+  <div id="import-area">
+    <label for="csv_file">Archivo CSV:</label>
+    <input type="file" id="csv_file" name="csv_file" accept=".csv" />
+
+    <div style="margin-top:8px;">
+      <label><input type="checkbox" id="create_missing" checked /> Crear marcas/categorías faltantes</label>
+    </div>
+    <div style="margin-top:8px;">
+      <label><input type="checkbox" id="skip_downloads" /> Omitir descarga de imágenes (para pruebas)</label>
+    </div>
+
+    <div style="margin-top:12px;">
+      <button id="upload-btn" class="default">Subir CSV</button>
+    </div>
+
+    <div id="progress" style="margin-top:12px; display:none;">
+      <strong id="status-text">Subiendo...</strong>
+      <pre id="result-output" style="background:#f6f8fa; padding:8px; border:1px solid #ddd;"></pre>
+    </div>
+
+    {% if summary %}
+      <h2>Resumen</h2>
+      <pre>{{ summary|safe }}</pre>
+    {% endif %}
+
+    {% if error %}
+      <h2 style="color:darkred">Error</h2>
+      <p>{{ error }}</p>
+    {% endif %}
+
+    {% if traceback %}
+      <h3>Traceback (DEBUG)</h3>
+      <pre style="background:#f8f8f8; padding:10px; border:1px solid #ddd;">{{ traceback }}</pre>
+    {% endif %}
+  </div>
+
+  <script>
+    (function() {
+      const btn = document.getElementById('upload-btn');
+      const fileInput = document.getElementById('csv_file');
+      const status = document.getElementById('status-text');
+      const result = document.getElementById('result-output');
+      const progress = document.getElementById('progress');
+
+      // Safe getter for cookie CSRF
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+      const csrftoken = getCookie('csrftoken');
+
+      if (!btn) {
+        // nothing to do
+        console.warn('Upload button not found on import template');
+        return;
+      }
+
+      btn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+
+        if (!fileInput || !fileInput.files.length) {
+          alert('Selecciona un archivo CSV primero.');
+          return;
+        }
+
+        const f = fileInput.files[0];
+        const fd = new FormData();
+        fd.append('csv_file', f);
+
+        const createMissingEl = document.getElementById('create_missing');
+        const skipDownloadsEl = document.getElementById('skip_downloads');
+        if (createMissingEl) fd.append('create_missing', createMissingEl.checked ? 'true' : 'false');
+        if (skipDownloadsEl) fd.append('skip_downloads', skipDownloadsEl.checked ? 'true' : 'false');
+
+        progress.style.display = 'block';
+        status.textContent = 'Enviando archivo...';
+        result.textContent = '';
+
+        fetch(window.location.pathname, {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrftoken
+          },
+          body: fd,
+          credentials: 'same-origin'
+        })
+        .then(async (resp) => {
+          // always read as text first
+          const text = await resp.text();
+
+          // Hide spinner or indicate finished after reading
+          try { progress.style.display = 'block'; } catch(e){}
+
+          // If the response is not JSON or is HTML (e.g. login page or error page),
+          // attempting to parse JSON will throw — handle gracefully.
+          const tryParseJSON = (txt) => {
+            try {
+              return JSON.parse(txt);
+            } catch (e) {
+              return null;
+            }
+          };
+
+          const parsed = tryParseJSON(text);
+
+          if (!resp.ok) {
+            // If parsed JSON exists, show structured error; otherwise show raw text (HTML or message)
+            if (parsed) {
+              status.textContent = 'Error: ' + (parsed.error || resp.status);
+              result.textContent = JSON.stringify(parsed, null, 2);
+            } else {
+              status.textContent = 'Error: ' + resp.status;
+              result.textContent = text;
+            }
+            return;
+          }
+
+          // resp.ok
+          if (parsed) {
+            // expected JSON response
+            status.textContent = 'Importación finalizada';
+            // Show summary if present
+            if (parsed.summary) {
+              result.textContent = JSON.stringify(parsed.summary, null, 2);
+            } else {
+              result.textContent = JSON.stringify(parsed, null, 2);
+            }
+          } else {
+            // Not JSON — display raw text (could be HTML success page)
+            status.textContent = 'Importación finalizada (respuesta no JSON)';
+            result.textContent = text;
+          }
+        })
+        .catch((err) => {
+          status.textContent = 'Request failed';
+          result.textContent = String(err);
+        })
+        .finally(() => {
+          // keep the result visible; hide progress indicator after short delay so user sees result
+          setTimeout(() => {
+            try { /* optionally hide */ } catch(e){}
+          }, 600);
+        });
+      });
+    })();
+  </script>
+
+{% endblock %}
