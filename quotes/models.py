@@ -1,8 +1,11 @@
 import uuid
+import logging
 from django.db import models
 from contacts.models import Contact
 from products.models import Product
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 class QuoteType(models.Model):
     id = models.CharField(max_length=50, primary_key=True)
@@ -28,6 +31,36 @@ class Quote(models.Model):
     total_amount = models.DecimalField(max_digits=14, decimal_places=2, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        """
+        Override save to send email notifications when a new quote is created.
+        Works for both API and Django Admin.
+        """
+        # Check if this is a new quote (not an update)
+        # Use _state.adding which is more reliable than checking pk
+        is_new = self._state.adding
+
+        # Save the quote first
+        super().save(*args, **kwargs)
+
+        # Send email notifications only for new quotes
+        if is_new:
+            # Import here to avoid circular imports
+            from .emails import send_quote_created_email
+
+            try:
+                email_results = send_quote_created_email(self)
+                if email_results['business']:
+                    logger.info(f"Quote #{self.quote_number}: Business email sent successfully")
+                if email_results['customer']:
+                    logger.info(f"Quote #{self.quote_number}: Customer email sent successfully")
+                if email_results['errors']:
+                    for error in email_results['errors']:
+                        logger.warning(f"Quote #{self.quote_number}: {error}")
+            except Exception as e:
+                # Log error but don't fail the quote creation
+                logger.error(f"Quote #{self.quote_number}: Failed to send emails - {str(e)}")
 
 class QuoteItem(models.Model):
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)

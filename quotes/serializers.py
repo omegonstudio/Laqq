@@ -79,22 +79,6 @@ class QuoteSerializer(serializers.ModelSerializer):
                 new_number = 1
             validated_data['quote_number'] = f'Q-{year}-{new_number:05d}'
 
-        # Create quote
+        # Create quote (email will be sent automatically by model's save() method)
         quote = super().create(validated_data)
-
-        # Send email notifications (non-blocking - don't fail if email fails)
-        try:
-            from .emails import send_quote_created_email
-            email_results = send_quote_created_email(quote)
-            if email_results['business']:
-                logger.info(f"Quote #{quote.quote_number}: Business email sent successfully")
-            if email_results['customer']:
-                logger.info(f"Quote #{quote.quote_number}: Customer email sent successfully")
-            if email_results['errors']:
-                for error in email_results['errors']:
-                    logger.warning(f"Quote #{quote.quote_number}: {error}")
-        except Exception as e:
-            # Log error but don't fail the quote creation
-            logger.error(f"Quote #{quote.quote_number}: Failed to send emails - {str(e)}")
-
         return quote
