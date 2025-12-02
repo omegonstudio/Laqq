@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from .models import QuoteType, QuoteState, Quote, QuoteItem
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class QuoteTypeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -75,4 +78,23 @@ class QuoteSerializer(serializers.ModelSerializer):
             else:
                 new_number = 1
             validated_data['quote_number'] = f'Q-{year}-{new_number:05d}'
-        return super().create(validated_data)
+
+        # Create quote
+        quote = super().create(validated_data)
+
+        # Send email notifications (non-blocking - don't fail if email fails)
+        try:
+            from .emails import send_quote_created_email
+            email_results = send_quote_created_email(quote)
+            if email_results['business']:
+                logger.info(f"Quote #{quote.quote_number}: Business email sent successfully")
+            if email_results['customer']:
+                logger.info(f"Quote #{quote.quote_number}: Customer email sent successfully")
+            if email_results['errors']:
+                for error in email_results['errors']:
+                    logger.warning(f"Quote #{quote.quote_number}: {error}")
+        except Exception as e:
+            # Log error but don't fail the quote creation
+            logger.error(f"Quote #{quote.quote_number}: Failed to send emails - {str(e)}")
+
+        return quote
