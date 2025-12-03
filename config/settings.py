@@ -242,3 +242,20 @@ TIME_ZONE = 'America/Argentina/Buenos_Aires'
 
 # Test Runner with detailed report
 TEST_RUNNER = 'config.test_runner.DetailedReportTestRunner'
+
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@laqq.com')
+DEFAULT_FROM_NAME = config('DEFAULT_FROM_NAME', default='LAQQ System')
+
+# Business Email Settings
+BUSINESS_EMAIL = config('BUSINESS_EMAIL', default='ventas@laqq.com')
+BUSINESS_NAME = config('BUSINESS_NAME', default='LAQQ')
+BUSINESS_PHONE = config('BUSINESS_PHONE', default='')
+BUSINESS_ADDRESS = config('BUSINESS_ADDRESS', default='')
+QUOTE_RESPONSE_TIME = config('QUOTE_RESPONSE_TIME', default='24-48 horas')

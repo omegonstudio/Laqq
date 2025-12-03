@@ -6,6 +6,13 @@ import os
 from urllib.parse import urlparse
 from django.utils.text import slugify
 from django.db import transaction
+from io import BytesIO, StringIO
+
+# openpyxl para leer .xlsx
+try:
+    import openpyxl
+except Exception:
+    openpyxl = None
 
 from .models import Brand, Category, Product, ProductSpec, ProductRelation
 from attachments.models import Attachment
@@ -73,34 +80,88 @@ def _get_or_create_category_by_path(path, category_cache, summary):
     category_cache[path] = parent
     return parent
 
+def _read_excel_to_dicts(file_bytes):
+    """
+    Recibe bytes de un .xlsx y devuelve una lista de dicts (igual estructura que csv.DictReader).
+    La primera fila se toma como cabecera.
+    """
+    if openpyxl is None:
+        raise RuntimeError("openpyxl no está instalado. Ejecutá: pip install openpyxl")
+    wb = openpyxl.load_workbook(BytesIO(file_bytes), read_only=True, data_only=True)
+    ws = wb.active  # primera hoja
+    rows = []
+    iterator = ws.iter_rows(values_only=True)
+    try:
+        headers = next(iterator)
+    except StopIteration:
+        return []
+    # Normalizar headers a strings
+    headers = [str(h).strip() if h is not None else '' for h in headers]
+    for row in iterator:
+        # row puede contener tipos diversos; convertir a str o dejar None
+        d = {}
+        for idx, h in enumerate(headers):
+            if not h:
+                continue
+            val = row[idx] if idx < len(row) else None
+            # normalizar valores simples: dejar como string si no es None, para que el resto del código funcione igual
+            if val is None:
+                d[h] = ''
+            elif isinstance(val, str):
+                d[h] = val
+            else:
+                # para fechas/números convertimos a string
+                d[h] = str(val)
+        rows.append(d)
+    return rows
+
 def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_downloads=False):
     """
-    fileobj: file-like object (bytes or text). If bytes, se decodifica.
+    Funciona tanto con CSV como con Excel (.xlsx).
+    fileobj: objeto tipo UploadedFile o file-like. Se detecta la extensión por fileobj.name si está disponible.
     Retorna un dict resumen con contadores y errores.
-    CSV debe contener columnas (recomendadas):
+    CSV/Excel debe contener columnas (recomendadas):
       product_code, name, brand, category_path (o category), description, image_url, is_active, related_product_codes, spec_code, volume, dimensions, cap, outlet, accuracy, precision, additional_specs
     """
-    # leer contenido
-    if hasattr(fileobj, 'read'):
-        raw = fileobj.read()
-    else:
-        raw = fileobj
+    # Intentar detectar tipo (xlsx vs csv) por nombre de archivo si está presente
+    filename = getattr(fileobj, 'name', '') or ''
+    lower = filename.lower()
 
-    if isinstance(raw, bytes):
-        text = raw.decode(encoding)
+    # Si es un Excel (xlsx)
+    if lower.endswith('.xlsx') or lower.endswith('.xlsm') or lower.endswith('.xltx'):
+        # leer bytes crudos
+        if hasattr(fileobj, 'read'):
+            file_bytes = fileobj.read()
+        else:
+            # si nos pasan bytes directamente
+            file_bytes = fileobj
+        rows = _read_excel_to_dicts(file_bytes)
     else:
-        text = raw
+        # tratar como CSV (modo por defecto)
+        if hasattr(fileobj, 'read'):
+            raw = fileobj.read()
+        else:
+            raw = fileobj
 
-    reader = csv.DictReader(text.splitlines())
-    rows = [r for r in reader]
+        if isinstance(raw, bytes):
+            text = raw.decode(encoding)
+        else:
+            text = raw
+
+        reader = csv.DictReader(StringIO(text))
+        rows = [r for r in reader]
+
     if not rows:
-        return {'error': 'CSV vacío'}
+        return {'error': 'Archivo vacío o sin filas'}
 
     # agrupar por product_code (permitiendo product_code vacío -> se agrupa por nombre)
     products_data = {}
     errors = []
     for idx, row in enumerate(rows, start=2):
-        code = (row.get('product_code') or '').strip()
+        # Las claves pueden venir con espacios o mayúsculas en Excel; normalizamos utilizando las claves originales
+        # Convertimos todas las claves a lower_snake para mayor tolerancia (opcional)
+        # Aquí asumimos que el CSV/Excel usa las mismas cabeceras que antes.
+        code = (row.get('product_code') or row.get('product code') or '').strip()
         key = code or (row.get('name') or '').strip()
         if not key:
             errors.append({'row': idx, 'error': 'Falta product_code y name'})
@@ -130,19 +191,19 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
         try:
             with transaction.atomic():
                 # brand
-                brand_name = first_row.get('brand', '').strip()
+                brand_name = (first_row.get('brand') or '').strip()
                 brand = _get_or_create_brand(brand_name, brand_cache, summary) if (brand_name or create_missing) else None
                 if brand_name and not brand and not create_missing:
                     raise ValueError(f"Brand '{brand_name}' not found and create_missing=False")
 
                 # category
-                cat_path = first_row.get('category_path', '').strip() or first_row.get('category', '').strip()
+                cat_path = (first_row.get('category_path') or first_row.get('category') or '').strip()
                 category = _get_or_create_category_by_path(cat_path, category_cache, summary) if (cat_path or create_missing) else None
                 if cat_path and not category and not create_missing:
                     raise ValueError(f"Category '{cat_path}' not found and create_missing=False")
 
                 # image attachment
-                image_url = first_row.get('image_url', '').strip()
+                image_url = (first_row.get('image_url') or '').strip()
                 image_attachment = None
                 if image_url and not skip_downloads:
                     att = _generate_attachment_from_url(image_url)
@@ -158,15 +219,15 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                 else:
                     # fallback to name+brand if brand available
                     if brand:
-                        product_lookup = {'name': first_row.get('name', '').strip(), 'brand': brand}
+                        product_lookup = {'name': first_row.get('name') or '', 'brand': brand}
                     else:
-                        product_lookup = {'name': first_row.get('name', '').strip()}
+                        product_lookup = {'name': first_row.get('name') or ''}
 
                 product_vals = {
-                    'name': first_row.get('name', '').strip(),
+                    'name': (first_row.get('name') or '').strip(),
                     'brand': brand,
                     'category': category,
-                    'description': first_row.get('description', '').strip() or None,
+                    'description': (first_row.get('description') or '').strip() or None,
                     'image_attachment': image_attachment,
                     'is_active': parse_bool(first_row.get('is_active', 'TRUE')),
                 }

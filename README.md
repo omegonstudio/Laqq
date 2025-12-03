@@ -56,7 +56,28 @@ DB_PORT=5432
 # Django
 SECRET_KEY=tu_secret_key_aqui
 DEBUG=True
+
+# Email Configuration
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=tu-email@gmail.com
+EMAIL_HOST_PASSWORD=tu-app-password
+DEFAULT_FROM_EMAIL=noreply@tuempresa.com
+DEFAULT_FROM_NAME=Tu Empresa
+
+# Business Email Settings
+BUSINESS_EMAIL=ventas@tuempresa.com
+BUSINESS_NAME=Tu Empresa
+BUSINESS_PHONE=+54 11 1234-5678
+BUSINESS_ADDRESS=Dirección de tu empresa
+QUOTE_RESPONSE_TIME=24-48 horas
 ```
+
+> **Nota sobre configuración de email con Gmail:**
+> 1. Habilita la verificación en 2 pasos en tu cuenta de Gmail
+> 2. Genera una "Contraseña de aplicación" en https://myaccount.google.com/apppasswords
+> 3. Usa esa contraseña en `EMAIL_HOST_PASSWORD` (no tu contraseña de Gmail)
 
 ### 5. Crear base de datos
 
@@ -94,6 +115,77 @@ python manage.py runserver
 ```
 
 El servidor estará disponible en: http://127.0.0.1:8000/
+
+## 📧 Notificaciones por Email
+
+El sistema envía notificaciones automáticas por email cuando se crean cotizaciones.
+
+### Funcionamiento
+
+Cuando un cliente envía su carrito y se genera una cotización:
+
+1. **Email al Negocio** (`BUSINESS_EMAIL`)
+   - Información completa del cliente
+   - Detalle de todos los productos solicitados con cantidades y precios
+   - Monto total de la cotización
+   - Mensaje del cliente (si lo incluye)
+
+2. **Email al Cliente** (email del contacto)
+   - Confirmación de recepción de la solicitud
+   - Número de cotización para seguimiento
+   - Resumen de productos solicitados
+   - Tiempo estimado de respuesta
+   - Datos de contacto del negocio
+
+### Configuración de Email
+
+El sistema soporta cualquier servidor SMTP. Ejemplos de configuración:
+
+**Gmail:**
+```env
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=tu-email@gmail.com
+EMAIL_HOST_PASSWORD=tu-app-password  # Contraseña de aplicación
+```
+
+**Outlook/Office365:**
+```env
+EMAIL_HOST=smtp.office365.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=tu-email@outlook.com
+EMAIL_HOST_PASSWORD=tu-password
+```
+
+**Servidor SMTP Personalizado:**
+```env
+EMAIL_HOST=smtp.tuservidor.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=usuario
+EMAIL_HOST_PASSWORD=password
+```
+
+### Personalización
+
+Puedes personalizar los templates de email en:
+- `quotes/templates/emails/quote_business.html` - Email al negocio (HTML)
+- `quotes/templates/emails/quote_business.txt` - Email al negocio (texto plano)
+- `quotes/templates/emails/quote_customer.html` - Email al cliente (HTML)
+- `quotes/templates/emails/quote_customer.txt` - Email al cliente (texto plano)
+
+### Testing de Emails
+
+Durante desarrollo, puedes usar el backend de consola para ver los emails sin enviarlos:
+
+```python
+# En settings.py o .env para desarrollo
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+```
+
+Los emails se mostrarán en la consola donde corre el servidor.
 
 ## 🔐 Sistema de Permisos
 

@@ -1,0 +1,51 @@
+════════════════════════════════════════════════════════════
+    NUEVA COTIZACIÓN RECIBIDA
+    {{ business_name }} - {{ created_at|date:"d/m/Y H:i" }}
+════════════════════════════════════════════════════════════
+
+INFORMACIÓN DE LA COTIZACIÓN
+────────────────────────────────────────────────────────────
+Número:             {{ quote_number }}
+Fecha:              {{ created_at|date:"d/m/Y H:i" }}
+Estado:             {{ quote.state.name }}
+Tipo:               {{ quote.quote_type.name }}
+{% if user %}Usuario Asignado:    {{ user.get_full_name }} ({{ user.email }})
+{% endif %}
+
+INFORMACIÓN DEL CLIENTE
+────────────────────────────────────────────────────────────
+{% if contact.company_name %}Empresa:            {{ contact.company_name }}
+{% endif %}Nombre:             {{ contact.first_name }} {{ contact.last_name }}
+Email:              {{ contact.email }}
+{% if contact.phone %}Teléfono:           {{ contact.phone }}
+{% endif %}{% if contact.address %}Dirección:          {{ contact.address }}
+{% endif %}
+
+PRODUCTOS SOLICITADOS
+────────────────────────────────────────────────────────────
+{% for item in items %}
+{{ forloop.counter }}. {{ item.product.name }}{% if item.product.brand %} - {{ item.product.brand.name }}{% endif %}
+   Código:    {{ item.product.product_code|default:"-" }}
+   Cantidad:  {{ item.quantity }}
+   Precio:    {% if item.unit_price %}${{ item.unit_price|floatformat:2 }}{% else %}-{% endif %}
+   Subtotal:  {% if item.subtotal %}${{ item.subtotal|floatformat:2 }}{% else %}-{% endif %}
+
+{% endfor %}
+────────────────────────────────────────────────────────────
+TOTAL:              {% if total_amount %}${{ total_amount|floatformat:2 }}{% else %}A cotizar{% endif %}
+════════════════════════════════════════════════════════════
+{% if message %}
+MENSAJE DEL CLIENTE
+────────────────────────────────────────────────────────────
+{{ message }}
+════════════════════════════════════════════════════════════
+{% endif %}
+
+PRÓXIMOS PASOS
+────────────────────────────────────────────────────────────
+Revisar la cotización y responder al cliente lo antes posible.
+
+
+────────────────────────────────────────────────────────────
+Este email fue generado automáticamente por el sistema {{ business_name }}.
+Cotización #{{ quote_number }} | {{ created_at|date:"d/m/Y H:i" }}
