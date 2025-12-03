@@ -2,7 +2,7 @@
 set -e
 
 echo "========================================"
-echo "  LAQQ - Initializing Application"
+echo "  LAQQ - Development Environment"
 echo "========================================"
 
 echo "Waiting for PostgreSQL..."
@@ -24,13 +24,11 @@ echo ""
 echo "Running migrations..."
 python manage.py migrate --noinput
 
-# Load seed data (only if LOAD_SEED_DATA=true)
-if [ "$LOAD_SEED_DATA" = "true" ]; then
-    echo ""
-    echo "Loading seed data..."
-    python scripts/seed_data.py
-    echo "[OK] Seed data loaded"
-fi
+# Always load seed data in development
+echo ""
+echo "Loading seed data..."
+python scripts/seed_data.py
+echo "[OK] Seed data loaded"
 
 # Create superuser if it doesn't exist
 echo ""
@@ -51,16 +49,9 @@ else:
     print('[OK] Superuser already exists')
 EOF
 
-# Collect static files (for production)
-if [ "$DJANGO_ENV" = "production" ]; then
-    echo ""
-    echo "Collecting static files..."
-    python manage.py collectstatic --noinput
-fi
-
 echo ""
 echo "========================================"
-echo "  LAQQ - Ready!"
+echo "  LAQQ - Development Ready!"
 echo "========================================"
 echo ""
 echo "  API: http://localhost:8000"
@@ -71,5 +62,5 @@ echo ""
 echo "========================================"
 echo ""
 
-# Execute the main command
+# Execute the main command (runserver)
 exec "$@"

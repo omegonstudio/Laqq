@@ -1,24 +1,96 @@
 # LAQQ - Sistema de Gestión
 
-Sistema backend desarrollado con Django REST Framework que implementa un robusto sistema de autenticación, permisos granulares por roles y gestión de usuarios.
+Sistema backend desarrollado con Django REST Framework para la gestión completa de productos, cotizaciones, clientes, tickets de servicio y más.
 
 ## 🚀 Características Principales
 
+### Autenticación y Seguridad
 - ✅ **Autenticación con JWT** - Tokens seguros con refresh automático
 - ✅ **Sistema de Roles y Permisos** - Control granular por módulos y acciones
 - ✅ **Autenticación 2FA** - Two-Factor Authentication con TOTP
 - ✅ **Login con Email** - Sin necesidad de username
-- ✅ **API REST Completa** - Endpoints documentados y probados
+
+### Gestión de Productos
+- ✅ **Catálogo de Productos** - Con marcas, categorías y especificaciones
+- ✅ **Productos Relacionados** - Sistema de relaciones entre productos
+- ✅ **Accesorios** - Gestión de accesorios por producto
+- ✅ **Bulk Upload** - Importación masiva de productos vía CSV
+
+### Gestión Comercial
+- ✅ **Cotizaciones** - Sistema completo de generación de cotizaciones
+- ✅ **Contactos y Clientes** - CRM integrado con estados y seguimiento
+- ✅ **Notificaciones Email** - Emails automáticos para cotizaciones
+- ✅ **Tickets de Servicio** - Sistema de soporte y seguimiento
+
+### Adicionales
+- ✅ **Notas y Documentación** - Sistema de notas con tipos y estados
+- ✅ **Attachments** - Gestión de archivos adjuntos
+- ✅ **API REST Completa** - Endpoints documentados con Swagger
 - ✅ **Panel de Administración** - Django Admin personalizado
 - ✅ **PostgreSQL** - Base de datos robusta y escalable
+- ✅ **Docker Ready** - Deployment con Docker y Docker Compose
 
 ## 📋 Requisitos
 
+### Con Docker (Recomendado)
+- Docker Desktop
+- Git
+
+### Sin Docker (Manual)
 - Python 3.13+
 - PostgreSQL 17+
 - pip 25+
 
-## 🛠️ Instalación
+## 🚀 Quick Start con Docker
+
+### Windows
+
+```bash
+# Clonar repositorio
+git clone <repository-url>
+cd Laqq
+
+# Doble click en deploy.bat y elige el modo:
+#   1. Desarrollo - Hot reload, datos de prueba, DEBUG=True
+#   2. Producción - Gunicorn, optimizado, DEBUG=False
+
+# O desde línea de comandos:
+deploy.bat dev    # Modo desarrollo
+deploy.bat prod   # Modo producción
+```
+
+**Diferencias entre modos:**
+- 🔧 **Desarrollo**: Hot reload, datos de prueba, Django runserver, código sincronizado
+- 🚀 **Producción**: Gunicorn, sin datos de prueba, imagen optimizada, DEBUG=False
+
+
+### Linux/Mac
+
+```bash
+# Clonar repositorio
+git clone <repository-url>
+cd Laqq
+
+# Desarrollo
+docker-compose -f docker-compose.dev.yml up --build
+
+# Producción
+docker-compose up --build -d
+```
+
+La aplicación estará disponible en:
+- **API:** http://localhost:8000
+- **Admin:** http://localhost:8000/admin/
+- **Swagger:** http://localhost:8000/swagger/
+- **Credenciales:** laqq@gmail.com / laqq
+
+✅ **Todo se configura automáticamente:** Base de datos, migraciones, datos de prueba, superusuario
+
+📚 **Guía completa de Docker:** Ver [docs/DOCKER.md](docs/DOCKER.md)
+
+---
+
+## 🛠️ Instalación Manual (Sin Docker)
 
 ### 1. Clonar el repositorio
 
@@ -330,30 +402,67 @@ En el panel podrás gestionar:
 
 ```
 Laqq/
-├── config/               # Configuración principal del proyecto
-│   ├── settings.py      # Configuración de Django
-│   ├── urls.py          # URLs principales
-│   ├── wsgi.py          # WSGI config
-│   └── asgi.py          # ASGI config
-├── users/               # App de usuarios y permisos
-│   ├── models.py        # Modelos: User, Role, Permission, RolePermission
-│   ├── views.py         # ViewSets de la API
-│   ├── serializers.py   # Serializers DRF
-│   ├── permissions.py   # Clases de permisos personalizadas
-│   ├── backends.py      # Backend de autenticación por email
-│   ├── admin.py         # Configuración Django Admin
-│   ├── urls.py          # URLs de la app
-│   └── management/
-│       └── commands/
-│           └── init_permissions.py  # Comando para inicializar permisos
-├── docs/                # Documentación del proyecto
-│   ├── ARCHITECTURE.md  # Arquitectura y diseño técnico
-│   └── API.md          # Documentación de API
-├── requirements.txt     # Dependencias del proyecto
-├── manage.py           # CLI de Django
-├── .env                # Variables de entorno (no commitear)
-├── .gitignore          # Archivos ignorados por git
-└── README.md           # Este archivo
+├── config/                  # Configuración principal del proyecto
+│   ├── settings.py         # Configuración de Django
+│   ├── urls.py             # URLs principales
+│   ├── wsgi.py             # WSGI config
+│   └── asgi.py             # ASGI config
+├── users/                  # Gestión de usuarios, roles y permisos
+│   ├── models.py           # User, Role, Permission, RolePermission
+│   ├── views.py            # ViewSets de la API
+│   ├── serializers.py      # Serializers DRF
+│   ├── permissions.py      # Clases de permisos personalizadas
+│   ├── backends.py         # Backend de autenticación por email
+│   └── management/commands/
+│       └── init_permissions.py
+├── products/               # Catálogo de productos
+│   ├── models.py           # Product, Brand, Category, ProductSpec
+│   ├── views.py            # API endpoints de productos
+│   ├── importer.py         # Importación masiva de CSV
+│   └── management/commands/
+│       └── import_products_single.py
+├── accessories/            # Accesorios de productos
+│   ├── models.py           # Accessory, ProductAccessory
+│   └── views.py            # API endpoints de accesorios
+├── quotes/                 # Sistema de cotizaciones
+│   ├── models.py           # Quote, QuoteItem, QuoteType, QuoteState
+│   ├── views.py            # API endpoints de cotizaciones
+│   └── templates/emails/   # Templates de emails
+├── contacts/               # CRM de contactos
+│   ├── models.py           # Contact, ContactState, Message
+│   └── views.py            # API endpoints de contactos
+├── tickets/                # Tickets de servicio
+│   ├── models.py           # ServiceTicket, TicketPriority, TicketState
+│   ├── views.py            # API endpoints de tickets
+│   └── management/commands/
+│       ├── populate_ticket_data.py
+│       └── fix_ticket_numbers.py
+├── notes/                  # Sistema de notas
+│   ├── models.py           # Note, NoteType, NoteState
+│   └── views.py            # API endpoints de notas
+├── attachments/            # Gestión de archivos adjuntos
+│   ├── models.py           # Attachment (archivos binarios)
+│   └── views.py            # API endpoints de attachments
+├── scripts/                # Scripts de utilidad
+│   ├── seed_data.py        # Datos de prueba para desarrollo
+│   ├── setup_db.bat        # Setup de BD local (Windows)
+│   └── README.md           # Documentación de scripts
+├── docs/                   # Documentación del proyecto
+│   ├── DOCKER.md           # Guía completa de Docker
+│   ├── DEPLOY.md           # Guía de deployment
+│   ├── ARCHITECTURE.md     # Arquitectura y diseño técnico
+│   └── API.md              # Documentación de API
+├── Dockerfile              # Imagen Docker para producción
+├── Dockerfile.dev          # Imagen Docker para desarrollo
+├── docker-compose.yml      # Orquestación Docker producción
+├── docker-compose.dev.yml  # Orquestación Docker desarrollo
+├── entrypoint.sh           # Entrypoint para producción
+├── entrypoint.dev.sh       # Entrypoint para desarrollo
+├── deploy.bat              # Script de deployment unificado (Windows)
+├── requirements.txt        # Dependencias del proyecto
+├── manage.py               # CLI de Django
+├── .env.example            # Ejemplo de variables de entorno
+└── README.md               # Este archivo
 ```
 
 ## 🔧 Configuración Avanzada
@@ -452,8 +561,11 @@ Este es un warning informativo de `djangorestframework-simplejwt`. No afecta el 
 
 Consulta la carpeta `/docs` para documentación detallada:
 
-- [Arquitectura del Sistema](docs/ARCHITECTURE.md) - Diseño técnico y patrones
-- [API Documentation](docs/API.md) - Referencia completa de endpoints
+- **[Docker](docs/DOCKER.md)** - Guía completa de Docker y comandos útiles
+- **[Deployment](docs/DEPLOY.md)** - Guía de deployment en producción
+- **[Arquitectura](docs/ARCHITECTURE.md)** - Diseño técnico y patrones
+- **[API](docs/API.md)** - Referencia completa de endpoints
+- **[Scripts](scripts/README.md)** - Documentación de scripts de utilidad
 
 ## 🔒 Seguridad
 

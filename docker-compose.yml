@@ -38,6 +38,7 @@ services:
       - DB_PORT=5432
       - DJANGO_ENV=${DJANGO_ENV:-production}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - LOAD_SEED_DATA=${LOAD_SEED_DATA:-true}
     depends_on:
       db:
         condition: service_healthy

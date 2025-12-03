@@ -1,9 +1,15 @@
 import os
+import sys
 import django
 import uuid
 import random
 from datetime import datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
+
+# Add project root to Python path
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BASE_DIR))
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
