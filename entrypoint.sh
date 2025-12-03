@@ -32,12 +32,6 @@ if [ "$LOAD_SEED_DATA" = "true" ]; then
     echo "[OK] Seed data loaded"
 fi
 
-# Initialize roles and permissions
-echo ""
-echo "Initializing roles and permissions..."
-python manage.py init_permissions
-echo "[OK] Permissions initialized"
-
 # Create superuser if it doesn't exist
 echo ""
 echo "Checking superuser..."

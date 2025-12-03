@@ -30,12 +30,6 @@ echo "Loading seed data..."
 python scripts/seed_data.py
 echo "[OK] Seed data loaded"
 
-# Initialize roles and permissions
-echo ""
-echo "Initializing roles and permissions..."
-python manage.py init_permissions
-echo "[OK] Permissions initialized"
-
 # Create superuser if it doesn't exist
 echo ""
 echo "Checking superuser..."
