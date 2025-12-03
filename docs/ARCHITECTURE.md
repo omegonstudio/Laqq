@@ -16,6 +16,8 @@ PostgreSQL (Base de Datos)
 
 ### Apps de Django
 
+El sistema está organizado en 8 aplicaciones Django independientes:
+
 #### 1. **users** - Gestión de Usuarios y Permisos
 
 ```
@@ -26,10 +28,141 @@ users/
 ├── permissions.py      # Clases de permisos personalizadas
 ├── backends.py         # Backend de autenticación por email
 ├── admin.py            # Django Admin
-└── management/
-    └── commands/
-        └── init_permissions.py
+└── management/commands/
+    └── init_permissions.py
 ```
+
+**Responsabilidades:**
+- Autenticación con JWT
+- 2FA (TOTP)
+- Sistema de roles y permisos granulares
+- Login por email
+
+#### 2. **products** - Catálogo de Productos
+
+```
+products/
+├── models.py           # Product, Brand, Category, ProductSpec, ProductRelation
+├── views.py            # API endpoints
+├── serializers.py      # Serializers
+├── importer.py         # Importación masiva CSV
+├── permissions.py      # IsReadOnlyOrAdmin
+└── management/commands/
+    └── import_products_single.py
+```
+
+**Responsabilidades:**
+- Gestión de productos con código único auto-generado
+- Marcas y categorías
+- Especificaciones técnicas por producto
+- Relaciones entre productos (productos relacionados)
+- Importación masiva vía CSV
+- Integración con attachments para imágenes
+
+#### 3. **accessories** - Accesorios de Productos
+
+```
+accessories/
+├── models.py           # Accessory, ProductAccessory
+├── views.py            # API endpoints
+├── serializers.py      # Serializers
+└── urls.py
+```
+
+**Responsabilidades:**
+- Catálogo de accesorios
+- Relación many-to-many con productos
+- Precios y stock de accesorios
+
+#### 4. **quotes** - Sistema de Cotizaciones
+
+```
+quotes/
+├── models.py           # Quote, QuoteItem, QuoteType, QuoteState
+├── views.py            # API endpoints
+├── serializers.py      # Serializers
+├── permissions.py      # IsReadOnlyOrAdmin
+├── templates/
+│   └── emails/         # Templates HTML y TXT para emails
+│       ├── quote_business.html
+│       ├── quote_business.txt
+│       ├── quote_customer.html
+│       └── quote_customer.txt
+└── urls.py
+```
+
+**Responsabilidades:**
+- Generación de cotizaciones con número único auto-generado
+- Items de cotización con productos y cantidades
+- Estados y tipos de cotizaciones
+- Envío automático de emails (cliente + negocio)
+- Integración con contacts y products
+
+#### 5. **contacts** - CRM de Contactos
+
+```
+contacts/
+├── models.py           # Contact, ContactState, Message
+├── views.py            # API endpoints
+├── serializers.py      # Serializers
+└── urls.py
+```
+
+**Responsabilidades:**
+- Gestión de clientes y prospectos
+- Estados de contactos (NEW, IN_PROGRESS, RESPONDED, CLOSED)
+- Mensajes y comunicación
+- Asignación de contactos a usuarios
+
+#### 6. **tickets** - Tickets de Servicio
+
+```
+tickets/
+├── models.py           # ServiceTicket, TicketPriority, TicketState
+├── views.py            # API endpoints
+├── serializers.py      # Serializers
+├── urls.py
+└── management/commands/
+    ├── populate_ticket_data.py
+    └── fix_ticket_numbers.py
+```
+
+**Responsabilidades:**
+- Gestión de tickets de soporte
+- Prioridades y estados de tickets
+- Número de ticket auto-generado (T-YYYY-NNNNN)
+- Asignación de tickets a usuarios
+
+#### 7. **notes** - Sistema de Notas
+
+```
+notes/
+├── models.py           # Note, NoteType, NoteState
+├── views.py            # API endpoints
+├── serializers.py      # Serializers
+└── urls.py
+```
+
+**Responsabilidades:**
+- Notas con tipos (PRODUCT, COMPANY, EVENT, PROMOTION, TRAINING)
+- Estados (DRAFT, PUBLISHED, ARCHIVED)
+- Autoría y timestamps
+
+#### 8. **attachments** - Gestión de Archivos
+
+```
+attachments/
+├── models.py           # Attachment (archivos binarios)
+├── views.py            # API endpoints
+├── serializers.py      # Serializers
+└── urls.py
+```
+
+**Responsabilidades:**
+- Almacenamiento de archivos binarios en BD
+- Generic Foreign Key para attachar a cualquier modelo
+- Metadatos (filename, content_type, size)
+- Upload y download de archivos
 
 ## 🔐 Sistema de Permisos
 
@@ -345,4 +478,4 @@ RolePermission.objects.filter(
 
 ---
 
-**Última actualización:** 2025-11-12
+**Última actualización:** 2024-12-02

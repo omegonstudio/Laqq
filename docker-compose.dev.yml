@@ -23,7 +23,6 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     container_name: laqq_web_dev
-    command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
       - /app/__pycache__
@@ -38,6 +37,7 @@ services:
       - DB_HOST=db
       - DB_PORT=5432
       - DJANGO_ENV=development
+      - LOAD_SEED_DATA=true
     depends_on:
       db:
         condition: service_healthy

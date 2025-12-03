@@ -2,21 +2,50 @@
 
 ## Quick Start (Windows)
 
-**Doble click en `deploy.bat`** y listo. La aplicación se levanta automáticamente con:
-- Base de datos PostgreSQL
-- Migraciones ejecutadas
-- Superusuario creado
-- API funcionando
+**Doble click en `deploy.bat`** y elige el modo que necesitas:
+
+### 1️⃣ Modo Desarrollo
+**Para trabajar día a día** con:
+- ✅ Hot reload - Cambios en código sin rebuild
+- ✅ Datos de prueba pre-cargados
+- ✅ Django development server
+- ✅ Código sincronizado en tiempo real
+- ✅ DEBUG=True (errores detallados)
+
+### 2️⃣ Modo Producción
+**Para servidor real** con:
+- 🚀 Gunicorn (servidor WSGI profesional)
+- 📦 Imagen optimizada (multi-stage build)
+- 🗄️ Sin datos de prueba
+- 📁 Collectstatic ejecutado
+- 🔒 DEBUG=False (seguro)
+
+**Uso desde línea de comandos:**
+```bash
+deploy.bat dev    # Modo desarrollo
+deploy.bat prod   # Modo producción
+```
 
 ### Credenciales por defecto
 ```
-URL API:   http://localhost:8000
-URL Admin: http://localhost:8000/admin/
-Email:     laqq@gmail.com
-Password:  laqq
+URL API:     http://localhost:8000
+URL Admin:   http://localhost:8000/admin/
+URL Swagger: http://localhost:8000/swagger/
+Email:       laqq@gmail.com
+Password:    laqq
 ```
 
-> **IMPORTANTE**: Cambiar estas credenciales en producción.
+> **IMPORTANTE**: Cambiar estas credenciales en producción real.
+
+### ¿Qué se ejecuta automáticamente?
+- ✅ `makemigrations` - Detecta cambios en modelos
+- ✅ `migrate` - Aplica migraciones
+- ✅ `scripts/seed_data.py` - Carga datos de prueba (si `LOAD_SEED_DATA=true`)
+- ✅ `init_permissions` - Inicializa roles y permisos
+- ✅ `createsuperuser` - Crea usuario admin automáticamente
+- ✅ `collectstatic` - Solo en producción
+
+📚 **Para más detalles sobre Docker:** Ver [DOCKER.md](DOCKER.md)
 
 ---
 
@@ -31,10 +60,18 @@ Password:  laqq
 ## 1. Deploy Local (Desarrollo)
 
 ### Opción A: Con deploy.bat (Recomendado para Windows)
+```bash
+deploy.bat dev
+# O doble click y selecciona opción 1
 ```
-Doble click en deploy.bat
-```
-Esto hace todo automáticamente: build, migraciones, superusuario.
+Esto hace todo automáticamente: build, migraciones, seed data, permisos, superusuario.
+
+**Ventajas del modo desarrollo:**
+- 🔥 Hot reload activado - Editas y se actualiza automáticamente
+- 📊 Datos de prueba pre-cargados - Productos, usuarios, cotizaciones
+- 🐛 Django development server (más verbose y detallado)
+- 💻 Código sincronizado con volúmenes
+- 🔍 DEBUG=True para debugging
 
 ### Opción B: Manual
 
@@ -60,6 +97,7 @@ DEBUG=True
 SECRET_KEY=dev-secret-key
 DJANGO_ENV=development
 ALLOWED_HOSTS=localhost,127.0.0.1
+LOAD_SEED_DATA=true  # Cargar datos de prueba automáticamente
 ```
 
 #### Levantar con Docker Compose
