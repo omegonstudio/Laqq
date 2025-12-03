@@ -37,6 +37,7 @@ class Quote(models.Model):
         Override save to:
         1. Auto-generate quote_number if not provided
         2. Send email notifications when a new quote is created
+        3. Send update email notifications when a quote is modified
         Works for both API and Django Admin.
         """
         # Check if this is a new quote (not an update)
@@ -61,7 +62,7 @@ class Quote(models.Model):
         # Save the quote first
         super().save(*args, **kwargs)
 
-        # Send email notifications only for new quotes
+        # Send email notifications
         if is_new:
             # Import here to avoid circular imports
             from .emails import send_quote_created_email
@@ -78,6 +79,22 @@ class Quote(models.Model):
             except Exception as e:
                 # Log error but don't fail the quote creation
                 logger.error(f"Quote #{self.quote_number}: Failed to send emails - {str(e)}")
+        else:
+            # This is an update - send update emails
+            from .emails import send_quote_updated_email
+
+            try:
+                email_results = send_quote_updated_email(self)
+                if email_results['business']:
+                    logger.info(f"Quote #{self.quote_number}: Business update email sent successfully")
+                if email_results['customer']:
+                    logger.info(f"Quote #{self.quote_number}: Customer update email sent successfully")
+                if email_results['errors']:
+                    for error in email_results['errors']:
+                        logger.warning(f"Quote #{self.quote_number}: {error}")
+            except Exception as e:
+                # Log error but don't fail the quote update
+                logger.error(f"Quote #{self.quote_number}: Failed to send update emails - {str(e)}")
 
 class QuoteItem(models.Model):
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
