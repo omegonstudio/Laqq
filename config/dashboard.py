@@ -9,6 +9,8 @@ from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import timedelta
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 from products.models import Product
 from quotes.models import Quote
@@ -18,6 +20,38 @@ from tickets.models import ServiceTicket
 User = get_user_model()
 
 
+@swagger_auto_schema(
+    method='get',
+    operation_description="Get dashboard summary statistics and recent activity",
+    operation_summary="Dashboard Summary",
+    tags=['Dashboard'],
+    responses={
+        200: openapi.Response(
+            description="Dashboard statistics and recent activity",
+            examples={
+                "application/json": {
+                    "stats": {
+                        "active_users": 24,
+                        "products": 156,
+                        "quotes": 48,
+                        "new_messages": 12
+                    },
+                    "recent_activity": [
+                        {
+                            "type": "quote",
+                            "title": "Nueva cotización de Laboratorio Central",
+                            "time_ago": "Hace 2 horas",
+                            "quote_number": "Q-2025-00001",
+                            "contact": "Laboratorio Central",
+                            "state": "Draft"
+                        }
+                    ]
+                }
+            }
+        ),
+        401: "Authentication required"
+    }
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def dashboard_summary(request):
