@@ -114,7 +114,7 @@ echo.
 echo   API:     http://localhost:8000
 echo   Admin:   http://localhost:8000/admin/
 echo   Swagger: http://localhost:8000/swagger/
-echo   DB:      localhost:5432
+echo   DB:      localhost:5433
 echo.
 echo   ---- Credenciales Admin ----
 echo   Email:    laqq@gmail.com
