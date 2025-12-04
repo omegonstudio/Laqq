@@ -71,11 +71,19 @@ deploy.bat prod   # Modo producción
 git clone <repository-url>
 cd Laqq
 
-# Desarrollo
-docker-compose -f docker-compose.dev.yml up --build
+# Dar permisos de ejecución al script
+chmod +x deploy.sh
 
-# Producción
-docker-compose up --build -d
+# Ejecutar deployment con menú interactivo
+./deploy.sh
+
+# O especificar el modo directamente:
+./deploy.sh dev    # Modo desarrollo
+./deploy.sh prod   # Modo producción
+
+# Alternativamente, usar docker-compose directamente:
+# docker-compose -f docker-compose.dev.yml up --build    # Desarrollo
+# docker-compose up --build -d                           # Producción
 ```
 
 La aplicación estará disponible en:
