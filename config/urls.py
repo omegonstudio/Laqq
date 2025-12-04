@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from .dashboard import dashboard_summary
 
 
 api_info = openapi.Info(
@@ -66,11 +67,17 @@ def api_root(request):
         'attachments': {
             'list': request.build_absolute_uri('/attachments/'),
         },
+        'dashboard': {
+            'summary': request.build_absolute_uri('/dashboard/summary/'),
+        },
     })
 
 urlpatterns = [
     path('', api_root, name='api-root'),
     path('admin/', admin.site.urls),
+
+    # Dashboard endpoint
+    path('dashboard/summary/', dashboard_summary, name='dashboard-summary'),
 
     # App routes (each app should provide its own urls.py with router / urlpatterns)
     path('users/', include('users.urls')),
