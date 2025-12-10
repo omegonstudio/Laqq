@@ -116,18 +116,73 @@ class ProductAPITestCase(APITestCase):
         response = self.client.get('/products/list/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
+        # Verify pagination metadata
+        self.assertIn('count', response.data)
+        self.assertIn('next', response.data)
+        self.assertIn('previous', response.data)
+        self.assertIn('page_size', response.data)
+        self.assertIn('current_page', response.data)
+        self.assertIn('total_pages', response.data)
+        self.assertEqual(response.data['current_page'], 1)
+        self.assertEqual(response.data['total_pages'], 1)
+        self.assertEqual(response.data['page_size'], 25)
+
+    def test_pagination_multiple_pages(self):
+        """Verificar que la paginación funciona con múltiples páginas"""
+        # Create 10 additional products to test pagination
+        for i in range(10):
+            Product.objects.create(
+                name=f'Test Product {i}',
+                brand=self.brand,
+                category=self.category,
+                is_active=True
+            )
+
+        # Request with page_size=3 (should create 4 pages with 11 total products)
+        response = self.client.get('/products/list/?page_size=3')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 11)  # 1 original + 10 new
+        self.assertEqual(response.data['page_size'], 3)
+        self.assertEqual(response.data['current_page'], 1)
+        self.assertEqual(response.data['total_pages'], 4)  # 11 products / 3 per page = 4 pages
+        self.assertEqual(len(response.data['results']), 3)  # First page has 3 products
+        self.assertIsNotNone(response.data['next'])  # Should have next page
+        self.assertIsNone(response.data['previous'])  # First page has no previous
+
+        # Test page 2
+        response = self.client.get('/products/list/?page_size=3&page=2')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['current_page'], 2)
+        self.assertEqual(len(response.data['results']), 3)
+        self.assertIsNotNone(response.data['next'])  # Should have next page
+        self.assertIsNotNone(response.data['previous'])  # Should have previous page
+
+        # Test last page (page 4)
+        response = self.client.get('/products/list/?page_size=3&page=4')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['current_page'], 4)
+        self.assertEqual(len(response.data['results']), 2)  # Last page has 2 products (11 % 3 = 2)
+        self.assertIsNone(response.data['next'])  # Last page has no next
+        self.assertIsNotNone(response.data['previous'])  # Should have previous page
+
+        # Test invalid page
+        response = self.client.get('/products/list/?page_size=3&page=5')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_create_product(self):
         """Crear un nuevo producto asociado a marca y categoría"""
         data = {
             'name': 'New Product',
-            'brand': self.brand.id,
-            'category': self.category.id,
+            'brand_id': self.brand.id,
+            'category_id': self.category.id,
             'is_active': True
         }
         response = self.client.post('/products/list/', data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Product.objects.count(), 2)
+        # Verify brand and category are returned as names, not IDs
+        self.assertEqual(response.data['brand'], self.brand.name)
+        self.assertEqual(response.data['category'], self.category.name)
 
     def test_filter_by_brand(self):
         """Filtrar productos por marca específica"""

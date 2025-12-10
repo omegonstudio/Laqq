@@ -26,6 +26,24 @@ class ProductRelationSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     specs = ProductSpecSerializer(source='productspec_set', many=True, read_only=True)
 
+    # Brand as name for reading, ID for writing
+    brand = serializers.CharField(source='brand.name', read_only=True)
+    brand_id = serializers.PrimaryKeyRelatedField(
+        queryset=Brand.objects.all(),
+        source='brand',
+        write_only=True,
+        required=False
+    )
+
+    # Category as name for reading, ID for writing
+    category = serializers.CharField(source='category.name', read_only=True)
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(),
+        source='category',
+        write_only=True,
+        required=False
+    )
+
     # keep the old related_product_ids (by PK) for clients that use UUIDs
     related_product_ids = serializers.PrimaryKeyRelatedField(
         many=True,
@@ -47,7 +65,7 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'product_code', 'name', 'brand', 'category', 'description',
+            'id', 'product_code', 'name', 'brand', 'brand_id', 'category', 'category_id', 'description',
             'image_attachment', 'is_active', 'created_at', 'updated_at',
             'specs', 'related_product_ids', 'related_product_codes', 'related_products'
         ]

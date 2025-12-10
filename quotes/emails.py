@@ -4,6 +4,7 @@ Sends professional HTML emails to business and customers when quotes are created
 """
 import logging
 import sys
+import os
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
@@ -11,9 +12,15 @@ from django.utils.html import strip_tags
 
 logger = logging.getLogger(__name__)
 
+# Control email output during tests
+SHOW_EMAIL_OUTPUT = os.environ.get('SHOW_EMAIL_OUTPUT', 'false').lower() == 'true'
+
 
 def safe_print(text):
     """Print text with proper encoding handling for different consoles."""
+    if not SHOW_EMAIL_OUTPUT:
+        return
+
     try:
         print(text)
     except UnicodeEncodeError:

@@ -15,6 +15,7 @@ Sistema backend desarrollado con Django REST Framework para la gestión completa
 - ✅ **Productos Relacionados** - Sistema de relaciones entre productos
 - ✅ **Accesorios** - Gestión de accesorios por producto
 - ✅ **Bulk Upload** - Importación masiva de productos vía CSV
+- ✅ **Paginación Completa** - Información detallada para navegación entre páginas
 
 ### Gestión Comercial
 - ✅ **Cotizaciones** - Sistema completo de generación de cotizaciones
@@ -307,6 +308,31 @@ El sistema gestiona 4 módulos con 4 acciones cada uno:
 
 ## 📡 API Endpoints
 
+### Paginación
+
+Todos los endpoints de listado incluyen paginación completa con la siguiente estructura:
+
+```json
+{
+  "count": 156,              // Total de items en la base de datos
+  "next": "http://...",      // URL de la siguiente página (null si es la última)
+  "previous": "http://...",  // URL de la página anterior (null si es la primera)
+  "page_size": 25,           // Cantidad de items por página
+  "current_page": 2,         // Número de página actual
+  "total_pages": 7,          // Total de páginas disponibles
+  "results": [...]           // Array de resultados para esta página
+}
+```
+
+**Parámetros de Query:**
+- `page` - Número de página (ej: `?page=2`)
+- `page_size` - Items por página, máximo 100 (ej: `?page_size=10`)
+
+**Ejemplo:**
+```bash
+GET /products/list/?page=2&page_size=10
+```
+
 ### Autenticación
 
 ```bash
@@ -391,6 +417,100 @@ Body: {"token": "123456"}
 # Deshabilitar 2FA
 POST /api/users/disable_2fa/
 ```
+
+### Productos
+
+```bash
+# Listar productos (con paginación)
+GET /products/list/
+GET /products/list/?page=2&page_size=10
+
+# Crear producto
+POST /products/list/
+Body: {
+  "name": "Producto Nuevo",
+  "brand_id": "uuid-de-la-marca",      // UUID para crear/editar
+  "category_id": "uuid-de-la-categoria", // UUID para crear/editar
+  "description": "Descripción del producto",
+  "is_active": true
+}
+
+# Respuesta (GET) - Brand y Category devuelven nombres
+{
+  "id": "uuid-del-producto",
+  "name": "Producto Nuevo",
+  "brand": "Nombre de la Marca",       // ← Nombre legible (no UUID)
+  "category": "Nombre de la Categoría", // ← Nombre legible (no UUID)
+  "description": "Descripción",
+  "is_active": true,
+  "specs": [...],
+  "related_products": [...]
+}
+
+# Obtener producto específico
+GET /products/list/{id}/
+
+# Actualizar producto
+PUT /products/list/{id}/
+PATCH /products/list/{id}/
+
+# Eliminar producto
+DELETE /products/list/{id}/
+
+# Filtrar productos
+GET /products/list/?brand={brand_id}
+GET /products/list/?category={category_id}
+GET /products/list/?is_active=true
+GET /products/list/?search=vaso
+
+# Marcas
+GET /brands/list/
+POST /brands/list/
+Body: {"name": "Nueva Marca", "description": "Descripción"}
+
+# Categorías
+GET /categories/list/
+POST /categories/list/
+Body: {"name": "Nueva Categoría", "description": "Descripción"}
+```
+
+**Nota importante sobre Brand y Category:**
+- **Para leer (GET)**: Los campos `brand` y `category` devuelven **nombres legibles** (strings)
+- **Para escribir (POST/PUT)**: Usar `brand_id` y `category_id` con los UUIDs correspondientes
+
+### Dashboard (Backoffice)
+
+```bash
+# Obtener resumen del dashboard
+GET /dashboard/summary/
+
+# Respuesta
+{
+  "stats": {
+    "active_users": 24,      // Total de usuarios activos
+    "products": 156,         // Total de productos
+    "quotes": 48,            // Total de cotizaciones
+    "new_messages": 12       // Mensajes nuevos (últimos 7 días)
+  },
+  "recent_activity": [
+    {
+      "type": "quote",       // Tipo: quote, message, product
+      "title": "Nueva cotización de Laboratorio Central",
+      "time_ago": "Hace 2 horas",
+      "quote_number": "Q-2025-00001",
+      "contact": "Laboratorio Central",
+      "state": "Draft"
+    }
+    // ... más actividad reciente
+  ]
+}
+```
+
+**Características:**
+- ✅ Requiere autenticación JWT
+- ✅ Datos en tiempo real (no hardcodeados)
+- ✅ Actividad reciente de últimos 7 días
+- ✅ Estadísticas agregadas del sistema
 
 ## 🎨 Panel de Administración
 
