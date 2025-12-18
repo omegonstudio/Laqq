@@ -2,6 +2,12 @@ from rest_framework import serializers
 from .models import ServiceTicket, TicketState, TicketPriority
 from datetime import datetime
 from django.utils import timezone
+from .utils import generate_secure_password, generate_username_from_contact
+from .emails import send_ticket_created_email
+from users.models import User, UserType, UserState
+import logging
+
+logger = logging.getLogger(__name__)
 
 class TicketStateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -41,7 +47,10 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        """Crear ticket con número automático y estado inicial"""
+        """
+        Crear ticket con número automático, estado inicial,
+        usuario cliente automático y envío de email con credenciales
+        """
         # Auto-generate ticket_number
         if not validated_data.get('ticket_number'):
             year = datetime.now().year
@@ -74,7 +83,56 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
             except TicketPriority.DoesNotExist:
                 pass
 
-        return super().create(validated_data)
+        # Crear el ticket
+        ticket = super().create(validated_data)
+
+        # Crear usuario cliente automáticamente si no existe
+        contact = ticket.contact
+        username = None
+        password = None
+
+        try:
+            # Verificar si el contacto ya tiene un usuario asociado
+            existing_user = User.objects.filter(email=contact.email).first()
+
+            if not existing_user:
+                # Generar credenciales
+                username = generate_username_from_contact(contact)
+                password = generate_secure_password()
+
+                # Obtener user_type 'client' y user_state 'active'
+                client_type = UserType.objects.get(id='client')
+                active_state = UserState.objects.get(id='active')
+
+                # Crear nuevo usuario
+                user = User.objects.create_user(
+                    username=username,
+                    email=contact.email,
+                    password=password,
+                    first_name=contact.first_name,
+                    last_name=contact.last_name,
+                    user_type=client_type,
+                    state=active_state,
+                )
+
+                logger.info(f"Client user created: {username} for ticket {ticket.ticket_number}")
+            else:
+                logger.info(f"Client user already exists: {existing_user.username} for ticket {ticket.ticket_number}")
+
+        except Exception as e:
+            logger.error(f"Error creating client user for ticket {ticket.ticket_number}: {str(e)}")
+            # No fallar la creación del ticket si falla la creación del usuario
+
+        # Enviar email con credenciales (solo si se creó un nuevo usuario)
+        if username and password:
+            try:
+                send_ticket_created_email(ticket, username, password)
+                logger.info(f"Ticket creation email sent for {ticket.ticket_number}")
+            except Exception as e:
+                logger.error(f"Error sending ticket email for {ticket.ticket_number}: {str(e)}")
+                # No fallar la creación del ticket si falla el envío de email
+
+        return ticket
 
     def update(self, instance, validated_data):
         """Actualizar ticket con lógica de transición de estados"""

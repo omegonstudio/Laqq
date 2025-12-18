@@ -1,0 +1,62 @@
+{{ business_name }}
+Ticket de Servicio Técnico
+
+Hola {{ customer_name }},
+
+Hemos recibido tu solicitud de servicio técnico y creado un ticket de seguimiento.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMACIÓN DEL TICKET
+
+Número de Ticket: {{ ticket_number }}
+Producto: {{ product_name }}
+Prioridad: {{ priority.name }}
+Estado: {{ state.name }}
+Fecha de creación: {{ created_at|date:"d/m/Y H:i" }}
+
+Descripción del problema:
+{{ description }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 ACCESO AL PORTAL DE CLIENTE
+
+Hemos creado una cuenta para que puedas hacer seguimiento de tu ticket:
+
+URL: {{ portal_url }}
+Usuario: {{ username }}
+Contraseña: {{ password }}
+
+IMPORTANTE: Guarda estas credenciales en un lugar seguro.
+Podrás cambiar tu contraseña una vez que ingreses al portal.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✨ ¿QUÉ PUEDES HACER EN EL PORTAL?
+
+• Ver el estado actual de tu ticket en tiempo real
+• Adjuntar imágenes o documentos adicionales
+• Agregar comentarios o información complementaria
+• Revisar el historial de cambios
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📞 CONTACTO
+
+Si tienes alguna consulta urgente, puedes contactarnos:
+
+Email: {{ business_email }}
+{% if business_phone %}Teléfono: {{ business_phone }}{% endif %}
+{% if business_address %}Dirección: {{ business_address }}{% endif %}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Gracias por confiar en {{ business_name }}.
+Nuestro equipo técnico trabajará en resolver tu solicitud lo antes posible.
+
+---
+Este es un mensaje automático. Por favor no respondas a este correo.
+Para comunicarte con nosotros, ingresa al portal de cliente o escribe a {{ business_email }}
+
+Ticket #{{ ticket_number }} | {{ created_at|date:"d/m/Y H:i" }}

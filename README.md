@@ -695,6 +695,138 @@ Consulta la carpeta `/docs` para documentación detallada:
 - **[API](docs/API.md)** - Referencia completa de endpoints
 - **[Scripts](scripts/README.md)** - Documentación de scripts de utilidad
 
+## 🎫 Portal de Clientes - Tickets de Servicio
+
+### Funcionalidad Automática
+
+Cuando se crea un ticket de servicio técnico, el sistema **automáticamente**:
+
+1. ✅ **Crea un usuario cliente** (si no existe) con credenciales aleatorias seguras
+2. ✅ **Envía un email al cliente** con:
+   - Información del ticket creado
+   - Usuario y contraseña para acceder al portal
+   - URL del portal de cliente
+3. ✅ **Envía un email al negocio** con:
+   - Detalles completos del ticket
+   - Información del cliente
+   - Notificación de creación de cuenta cliente
+
+### Roles y Permisos
+
+| Rol | Descripción | Permisos |
+|-----|-------------|----------|
+| **Administrador** | Acceso total al sistema | CRUD completo en todos los recursos |
+| **BackOffice** | Gestión operativa | CRUD en productos, cotizaciones, tickets, contactos |
+| **Cliente** | Portal de cliente | Solo lectura de sus propios tickets + adjuntar archivos |
+
+### Endpoints del Portal de Cliente
+
+```bash
+# Listar tickets (clientes solo ven sus propios tickets)
+GET /tickets/
+Headers: Authorization: Bearer {jwt_token}
+
+# Respuesta para cliente (filtrado automático por email)
+{
+  "count": 3,
+  "results": [
+    {
+      "id": "uuid",
+      "ticket_number": "T-2025-00001",
+      "product_name": "Pipeta Automática 100ml",
+      "description": "No dispensa el volumen correcto",
+      "state": "in_progress",
+      "priority": "high",
+      "created_at": "2025-01-15T10:30:00Z",
+      "updated_at": "2025-01-15T14:20:00Z"
+    }
+  ]
+}
+
+# Ver detalle de un ticket
+GET /tickets/{ticket_id}/
+Headers: Authorization: Bearer {jwt_token}
+
+# Adjuntar archivo a un ticket (clientes pueden adjuntar a sus propios tickets)
+POST /tickets/{ticket_id}/attach_file/
+Headers: Authorization: Bearer {jwt_token}
+Body: {
+  "file_name": "foto_problema.jpg",
+  "content_type": "image/jpeg",
+  "data": "<binary_data_or_base64>"
+}
+```
+
+### Seguridad y Restricciones
+
+**Clientes:**
+- ✅ Solo pueden **ver** sus propios tickets (filtrado automático por email)
+- ✅ Solo pueden **adjuntar archivos** a sus propios tickets
+- ❌ NO pueden crear tickets (los crea el staff)
+- ❌ NO pueden modificar tickets existentes
+- ❌ NO pueden asignar técnicos
+- ❌ NO pueden cambiar estados
+
+**Admin/BackOffice:**
+- ✅ Acceso completo a todos los tickets
+- ✅ Pueden crear, modificar, asignar y cerrar tickets
+- ✅ Pueden adjuntar archivos a cualquier ticket
+- ✅ Acceso a estadísticas y reportes
+
+### Creación de Usuario Cliente
+
+El sistema utiliza el email del contacto como identificador único:
+
+1. **Verificación de email duplicado:** Si ya existe un usuario con ese email, NO se crea uno nuevo
+2. **Generación de credenciales:**
+   - Username: Basado en el email del contacto (ej: `john.doe_a3f2`)
+   - Password: 12 caracteres aleatorios seguros (mayúsculas, minúsculas, números, símbolos)
+3. **Asignación automática:**
+   - `user_type`: `client`
+   - `state`: `active`
+   - Nombres y apellidos del contacto
+
+### Email Templates
+
+Las plantillas de email están disponibles en:
+- `tickets/templates/emails/ticket_customer.html` - Email al cliente (HTML)
+- `tickets/templates/emails/ticket_customer.txt` - Email al cliente (texto)
+- `tickets/templates/emails/ticket_business.html` - Email al negocio (HTML)
+- `tickets/templates/emails/ticket_business.txt` - Email al negocio (texto)
+
+### Configuración de Email
+
+```python
+# En .env o settings.py
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'your-email@gmail.com'
+EMAIL_HOST_PASSWORD = 'your-app-password'
+
+DEFAULT_FROM_NAME = 'LAQQ Soporte'
+DEFAULT_FROM_EMAIL = 'soporte@laqq.com'
+BUSINESS_EMAIL = 'admin@laqq.com'
+CLIENT_PORTAL_URL = 'https://portal.laqq.com'
+```
+
+### Poblar Datos Iniciales
+
+Para crear los tipos de usuario (admin, back, client) y estados:
+
+```bash
+# Con Docker
+docker-compose -f docker-compose.dev.yml exec web python manage.py populate_user_data
+
+# Sin Docker
+python manage.py populate_user_data
+```
+
+Esto creará:
+- **User Types:** `admin`, `back`, `client`
+- **User States:** `active`, `inactive`, `suspended`
+
 ## 🔒 Seguridad
 
 - Las contraseñas se hashean con Argon2
@@ -703,6 +835,7 @@ Consulta la carpeta `/docs` para documentación detallada:
 - Backend de autenticación con protección contra timing attacks
 - CORS configurado correctamente
 - Validaciones de permisos en cada endpoint
+- **Portal de clientes con aislamiento de datos** (cada cliente solo ve sus propios tickets)
 
 ## 🌐 Variables de Entorno
 
