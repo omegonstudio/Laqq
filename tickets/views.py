@@ -91,22 +91,25 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
         self.check_object_permissions(request, ticket)
 
         # Obtener datos del archivo
-        file_url = request.data.get('file_url')
         file_name = request.data.get('file_name')
-        file_type = request.data.get('file_type')
+        content_type = request.data.get('content_type')
+        data = request.data.get('data')  # Binary data or base64 string
 
-        if not file_url:
+        if not file_name:
             return Response(
-                {'error': 'file_url is required'},
+                {'error': 'file_name is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         try:
             # Crear attachment
             attachment = Attachment.objects.create(
-                file_url=file_url,
-                file_name=file_name or 'attachment',
-                file_type=file_type or 'application/octet-stream'
+                file_name=file_name,
+                content_type=content_type or 'application/octet-stream',
+                data=data,
+                attachable_type='ServiceTicket',
+                attachable_id=ticket.id,
+                created_by=request.user
             )
 
             # Asociar attachment al ticket
@@ -116,7 +119,8 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
             return Response({
                 'message': 'File attached successfully',
                 'attachment_id': str(attachment.id),
-                'ticket_number': ticket.ticket_number
+                'ticket_number': ticket.ticket_number,
+                'file_name': attachment.file_name
             }, status=status.HTTP_200_OK)
 
         except Exception as e:

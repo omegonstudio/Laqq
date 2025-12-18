@@ -579,22 +579,24 @@ class ClientPortalAPITestCase(APITestCase):
         # Autenticar como cliente
         self.client.force_authenticate(user=client_user)
 
-        # Adjuntar archivo
+        # Adjuntar archivo (usando campos correctos del modelo Attachment)
         response = self.client.post(
             f'/tickets/{ticket.id}/attach_file/',
             {
-                'file_url': 'https://example.com/image.jpg',
                 'file_name': 'image.jpg',
-                'file_type': 'image/jpeg'
+                'content_type': 'image/jpeg'
+                # data is optional - omitted for test simplicity
             }
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('attachment_id', response.data)
+        self.assertEqual(response.data['file_name'], 'image.jpg')
 
         # Verificar que el attachment se asoció al ticket
         ticket.refresh_from_db()
         self.assertIsNotNone(ticket.attachment)
+        self.assertEqual(ticket.attachment.file_name, 'image.jpg')
 
     def test_client_cannot_attach_to_other_tickets(self):
         """Cliente no puede adjuntar archivos a tickets de otros clientes"""
@@ -632,9 +634,8 @@ class ClientPortalAPITestCase(APITestCase):
         response = self.client.post(
             f'/tickets/{other_ticket.id}/attach_file/',
             {
-                'file_url': 'https://example.com/image.jpg',
                 'file_name': 'image.jpg',
-                'file_type': 'image/jpeg'
+                'content_type': 'image/jpeg'
             }
         )
 

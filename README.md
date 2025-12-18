@@ -751,9 +751,9 @@ Headers: Authorization: Bearer {jwt_token}
 POST /tickets/{ticket_id}/attach_file/
 Headers: Authorization: Bearer {jwt_token}
 Body: {
-  "file_url": "https://example.com/image.jpg",
   "file_name": "foto_problema.jpg",
-  "file_type": "image/jpeg"
+  "content_type": "image/jpeg",
+  "data": "<binary_data_or_base64>"
 }
 ```
 
