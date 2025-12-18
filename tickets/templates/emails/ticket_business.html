@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuevo Ticket {{ ticket_number }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .email-container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #FF6B6B 0%, #C92A2A 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 8px 8px 0 0;
+            margin: -30px -30px 30px -30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 26px;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        .alert-badge {
+            background-color: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .ticket-number {
+            font-size: 24px;
+            color: #FF6B6B;
+            font-weight: bold;
+            text-align: center;
+            margin: 15px 0;
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #FF6B6B;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .icon {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .info-item {
+            background-color: white;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+        .info-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            font-size: 16px;
+            color: #333;
+            font-weight: bold;
+        }
+        .customer-box {
+            background-color: #e7f3ff;
+            border-left: 4px solid #0d6efd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .customer-box h4 {
+            margin-top: 0;
+            color: #0d6efd;
+        }
+        .description-box {
+            background-color: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+            margin: 15px 0;
+            white-space: pre-wrap;
+        }
+        .priority-high {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .priority-urgent {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .actions-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .actions-section h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        .actions-list {
+            list-style: none;
+            padding: 0;
+        }
+        .actions-list li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        .actions-list li:before {
+            content: "➤";
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>🔧 Nuevo Ticket de Servicio Técnico</h1>
+            <p>{{ business_name }}</p>
+        </div>
+
+        <div class="alert-badge">
+            ⚡ NUEVO TICKET RECIBIDO - Requiere Atención
+        </div>
+
+        <div class="ticket-number">
+            Ticket: {{ ticket_number }}
+        </div>
+
+        <!-- Customer Information -->
+        <div class="section">
+            <div class="section-title">
+                <span class="icon">👤</span>
+                Información del Cliente
+            </div>
+
+            <div class="customer-box">
+                <h4>
+                    {% if contact.company_name %}{{ contact.company_name }} - {% endif %}
+                    {{ contact.first_name }} {{ contact.last_name }}
+                </h4>
+                <p style="margin: 5px 0;">
+                    <strong>Email:</strong> <a href="mailto:{{ contact.email }}">{{ contact.email }}</a>
+                </p>
+                {% if contact.phone %}
+                <p style="margin: 5px 0;">
+                    <strong>Teléfono:</strong> {{ contact.phone }}
+                </p>
+                {% endif %}
+                {% if contact.country %}
+                <p style="margin: 5px 0;">
+                    <strong>País:</strong> {{ contact.country }}
+                </p>
+                {% endif %}
+            </div>
+
+            <div style="background-color: #d4edda; border: 1px solid #28a745; padding: 10px; border-radius: 4px; margin-top: 10px; color: #155724;">
+                ✓ Se ha creado automáticamente una cuenta de cliente para seguimiento del ticket.
+                <br>El cliente ha recibido sus credenciales de acceso por email.
+            </div>
+        </div>
+
+        <!-- Ticket Details -->
+        <div class="section">
+            <div class="section-title">
+                <span class="icon">📋</span>
+                Detalles del Ticket
+            </div>
+
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Producto</div>
+                    <div class="info-value">{{ product_name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Prioridad</div>
+                    <div class="info-value {% if priority.level >= 3 %}priority-high{% endif %} {% if priority.level >= 4 %}priority-urgent{% endif %}"
+                         style="color: {{ priority.color }};">
+                        {{ priority.name }} (Nivel {{ priority.level }})
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Estado</div>
+                    <div class="info-value" style="color: {{ state.color }};">{{ state.name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Fecha de Creación</div>
+                    <div class="info-value">{{ created_at|date:"d/m/Y H:i" }}</div>
+                </div>
+            </div>
+
+            <div class="info-label" style="margin-top: 15px;">Descripción del problema:</div>
+            <div class="description-box">{{ description|linebreaks }}</div>
+        </div>
+
+        <!-- Next Actions -->
+        <div class="actions-section">
+            <h3>⚡ Próximas Acciones Recomendadas</h3>
+            <ul class="actions-list">
+                <li>Revisar los detalles del ticket y verificar la información</li>
+                <li>Asignar el ticket a un técnico disponible</li>
+                <li>Evaluar la prioridad y ajustar si es necesario</li>
+                <li>Contactar al cliente si se requiere información adicional</li>
+                <li>Actualizar el estado conforme avance el trabajo</li>
+            </ul>
+        </div>
+
+        <p style="text-align: center; margin-top: 30px; font-size: 16px;">
+            Accede al <strong>sistema de tickets</strong> para gestionar esta solicitud.
+        </p>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Notificación automática del sistema de tickets</p>
+            <p style="font-size: 12px; color: #999;">
+                Ticket #{{ ticket_number }} | {{ created_at|date:"d/m/Y H:i" }}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

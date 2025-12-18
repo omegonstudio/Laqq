@@ -5,7 +5,9 @@ from django.contrib.auth import get_user_model
 from .models import ServiceTicket, TicketState, TicketPriority
 from contacts.models import Contact, ContactState
 from products.models import Product, Brand, Category
+from users.models import UserType, UserState
 from datetime import datetime
+from unittest.mock import patch
 
 User = get_user_model()
 
@@ -345,3 +347,335 @@ class ServiceTicketAPITestCase(APITestCase):
         response = self.client.get('/tickets/priorities/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 4)
+
+
+class ClientPortalAPITestCase(APITestCase):
+    """Tests para el portal de clientes y creación automática de usuarios"""
+
+    def setUp(self):
+        self.client = APIClient()
+
+        # Crear user types y states
+        self.admin_type = UserType.objects.create(
+            id='admin',
+            name='Administrador',
+            description='Usuario admin'
+        )
+        self.client_type = UserType.objects.create(
+            id='client',
+            name='Cliente',
+            description='Usuario cliente'
+        )
+        self.active_state = UserState.objects.create(
+            id='active',
+            name='Activo'
+        )
+
+        # Crear usuario admin
+        self.admin_user = User.objects.create_user(
+            username='admin',
+            password='admin123',
+            email='admin@example.com',
+            user_type=self.admin_type,
+            state=self.active_state
+        )
+
+        # Crear estados y prioridades de tickets
+        self.ticket_state_new = TicketState.objects.create(
+            id='new',
+            name='Nuevo',
+            color='#3498db',
+            is_final=False
+        )
+        self.priority_medium = TicketPriority.objects.create(
+            id='medium',
+            name='Media',
+            level=2,
+            color='#3498db'
+        )
+
+        # Crear contacto para cliente
+        self.contact_state = ContactState.objects.create(id='active', name='Active')
+        self.client_contact = Contact.objects.create(
+            company_name='Client Company',
+            first_name='Jane',
+            last_name='Smith',
+            email='jane@clientcompany.com',
+            state=self.contact_state
+        )
+
+    @patch('tickets.serializers.send_ticket_created_email')
+    def test_create_ticket_creates_client_user(self, mock_send_email):
+        """Crear ticket debe crear automáticamente un usuario cliente"""
+        # Mock email sending to avoid errors
+        mock_send_email.return_value = {'business': True, 'customer': True, 'errors': []}
+
+        # Autenticar como admin
+        self.client.force_authenticate(user=self.admin_user)
+
+        # Verificar que no existe usuario con ese email
+        self.assertFalse(User.objects.filter(email='jane@clientcompany.com').exists())
+
+        # Crear ticket
+        data = {
+            'contact': self.client_contact.id,
+            'product_name': 'Test Product',
+            'description': 'This is a test ticket description with enough characters for validation.'
+        }
+        response = self.client.post('/tickets/', data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Verificar que se creó el usuario cliente
+        client_user = User.objects.filter(email='jane@clientcompany.com').first()
+        self.assertIsNotNone(client_user)
+        self.assertEqual(client_user.user_type.id, 'client')
+        self.assertEqual(client_user.state.id, 'active')
+        self.assertEqual(client_user.first_name, 'Jane')
+        self.assertEqual(client_user.last_name, 'Smith')
+
+        # Verificar que se llamó a send_email
+        self.assertTrue(mock_send_email.called)
+
+    @patch('tickets.serializers.send_ticket_created_email')
+    def test_create_ticket_existing_user_no_duplicate(self, mock_send_email):
+        """Si el usuario cliente ya existe, no debe crear duplicado"""
+        mock_send_email.return_value = {'business': True, 'customer': True, 'errors': []}
+
+        # Crear usuario cliente existente
+        existing_user = User.objects.create_user(
+            username='janeclient',
+            password='password123',
+            email='jane@clientcompany.com',
+            user_type=self.client_type,
+            state=self.active_state
+        )
+
+        # Autenticar como admin
+        self.client.force_authenticate(user=self.admin_user)
+
+        # Crear ticket
+        data = {
+            'contact': self.client_contact.id,
+            'product_name': 'Test Product',
+            'description': 'This is a test ticket description with enough characters.'
+        }
+        response = self.client.post('/tickets/', data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Verificar que solo existe un usuario con ese email
+        users_count = User.objects.filter(email='jane@clientcompany.com').count()
+        self.assertEqual(users_count, 1)
+
+        # Email NO debe enviarse si el usuario ya existía
+        self.assertFalse(mock_send_email.called)
+
+    def test_client_can_only_view_own_tickets(self):
+        """Cliente solo puede ver sus propios tickets"""
+        # Crear cliente usuario
+        client_user = User.objects.create_user(
+            username='janeclient',
+            password='password123',
+            email='jane@clientcompany.com',
+            user_type=self.client_type,
+            state=self.active_state
+        )
+
+        # Crear otro contacto y ticket de otro cliente
+        other_contact = Contact.objects.create(
+            company_name='Other Company',
+            first_name='Bob',
+            last_name='Jones',
+            email='bob@other.com',
+            state=self.contact_state
+        )
+
+        # Ticket del cliente actual
+        my_ticket = ServiceTicket.objects.create(
+            ticket_number='T-2025-00001',
+            contact=self.client_contact,
+            product_name='My Product',
+            description='This is my ticket with enough description text.',
+            state=self.ticket_state_new,
+            priority=self.priority_medium
+        )
+
+        # Ticket de otro cliente
+        other_ticket = ServiceTicket.objects.create(
+            ticket_number='T-2025-00002',
+            contact=other_contact,
+            product_name='Other Product',
+            description='This is another client ticket with description.',
+            state=self.ticket_state_new,
+            priority=self.priority_medium
+        )
+
+        # Autenticar como cliente
+        self.client.force_authenticate(user=client_user)
+
+        # Listar tickets
+        response = self.client.get('/tickets/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Cliente solo debe ver su propio ticket
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['ticket_number'], 'T-2025-00001')
+
+    def test_client_cannot_modify_tickets(self):
+        """Cliente no puede modificar tickets (solo lectura)"""
+        # Crear cliente usuario
+        client_user = User.objects.create_user(
+            username='janeclient',
+            password='password123',
+            email='jane@clientcompany.com',
+            user_type=self.client_type,
+            state=self.active_state
+        )
+
+        # Crear ticket del cliente
+        ticket = ServiceTicket.objects.create(
+            ticket_number='T-2025-00001',
+            contact=self.client_contact,
+            product_name='Test Product',
+            description='This is a test ticket with description.',
+            state=self.ticket_state_new,
+            priority=self.priority_medium
+        )
+
+        # Autenticar como cliente
+        self.client.force_authenticate(user=client_user)
+
+        # Intentar modificar ticket
+        response = self.client.patch(
+            f'/tickets/{ticket.id}/',
+            {'description': 'Modified description'}
+        )
+
+        # Cliente no tiene permiso para modificar
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_client_can_attach_files(self):
+        """Cliente puede adjuntar archivos a sus propios tickets"""
+        # Crear cliente usuario
+        client_user = User.objects.create_user(
+            username='janeclient',
+            password='password123',
+            email='jane@clientcompany.com',
+            user_type=self.client_type,
+            state=self.active_state
+        )
+
+        # Crear ticket del cliente
+        ticket = ServiceTicket.objects.create(
+            ticket_number='T-2025-00001',
+            contact=self.client_contact,
+            product_name='Test Product',
+            description='This is a test ticket with description.',
+            state=self.ticket_state_new,
+            priority=self.priority_medium
+        )
+
+        # Autenticar como cliente
+        self.client.force_authenticate(user=client_user)
+
+        # Adjuntar archivo
+        response = self.client.post(
+            f'/tickets/{ticket.id}/attach_file/',
+            {
+                'file_url': 'https://example.com/image.jpg',
+                'file_name': 'image.jpg',
+                'file_type': 'image/jpeg'
+            }
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('attachment_id', response.data)
+
+        # Verificar que el attachment se asoció al ticket
+        ticket.refresh_from_db()
+        self.assertIsNotNone(ticket.attachment)
+
+    def test_client_cannot_attach_to_other_tickets(self):
+        """Cliente no puede adjuntar archivos a tickets de otros clientes"""
+        # Crear cliente usuario
+        client_user = User.objects.create_user(
+            username='janeclient',
+            password='password123',
+            email='jane@clientcompany.com',
+            user_type=self.client_type,
+            state=self.active_state
+        )
+
+        # Crear otro contacto y ticket
+        other_contact = Contact.objects.create(
+            company_name='Other Company',
+            first_name='Bob',
+            last_name='Jones',
+            email='bob@other.com',
+            state=self.contact_state
+        )
+
+        other_ticket = ServiceTicket.objects.create(
+            ticket_number='T-2025-00002',
+            contact=other_contact,
+            product_name='Other Product',
+            description='This is another ticket with description.',
+            state=self.ticket_state_new,
+            priority=self.priority_medium
+        )
+
+        # Autenticar como cliente
+        self.client.force_authenticate(user=client_user)
+
+        # Intentar adjuntar archivo a ticket de otro cliente
+        response = self.client.post(
+            f'/tickets/{other_ticket.id}/attach_file/',
+            {
+                'file_url': 'https://example.com/image.jpg',
+                'file_name': 'image.jpg',
+                'file_type': 'image/jpeg'
+            }
+        )
+
+        # Cliente no tiene permiso
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_admin_can_view_all_tickets(self):
+        """Admin puede ver todos los tickets"""
+        # Crear tickets de diferentes clientes
+        ticket1 = ServiceTicket.objects.create(
+            ticket_number='T-2025-00001',
+            contact=self.client_contact,
+            product_name='Product 1',
+            description='First ticket with description text.',
+            state=self.ticket_state_new,
+            priority=self.priority_medium
+        )
+
+        other_contact = Contact.objects.create(
+            company_name='Other Company',
+            first_name='Bob',
+            last_name='Jones',
+            email='bob@other.com',
+            state=self.contact_state
+        )
+
+        ticket2 = ServiceTicket.objects.create(
+            ticket_number='T-2025-00002',
+            contact=other_contact,
+            product_name='Product 2',
+            description='Second ticket with description text.',
+            state=self.ticket_state_new,
+            priority=self.priority_medium
+        )
+
+        # Autenticar como admin
+        self.client.force_authenticate(user=self.admin_user)
+
+        # Listar todos los tickets
+        response = self.client.get('/tickets/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Admin debe ver todos los tickets
+        self.assertEqual(len(response.data['results']), 2)
