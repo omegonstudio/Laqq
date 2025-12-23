@@ -34,18 +34,12 @@ class Quote(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        Override save to:
-        1. Auto-generate quote_number if not provided
-        2. Send email notifications when a new quote is created
-        3. Send update email notifications when a quote is modified
+        Override save to auto-generate quote_number if not provided.
+        Email notifications are handled by signals (see quotes/signals.py).
         Works for both API and Django Admin.
         """
-        # Check if this is a new quote (not an update)
-        # Use _state.adding which is more reliable than checking pk
-        is_new = self._state.adding
-
         # Auto-generate quote_number if not provided
-        if is_new and not self.quote_number:
+        if self._state.adding and not self.quote_number:
             from datetime import datetime
             year = datetime.now().year
             last_quote = Quote.objects.filter(quote_number__startswith=f'Q-{year}').order_by('-created_at').first()
@@ -59,42 +53,8 @@ class Quote(models.Model):
                 new_number = 1
             self.quote_number = f'Q-{year}-{new_number:05d}'
 
-        # Save the quote first
+        # Save the quote
         super().save(*args, **kwargs)
-
-        # Send email notifications
-        if is_new:
-            # Import here to avoid circular imports
-            from .emails import send_quote_created_email
-
-            try:
-                email_results = send_quote_created_email(self)
-                if email_results['business']:
-                    logger.info(f"Quote #{self.quote_number}: Business email sent successfully")
-                if email_results['customer']:
-                    logger.info(f"Quote #{self.quote_number}: Customer email sent successfully")
-                if email_results['errors']:
-                    for error in email_results['errors']:
-                        logger.warning(f"Quote #{self.quote_number}: {error}")
-            except Exception as e:
-                # Log error but don't fail the quote creation
-                logger.error(f"Quote #{self.quote_number}: Failed to send emails - {str(e)}")
-        else:
-            # This is an update - send update emails
-            from .emails import send_quote_updated_email
-
-            try:
-                email_results = send_quote_updated_email(self)
-                if email_results['business']:
-                    logger.info(f"Quote #{self.quote_number}: Business update email sent successfully")
-                if email_results['customer']:
-                    logger.info(f"Quote #{self.quote_number}: Customer update email sent successfully")
-                if email_results['errors']:
-                    for error in email_results['errors']:
-                        logger.warning(f"Quote #{self.quote_number}: {error}")
-            except Exception as e:
-                # Log error but don't fail the quote update
-                logger.error(f"Quote #{self.quote_number}: Failed to send update emails - {str(e)}")
 
 class QuoteItem(models.Model):
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)

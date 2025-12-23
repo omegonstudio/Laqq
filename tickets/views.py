@@ -8,6 +8,9 @@ from .models import ServiceTicket, TicketState, TicketPriority
 from .serializers import ServiceTicketSerializer, TicketStateSerializer, TicketPrioritySerializer
 from .permissions import IsAdminOrBackOffice, IsClientOwnerOrStaff, CanAttachFiles
 from attachments.models import Attachment
+from .emails import send_ticket_created_email
+import secrets
+import string
 
 class TicketStateViewSet(viewsets.ModelViewSet):
     """ViewSet para gestionar estados de tickets"""
@@ -78,6 +81,44 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(contact__email=user.email)
 
         return queryset
+
+    def perform_create(self, serializer):
+        """
+        Crear ticket y enviar notificaciones por email
+        """
+        # Guardar el ticket
+        ticket = serializer.save()
+        
+        # Generar credenciales para el cliente
+        contact = ticket.contact
+        
+        # Generar username y password
+        username = contact.email
+        # Generar password aleatorio de 12 caracteres
+        password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+        
+        # Enviar emails
+        try:
+            results = send_ticket_created_email(ticket, username, password)
+            
+            if results['business']:
+                print(f"✅ Email enviado al negocio para ticket #{ticket.ticket_number}")
+            else:
+                print(f"⚠️ No se pudo enviar email al negocio para ticket #{ticket.ticket_number}")
+                
+            if results['customer']:
+                print(f"✅ Email enviado al cliente para ticket #{ticket.ticket_number}")
+            else:
+                print(f"⚠️ No se pudo enviar email al cliente para ticket #{ticket.ticket_number}")
+                
+            if results['errors']:
+                for error in results['errors']:
+                    print(f"❌ Error: {error}")
+                
+        except Exception as e:
+            print(f"❌ Error al enviar emails para ticket #{ticket.ticket_number}: {e}")
+            # No fallar la creación del ticket si falla el email
+            pass
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanAttachFiles])
     def attach_file(self, request, pk=None):
