@@ -689,10 +689,18 @@ Este es un warning informativo de `djangorestframework-simplejwt`. No afecta el 
 
 Consulta la carpeta `/docs` para documentación detallada:
 
+### Infraestructura y Deployment
 - **[Docker](docs/DOCKER.md)** - Guía completa de Docker y comandos útiles
 - **[Deployment](docs/DEPLOY.md)** - Guía de deployment en producción
 - **[Arquitectura](docs/ARCHITECTURE.md)** - Diseño técnico y patrones
+
+### API y Funcionalidades
 - **[API](docs/API.md)** - Referencia completa de endpoints
+- **[Frontend Integration](docs/FRONTEND_INTEGRATION.md)** - ⭐ Guía completa para integrar el frontend
+- **[Tickets - Lógica de Negocio](docs/TICKETS_LOGIC.md)** - Sistema completo de tickets de servicio técnico
+- **[Tickets - Portal del Cliente](docs/TICKETS_CLIENT_PORTAL.md)** - Creación automática de usuarios y portal de seguimiento
+
+### Utilidades
 - **[Scripts](scripts/README.md)** - Documentación de scripts de utilidad
 
 ## 🎫 Portal de Clientes - Tickets de Servicio
