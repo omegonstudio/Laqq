@@ -478,6 +478,154 @@ Body: {"name": "Nueva Categoría", "description": "Descripción"}
 - **Para leer (GET)**: Los campos `brand` y `category` devuelven **nombres legibles** (strings)
 - **Para escribir (POST/PUT)**: Usar `brand_id` y `category_id` con los UUIDs correspondientes
 
+---
+
+### Especificaciones de Productos
+
+Los productos tienen **dos tipos de especificaciones**:
+
+#### 1. **Especificaciones Fijas** (`fixed_specs`)
+Campos predefinidos en el sistema (volume, dimensions, cap, outlet, accuracy, precision).
+
+```json
+GET /products/list/{id}/
+
+// Respuesta
+{
+  "id": "uuid",
+  "name": "Pipeta Automática 100ml",
+  "fixed_specs": [
+    {
+      "id": "uuid",
+      "code": "EP-100",
+      "volume": "100ml",
+      "dimensions": "30 x 5 cm",
+      "cap": "Rosca GL45",
+      "outlet": "PP",
+      "accuracy": "±0.5%",
+      "precision": "±0.1%"
+    }
+  ]
+}
+```
+
+#### 2. **Especificaciones Dinámicas** (`specifications`)
+Especificaciones personalizadas clave-valor que el admin puede agregar según necesidad de cada producto.
+
+```json
+GET /products/list/{id}/
+
+// Respuesta
+{
+  "id": "uuid",
+  "name": "Pipeta Automática 100ml",
+  "specifications": [
+    {
+      "id": "uuid",
+      "key": "Voltaje",           // Nombre de la especificación
+      "value": "220",             // Valor
+      "unit": "V",                // Unidad de medida (opcional)
+      "display_order": 1,         // Orden de visualización
+      "is_visible": true          // Mostrar en frontend
+    },
+    {
+      "id": "uuid",
+      "key": "Material",
+      "value": "Acero inoxidable",
+      "unit": "",
+      "display_order": 2,
+      "is_visible": true
+    },
+    {
+      "id": "uuid",
+      "key": "Precisión",
+      "value": "±0.5",
+      "unit": "%",
+      "display_order": 3,
+      "is_visible": true
+    },
+    {
+      "id": "uuid",
+      "key": "Certificado",
+      "value": "ISO 8655",
+      "unit": "",
+      "display_order": 4,
+      "is_visible": true
+    },
+    {
+      "id": "uuid",
+      "key": "Autoclavable",
+      "value": "Sí",
+      "unit": "",
+      "display_order": 5,
+      "is_visible": true
+    }
+  ]
+}
+```
+
+**Cómo mostrar en el Frontend:**
+
+```javascript
+// Ejemplo React/Next.js
+function ProductSpecifications({ product }) {
+  return (
+    <div>
+      {/* Especificaciones fijas (si existen) */}
+      {product.fixed_specs?.length > 0 && (
+        <div className="fixed-specs">
+          <h3>Especificaciones Técnicas</h3>
+          {product.fixed_specs.map(spec => (
+            <div key={spec.id}>
+              {spec.volume && <p>Volumen: {spec.volume}</p>}
+              {spec.dimensions && <p>Dimensiones: {spec.dimensions}</p>}
+              {spec.accuracy && <p>Exactitud: {spec.accuracy}</p>}
+              {spec.precision && <p>Precisión: {spec.precision}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Especificaciones dinámicas (ordenadas por display_order) */}
+      {product.specifications?.length > 0 && (
+        <div className="dynamic-specs">
+          <h3>Especificaciones</h3>
+          <table>
+            <tbody>
+              {product.specifications
+                .filter(spec => spec.is_visible)  // Solo visibles
+                .map(spec => (
+                  <tr key={spec.id}>
+                    <td className="spec-key">{spec.key}</td>
+                    <td className="spec-value">
+                      {spec.value} {spec.unit}
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+**Características:**
+- ✅ **Flexibles**: Cada producto puede tener specs únicas según necesidad
+- ✅ **Ordenadas**: `display_order` controla el orden de visualización
+- ✅ **Visibilidad**: `is_visible` permite ocultar specs internas
+- ✅ **Unidades**: Campo `unit` opcional para unidades de medida
+- ✅ **Backward compatible**: Productos sin specs dinámicas devuelven array vacío
+- ✅ **Coexisten**: Un producto puede tener ambas: fixed_specs y specifications
+
+**Casos de uso:**
+- Productos especializados que requieren especificaciones únicas (ej: equipos con certificaciones, voltajes específicos)
+- Información técnica variable por modelo
+- Características que no aplican a todos los productos
+
+---
+
 ### Dashboard (Backoffice)
 
 ```bash
