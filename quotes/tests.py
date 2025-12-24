@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from django.contrib.auth import get_user_model
@@ -204,6 +204,7 @@ class QuoteItemAPITestCase(APITestCase):
         self.assertEqual(len(response.data['results']), 1)
 
 
+@override_settings(TESTING=False)
 class QuoteEmailNotificationTestCase(APITestCase):
     """Tests para notificaciones por email al crear cotizaciones"""
 

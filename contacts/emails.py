@@ -89,27 +89,11 @@ def send_contact_to_business(contact):
             'created_at': contact.created_at,
         }
 
-        # Render text version (you can create HTML template later)
-        text_content = f"""
-Nuevo Contacto Recibido - {settings.BUSINESS_NAME}
-{'='*60}
+        # Render HTML template
+        html_content = render_to_string('emails/contact_business.html', context)
 
-INFORMACIÓN DEL CONTACTO:
-Empresa: {contact.company_name}
-Nombre: {contact.first_name} {contact.last_name}
-Email: {contact.email}
-Teléfono: {contact.phone or 'No proporcionado'}
-País: {contact.country or 'No proporcionado'}
-
-MENSAJE:
-{contact.message or 'Sin mensaje'}
-
-Estado: {contact.state.name if contact.state else 'N/A'}
-Fecha de registro: {contact.created_at.strftime('%d/%m/%Y %H:%M')}
-
-{'='*60}
-Este contacto ha sido registrado en el sistema.
-"""
+        # Render text version as fallback
+        text_content = strip_tags(html_content)
 
         # Create email
         subject = f'Nuevo Contacto: {contact.first_name} {contact.last_name} - {contact.company_name}'
@@ -123,6 +107,9 @@ Este contacto ha sido registrado en el sistema.
             to=to_email,
         )
 
+        # Attach HTML version
+        email.attach_alternative(html_content, "text/html")
+
         # Print email content to console for debugging
         safe_print("\n" + "="*80)
         safe_print(f"EMAIL TO BUSINESS: {settings.BUSINESS_EMAIL}")
@@ -131,7 +118,7 @@ Este contacto ha sido registrado en el sistema.
         safe_print(f"From: {from_email}")
         safe_print(f"To: {to_email}")
         safe_print("-"*80)
-        safe_print(text_content)
+        safe_print("HTML email sent (check email client for visual preview)")
         safe_print("="*80 + "\n")
 
         # Send email
@@ -169,17 +156,11 @@ def send_welcome_to_contact(contact):
             'business_phone': settings.BUSINESS_PHONE,
         }
 
-        # Render text version
-        text_content = f"""
-Hola {contact.first_name},
+        # Render HTML template
+        html_content = render_to_string('emails/contact_customer.html', context)
 
-Gracias por ponerte en contacto con {settings.BUSINESS_NAME}.
-
-Hemos recibido tu información y nos pondremos en contacto contigo a la brevedad.
-
-Saludos cordiales,
-{settings.BUSINESS_NAME}
-"""
+        # Render text version as fallback
+        text_content = strip_tags(html_content)
 
         # Create email
         subject = f'Gracias por contactarnos - {settings.BUSINESS_NAME}'
@@ -193,6 +174,9 @@ Saludos cordiales,
             to=to_email,
         )
 
+        # Attach HTML version
+        email.attach_alternative(html_content, "text/html")
+
         # Print email content to console for debugging
         safe_print("\n" + "="*80)
         safe_print(f"WELCOME EMAIL TO CONTACT: {contact.email}")
@@ -201,7 +185,7 @@ Saludos cordiales,
         safe_print(f"From: {from_email}")
         safe_print(f"To: {to_email}")
         safe_print("-"*80)
-        safe_print(text_content)
+        safe_print("HTML email sent (check email client for visual preview)")
         safe_print("="*80 + "\n")
 
         # Send email
@@ -255,8 +239,6 @@ def send_message_to_business(message):
     try:
         # Build sender name
         sender_name = f"{message.first_name or ''} {message.last_name or ''}".strip() or "Anónimo"
-        if message.company_name:
-            sender_name = f"{sender_name} ({message.company_name})"
 
         context = {
             'message': message,
@@ -271,27 +253,19 @@ def send_message_to_business(message):
             'created_at': message.created_at,
         }
 
-        # Render text version
-        text_content = f"""
-Nuevo Mensaje Recibido - {settings.BUSINESS_NAME}
-{'='*60}
+        # Render HTML template
+        html_content = render_to_string('emails/message_business.html', context)
 
-INFORMACIÓN DEL REMITENTE:
-Nombre: {sender_name}
-País: {message.country or 'No proporcionado'}
-
-MENSAJE:
-{message.message}
-
-Estado: {message.state.name if message.state else 'N/A'}
-Fecha de recepción: {message.created_at.strftime('%d/%m/%Y %H:%M')}
-
-{'='*60}
-Este mensaje ha sido registrado en el sistema.
-"""
+        # Render text version as fallback
+        text_content = strip_tags(html_content)
 
         # Create email
-        subject = f'Nuevo Mensaje de {sender_name}'
+        if message.company_name:
+            sender_display = f"{sender_name} ({message.company_name})"
+        else:
+            sender_display = sender_name
+
+        subject = f'Nuevo Mensaje de {sender_display}'
         from_email = f'{settings.DEFAULT_FROM_NAME} <{settings.DEFAULT_FROM_EMAIL}>'
         to_email = [settings.BUSINESS_EMAIL]
 
@@ -302,6 +276,9 @@ Este mensaje ha sido registrado en el sistema.
             to=to_email,
         )
 
+        # Attach HTML version
+        email.attach_alternative(html_content, "text/html")
+
         # Print email content to console for debugging
         safe_print("\n" + "="*80)
         safe_print(f"MESSAGE EMAIL TO BUSINESS: {settings.BUSINESS_EMAIL}")
@@ -310,7 +287,7 @@ Este mensaje ha sido registrado en el sistema.
         safe_print(f"From: {from_email}")
         safe_print(f"To: {to_email}")
         safe_print("-"*80)
-        safe_print(text_content)
+        safe_print("HTML email sent (check email client for visual preview)")
         safe_print("="*80 + "\n")
 
         # Send email

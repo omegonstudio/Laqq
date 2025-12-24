@@ -1,5 +1,6 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.conf import settings
 from .models import ServiceTicket
 from .emails import send_ticket_created_email
 import secrets
@@ -11,6 +12,10 @@ def send_ticket_notification(sender, instance, created, **kwargs):
     """
     Enviar notificación por email cuando se crea un nuevo ticket
     """
+    # No enviar emails durante tests
+    if getattr(settings, 'TESTING', False):
+        return
+
     # Evitar recursión: solo enviar si es creación y no viene de un guardado interno
     if created and not kwargs.get('raw', False):
         # Desconectar el signal temporalmente para evitar recursión

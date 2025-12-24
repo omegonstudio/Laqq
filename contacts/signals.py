@@ -1,5 +1,6 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.conf import settings
 from .models import Contact, Message
 from .emails import send_contact_created_email, send_message_created_email
 import logging
@@ -12,6 +13,10 @@ def send_contact_notification(sender, instance, created, **kwargs):
     """
     Enviar notificación por email cuando se crea un nuevo contacto
     """
+    # No enviar emails durante tests
+    if getattr(settings, 'TESTING', False):
+        return
+
     # Evitar recursión: solo enviar si es creación y no viene de un guardado interno
     if created and not kwargs.get('raw', False):
         # Desconectar el signal temporalmente para evitar recursión
@@ -49,6 +54,10 @@ def send_message_notification(sender, instance, created, **kwargs):
     """
     Enviar notificación por email cuando se crea un nuevo mensaje
     """
+    # No enviar emails durante tests
+    if getattr(settings, 'TESTING', False):
+        return
+
     # Evitar recursión: solo enviar si es creación y no viene de un guardado interno
     if created and not kwargs.get('raw', False):
         # Desconectar el signal temporalmente para evitar recursión

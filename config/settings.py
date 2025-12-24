@@ -119,6 +119,9 @@ if 'test' in sys.argv:
         }
     }
 
+# Testing flag to disable email sending and prints during tests
+TESTING = 'test' in sys.argv
+
 
 
 # Password validation

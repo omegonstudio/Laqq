@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuevo Mensaje - {{ business_name }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #2d2d2d;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .email-container {
+            background-color: #ffffff;
+            border-radius: 4px;
+            padding: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .header {
+            background-color: #2d2d2d;
+            color: white;
+            padding: 30px;
+            border-radius: 4px 4px 0 0;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        .header p {
+            margin: 8px 0 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .alert-badge {
+            background-color: #fff9f0;
+            border-left: 4px solid #FF6B00;
+            color: #2d2d2d;
+            padding: 16px 20px;
+            margin: 0 0 24px 0;
+            font-weight: 500;
+        }
+        .section {
+            margin: 24px 0;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #FF6B00;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        .info-item {
+            background-color: #f9fafb;
+            padding: 14px;
+            border-radius: 4px;
+            border: 1px solid #e5e7eb;
+        }
+        .info-item-full {
+            grid-column: 1 / -1;
+        }
+        .info-label {
+            font-size: 11px;
+            color: #6b7280;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .info-value {
+            font-size: 15px;
+            color: #1f2937;
+            font-weight: 500;
+        }
+        .message-box {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 4px;
+            border: 2px solid #FF6B00;
+            margin: 16px 0;
+            white-space: pre-wrap;
+            color: #2d2d2d;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+        .footer {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+            font-size: 13px;
+        }
+        .footer-logo {
+            font-size: 18px;
+            font-weight: 600;
+            color: #FF6B00;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>Nuevo Mensaje Recibido</h1>
+            <p>{{ business_name }}</p>
+        </div>
+
+        <div class="content">
+            <div class="alert-badge">
+                Un nuevo mensaje ha sido enviado desde el formulario de contacto
+            </div>
+
+            <!-- Sender Information -->
+            <div class="section">
+                <div class="section-title">Información del Remitente</div>
+
+                <div class="info-grid">
+                    {% if company_name %}
+                    <div class="info-item info-item-full">
+                        <div class="info-label">Empresa</div>
+                        <div class="info-value">{{ company_name }}</div>
+                    </div>
+                    {% endif %}
+                    <div class="info-item">
+                        <div class="info-label">Nombre</div>
+                        <div class="info-value">{{ sender_name }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">País</div>
+                        <div class="info-value">{{ country|default:"No proporcionado" }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Estado</div>
+                        <div class="info-value">{{ state.name|default:"N/A" }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Fecha</div>
+                        <div class="info-value">{{ created_at|date:"d/m/Y H:i" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message Content -->
+            <div class="section">
+                <div class="section-title">Mensaje</div>
+                <div class="message-box">{{ message_text }}</div>
+            </div>
+
+            <p style="text-align: center; margin-top: 24px; color: #6b7280; font-size: 14px;">
+                Este mensaje ha sido registrado automáticamente en el sistema.
+                <br>Puedes ver más detalles en el panel de administración.
+            </p>
+
+            <!-- Footer -->
+            <div class="footer">
+                <div class="footer-logo">{{ business_name }}</div>
+                <p>Notificación automática del sistema de gestión</p>
+                <p style="font-size: 12px; color: #9ca3af;">
+                    {{ created_at|date:"d/m/Y H:i" }}
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

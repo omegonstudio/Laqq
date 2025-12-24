@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gracias por Contactarnos - {{ business_name }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #2d2d2d;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .email-container {
+            background-color: #ffffff;
+            border-radius: 4px;
+            padding: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .header {
+            background-color: #FF6B00;
+            color: white;
+            padding: 30px;
+            border-radius: 4px 4px 0 0;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        .header p {
+            margin: 8px 0 0 0;
+            opacity: 0.95;
+            font-size: 14px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #2d2d2d;
+        }
+        .success-badge {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            color: #155724;
+            padding: 16px 20px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+        .section {
+            margin: 24px 0;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #FF6B00;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .features-list {
+            list-style: none;
+            padding: 0;
+        }
+        .features-list li {
+            padding: 10px 0;
+            padding-left: 24px;
+            position: relative;
+            color: #4a5568;
+        }
+        .features-list li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #FF6B00;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        .contact-section {
+            background-color: #fff9f0;
+            border: 1px solid #FF6B00;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .contact-section h3 {
+            margin-top: 0;
+            color: #2d2d2d;
+            font-size: 16px;
+        }
+        .contact-info {
+            margin: 10px 0;
+            color: #4a5568;
+        }
+        .contact-info strong {
+            display: inline-block;
+            width: 80px;
+            color: #2d2d2d;
+        }
+        .contact-info a {
+            color: #FF6B00;
+            text-decoration: none;
+        }
+        .footer {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+            font-size: 13px;
+        }
+        .footer-logo {
+            font-size: 18px;
+            font-weight: 600;
+            color: #FF6B00;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>Gracias por Contactarnos</h1>
+            <p>{{ business_name }}</p>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                Hola <strong>{{ first_name }}</strong>,
+            </div>
+
+            <p>
+                Gracias por ponerte en contacto con <strong>{{ business_name }}</strong>.
+                Hemos recibido tu información correctamente.
+            </p>
+
+            <div class="success-badge">
+                Tu información ha sido registrada exitosamente
+            </div>
+
+            <!-- Next Steps -->
+            <div class="section">
+                <div class="section-title">Próximos Pasos</div>
+                <ul class="features-list">
+                    <li>Nuestro equipo revisará tu información</li>
+                    <li>Te contactaremos a la brevedad</li>
+                    <li>Podrás consultar tus dudas directamente con nosotros</li>
+                    <li>Te mantendremos informado sobre nuestros servicios</li>
+                </ul>
+            </div>
+
+            <!-- Contact Information -->
+            <div class="contact-section">
+                <h3>¿Necesitas contactarnos?</h3>
+                <p>Si tienes alguna consulta, no dudes en escribirnos:</p>
+                <div class="contact-info">
+                    <strong>Email:</strong> <a href="mailto:{{ business_email }}">{{ business_email }}</a>
+                </div>
+                {% if business_phone %}
+                <div class="contact-info">
+                    <strong>Teléfono:</strong> {{ business_phone }}
+                </div>
+                {% endif %}
+            </div>
+
+            <p style="text-align: center; margin-top: 24px; color: #4a5568;">
+                Gracias por confiar en <strong>{{ business_name }}</strong>.
+                <br>Esperamos poder ayudarte pronto.
+            </p>
+
+            <!-- Footer -->
+            <div class="footer">
+                <div class="footer-logo">{{ business_name }}</div>
+                <p>Este es un mensaje automático, por favor no respondas a este correo.</p>
+                <p>Para contactarnos, escribe a {{ business_email }}</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

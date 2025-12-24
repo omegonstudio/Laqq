@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from django.contrib.auth import get_user_model
@@ -17,7 +17,25 @@ class ServiceTicketAPITestCase(APITestCase):
 
     def setUp(self):
         self.client = APIClient()
-        self.user = User.objects.create_user(username='testuser', password='testpass123')
+
+        # Crear user types y states
+        self.admin_type = UserType.objects.create(
+            id='admin',
+            name='Administrador',
+            description='Usuario admin'
+        )
+        self.active_state = UserState.objects.create(
+            id='active',
+            name='Activo'
+        )
+
+        # Crear usuario admin para los tests
+        self.user = User.objects.create_user(
+            username='testuser',
+            password='testpass123',
+            user_type=self.admin_type,
+            state=self.active_state
+        )
         self.client.force_authenticate(user=self.user)
 
         # Crear estados y prioridades de tickets
@@ -349,6 +367,7 @@ class ServiceTicketAPITestCase(APITestCase):
         self.assertEqual(len(response.data['results']), 4)
 
 
+@override_settings(TESTING=False)
 class ClientPortalAPITestCase(APITestCase):
     """Tests para el portal de clientes y creación automática de usuarios"""
 

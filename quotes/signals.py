@@ -1,5 +1,6 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.conf import settings
 from .models import Quote
 from .emails import send_quote_created_email, send_quote_updated_email
 import logging
@@ -12,6 +13,10 @@ def send_quote_notification(sender, instance, created, **kwargs):
     """
     Enviar notificación por email cuando se crea o actualiza una cotización
     """
+    # No enviar emails durante tests
+    if getattr(settings, 'TESTING', False):
+        return
+
     # Evitar recursión: solo enviar si no viene de un guardado interno
     if kwargs.get('raw', False):
         return
