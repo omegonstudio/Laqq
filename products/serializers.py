@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Brand, Category, Product, ProductSpec, ProductRelation
+from .models import Brand, Category, Product, ProductSpec, ProductRelation, ProductSpecification
 
 class BrandSerializer(serializers.ModelSerializer):
     class Meta:
@@ -12,10 +12,19 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ProductSpecSerializer(serializers.ModelSerializer):
+    """Serializer para especificaciones FIJAS (campos predefinidos)"""
     class Meta:
         model = ProductSpec
         fields = '__all__'
         read_only_fields = ['id', 'created_at']
+
+
+class ProductSpecificationSerializer(serializers.ModelSerializer):
+    """Serializer para especificaciones DINÁMICAS (clave-valor)"""
+    class Meta:
+        model = ProductSpecification
+        fields = ['id', 'key', 'value', 'unit', 'display_order', 'is_visible', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 class ProductRelationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -24,7 +33,11 @@ class ProductRelationSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 class ProductSerializer(serializers.ModelSerializer):
-    specs = ProductSpecSerializer(source='productspec_set', many=True, read_only=True)
+    # Especificaciones FIJAS (campos predefinidos: volume, dimensions, etc.)
+    fixed_specs = ProductSpecSerializer(many=True, read_only=True)
+
+    # Especificaciones DINÁMICAS (clave-valor personalizadas)
+    specifications = ProductSpecificationSerializer(source='dynamic_specifications', many=True, read_only=True)
 
     # Brand as name for reading, ID for writing
     brand = serializers.CharField(source='brand.name', read_only=True)
@@ -67,9 +80,9 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'product_code', 'name', 'brand', 'brand_id', 'category', 'category_id', 'description',
             'image_attachment', 'is_active', 'created_at', 'updated_at',
-            'specs', 'related_product_ids', 'related_product_codes', 'related_products'
+            'fixed_specs', 'specifications', 'related_product_ids', 'related_product_codes', 'related_products'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'related_products']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'related_products', 'fixed_specs', 'specifications']
         extra_kwargs = {
             'product_code': {'required': False, 'allow_blank': True}
         }

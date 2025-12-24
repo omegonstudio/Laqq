@@ -2,7 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from django.contrib.auth import get_user_model
-from .models import Brand, Category, Product, ProductSpec
+from .models import Brand, Category, Product, ProductSpec, ProductSpecification
 from attachments.models import Attachment
 from users.models import UserType
 
@@ -251,3 +251,105 @@ class ProductSpecAPITestCase(APITestCase):
         response = self.client.get(f'/products/specs/?product={self.product.id}')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
+
+class ProductSpecificationAPITestCase(APITestCase):
+    """Tests para especificaciones dinámicas de productos"""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user_type = UserType.objects.create(id='admin', name='Admin')
+        self.user = User.objects.create_user(username='testuser', password='testpass123')
+        self.user.user_type = self.user_type
+        self.user.save()
+        self.client.force_authenticate(user=self.user)
+
+        # Crear brand, category y product
+        self.brand = Brand.objects.create(name='Test Brand')
+        self.category = Category.objects.create(name='Test Category')
+        self.product = Product.objects.create(
+            name='Pipeta Automática 100ml',
+            brand=self.brand,
+            category=self.category
+        )
+
+        # Crear algunas especificaciones dinámicas
+        self.spec1 = ProductSpecification.objects.create(
+            product=self.product,
+            key='Voltaje',
+            value='220',
+            unit='V',
+            display_order=1
+        )
+        self.spec2 = ProductSpecification.objects.create(
+            product=self.product,
+            key='Material',
+            value='Acero inoxidable',
+            unit='',
+            display_order=2
+        )
+
+    def test_product_includes_specifications(self):
+        """Verificar que el endpoint de producto incluye las especificaciones dinámicas"""
+        response = self.client.get(f'/products/list/{self.product.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('specifications', response.data)
+        self.assertEqual(len(response.data['specifications']), 2)
+
+    def test_specifications_ordered_correctly(self):
+        """Verificar que las especificaciones se devuelven en orden correcto"""
+        response = self.client.get(f'/products/list/{self.product.id}/')
+        specs = response.data['specifications']
+        self.assertEqual(specs[0]['key'], 'Voltaje')
+        self.assertEqual(specs[1]['key'], 'Material')
+
+    def test_specification_fields(self):
+        """Verificar que las especificaciones tienen los campos correctos"""
+        response = self.client.get(f'/products/list/{self.product.id}/')
+        spec = response.data['specifications'][0]
+        self.assertIn('key', spec)
+        self.assertIn('value', spec)
+        self.assertIn('unit', spec)
+        self.assertIn('display_order', spec)
+        self.assertIn('is_visible', spec)
+        self.assertEqual(spec['key'], 'Voltaje')
+        self.assertEqual(spec['value'], '220')
+        self.assertEqual(spec['unit'], 'V')
+
+    def test_invisible_specifications_included(self):
+        """Verificar que las especificaciones ocultas también se incluyen en el API"""
+        ProductSpecification.objects.create(
+            product=self.product,
+            key='Nota interna',
+            value='Solo para admin',
+            is_visible=False,
+            display_order=3
+        )
+        response = self.client.get(f'/products/list/{self.product.id}/')
+        self.assertEqual(len(response.data['specifications']), 3)
+
+    def test_product_without_specifications(self):
+        """Verificar que un producto sin specs dinámicas devuelve lista vacía"""
+        product2 = Product.objects.create(
+            name='Producto sin specs',
+            brand=self.brand,
+            category=self.category
+        )
+        response = self.client.get(f'/products/list/{product2.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['specifications']), 0)
+
+    def test_product_has_both_fixed_and_dynamic_specs(self):
+        """Verificar que un producto puede tener tanto specs fijas como dinámicas"""
+        # Crear spec fija
+        ProductSpec.objects.create(
+            product=self.product,
+            code='TEST-001',
+            volume='100ml',
+            dimensions='10x5x3 cm'
+        )
+        response = self.client.get(f'/products/list/{self.product.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('fixed_specs', response.data)
+        self.assertIn('specifications', response.data)
+        self.assertEqual(len(response.data['fixed_specs']), 1)
+        self.assertEqual(len(response.data['specifications']), 2)
