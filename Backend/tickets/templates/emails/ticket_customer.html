@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket de Servicio {{ ticket_number }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .email-container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #FF6B00;
+            color: white;
+            padding: 25px;
+            border-radius: 8px 8px 0 0;
+            margin: -30px -30px 30px -30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 26px;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .success-badge {
+            background-color: #d4edda;
+            border: 2px solid #28a745;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .ticket-number {
+            font-size: 24px;
+            color: #FF6B00;
+            font-weight: bold;
+            text-align: center;
+            margin: 15px 0;
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #FF6B00;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .icon {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        .credentials-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .credentials-box h3 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 20px;
+            text-align: center;
+        }
+        .credential-item {
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 15px;
+        }
+        .credential-label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+        .credential-value {
+            font-size: 18px;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 1px;
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 8px 12px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        .portal-button {
+            display: block;
+            width: fit-content;
+            margin: 20px auto;
+            background-color: white;
+            color: #667eea;
+            padding: 15px 40px;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+        .portal-button:hover {
+            transform: translateY(-2px);
+        }
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #856404;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .info-item {
+            background-color: white;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+        .info-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            font-size: 16px;
+            color: #333;
+            font-weight: bold;
+        }
+        .description-box {
+            background-color: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+            margin: 15px 0;
+        }
+        .features-list {
+            list-style: none;
+            padding: 0;
+        }
+        .features-list li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+        .features-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #FF6B00;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .contact-section {
+            background-color: #e7f3ff;
+            border: 2px solid #0d6efd;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .contact-section h3 {
+            margin-top: 0;
+            color: #0d6efd;
+        }
+        .contact-info {
+            margin: 10px 0;
+        }
+        .contact-info strong {
+            display: inline-block;
+            width: 80px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .footer-logo {
+            font-size: 20px;
+            font-weight: bold;
+            color: #FF6B00;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>🔧 Ticket de Servicio Técnico</h1>
+            <p>{{ business_name }}</p>
+        </div>
+
+        <div class="greeting">
+            Hola <strong>{{ customer_name }}</strong>,
+        </div>
+
+        <p>
+            Hemos recibido tu solicitud de servicio técnico y creado un ticket de seguimiento.
+            Nuestro equipo está revisando tu caso.
+        </p>
+
+        <div class="success-badge">
+            ✓ Tu ticket ha sido registrado exitosamente
+        </div>
+
+        <div class="ticket-number">
+            Ticket: {{ ticket_number }}
+        </div>
+
+        <!-- Ticket Information -->
+        <div class="section">
+            <div class="section-title">
+                
+                Información del Ticket
+            </div>
+
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Producto</div>
+                    <div class="info-value">{{ product_name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Prioridad</div>
+                    <div class="info-value" style="color: {{ priority.color }};">{{ priority.name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Estado</div>
+                    <div class="info-value" style="color: {{ state.color }};">{{ state.name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Fecha</div>
+                    <div class="info-value">{{ created_at|date:"d/m/Y H:i" }}</div>
+                </div>
+            </div>
+
+            <div class="info-label" style="margin-top: 15px;">Descripción del problema:</div>
+            <div class="description-box">
+                {{ description|linebreaks }}
+            </div>
+        </div>
+
+        <!-- Credentials -->
+        <div class="credentials-box">
+            <h3>🔑 Acceso al Portal de Cliente</h3>
+            <p style="text-align: center; margin-bottom: 20px; opacity: 0.95;">
+                Hemos creado una cuenta para que puedas hacer seguimiento de tu ticket
+            </p>
+
+            <div class="credential-item">
+                <span class="credential-label">URL del Portal:</span>
+                <div class="credential-value">{{ portal_url }}</div>
+            </div>
+
+            <div class="credential-item">
+                <span class="credential-label">Usuario:</span>
+                <div class="credential-value">{{ username }}</div>
+            </div>
+
+            <div class="credential-item">
+                <span class="credential-label">Contraseña:</span>
+                <div class="credential-value">{{ password }}</div>
+            </div>
+
+            <a href="{{ portal_url }}" class="portal-button">Ingresar al Portal</a>
+        </div>
+
+        <div class="warning-box">
+            <strong>⚠ IMPORTANTE:</strong> Guarda estas credenciales en un lugar seguro.
+            Podrás cambiar tu contraseña una vez que ingreses al portal.
+        </div>
+
+        <!-- Portal Features -->
+        <div class="section">
+            <div class="section-title">
+                
+                ¿Qué puedes hacer en el Portal?
+            </div>
+            <ul class="features-list">
+                <li>Ver el estado actual de tu ticket en tiempo real</li>
+                <li>Adjuntar imágenes o documentos adicionales</li>
+                <li>Agregar comentarios o información complementaria</li>
+                <li>Revisar el historial de cambios</li>
+            </ul>
+        </div>
+
+        <!-- Contact Information -->
+        <div class="contact-section">
+            <h3>📞 ¿Necesitas ayuda urgente?</h3>
+            <p>Si tienes alguna consulta urgente, puedes contactarnos:</p>
+            <div class="contact-info">
+                <strong>Email:</strong> <a href="mailto:{{ business_email }}">{{ business_email }}</a>
+            </div>
+            {% if business_phone %}
+            <div class="contact-info">
+                <strong>Teléfono:</strong> {{ business_phone }}
+            </div>
+            {% endif %}
+            {% if business_address %}
+            <div class="contact-info">
+                <strong>Dirección:</strong> {{ business_address }}
+            </div>
+            {% endif %}
+        </div>
+
+        <p style="text-align: center; margin-top: 30px;">
+            Gracias por confiar en <strong>{{ business_name }}</strong>.
+            <br>Nuestro equipo técnico trabajará en resolver tu solicitud lo antes posible.
+        </p>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-logo">{{ business_name }}</div>
+            <p>Este es un mensaje automático, por favor no respondas a este correo.</p>
+            <p>Para comunicarte con nosotros, ingresa al portal de cliente o escribe a {{ business_email }}</p>
+            <p style="font-size: 12px; color: #999;">
+                Ticket #{{ ticket_number }} | {{ created_at|date:"d/m/Y H:i" }}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

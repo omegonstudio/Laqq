@@ -1,0 +1,82 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: laqq-db-dev
+    environment:
+      POSTGRES_DB: ${DB_NAME:-laqq_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5433:5432"
+    volumes:
+      - db_data_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-laqq_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - laqq-dev
+
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile.dev
+    container_name: laqq-backend-dev
+    env_file: .env
+    environment:
+      DJANGO_ENV: development
+      DEBUG: ${DEBUG:-True}
+      DB_HOST: db
+      DB_PORT: 5432
+      LOAD_SEED_DATA: "true"
+    volumes:
+      - ./Backend:/app
+      - backend_media_dev:/app/mediafiles
+      - backend_static_dev:/app/staticfiles
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/swagger/ || curl -f http://localhost:8000/admin/login/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - laqq-dev
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile.dev
+    container_name: laqq-frontend-dev
+    env_file: .env
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://backend:8000}
+    volumes:
+      - ./Frontend:/app
+      - /app/node_modules
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - laqq-dev
+
+volumes:
+  db_data_dev:
+  backend_media_dev:
+  backend_static_dev:
+
+networks:
+  laqq-dev:
+    driver: bridge
+

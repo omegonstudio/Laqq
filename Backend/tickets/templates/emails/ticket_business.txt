@@ -1,0 +1,46 @@
+{{ business_name }}
+Nuevo Ticket de Servicio Técnico
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 NUEVO TICKET RECIBIDO
+
+Número de Ticket: {{ ticket_number }}
+Cliente: {{ contact.company_name|default:""}}{% if contact.company_name and contact.first_name %} - {% endif %}{{ contact.first_name }} {{ contact.last_name }}
+Email: {{ contact.email }}
+{% if contact.phone %}Teléfono: {{ contact.phone }}{% endif %}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 DETALLES DEL SERVICIO
+
+Producto: {{ product_name }}
+Prioridad: {{ priority.name }} (Nivel {{ priority.level }})
+Estado: {{ state.name }}
+Fecha de creación: {{ created_at|date:"d/m/Y H:i" }}
+
+Descripción del problema:
+{{ description }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+👤 ACCESO DE CLIENTE
+
+Se ha creado automáticamente una cuenta de cliente para seguimiento del ticket.
+El cliente ha recibido sus credenciales de acceso por email separado.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚡ PRÓXIMAS ACCIONES
+
+1. Revisar y asignar el ticket a un técnico
+2. Evaluar la prioridad y ajustar si es necesario
+3. Contactar al cliente si se requiere más información
+4. Actualizar el estado conforme avance el trabajo
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Accede al sistema de tickets para gestionar esta solicitud.
+
+---
+Ticket #{{ ticket_number }} | {{ created_at|date:"d/m/Y H:i" }}

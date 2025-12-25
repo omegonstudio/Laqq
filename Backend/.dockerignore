@@ -1,0 +1,79 @@
+# Python
+venv/
+env/
+ENV/
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Database
+*.sqlite3
+db.sqlite3
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docker compose files (not needed in image)
+docker-compose*.yml
+.dockerignore
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Tests and coverage
+htmlcov/
+.coverage
+.pytest_cache/
+.tox/
+coverage.xml
+*.cover
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Static and media (will be collected/uploaded)
+staticfiles/
+mediafiles/
+media/
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Node (if any frontend)
+node_modules/
+npm-debug.log
+
+# Jupyter
+.ipynb_checkpoints/

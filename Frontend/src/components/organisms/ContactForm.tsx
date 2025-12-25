@@ -1,0 +1,134 @@
+import { useState } from "react";
+import { Mail, Phone, MapPin } from "lucide-react";
+import InputField from "../atoms/InputField";
+import Button from "../atoms/Button";
+import { toast } from "@/hooks/use-toast";
+
+const ContactForm = () => {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    subject: "",
+    message: "",
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("Contact form:", formData);
+    toast({
+      title: "Mensaje Enviado",
+      description: "Te responderemos a la brevedad posible.",
+    });
+  };
+
+  return (
+    <section className="py-16">
+      <div className="container mx-auto px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold mb-4">Contacto</h1>
+            <p className="text-xl text-muted-foreground">
+              Estamos aquí para ayudarte
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            <div>
+              <h2 className="text-2xl font-bold mb-6">Información de Contacto</h2>
+              
+              <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold mb-1">Email</h3>
+                    <p className="text-muted-foreground">contacto@laqq.com</p>
+                    <p className="text-muted-foreground">ventas@laqq.com</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Phone className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold mb-1">Teléfono</h3>
+                    <p className="text-muted-foreground">+52 (55) 1234 5678</p>
+                    <p className="text-muted-foreground">+52 (55) 8765 4321</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold mb-1">Dirección</h3>
+                    <p className="text-muted-foreground">
+                      Av. Insurgentes Sur 1234<br />
+                      Col. Del Valle, Ciudad de México<br />
+                      C.P. 03100, México
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 p-6 bg-muted/30 rounded-2xl">
+                <h3 className="font-bold mb-2">Horario de Atención</h3>
+                <p className="text-muted-foreground">
+                  Lunes a Viernes: 9:00 - 18:00<br />
+                  Sábados: 9:00 - 14:00
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-card border border-border rounded-2xl p-8">
+              <h2 className="text-2xl font-bold mb-6">Envíanos un Mensaje</h2>
+              
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <InputField
+                  label="Nombre"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+
+                <InputField
+                  label="Email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                />
+
+                <InputField
+                  label="Asunto"
+                  value={formData.subject}
+                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  required
+                />
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Mensaje</label>
+                  <textarea
+                    value={formData.message}
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background min-h-[150px] focus:outline-none focus:ring-2 focus:ring-primary"
+                    required
+                  />
+                </div>
+
+                <Button type="submit" size="lg" className="w-full">
+                  Enviar Mensaje
+                </Button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default ContactForm;

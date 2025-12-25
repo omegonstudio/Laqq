@@ -1,0 +1,68 @@
+# Raíz del monorepo
+.env
+.env.*
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+*.pid
+*.sock
+*.swp
+*.swo
+*.tar.gz
+*.zip
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Python / Django
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+.pytest_cache/
+.mypy_cache/
+.tox/
+.coverage
+coverage.xml
+htmlcov/
+pip-log.txt
+.eggs/
+*.egg-info/
+venv/
+.venv/
+env/
+
+# Node / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.parcel-cache/
+.cache/
+.next/
+dist/
+build/
+out/
+bun.lockb
+
+# Docker / runtime
+docker-compose.override.yml
+**/mediafiles/
+**/staticfiles/
+postgres_data*
+db_data*
+backend_static*
+backend_media*
+logs/
+
+# Misceláneos
+*.db
+*.pem
+*.key
+*.crt
+

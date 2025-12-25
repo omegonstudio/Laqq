@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: laqq_db_dev
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${DB_NAME:-laqq_db}
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-laqq_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - laqq_network_dev
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: laqq_web_dev
+    volumes:
+      - .:/app
+      - /app/__pycache__
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=dev-secret-key-not-for-production
+      - DB_NAME=${DB_NAME:-laqq_db}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DJANGO_ENV=development
+      - LOAD_SEED_DATA=true
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - laqq_network_dev
+
+volumes:
+  postgres_data_dev:
+
+networks:
+  laqq_network_dev:
+    driver: bridge
