@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Product } from "../types/types";
-import { apiClient } from "@/api/client";
-import { PaginatedResponse } from "@/types/products";
+import { productsApi } from "@/lib/api/products";
+import { PaginatedResponse } from "@/types/types";
 
 interface UseProductsParams {
   page?: number;
@@ -19,10 +19,7 @@ export function useProducts(params: UseProductsParams = {}) {
     setError(null);
 
     try {
-      const response = await apiClient.get<PaginatedResponse<Product>>(
-        "/products/list/",
-        params
-      );
+      const response = await productsApi.list(params);
 
       setData(response.results);
       setCount(response.count);
@@ -58,8 +55,8 @@ export function useProduct(id?: string) {
     setError(null);
 
     try {
-      const response = await apiClient.get<Product>(`/products/list/${id}/`);
-      setData(response);
+      const response = await productsApi.retrieve(id);
+      setData(response as Product);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -92,7 +89,9 @@ export function useCreateProduct() {
     setError(null);
 
     try {
-      const response = await apiClient.post<Product>("/products/list/", data);
+      const response = await productsApi.create(
+        data as unknown as Product // manteniendo compatibilidad
+      );
       setCreatedItem(response);
       return response;
     } catch (err: unknown) {
@@ -124,12 +123,12 @@ export function useUpdateProduct() {
     setError(null);
 
     try {
-      const response = await apiClient.put<Product>(
-        `/products/list/${id}/`,
-        data
+      const response = await productsApi.update(
+        id,
+        data as unknown as Product
       );
-      setUpdatedItem(response);
-      return response;
+      setUpdatedItem(response as Product);
+      return response as Product;
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -161,7 +160,7 @@ export function useDeleteProduct() {
     setSuccess(false);
 
     try {
-      await apiClient.delete(`/products/list/${id}/`);
+      await productsApi.delete(id);
       setSuccess(true);
       return true;
     } catch (err: unknown) {

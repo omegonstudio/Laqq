@@ -16,7 +16,7 @@ Monorepo listo para desarrollo y despliegue con Docker. Incluye backend Django +
 - `docker-compose.prod.yml`: stack de producción con Nginx como reverse proxy (`/api` -> backend) y estáticos/media del backend.
 - `scripts/`: helpers (`dev-up`, `dev-down`, `dev-logs`, `prod-up`, `prod-down`, `prod-logs`, `deploy-local`).
 - `.github/workflows/deploy.yml`: CI/CD por SSH hacia el droplet.
-- `.env.example`: variables compartidas para ambos servicios.
+- `env.example`: variables compartidas para ambos servicios.
 
 ## Requisitos
 - Docker + Docker Compose v2
@@ -45,7 +45,7 @@ Monorepo listo para desarrollo y despliegue con Docker. Incluye backend Django +
 
 ## Uso en desarrollo
 ```bash
-cp .env.example .env
+cp env.example .env
 # opción 1: compose directo
 docker compose -f docker-compose.dev.yml up --build
 # opción 2: script helper
@@ -90,6 +90,9 @@ Workflow `.github/workflows/deploy.yml`:
 
 ## Scripts nativos legacy
 `Backend/deploy.sh` y `Backend/deploy.bat` ahora llaman a los `docker-compose.*` de la raíz para levantar TODO el stack.
+
+## Integraciones
+- Consulta `docs/integrations.md` para mapa de servicios externos, variables y pasos de prueba por entorno.
 
 ## Cómo inicializar este monorepo en Git y empujar a GitHub
 ```bash

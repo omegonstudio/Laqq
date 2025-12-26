@@ -1,12 +1,12 @@
 import csv
 import json
 import uuid
-import requests
+import logging
 import os
-from urllib.parse import urlparse
-from django.utils.text import slugify
-from django.db import transaction
 from io import BytesIO, StringIO
+
+from django.conf import settings
+from django.db import transaction
 
 # openpyxl para leer .xlsx
 try:
@@ -16,8 +16,19 @@ except Exception:
 
 from .models import Brand, Category, Product, ProductSpec, ProductRelation
 from attachments.models import Attachment
+from integrations.http import HttpClient
+from integrations.http.errors import HttpClientConfigError, HttpClientError, HttpClientResponseError
 
 REQUEST_TIMEOUT = 15
+logger = logging.getLogger(__name__)
+
+# Cliente HTTP específico para descargas de imágenes (control de tamaño/host)
+image_http_client = HttpClient(
+    timeout=getattr(settings, 'INTEGRATION_HTTP_TIMEOUT', REQUEST_TIMEOUT),
+    retries=getattr(settings, 'INTEGRATION_HTTP_RETRIES', 2),
+    max_bytes=getattr(settings, 'PRODUCT_IMAGE_MAX_BYTES', 5 * 1024 * 1024),
+    allowed_hosts=getattr(settings, 'PRODUCT_IMAGE_HOST_ALLOWLIST', None),
+)
 
 def parse_bool(value):
     if value is None:
@@ -25,25 +36,32 @@ def parse_bool(value):
     v = str(value).strip().lower()
     return v in ('1', 'true', 'yes', 'y', 't')
 
-def _generate_attachment_from_url(image_url, timeout=REQUEST_TIMEOUT):
+def _generate_attachment_from_url(image_url, *, summary=None):
     """
     Descarga la URL y crea un Attachment. Devuelve el Attachment o None.
+    Aplica validaciones básicas (host permitido, tamaño) y respeta el feature flag
+    ENABLE_PRODUCT_IMAGE_DOWNLOADS.
     """
-    try:
-        r = requests.get(image_url, timeout=timeout)
-        r.raise_for_status()
-        filename = os.path.basename(urlparse(image_url).path) or f'{uuid.uuid4().hex[:12]}.bin'
-        content_type = r.headers.get('Content-Type', '')
-        data_bytes = r.content
-        att = Attachment.objects.create(
-            file_name=filename,
-            content_type=content_type,
-            size_bytes=len(data_bytes),
-            data=data_bytes
-        )
-        return att
-    except Exception:
+    if not getattr(settings, 'ENABLE_PRODUCT_IMAGE_DOWNLOADS', True):
+        logger.info("Descarga de imágenes deshabilitada por configuración")
         return None
+
+    try:
+        binary = image_http_client.fetch_binary(image_url)
+    except (HttpClientConfigError, HttpClientResponseError, HttpClientError) as exc:
+        logger.warning("No se pudo descargar %s: %s", image_url, exc)
+        if summary is not None:
+            summary['errors'].append({'image_url': image_url, 'error': str(exc)})
+        return None
+
+    filename = binary.filename or f'{uuid.uuid4().hex[:12]}.bin'
+    att = Attachment.objects.create(
+        file_name=filename,
+        content_type=binary.content_type,
+        size_bytes=len(binary.content),
+        data=binary.content
+    )
+    return att
 
 def _get_or_create_brand(name, brand_cache, summary):
     name = (name or '').strip()
@@ -206,7 +224,7 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                 image_url = (first_row.get('image_url') or '').strip()
                 image_attachment = None
                 if image_url and not skip_downloads:
-                    att = _generate_attachment_from_url(image_url)
+                    att = _generate_attachment_from_url(image_url, summary=summary)
                     if att:
                         image_attachment = att
                         summary['created_attachments'] += 1

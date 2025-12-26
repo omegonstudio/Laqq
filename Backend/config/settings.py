@@ -288,3 +288,12 @@ BUSINESS_NAME = config('BUSINESS_NAME', default='LAQQ')
 BUSINESS_PHONE = config('BUSINESS_PHONE', default='')
 BUSINESS_ADDRESS = config('BUSINESS_ADDRESS', default='')
 QUOTE_RESPONSE_TIME = config('QUOTE_RESPONSE_TIME', default='24-48 horas')
+
+# Integraciones / descargas externas
+INTEGRATION_HTTP_TIMEOUT = config('INTEGRATION_HTTP_TIMEOUT', default=15, cast=int)
+INTEGRATION_HTTP_RETRIES = config('INTEGRATION_HTTP_RETRIES', default=2, cast=int)
+PRODUCT_IMAGE_MAX_BYTES = config('PRODUCT_IMAGE_MAX_BYTES', default=5 * 1024 * 1024, cast=int)
+PRODUCT_IMAGE_HOST_ALLOWLIST = [
+    h.strip() for h in config('PRODUCT_IMAGE_HOST_ALLOWLIST', default='').split(',') if h.strip()
+]
+ENABLE_PRODUCT_IMAGE_DOWNLOADS = config('ENABLE_PRODUCT_IMAGE_DOWNLOADS', default=True, cast=bool)

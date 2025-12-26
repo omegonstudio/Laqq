@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { apiClient } from "@/api/client";
-import { PaginatedResponse } from "@/types/products";
-import { Category } from "@/types/types";
+import { productsApi } from "@/lib/api/products";
+import { PaginatedResponse, Category } from "@/types/types";
 
 interface UseCategorysParams {
   page?: number;
@@ -19,10 +18,7 @@ export function useCategorys(params: UseCategorysParams = {}) {
     setError(null);
 
     try {
-      const response = await apiClient.get<PaginatedResponse<Category>>(
-        "/products/categories",
-        params
-      );
+      const response = await productsApi.listCategories(params);
 
       setData(response.results);
       setCount(response.count);
@@ -58,9 +54,7 @@ export function useCategory(id?: string) {
     setError(null);
 
     try {
-      const response = await apiClient.get<Category>(
-        `/products/categories${id}/`
-      );
+      const response = await productsApi.retrieveCategory(id);
       setData(response);
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -94,10 +88,7 @@ export function useCreateCategory() {
     setError(null);
 
     try {
-      const response = await apiClient.post<Category>(
-        "/products/categories",
-        data
-      );
+      const response = await productsApi.createCategory(data);
       setCreatedItem(response);
       return response;
     } catch (err: unknown) {
@@ -129,10 +120,7 @@ export function useUpdateCategory() {
     setError(null);
 
     try {
-      const response = await apiClient.put<Category>(
-        `/products/categories${id}/`,
-        data
-      );
+      const response = await productsApi.updateCategory(id, data);
       setUpdatedItem(response);
       return response;
     } catch (err: unknown) {
@@ -166,7 +154,7 @@ export function useDeleteCategory() {
     setSuccess(false);
 
     try {
-      await apiClient.delete(`/products/categories${id}/`);
+      await productsApi.deleteCategory(id);
       setSuccess(true);
       return true;
     } catch (err: unknown) {

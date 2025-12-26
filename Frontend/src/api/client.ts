@@ -86,10 +86,16 @@ class ApiClient {
   ): Promise<T> {
     const token = this.getAccessToken();
 
+    const isFormData = options.body instanceof FormData;
     const headers: HeadersInit = {
-      "Content-Type": "application/json",
+      Accept: "application/json",
       ...options.headers,
     };
+
+    if (!isFormData && options.body !== undefined) {
+      (headers as Record<string, string>)["Content-Type"] =
+        "application/json";
+    }
 
     if (token) {
       (headers as Record<string, string>).Authorization = `Bearer ${token}`;

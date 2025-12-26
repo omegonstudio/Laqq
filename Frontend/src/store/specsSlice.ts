@@ -1,61 +1,39 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import {
-  PaginatedResponse,
-  ApiItemResponse,
-  ProductSend,
-  ProductSpec,
-} from "@/types/types";
-import { apiClient } from "@/api/client";
+import { PaginatedResponse, ProductSpec } from "@/types/types";
+import { productsApi } from "@/lib/api/products";
 
 export const fetchSpecs = createAsyncThunk(
   "products/fetchAll",
   async (params?: fetchSpecsParams) => {
-    // Pasamos params a la API
-    const res = await apiClient.get<PaginatedResponse<ProductSpec>>(
-      "/products/specs/",
-      params // apiClient construirá el query string
-    );
-    return res; // devolvemos toda la respuesta con count y results
+    return productsApi.listSpecs(params);
   }
 );
 
 export const fetchSpec = createAsyncThunk(
   "products/fetchSpecs",
   async (id: string) => {
-    const response = await apiClient.get<ApiItemResponse<ProductSpec>>(
-      `/products/specs/${id}`
-    );
-
-    return response.data; // ✔️
+    return productsApi.retrieveSpec(id);
   }
 );
 
 export const createSpec = createAsyncThunk(
   "products/createSpect",
   async (data: Partial<ProductSpec>) => {
-    const response = await apiClient.post<ProductSpec>(
-      "/products/specs/",
-      data
-    );
-    return response;
+    return productsApi.createSpec(data);
   }
 );
 
 export const updateSpect = createAsyncThunk(
   "products/updateSpect",
   async ({ id, data }: { id: string; data: Partial<ProductSpec> }) => {
-    const response = await apiClient.put<ProductSpec>(
-      `/products/specs/${id}/`,
-      data
-    );
-    return response;
+    return productsApi.updateSpec(id, data);
   }
 );
 
 export const deleteSpec = createAsyncThunk(
   "products/deleteSpec",
   async (id: string) => {
-    await apiClient.delete(`/products/specs/${id}/`);
+    await productsApi.deleteSpec(id);
     return id; // o un boolean si querés
   }
 );
