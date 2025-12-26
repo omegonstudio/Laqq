@@ -1,0 +1,326 @@
+import { PaginatedResponse as BasePaginatedResponse } from "./types";
+
+export type PaginatedResponse<T> = BasePaginatedResponse<T>;
+
+export interface Accessory {
+  id: string;
+  code: string;
+  brand: string | null;
+  model: string | null;
+  description: string | null;
+  category: string | null;
+  price: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductAccessory {
+  id: number;
+  product: string;
+  accessory: string;
+}
+
+export interface Attachment {
+  id: string;
+  file_name: string;
+  content_type: string | null;
+  size_bytes: number | null;
+  data: string | null;
+  attachable_type: string | null;
+  attachable_id: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface ContactState {
+  id: string;
+  name: string;
+  color: string | null;
+  description: string | null;
+  created_at: string;
+}
+
+export interface Contact {
+  id: string;
+  company_name: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string | null;
+  country: string | null;
+  message: string | null;
+  state: string;
+  assigned_user: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Message {
+  id: string;
+  company_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  country: string | null;
+  message: string;
+  state: string;
+  assigned_user: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NoteType {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+}
+
+export interface NoteState {
+  id: string;
+  name: string;
+  color: string | null;
+  description: string | null;
+  created_at: string;
+}
+
+export interface Note {
+  id: string;
+  title: string;
+  summary: string | null;
+  content: string | null;
+  note_type: string;
+  state: string;
+  author: string;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Brand {
+  id: string;
+  name: string;
+  description: string | null;
+  logo_attachment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  parent: string | null;
+  description: string | null;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductSpec {
+  id: string;
+  product: string;
+  code: string;
+  volume: string | null;
+  dimensions: string | null;
+  cap: string | null;
+  outlet: string | null;
+  accuracy: string | null;
+  precision: string | null;
+  additional_specs: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface RelatedProduct {
+  id: string;
+  product_code: string;
+  name: string;
+  relation_type: string | null;
+}
+
+export interface Product {
+  id: string;
+  product_code: string;
+  name: string;
+  brand: string | null;
+  brand_id?: string;
+  category: string | null;
+  category_id?: string;
+  description: string | null;
+  image_attachment: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  specs: ProductSpec[];
+  related_product_ids?: string[];
+  related_product_codes?: string[];
+  related_products: RelatedProduct[];
+}
+
+export interface QuoteItem {
+  id: string;
+  quote: string;
+  product: string;
+  quantity: number;
+  unit_price: string | null;
+  subtotal: string | null;
+  created_at: string;
+}
+
+export interface Quote {
+  id: string;
+  quote_number: string;
+  contact: string;
+  user: string | null;
+  quote_type: string;
+  state: string;
+  message: string | null;
+  total_amount: string | null;
+  created_at: string;
+  updated_at: string;
+  items?: QuoteItem[];
+}
+
+export interface QuoteState {
+  id: string;
+  name: string;
+  color: string | null;
+  description: string | null;
+  created_at: string;
+}
+
+export interface QuoteType {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+}
+
+export interface ServiceTicket {
+  id: string;
+  ticket_number: string;
+  contact: string;
+  product: string | null;
+  product_name: string;
+  description: string;
+  attachment: string | null;
+  state: string;
+  priority: string;
+  assigned_user: string | null;
+  created_at: string;
+  assigned_at: string | null;
+  started_at: string | null;
+  resolved_at: string | null;
+  closed_at: string | null;
+  updated_at: string;
+  resolution_notes: string | null;
+}
+
+export interface TicketPriority {
+  id: string;
+  name: string;
+  level: number;
+  color: string | null;
+  description: string | null;
+  created_at: string;
+}
+
+export interface TicketState {
+  id: string;
+  name: string;
+  color: string | null;
+  description: string | null;
+  is_final: boolean;
+  created_at: string;
+}
+
+export interface UserType {
+  id: string;
+  name: string;
+  description: string | null;
+  permissions: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface UserState {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+}
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  user_type: UserType | null;
+  user_type_id?: string | null;
+  state: UserState | null;
+  state_id?: string | null;
+  is_active: boolean;
+  is_staff: boolean;
+  is_superuser: boolean;
+  last_login: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserCreate
+  extends Omit<
+    User,
+    | "id"
+    | "user_type"
+    | "state"
+    | "created_at"
+    | "updated_at"
+    | "last_login"
+    | "is_active"
+    | "is_staff"
+    | "is_superuser"
+  > {
+  password: string;
+  user_type_id?: string | null;
+  state_id?: string | null;
+  is_active?: boolean;
+  is_staff?: boolean;
+  is_superuser?: boolean;
+}
+
+export interface TokenObtainPair {
+  access: string;
+  refresh: string;
+}
+
+export interface TokenRefresh {
+  access: string;
+  refresh?: string;
+}
+
+export interface DashboardStats {
+  active_users: number;
+  products: number;
+  quotes: number;
+  new_messages: number;
+}
+
+export interface DashboardActivityItem {
+  type: "quote" | "message" | "product" | string;
+  title: string;
+  time_ago: string;
+  quote_number?: string;
+  contact?: string;
+  state?: string;
+  company?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  product_name?: string;
+  brand?: string | null;
+  category?: string | null;
+}
+
+export interface DashboardSummary {
+  stats: DashboardStats;
+  recent_activity: DashboardActivityItem[];
+}
+
