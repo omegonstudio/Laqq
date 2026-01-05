@@ -1,8 +1,14 @@
 from rest_framework import viewsets, serializers
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from .models import Brand, Category, Product, ProductSpec
-from .serializers import BrandSerializer, CategorySerializer, ProductSerializer, ProductSpecSerializer
+from .models import Brand, Category, Product, ProductSpec, ProductSpecification
+from .serializers import (
+    BrandSerializer,
+    CategorySerializer,
+    ProductSerializer,
+    ProductSpecSerializer,
+    ProductSpecificationSerializer,
+)
 from .permissions import IsReadOnlyOrAdmin
 
 # Existing viewsets retained
@@ -25,7 +31,10 @@ class CategoryViewSet(viewsets.ModelViewSet):
     ordering = ['display_order']
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all().prefetch_related('from_relations__to_product')    
+    queryset = Product.objects.all().prefetch_related(
+        'from_relations__to_product__brand',
+        'dynamic_specifications'
+    )
     serializer_class = ProductSerializer    
     permission_classes = [IsReadOnlyOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -42,6 +51,17 @@ class ProductSpecViewSet(viewsets.ModelViewSet):
     search_fields = ['code', 'volume', 'dimensions']
     ordering_fields = ['code', 'created_at']
     ordering = ['-created_at']
+
+
+class ProductSpecificationViewSet(viewsets.ModelViewSet):
+    queryset = ProductSpecification.objects.all()
+    serializer_class = ProductSpecificationSerializer
+    permission_classes = [IsReadOnlyOrAdmin]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['product', 'is_visible']
+    search_fields = ['key', 'value', 'unit']
+    ordering_fields = ['display_order', 'created_at', 'updated_at']
+    ordering = ['display_order', 'created_at']
 
 # -------------------
 # Bulk upload API

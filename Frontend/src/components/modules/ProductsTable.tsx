@@ -29,15 +29,18 @@ const ProductsTable: React.FC = () => {
   const [isModalEditOpen, setIsModalEditOpen] = useState(false);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
   const [isNew, setIsNew] = useState(false);
-  const [currentProduct, setCurrentProduct] = useState<Product>({
+  const [currentProduct, setCurrentProduct] = useState<Product | null>({
     id: "",
     name: "",
     description: "",
     brand: "",
+    brand_id: "",
     category: "",
+    category_id: "",
     product_code: "",
     specs: [],
     related: [],
+    related_products: [],
     image_attachment: null,
     is_active: true,
   });
@@ -80,34 +83,32 @@ const ProductsTable: React.FC = () => {
       brand: "",
       is_active: true,
       category: "",
+      category_id: "",
       product_code: "",
       specs: [
         {
-          volume: "",
-          code: "",
-          dimensions: "",
-          cap: "",
-          outlet: "",
-          accuracy: "",
-          additional_specs: "",
-          id: "",
-          precision: "",
-          product: "",
+          key: "",
+          value: "",
+          unit: "",
+          is_visible: true,
         },
       ],
       related: [],
+      related_products: [],
       image_attachment: null,
     });
     setIsModalEditOpen(true);
   };
 
   const filteredProducts = products.filter((product: Product) => {
+    const brandName = product.brand ? product.brand.toLowerCase() : "";
     const matchesSearch =
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.brand.toLowerCase().includes(searchTerm.toLowerCase());
+      brandName.includes(searchTerm.toLowerCase());
 
+    const categoryName = product.category || "";
     const matchesCategory =
-      categoryFilter === "all" || product.category === categoryFilter;
+      categoryFilter === "all" || categoryName === categoryFilter;
 
     return matchesSearch && matchesCategory;
   });

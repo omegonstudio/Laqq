@@ -33,8 +33,8 @@ const ProductsPage = () => {
       filtered = filtered.filter(
         (p) =>
           p.name.toLowerCase().includes(searchLower) ||
-          p.brand.toLowerCase().includes(searchLower) ||
-          p.description.toLowerCase().includes(searchLower)
+          (p.brand || "").toLowerCase().includes(searchLower) ||
+          (p.description || "").toLowerCase().includes(searchLower)
       );
     }
 

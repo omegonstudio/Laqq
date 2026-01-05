@@ -4,7 +4,22 @@ import type {
   ProductFormState,
   ProductCreateRequest,
   ProductUpdateRequest,
+  ProductSpec,
 } from "@/types/types";
+
+export const sanitizeSpecs = (specs: ProductSpec[] = []): ProductSpec[] => {
+  return specs
+    .map((spec, index) => ({
+      id: spec.id,
+      product: spec.product,
+      key: spec.key?.trim() || "",
+      value: spec.value?.trim() || "",
+      unit: spec.unit ?? "",
+      display_order: spec.display_order ?? index,
+      is_visible: spec.is_visible ?? true,
+    }))
+    .filter((spec) => spec.key || spec.value);
+};
 
 /**
  * Convierte un Product (del backend) a ProductFormState (para el formulario)
@@ -13,14 +28,14 @@ export const productToFormState = (product: Product): ProductFormState => {
   return {
     id: product.id,
     name: product.name,
-    brand: product.brand,
-    category: product.category,
-    description: product.description,
-    product_code: product.product_code,
+    brand: product.brand_id || product.brand || "",
+    category: product.category_id || product.category || "",
+    description: product.description || "",
+    product_code: product.product_code || "",
     image_attachment: product.image_attachment, // Es un UUID string
     is_active: product.is_active,
-    specs: product.specs || [],
-    related: product.related || [],
+    specs: sanitizeSpecs(product.specs || product.specifications || []),
+    related: product.related || product.related_products || [],
   };
 };
 
@@ -37,15 +52,14 @@ export const formStateToCreateRequest = (
     category_id: formState.category,
     description: formState.description,
     product_code: formState.product_code,
-    image_attachment: attachmentId || null,
+    image_attachment: attachmentId ?? null,
     is_active: formState.is_active,
     related_product_ids: formState.related?.map((rel) => rel.id) || [],
-    // specs no se envía en la creación, se crean después
   };
 };
 
 /**
- * Convierte ProductFormState a ProductUpdateRequest (para actualizar)
+ * Convierte ProductFormState a ProductUpdateRequest (solo campos del producto)
  */
 export const formStateToUpdateRequest = (
   formState: ProductFormState,
@@ -59,11 +73,13 @@ export const formStateToUpdateRequest = (
     updateRequest.name = formState.name;
   }
 
-  if (formState.brand !== initialData.brand) {
+  const initialBrand = initialData.brand_id || initialData.brand;
+  if (formState.brand !== initialBrand) {
     updateRequest.brand_id = formState.brand;
   }
 
-  if (formState.category !== initialData.category) {
+  const initialCategory = initialData.category_id || initialData.category;
+  if (formState.category !== initialCategory) {
     updateRequest.category_id = formState.category;
   }
 
@@ -94,20 +110,11 @@ export const formStateToUpdateRequest = (
     updateRequest.related_product_ids = currentRelatedIds;
   }
 
-  // Specs: comparar arrays
-  const currentSpecIds =
-    formState.specs
-      ?.map((spec) => spec.id)
-      .filter(Boolean)
-      .sort() || [];
-  const initialSpecIds = initialData.specs?.map((spec) => spec.id).sort() || [];
-
-  if (JSON.stringify(currentSpecIds) !== JSON.stringify(initialSpecIds)) {
-    updateRequest.specs = currentSpecIds;
-  }
-
   return updateRequest as ProductUpdateRequest;
 };
+
+export const hasProductChanges = (updateRequest: ProductUpdateRequest) =>
+  Object.keys(updateRequest).length > 0;
 /**
  * Estado inicial vacío para formulario nuevo
  */

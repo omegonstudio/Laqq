@@ -117,17 +117,29 @@ export interface Category {
 }
 
 export interface ProductSpec {
-  id: string;
+  id?: string;
+  product?: string;
+  key: string;
+  value: string;
+  unit?: string | null;
+  display_order?: number;
+  is_visible?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProductFixedSpec {
+  id?: string;
   product: string;
   code: string;
-  volume: string | null;
-  dimensions: string | null;
-  cap: string | null;
-  outlet: string | null;
-  accuracy: string | null;
-  precision: string | null;
-  additional_specs: Record<string, unknown> | null;
-  created_at: string;
+  volume?: string | null;
+  dimensions?: string | null;
+  cap?: string | null;
+  outlet?: string | null;
+  accuracy?: string | null;
+  precision?: string | null;
+  additional_specs?: Record<string, unknown> | string | null;
+  created_at?: string;
 }
 
 export interface RelatedProduct {
@@ -135,6 +147,7 @@ export interface RelatedProduct {
   product_code: string;
   name: string;
   relation_type: string | null;
+  brand?: string | null;
 }
 
 export interface Product {
@@ -147,13 +160,17 @@ export interface Product {
   category_id?: string;
   description: string | null;
   image_attachment: string | null;
+  image?: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
   specs: ProductSpec[];
+  specifications?: ProductSpec[]; // alias de backend
+  fixed_specs?: ProductFixedSpec[];
   related_product_ids?: string[];
   related_product_codes?: string[];
   related_products: RelatedProduct[];
+  related?: RelatedProduct[];
 }
 
 export interface QuoteItem {

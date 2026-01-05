@@ -1,26 +1,22 @@
 import { useEffect, useState } from "react";
 import Button from "@/components/atoms/Button";
 import InputField from "@/components/atoms/InputField";
-import {
-  Product,
-  ProductFormState,
-  ProductSpec,
-  ProductUpdateRequest,
-} from "@/types/types";
+import { Product, ProductFormState, ProductSpec } from "@/types/types";
 import Select from "@/components/atoms/Select";
 import UploadFile from "@/components/atoms/UploadFile";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { createProduct, updateProduct } from "@/store/productSlice";
 import Modal from "@/components/common/Modal";
-import { createSpec, updateSpect } from "@/store/specsSlice";
-import { createAttachment } from "@/utils/fileConvert";
 import {
   productToFormState,
-  formStateToCreateRequest,
-  formStateToUpdateRequest,
   getEmptyProductFormState,
 } from "@/utils/productConverters";
 import { toast } from "sonner";
+import {
+  cleanSpecsForSync,
+  saveProductEntity,
+  syncProductSpecifications,
+  uploadProductImage,
+} from "@/utils/productSaveFlow";
 interface ModalProductProps {
   isOpen: boolean;
   onClose: () => void;
@@ -38,7 +34,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   const { list: categories } = useAppSelector((state) => state.categories);
   const { list: products } = useAppSelector((state) => state.products);
   const { list: brands } = useAppSelector((state) => state.brands);
-  const [active, setActive] = useState(initialData.is_active);
   // Estado local con tipo específico para formulario
   const [localState, setLocalState] = useState<ProductFormState>(
     getEmptyProductFormState()
@@ -55,7 +50,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     if (initialData) {
       // Convertir Product a ProductFormState
       const formState = productToFormState(initialData);
-      setLocalState(initialData);
+      setLocalState(formState);
 
       // Si hay imagen, cargar preview (asumiendo que es UUID)
       if (initialData.image_attachment) {
@@ -64,14 +59,20 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         setImagePreview(null);
       }
     } else {
-      setLocalState(getEmptyProductFormState());
+      setLocalState({
+        ...getEmptyProductFormState(),
+        specs: [
+          {
+            key: "",
+            value: "",
+            unit: "",
+            is_visible: true,
+          },
+        ],
+      });
       setImagePreview(null);
     }
   }, [initialData]);
-
-  useEffect(() => {
-    setLocalState(initialData);
-  }, [onClose]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -112,198 +113,58 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       // ============================================
       // VALIDACIÓN: Filtrar specs vacías
       // ============================================
-      const isSpecEmpty = (spec: ProductSpec) => {
-        return (
-          !spec.volume?.trim() &&
-          !spec.code?.trim() &&
-          !spec.dimensions?.trim() &&
-          !spec.cap?.trim() &&
-          !spec.outlet?.trim() &&
-          !spec.accuracy?.trim() &&
-          !spec.precision?.trim() &&
-          !spec.additional_specs?.trim()
-        );
-      };
-
-      // Filtrar solo specs que tengan al menos un campo con valor
-      const validSpecs =
-        localState.specs?.filter((spec) => !isSpecEmpty(spec)) || [];
+      const cleanedSpecs = cleanSpecsForSync(localState.specs || []);
 
       if (localState.id) {
         // ========== EDITAR PRODUCTO EXISTENTE ==========
-
-        let attachmentId: string | null | undefined = undefined;
-
-        // Manejar imagen
-        if (localState.image_attachment instanceof File) {
-          console.log("📤 Subiendo nueva imagen...");
-          try {
-            const attachment = await createAttachment(
-              localState.image_attachment
-            );
-            attachmentId = attachment.id;
-            console.log("✅ Imagen subida:", attachmentId);
-          } catch (error) {
-            toast.error("Error al subir la imagen");
-            throw error;
-          }
-        } else if (
-          typeof localState.image_attachment === "string" &&
-          localState.image_attachment !== initialData.image_attachment
-        ) {
-          // Si cambió el UUID
-          attachmentId = localState.image_attachment;
-        } else if (
-          localState.image_attachment === null &&
-          initialData.image_attachment !== null
-        ) {
-          // Si se eliminó la imagen
-          attachmentId = null;
+        if (!initialData) {
+          toast.error("No se encontraron datos del producto a editar");
+          return;
         }
 
-        // Convertir formState a updateRequest
-        const updateRequest: ProductUpdateRequest = formStateToUpdateRequest(
-          localState,
-          initialData,
-          attachmentId
+        const attachmentId = await uploadProductImage(
+          localState.image_attachment,
+          initialData.image_attachment
         );
 
-        console.log("📤 UPDATE REQUEST:", updateRequest);
+        const product = await saveProductEntity({
+          dispatch,
+          formState: { ...localState, specs: cleanedSpecs },
+          initialData,
+          attachmentId,
+        });
 
-        // Actualizar producto
-        const updatedProduct = await dispatch(
-          updateProduct({
-            id: localState.id,
-            data: updateRequest,
-          })
-        ).unwrap();
-
-        console.log("✅ Producto actualizado:", updatedProduct);
-
-        // ============================================
-        // PROCESAR SPECS (solo si hay válidas)
-        // ============================================
-        if (validSpecs.length > 0) {
-          const specIds: string[] = [];
-
-          for (const spec of validSpecs) {
-            try {
-              if (spec.id) {
-                // Actualizar spec existente
-                const updatedSpec = await dispatch(
-                  updateSpect({
-                    id: spec.id,
-                    data: {
-                      ...spec,
-                      product: updatedProduct.id,
-                    },
-                  })
-                ).unwrap();
-                specIds.push(updatedSpec.id);
-              } else {
-                // Crear nuevo spec
-                const newSpec = await dispatch(
-                  createSpec({
-                    ...spec,
-                    product: updatedProduct.id,
-                  })
-                ).unwrap();
-                specIds.push(newSpec.id);
-              }
-            } catch (error) {
-              console.error("Error procesando spec:", error);
-              toast.error("Error al guardar especificaciones");
-              throw error;
-            }
-          }
-
-          // Actualizar producto con specs
-          await dispatch(
-            updateProduct({
-              id: localState.id,
-              data: {
-                specs: specIds,
-              },
-            })
-          ).unwrap();
-
-          console.log("✅ Specs actualizadas:", specIds);
-        }
+        await syncProductSpecifications({
+          dispatch,
+          productId: product.id,
+          nextSpecs: cleanedSpecs,
+          initialSpecs: initialData.specs || [],
+        });
 
         toast.success("Producto actualizado exitosamente");
-        console.log("✅ Producto y specs actualizados");
       } else {
         // ========== CREAR NUEVO PRODUCTO ==========
 
-        let attachmentId: string | null = null;
-
-        // Si hay archivo, subirlo primero
-        if (localState.image_attachment instanceof File) {
-          console.log("📤 Subiendo imagen...");
-          try {
-            const attachment = await createAttachment(
-              localState.image_attachment
-            );
-            attachmentId = attachment.id;
-            console.log("✅ Imagen subida:", attachmentId);
-          } catch (error) {
-            toast.error("Error al subir la imagen");
-            throw error;
-          }
-        }
-
-        // Convertir formState a createRequest
-        const createRequest = formStateToCreateRequest(
-          localState,
-          attachmentId
+        const attachmentId = await uploadProductImage(
+          localState.image_attachment,
+          null
         );
 
-        console.log("📤 CREATE REQUEST:", createRequest);
+        const product = await saveProductEntity({
+          dispatch,
+          formState: { ...localState, specs: cleanedSpecs },
+          initialData: null,
+          attachmentId,
+        });
 
-        // Crear producto
-        const createdProduct = await dispatch(
-          createProduct(createRequest)
-        ).unwrap();
-
-        console.log("✅ Producto creado:", createdProduct);
-
-        // ============================================
-        // CREAR SPECS (solo si hay válidas)
-        // ============================================
-        if (validSpecs.length > 0) {
-          const specIds: string[] = [];
-
-          for (const spec of validSpecs) {
-            try {
-              const newSpec = await dispatch(
-                createSpec({
-                  ...spec,
-                  product: createdProduct.id,
-                })
-              ).unwrap();
-              specIds.push(newSpec.id);
-            } catch (error) {
-              console.error("Error creando spec:", error);
-              toast.error("Error al crear especificaciones");
-              throw error;
-            }
-          }
-
-          // Actualizar producto con specs
-          await dispatch(
-            updateProduct({
-              id: createdProduct.id,
-              data: {
-                specs: specIds,
-              },
-            })
-          ).unwrap();
-
-          console.log("✅ Specs creadas y vinculadas:", specIds);
-        }
+        await syncProductSpecifications({
+          dispatch,
+          productId: product.id,
+          nextSpecs: cleanedSpecs,
+          initialSpecs: [],
+        });
 
         toast.success("Producto creado exitosamente");
-        console.log("✅ Producto y specs creados exitosamente");
       }
 
       onClose();
@@ -383,7 +244,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   const handleSpecChange = (
     index: number,
     field: keyof ProductSpec,
-    value: string
+    value: string | boolean
   ) => {
     const updatedSpecs = localState.specs.map((spec, i) => {
       if (i === index) {
@@ -395,13 +256,28 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     setLocalState({ ...localState, specs: updatedSpecs });
   };
 
+  const handleAddSpec = () => {
+    setLocalState({
+      ...localState,
+      specs: [
+        ...localState.specs,
+        { key: "", value: "", unit: "", is_visible: true },
+      ],
+    });
+  };
+
+  const handleRemoveSpec = (index: number) => {
+    const specs = [...localState.specs];
+    specs.splice(index, 1);
+    setLocalState({ ...localState, specs: specs.length ? specs : [{ key: "", value: "", unit: "", is_visible: true }] });
+  };
+
   // Filtrar productos disponibles
   const availableProducts = products.filter((prod) => {
     if (localState.id && prod.id === localState.id) return false;
     const currentRelated = localState.related || [];
     return !currentRelated.some((rel) => rel.id === prod.id);
   });
-  console.log(localState, "LOCAL STATE");
   return (
     <Modal
       isOpen={isOpen}
@@ -516,59 +392,60 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         </div>
         <br />
         <label>Especificaciones del producto:</label>
-        {localState.specs.map((s, index) => (
-          <div key={s.id || index}>
-            <div className="grid grid-cols-3 gap-2">
-              <InputField
-                label="Volumen"
-                value={s.volume}
-                onChange={(e) =>
-                  handleSpecChange(index, "volume", e.target.value)
-                }
-              />
-              <InputField
-                label="Código"
-                value={s.code}
-                onChange={(e) =>
-                  handleSpecChange(index, "code", e.target.value)
-                }
-              />
-              <InputField
-                label="Dimensiones"
-                value={s.dimensions}
-                onChange={(e) =>
-                  handleSpecChange(index, "dimensions", e.target.value)
-                }
-              />
-              <InputField
-                label="Tapa"
-                value={s.cap}
-                onChange={(e) => handleSpecChange(index, "cap", e.target.value)}
-              />
-              <InputField
-                label="Salida"
-                value={s.outlet}
-                onChange={(e) =>
-                  handleSpecChange(index, "outlet", e.target.value)
-                }
-              />
-              <InputField
-                label="Precisión"
-                value={s.accuracy}
-                onChange={(e) =>
-                  handleSpecChange(index, "accuracy", e.target.value)
-                }
-              />
+        <div className="space-y-3">
+          {localState.specs.map((s, index) => (
+            <div
+              key={s.id || index}
+              className="border border-border rounded-lg p-3 space-y-2"
+            >
+              <div className="grid md:grid-cols-3 gap-2">
+                <InputField
+                  label="Nombre"
+                  value={s.key || ""}
+                  onChange={(e) =>
+                    handleSpecChange(index, "key", e.target.value)
+                  }
+                />
+                <InputField
+                  label="Valor"
+                  value={s.value || ""}
+                  onChange={(e) =>
+                    handleSpecChange(index, "value", e.target.value)
+                  }
+                />
+                <InputField
+                  label="Unidad (opcional)"
+                  value={s.unit || ""}
+                  onChange={(e) =>
+                    handleSpecChange(index, "unit", e.target.value)
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={s.is_visible !== false}
+                    onChange={(e) =>
+                      handleSpecChange(index, "is_visible", e.target.checked)
+                    }
+                  />
+                  Visualizar
+                </label>
+                <Button
+                  variant="ghost"
+                  onClick={() => handleRemoveSpec(index)}
+                  className="text-red-500 hover:text-red-600"
+                >
+                  Eliminar
+                </Button>
+              </div>
             </div>
-            <InputField
-              label="Adicionales"
-              value={s.additional_specs}
-              onChange={(e) =>
-                handleSpecChange(index, "additional_specs", e.target.value)
-              }
-            />
-          </div>
-        ))}
+          ))}
+          <Button variant="outline" onClick={handleAddSpec}>
+            Agregar especificación
+          </Button>
+        </div>
         {/* ✅ Upload de imagen con preview */}
         <div className="space-y-2">
           <UploadFile onFileChange={handleFile} />

@@ -79,17 +79,17 @@ export const productsApi = {
 
   // Specs
   listSpecs: (params?: PaginationParams) =>
-    api.get<PaginatedResponse<ProductSpec>>(`${BASE}/specs/`, cleanParams(params as QueryParams)),
-  getSpec: (id: string) => api.get<ProductSpec>(`${BASE}/specs/${id}/`),
-  retrieveSpec: (id: string) => api.get<ProductSpec>(`${BASE}/specs/${id}/`),
+    api.get<PaginatedResponse<ProductSpec>>(`${BASE}/specifications/`, cleanParams(params as QueryParams)),
+  getSpec: (id: string) => api.get<ProductSpec>(`${BASE}/specifications/${id}/`),
+  retrieveSpec: (id: string) => api.get<ProductSpec>(`${BASE}/specifications/${id}/`),
   createSpec: (data: Partial<ProductSpec>) =>
-    api.post<ProductSpec>(`${BASE}/specs/`, data),
+    api.post<ProductSpec>(`${BASE}/specifications/`, data),
   updateSpec: (id: string, data: Partial<ProductSpec>) =>
-    api.put<ProductSpec>(`${BASE}/specs/${id}/`, data),
+    api.put<ProductSpec>(`${BASE}/specifications/${id}/`, data),
   patchSpec: (id: string, data: Partial<ProductSpec>) =>
-    api.patch<ProductSpec>(`${BASE}/specs/${id}/`, data),
-  removeSpec: (id: string) => api.delete<void>(`${BASE}/specs/${id}/`),
-  deleteSpec: (id: string) => api.delete<void>(`${BASE}/specs/${id}/`),
+    api.patch<ProductSpec>(`${BASE}/specifications/${id}/`, data),
+  removeSpec: (id: string) => api.delete<void>(`${BASE}/specifications/${id}/`),
+  deleteSpec: (id: string) => api.delete<void>(`${BASE}/specifications/${id}/`),
 
   // Bulk upload (multipart)
   bulkUploadProducts: (formData: FormData) =>
