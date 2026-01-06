@@ -1,9 +1,20 @@
 from rest_framework import viewsets, serializers
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
+
+from django.shortcuts import get_object_or_404
+
 from .models import Brand, Category, Product, ProductSpec
 from .serializers import BrandSerializer, CategorySerializer, ProductSerializer, ProductSpecSerializer
 from .permissions import IsReadOnlyOrAdmin
+
+from attachments.serializers import AttachmentSerializer
+from attachments.models import Attachment
 
 # Existing viewsets retained
 class BrandViewSet(viewsets.ModelViewSet):
@@ -33,6 +44,40 @@ class ProductViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'created_at', 'updated_at']
     ordering = ['-created_at']
+
+    @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser], permission_classes=[IsAuthenticatedOrReadOnly])
+    def upload_attachment(self, request, pk=None):
+        """
+        Sube un archivo y lo asocia al producto.
+        Campos esperados en multipart:
+          - file: el archivo (requerido)
+          - role: opcional ('image'|'manual'|'datasheet'|'other'), si no se pasa se infiere por MIME
+        Retorna el attachment creado usando AttachmentSerializer (incluye url).
+        """
+        product = get_object_or_404(Product, pk=pk)
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Response({'detail': 'file field is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        role = request.data.get('role')
+        # inferir role por mime si no se especifica
+        if not role:
+            if file_obj.content_type and file_obj.content_type.startswith('image/'):
+                role = 'image'
+            else:
+                role = 'other'
+
+        payload = {
+            'file': file_obj,
+            'role': role,
+            'attachable_type': 'product',
+            'attachable_id': product.id,
+            'content_type': file_obj.content_type,
+        }
+        serializer = AttachmentSerializer(data=payload, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        att = serializer.save(created_by=request.user if request.user and request.user.is_authenticated else None)
+        return Response(AttachmentSerializer(att, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
 class ProductSpecViewSet(viewsets.ModelViewSet):
     queryset = ProductSpec.objects.all()

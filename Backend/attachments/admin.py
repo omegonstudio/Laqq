@@ -1,6 +1,7 @@
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils.translation import gettext_lazy as _
+from django.utils.safestring import mark_safe
 import mimetypes
 
 from .models import Attachment
@@ -9,7 +10,7 @@ MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
 class AttachmentAdminForm(forms.ModelForm):
-    # Campo de subida visible sólo en el admin; no persiste directamente en el modelo
+    # Campo de subida visible sólo en el admin; no persiste directamente en el modelo salvo que lo copiemos en save()
     uploaded_file = forms.FileField(
         required=False,
         label=_("Archivo"),
@@ -18,8 +19,8 @@ class AttachmentAdminForm(forms.ModelForm):
 
     class Meta:
         model = Attachment
-        # Excluir el campo `data` (binario) del formulario; el form se encargará de poblarlo al guardar.
-        exclude = ('data',)
+        # incluir todos los campos del modelo para edición manual si se desea
+        fields = '__all__'
 
     def clean_uploaded_file(self):
         f = self.cleaned_data.get('uploaded_file')
@@ -32,12 +33,15 @@ class AttachmentAdminForm(forms.ModelForm):
 
     def save(self, commit=True):
         """
-        Rellena los metadatos y el campo `data` a partir del uploaded_file.
-        Si no se sube archivo, no modifica data ni metadatos relacionados.
+        Rellena los metadatos y el campo `file` a partir del uploaded_file.
+        Si no se sube archivo, no modifica file ni metadatos relacionados.
         """
         instance = super().save(commit=False)
         uploaded = self.cleaned_data.get('uploaded_file')
         if uploaded:
+            # Asignar archivo al FileField; Django maneja UploadedFile
+            instance.file = uploaded
+
             # Nombre y tamaño
             instance.file_name = uploaded.name
             instance.size_bytes = uploaded.size
@@ -46,16 +50,12 @@ class AttachmentAdminForm(forms.ModelForm):
             ct = getattr(uploaded, 'content_type', None) or mimetypes.guess_type(uploaded.name)[0]
             instance.content_type = ct
 
-            # Leer binario
-            try:
-                # uploaded.read() devuelve bytes
-                instance.data = uploaded.read()
-            except Exception:
-                # No romper el guardado si hay un error de lectura, pero preferible que falle durante save en admin
-                instance.data = None
-
         if commit:
             instance.save()
+            try:
+                self.save_m2m()
+            except Exception:
+                pass
         return instance
 
 
@@ -63,39 +63,52 @@ class AttachmentAdminForm(forms.ModelForm):
 class AttachmentAdmin(admin.ModelAdmin):
     form = AttachmentAdminForm
 
-    list_display = ['file_name', 'content_type', 'size_bytes', 'attachable_type', 'created_by', 'created_at']
-    search_fields = ['file_name', 'attachable_type']
-    list_filter = ['content_type', 'attachable_type', 'created_by']
+    list_display = ['file_name', 'role', 'content_type', 'size_bytes', 'attachable_type', 'attachable_id', 'created_by', 'created_at']
+    search_fields = ['file_name', 'attachable_type', 'attachable_id', 'role']
+    list_filter = ['content_type', 'attachable_type', 'created_by', 'role']
     ordering = ['-created_at']
 
-    readonly_fields = ('size_bytes', 'content_type', 'created_at')
+    readonly_fields = ('size_bytes', 'content_type', 'created_at', 'file_preview')
+
+    fieldsets = (
+        (None, {
+            'fields': ('uploaded_file', 'file', 'file_name', 'role', 'attachable_type', 'attachable_id', 'created_by')
+        }),
+        ('Metadata', {
+            'fields': ('size_bytes', 'content_type', 'created_at', 'file_preview'),
+        }),
+    )
 
     def save_model(self, request, obj, form, change):
         """
-        El admin llama a form.save(commit=False) antes de save_model; sin embargo aquí forzamos la
-        combinación segura: usamos form.save(commit=False) para obtener la instancia ya preparada,
-        asignamos created_by si corresponde y guardamos.
+        Usar form.save(commit=False) => el form ya habrá asignado file / metadata desde uploaded_file.
+        Asignar created_by si corresponde y guardar.
         """
-        # form.save(commit=False) o form.save(commit=True) — queremos el instance sin guardar aún
         instance = form.save(commit=False)
 
         # Asignar created_by si no existe (útil en creación desde admin)
         if not instance.created_by:
             instance.created_by = request.user
 
-        # Guardar la instancia final
         instance.save()
-
-        # Guardar m2m si los hubiera (no aplican aquí, pero por compatibilidad)
         try:
             form.save_m2m()
         except Exception:
             pass
 
-    # Opcional: mostrar un enlace de vista previa en el admin (si es imagen)
     def file_preview(self, obj):
-        if obj and obj.content_type and obj.content_type.startswith('image/') and obj.data:
-            return f'<img src="/attachments/{obj.id}/preview/" style="max-height:100px;"/>'
+        """
+        Muestra preview si es imagen y existe file.url
+        """
+        if not obj or not getattr(obj, 'file', None):
+            return ''
+        try:
+            url = obj.file.url
+        except Exception:
+            url = None
+        if url and obj.content_type and obj.content_type.startswith('image/'):
+            return mark_safe(f'<img src="{url}" style="max-height:150px; max-width:300px;"/>')
+        if url:
+            return mark_safe(f'<a href="{url}" target="_blank">Ver archivo</a>')
         return ''
-    file_preview.allow_tags = True
     file_preview.short_description = 'Preview'
