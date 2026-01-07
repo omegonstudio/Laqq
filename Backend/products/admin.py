@@ -4,7 +4,7 @@ from django.shortcuts import render
 from django.http import JsonResponse, HttpResponseNotFound
 from django.conf import settings
 
-from .models import Brand, Category, Product, ProductSpec, ProductRelation, ProductSpecification
+from .models import Brand, Category, Product, ProductSpec, ProductRelation
 from .forms import CSVUploadForm
 from .importer import import_products_csv
 
@@ -12,20 +12,6 @@ class ProductRelationInline(admin.TabularInline):
     model = ProductRelation
     fk_name = 'from_product'
     extra = 1
-    verbose_name = "Producto Relacionado"
-    verbose_name_plural = "Productos Relacionados"
-
-
-class ProductSpecificationInline(admin.TabularInline):
-    """
-    Inline para agregar especificaciones dinámicas directamente en el admin de Product.
-    """
-    model = ProductSpecification
-    extra = 1
-    fields = ['key', 'value', 'unit', 'display_order', 'is_visible']
-    ordering = ['display_order', 'key']
-    verbose_name = "Especificación Dinámica"
-    verbose_name_plural = "Especificaciones Dinámicas"
 
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
@@ -43,8 +29,8 @@ class CategoryAdmin(admin.ModelAdmin):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = ['product_code', 'name', 'brand', 'category', 'is_active', 'created_at']
-    inlines = [ProductSpecificationInline, ProductRelationInline]
-    search_fields = ['product_code', 'name', 'description']  # También usado para autocomplete
+    inlines = [ProductRelationInline]
+    search_fields = ['product_code', 'name', 'description']
     list_filter = ['brand', 'category', 'is_active']
     ordering = ['-created_at']
 
@@ -113,13 +99,3 @@ class ProductSpecAdmin(admin.ModelAdmin):
     search_fields = ['code', 'volume']
     list_filter = ['product']
     ordering = ['-created_at']
-
-
-@admin.register(ProductSpecification)
-class ProductSpecificationAdmin(admin.ModelAdmin):
-    list_display = ['product', 'key', 'value', 'unit', 'display_order', 'is_visible', 'created_at']
-    search_fields = ['key', 'value', 'product__name', 'product__product_code']
-    list_filter = ['is_visible', 'product__category', 'product__brand']
-    list_editable = ['display_order', 'is_visible']
-    ordering = ['product', 'display_order', 'key']
-    autocomplete_fields = ['product']
