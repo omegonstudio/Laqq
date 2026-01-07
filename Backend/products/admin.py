@@ -7,7 +7,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.middleware.csrf import get_token
 from django.utils.safestring import mark_safe
 
-from .models import Brand, Category, Product, ProductSpec, ProductRelation
+from .models import Brand, Category, Product, ProductSpec, ProductRelation, ProductSpecification
 from .forms import CSVUploadForm
 from .importer import import_products_csv
 
