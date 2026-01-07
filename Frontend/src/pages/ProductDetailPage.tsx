@@ -45,40 +45,52 @@ const ProductDetailPage = () => {
     );
   }
 
-  // useEffect(() => {
-  //   setProduct(products.find((p) => p.id === id));
-  // }, [products]);
+  // Mostrar error si hay error
+  if (selectedError) {
+    return (
+      <div className="py-16">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="text-2xl font-bold mb-4">
+            Error al cargar el producto
+          </h1>
+          <p className="text-muted-foreground mb-4">{selectedError}</p>
+          <Link to="/products">
+            <Button>Volver al Catálogo</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
+  // Mostrar mensaje si no hay producto
+  if (!product) {
+    return (
+      <div className="py-16">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="text-2xl font-bold mb-4">Producto no encontrado</h1>
+          <Link to="/products">
+            <Button>Volver al Catálogo</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
   const specColumns = [
     {
-      key: "volume",
-      label: "Volumen",
+      key: "key",
+      label: "Especificación",
     },
     {
-      key: "dimensions",
-      label: "Dimensiones",
+      key: "value",
+      label: "Valor",
     },
     {
-      key: "cap",
-      label: "Tapa",
-    },
-    {
-      key: "outlet",
-      label: "Outlet",
-    },
-    {
-      key: "accuracy",
-      label: "Fidelidad",
-    },
-    {
-      key: "precision",
-      label: "Precisión",
-    },
-    {
-      key: "additional_specs",
-      label: "Información adicional",
+      key: "unit",
+      label: "Unidad",
     },
   ];
+  const productSpecs = product.fixed_specs || product.specifications || [];
+  const relatedList = product.related || product.related_products || [];
   if (selectedError) {
     return (
       <div className="py-16">
@@ -166,7 +178,7 @@ const ProductDetailPage = () => {
             >
               Especificaciones
             </button>
-            {product.related && (
+            {relatedList.length > 0 && (
               <button
                 onClick={() => setActiveTab("related")}
                 className={`px-4 py-2 font-medium transition-colors ${
@@ -213,7 +225,7 @@ const ProductDetailPage = () => {
 
           {activeTab === "related" && (
             <div className="space-y-4">
-              {product.related?.map((item, index) => (
+              {relatedList.map((item, index) => (
                 <div
                   key={index}
                   className="border border-border rounded-xl p-4 hover:bg-muted/30 transition-colors"
@@ -221,10 +233,12 @@ const ProductDetailPage = () => {
                   <div className="flex items-start justify-between">
                     <div>
                       <Badge variant="secondary" className="mb-2">
-                        {item.brand}
+                        {item.brand || "Relacionado"}
                       </Badge>
-                      {/* <h3 className="font-bold mb-1">Código: {item.code}</h3>
-                      <p className="text-sm text-muted-foreground">{item.description}</p> */}
+                      <h3 className="font-bold mb-1">{item.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Código: {item.product_code}
+                      </p>
                     </div>
                   </div>
                 </div>

@@ -33,8 +33,8 @@ const ProductsPage = () => {
       filtered = filtered.filter(
         (p) =>
           p.name.toLowerCase().includes(searchLower) ||
-          p.brand.toLowerCase().includes(searchLower) ||
-          p.description.toLowerCase().includes(searchLower)
+          (p.brand || "").toLowerCase().includes(searchLower) ||
+          (p.description || "").toLowerCase().includes(searchLower)
       );
     }
 
@@ -65,7 +65,7 @@ const ProductsPage = () => {
   // Obtener nombre de la marca activa
   const activeBrandId = searchParams.get("brand");
   const activeBrand = brands.find((b) => b.id === activeBrandId);
-
+  console.log(products, "PRODUCTOS");
   return (
     <div className="py-16">
       <div className="container mx-auto px-4">

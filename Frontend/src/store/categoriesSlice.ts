@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { apiClient } from "@/api/client";
 import { Category, PaginatedResponse } from "@/types/types";
+import { productsApi } from "@/lib/api/products";
 
 // Params (paginación)
 interface FetchCategoriesParams {
@@ -59,51 +59,35 @@ const initialState: CategoriesState = {
 export const fetchCategories = createAsyncThunk(
   "categories/fetch",
   async (params?: FetchCategoriesParams) => {
-    // ✅ Pasar params directamente, no { params }
-    const response = await apiClient.get<PaginatedResponse<Category>>(
-      "/products/categories/",
-      params
-    );
-    return response;
+    return productsApi.listCategories(params);
   }
 );
 
 export const fetchCategory = createAsyncThunk(
   "categories/fetchOne",
   async (id: string) => {
-    const response = await apiClient.get<Category>(
-      `/products/categories/${id}/`
-    );
-    return response;
+    return productsApi.retrieveCategory(id);
   }
 );
 
 export const createCategory = createAsyncThunk(
   "categories/create",
   async (data: Partial<Category>) => {
-    const response = await apiClient.post<Category>(
-      `/products/categories/`,
-      data
-    );
-    return response;
+    return productsApi.createCategory(data);
   }
 );
 
 export const updateCategory = createAsyncThunk(
   "categories/update",
   async ({ id, data }: { id: string; data: Partial<Category> }) => {
-    const response = await apiClient.patch<Category>(
-      `/products/categories/${id}/`,
-      data
-    );
-    return response;
+    return productsApi.updateCategory(id, data);
   }
 );
 
 export const deleteCategory = createAsyncThunk(
   "categories/delete",
   async (id: string) => {
-    await apiClient.delete(`/products/categories/${id}/`);
+    await productsApi.deleteCategory(id);
     return id;
   }
 );

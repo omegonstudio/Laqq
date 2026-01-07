@@ -21,7 +21,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
     <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-shadow">
       <div className="aspect-square bg-muted rounded-xl mb-4 overflow-hidden">
         <img
-          src="./laqq_iso_negro.svg"
+          src={product.image}
           alt={product.name}
           className="w-full h-full object-contain p-4"
         />

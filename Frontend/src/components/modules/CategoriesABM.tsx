@@ -1,59 +1,117 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Edit2, Trash2, Plus } from "lucide-react";
 import Table from "@/components/common/Table";
 import Button from "@/components/atoms/Button";
-import { categories } from "@/utils/data/categories";
-
-interface CategoryFlat {
-  id: string;
-  nombre: string;
-  tipo: string;
-  padre?: string;
-}
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { Category } from "@/types/types";
+import ModalCategory from "../molecules/Modals/EditCategory";
+import { deleteCategory } from "@/store/categoriesSlice";
+import { toast } from "sonner";
+import ModalDelete from "../molecules/Modals/ModalDelete";
 
 const CategoriesABM = () => {
-  // Flatten categories for table display
-  const flatCategories: CategoryFlat[] = categories.flatMap(cat => [
-    { id: cat.id, nombre: cat.name, tipo: "Principal", padre: "-" },
-    ...(cat.subcategories?.map(sub => ({
-      id: sub.id,
-      nombre: sub.name,
-      tipo: "Subcategoría",
-      padre: cat.name
-    })) || [])
-  ]);
+  const { list: categories, loading: loadingCategories } = useAppSelector(
+    (state) => state.categories
+  );
+  const dispatch = useAppDispatch();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(
+    null
+  );
+  const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
+  const categoryData = useMemo(() => {
+    // Creamos un mapa id -> name
+    const idToNameMap = new Map<string, string>();
 
-  const [categoryData] = useState<CategoryFlat[]>(flatCategories);
+    categories.forEach((category) => {
+      idToNameMap.set(category.id, category.name);
+    });
 
-  const handleEdit = (category: CategoryFlat) => {
-    console.log("Editar categoría:", category);
+    // Recorremos y reemplazamos parent con el nombre
+    return categories.map((category) => ({
+      ...category,
+      parent: category.parent ? idToNameMap.get(category.parent) ?? null : null,
+    }));
+  }, [categories]); // Se recalcula cada vez que categories cambia
+
+  const handleEdit = (category: Category) => {
+    setSelectedCategory(category);
+    setIsModalOpen(true);
+  };
+  const handleOpenDeleteModal = (product: Category) => {
+    setSelectedCategory(product);
+    setIsModalDeleteOpen(true);
   };
 
-  const handleDelete = (category: CategoryFlat) => {
-    console.log("Eliminar categoría:", category);
+  const handleDelete = async () => {
+    if (!selectedCategory) return;
+
+    try {
+      await dispatch(deleteCategory(selectedCategory.id)).unwrap();
+
+      toast.success("Categoría eliminado exitosamente");
+      setIsModalDeleteOpen(false);
+    } catch (error: unknown) {
+      console.error("Error eliminando categoría:", error);
+      if (error instanceof Error) {
+        toast.error(error.message || "Error al eliminar el categoría");
+      } else {
+        toast.error("Error al eliminar el categoría");
+      }
+    }
+  };
+
+  const handleNewCategory = () => {
+    setSelectedCategory(null);
+    setIsModalOpen(true);
   };
 
   const columns = [
-    { key: "nombre", label: "Nombre", sortable: true },
-    { key: "tipo", label: "Tipo", sortable: true },
-    { key: "padre", label: "Categoría Padre", sortable: true },
+    { key: "name", label: "Nombre", sortable: true },
+    { key: "display_order", label: "Orden", sortable: true },
+    { key: "parent", label: "Categoría padre", sortable: true },
   ];
 
   const actions = [
     { icon: <Edit2 size={16} />, onClick: handleEdit, label: "Editar" },
-    { icon: <Trash2 size={16} />, onClick: handleDelete, color: "red", label: "Eliminar" },
+    {
+      icon: <Trash2 size={16} />,
+      onClick: handleOpenDeleteModal,
+      color: "red",
+      label: "Eliminar",
+    },
   ];
 
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button variant="primary" className="flex items-center gap-2">
+        <Button
+          variant="primary"
+          className="flex items-center gap-2"
+          onClick={handleNewCategory}
+        >
           <Plus size={18} />
           Nueva Categoría
         </Button>
       </div>
 
       <Table columns={columns} data={categoryData} actions={actions} />
+      <ModalCategory
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        initialData={selectedCategory}
+        isNew={!selectedCategory}
+        categories={categories}
+      />
+      <ModalDelete
+        isOpen={isModalDeleteOpen}
+        onClose={() => {
+          setIsModalDeleteOpen(false);
+          setSelectedCategory(null);
+        }}
+        itemName={selectedCategory?.name || ""}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 };

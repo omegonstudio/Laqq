@@ -1,185 +1,320 @@
-import { useEffect, useState, useCallback } from "react";
-import { Product } from "../types/types";
-import { apiClient } from "@/api/client";
-import { PaginatedResponse } from "@/types/products";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { productsApi, ProductListParams, PaginationParams } from "@/lib/api/products";
+import {
+  Brand,
+  Category,
+  PaginatedResponse,
+  Product,
+  ProductSpec,
+} from "@/types/api";
+import { NormalizedApiError } from "@/lib/api/client";
 
-interface UseProductsParams {
-  page?: number;
-  page_size?: number;
-}
+const listKey = (params?: ProductListParams) => ["products", "list", params];
+const detailKey = (id?: string) => ["products", "detail", id];
+const brandsKey = (params?: PaginationParams) => ["brands", "list", params];
+const brandDetailKey = (id?: string) => ["brands", "detail", id];
+const categoriesKey = (params?: PaginationParams) => [
+  "categories",
+  "list",
+  params,
+];
+const categoryDetailKey = (id?: string) => ["categories", "detail", id];
+const specsKey = (params?: PaginationParams) => ["product-specs", "list", params];
+const specDetailKey = (id?: string) => ["product-specs", "detail", id];
 
-export function useProducts(params: UseProductsParams = {}) {
-  const [data, setData] = useState<Product[]>([]);
-  const [count, setCount] = useState<number>(0);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+export const useProductsList = (params?: ProductListParams) =>
+  useQuery<PaginatedResponse<Product>, NormalizedApiError>({
+    queryKey: listKey(params),
+    queryFn: () => productsApi.list(params),
+    placeholderData: (prev) => prev,
+  });
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    setError(null);
+export const useProduct = (id?: string) =>
+  useQuery<Product, NormalizedApiError>({
+    queryKey: detailKey(id),
+    queryFn: () => productsApi.get(id as string),
+    enabled: Boolean(id),
+  });
 
-    try {
-      const response = await apiClient.get<PaginatedResponse<Product>>(
-        "/products/list/",
-        params
-      );
+export const useCreateProduct = () => {
+  const queryClient = useQueryClient();
 
-      setData(response.results);
-      setCount(response.count);
-    } catch (err: unknown) {
-      if (err instanceof Error) setError(err.message);
-      else setError("Error obteniendo productos");
-    } finally {
-      setLoading(false);
-    }
-  };
+  return useMutation<Product, NormalizedApiError, Partial<Product>>({
+    mutationFn: (payload) => productsApi.create(payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.setQueryData(detailKey(data.id), data);
+    },
+  });
+};
 
-  useEffect(() => {
-    fetchProducts();
-  }, [JSON.stringify(params)]);
+export const useUpdateProduct = () => {
+  const queryClient = useQueryClient();
 
-  return {
-    data, // array de productos
-    count, // total
-    loading,
-    error,
-    refetch: fetchProducts,
-  };
-}
-export function useProduct(id?: string) {
-  const [data, setData] = useState<Product | null>(null);
-  const [loading, setLoading] = useState<boolean>(!!id);
-  const [error, setError] = useState<string | null>(null);
+  return useMutation<
+    Product,
+    NormalizedApiError,
+    { id: string; payload: Partial<Product> }
+  >({
+    mutationFn: ({ id, payload }) => productsApi.update(id, payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.setQueryData(detailKey(data.id), data);
+    },
+  });
+};
 
-  const fetchProduct = useCallback(async () => {
-    if (!id) return;
+export const usePatchProduct = () => {
+  const queryClient = useQueryClient();
 
-    setLoading(true);
-    setError(null);
+  return useMutation<
+    Product,
+    NormalizedApiError,
+    { id: string; payload: Partial<Product> }
+  >({
+    mutationFn: ({ id, payload }) => productsApi.patch(id, payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.setQueryData(detailKey(data.id), data);
+    },
+  });
+};
 
-    try {
-      const response = await apiClient.get<Product>(`/products/list/${id}/`);
-      setData(response);
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Error obteniendo el producto");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
+export const useDeleteProduct = () => {
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchProduct();
-  }, [fetchProduct]);
+  return useMutation<void, NormalizedApiError, string>({
+    mutationFn: (id) => productsApi.remove(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.removeQueries({ queryKey: detailKey(id) });
+    },
+  });
+};
 
-  return {
-    data,
-    loading,
-    error,
-    refetch: fetchProduct,
-  };
-}
-export function useCreateProduct() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [createdItem, setCreatedItem] = useState<Product | null>(null);
+// Brands
+export const useBrandsList = (params?: PaginationParams) =>
+  useQuery<PaginatedResponse<Brand>, NormalizedApiError>({
+    queryKey: brandsKey(params),
+    queryFn: () => productsApi.listBrands(params),
+    placeholderData: (prev) => prev,
+  });
 
-  const createProduct = async (data: Partial<Product>) => {
-    setLoading(true);
-    setError(null);
+export const useBrand = (id?: string) =>
+  useQuery<Brand, NormalizedApiError>({
+    queryKey: brandDetailKey(id),
+    queryFn: () => productsApi.getBrand(id as string),
+    enabled: Boolean(id),
+  });
 
-    try {
-      const response = await apiClient.post<Product>("/products/list/", data);
-      setCreatedItem(response);
-      return response;
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Error creando el producto");
-      }
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+export const useCreateBrand = () => {
+  const queryClient = useQueryClient();
 
-  return {
-    createProduct,
-    loading,
-    error,
-    createdItem,
-  };
-}
-export function useUpdateProduct() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [updatedItem, setUpdatedItem] = useState<Product | null>(null);
+  return useMutation<Brand, NormalizedApiError, Partial<Brand>>({
+    mutationFn: (payload) => productsApi.createBrand(payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["brands"] });
+      queryClient.setQueryData(brandDetailKey(data.id), data);
+    },
+  });
+};
 
-  const updateProduct = async (id: string, data: Partial<Product>) => {
-    setLoading(true);
-    setError(null);
+export const useUpdateBrand = () => {
+  const queryClient = useQueryClient();
 
-    try {
-      const response = await apiClient.put<Product>(
-        `/products/list/${id}/`,
-        data
-      );
-      setUpdatedItem(response);
-      return response;
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Error actualizando el producto");
-      }
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+  return useMutation<
+    Brand,
+    NormalizedApiError,
+    { id: string; payload: Partial<Brand> }
+  >({
+    mutationFn: ({ id, payload }) => productsApi.updateBrand(id, payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["brands"] });
+      queryClient.setQueryData(brandDetailKey(data.id), data);
+    },
+  });
+};
 
-  return {
-    updateProduct,
-    loading,
-    error,
-    updatedItem,
-  };
-}
+export const usePatchBrand = () => {
+  const queryClient = useQueryClient();
 
-export function useDeleteProduct() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<boolean>(false);
+  return useMutation<
+    Brand,
+    NormalizedApiError,
+    { id: string; payload: Partial<Brand> }
+  >({
+    mutationFn: ({ id, payload }) => productsApi.patchBrand(id, payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["brands"] });
+      queryClient.setQueryData(brandDetailKey(data.id), data);
+    },
+  });
+};
 
-  const deleteProduct = async (id: string) => {
-    setLoading(true);
-    setError(null);
-    setSuccess(false);
+export const useDeleteBrand = () => {
+  const queryClient = useQueryClient();
 
-    try {
-      await apiClient.delete(`/products/list/${id}/`);
-      setSuccess(true);
-      return true;
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Error eliminando el producto");
-      }
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
+  return useMutation<void, NormalizedApiError, string>({
+    mutationFn: (id) => productsApi.removeBrand(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["brands"] });
+      queryClient.removeQueries({ queryKey: brandDetailKey(id) });
+    },
+  });
+};
 
-  return {
-    deleteProduct,
-    loading,
-    error,
-    success,
-  };
-}
+// Categories
+export const useCategoriesList = (params?: PaginationParams) =>
+  useQuery<PaginatedResponse<Category>, NormalizedApiError>({
+    queryKey: categoriesKey(params),
+    queryFn: () => productsApi.listCategories(params),
+    placeholderData: (prev) => prev,
+  });
+
+export const useCategory = (id?: string) =>
+  useQuery<Category, NormalizedApiError>({
+    queryKey: categoryDetailKey(id),
+    queryFn: () => productsApi.getCategory(id as string),
+    enabled: Boolean(id),
+  });
+
+export const useCreateCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Category, NormalizedApiError, Partial<Category>>({
+    mutationFn: (payload) => productsApi.createCategory(payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      queryClient.setQueryData(categoryDetailKey(data.id), data);
+    },
+  });
+};
+
+export const useUpdateCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    Category,
+    NormalizedApiError,
+    { id: string; payload: Partial<Category> }
+  >({
+    mutationFn: ({ id, payload }) => productsApi.updateCategory(id, payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      queryClient.setQueryData(categoryDetailKey(data.id), data);
+    },
+  });
+};
+
+export const usePatchCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    Category,
+    NormalizedApiError,
+    { id: string; payload: Partial<Category> }
+  >({
+    mutationFn: ({ id, payload }) => productsApi.patchCategory(id, payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      queryClient.setQueryData(categoryDetailKey(data.id), data);
+    },
+  });
+};
+
+export const useDeleteCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, NormalizedApiError, string>({
+    mutationFn: (id) => productsApi.removeCategory(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      queryClient.removeQueries({ queryKey: categoryDetailKey(id) });
+    },
+  });
+};
+
+// Specs
+export const useProductSpecs = (params?: PaginationParams) =>
+  useQuery<PaginatedResponse<ProductSpec>, NormalizedApiError>({
+    queryKey: specsKey(params),
+    queryFn: () => productsApi.listSpecs(params),
+    placeholderData: (prev) => prev,
+  });
+
+export const useProductSpec = (id?: string) =>
+  useQuery<ProductSpec, NormalizedApiError>({
+    queryKey: specDetailKey(id),
+    queryFn: () => productsApi.getSpec(id as string),
+    enabled: Boolean(id),
+  });
+
+export const useCreateProductSpec = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<ProductSpec, NormalizedApiError, Partial<ProductSpec>>({
+    mutationFn: (payload) => productsApi.createSpec(payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["product-specs"] });
+      queryClient.setQueryData(specDetailKey(data.id), data);
+    },
+  });
+};
+
+export const useUpdateProductSpec = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    ProductSpec,
+    NormalizedApiError,
+    { id: string; payload: Partial<ProductSpec> }
+  >({
+    mutationFn: ({ id, payload }) => productsApi.updateSpec(id, payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["product-specs"] });
+      queryClient.setQueryData(specDetailKey(data.id), data);
+    },
+  });
+};
+
+export const usePatchProductSpec = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    ProductSpec,
+    NormalizedApiError,
+    { id: string; payload: Partial<ProductSpec> }
+  >({
+    mutationFn: ({ id, payload }) => productsApi.patchSpec(id, payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["product-specs"] });
+      queryClient.setQueryData(specDetailKey(data.id), data);
+    },
+  });
+};
+
+export const useDeleteProductSpec = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, NormalizedApiError, string>({
+    mutationFn: (id) => productsApi.removeSpec(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["product-specs"] });
+      queryClient.removeQueries({ queryKey: specDetailKey(id) });
+    },
+  });
+};
+
+export const useBulkUploadProducts = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Record<string, unknown>, NormalizedApiError, FormData>({
+    mutationFn: (formData) => productsApi.bulkUploadProducts(formData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+};
+
+// Alias para compatibilidad previa
+export const useProducts = useProductsList;

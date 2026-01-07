@@ -1,61 +1,39 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import {
-  PaginatedResponse,
-  ApiItemResponse,
-  ProductSend,
-  ProductSpec,
-} from "@/types/types";
-import { apiClient } from "@/api/client";
+import { PaginatedResponse, ProductSpec } from "@/types/types";
+import { productsApi } from "@/lib/api/products";
 
 export const fetchSpecs = createAsyncThunk(
-  "products/fetchAll",
+  "specs/fetchAll",
   async (params?: fetchSpecsParams) => {
-    // Pasamos params a la API
-    const res = await apiClient.get<PaginatedResponse<ProductSpec>>(
-      "/products/specs/",
-      params // apiClient construirá el query string
-    );
-    return res; // devolvemos toda la respuesta con count y results
+    return productsApi.listSpecs(params);
   }
 );
 
 export const fetchSpec = createAsyncThunk(
-  "products/fetchSpecs",
+  "specs/fetchSpecs",
   async (id: string) => {
-    const response = await apiClient.get<ApiItemResponse<ProductSpec>>(
-      `/products/specs/${id}`
-    );
-
-    return response.data; // ✔️
+    return productsApi.retrieveSpec(id);
   }
 );
 
 export const createSpec = createAsyncThunk(
-  "products/createSpect",
+  "specs/createSpec",
   async (data: Partial<ProductSpec>) => {
-    const response = await apiClient.post<ProductSpec>(
-      "/products/specs/",
-      data
-    );
-    return response;
+    return productsApi.createSpec(data);
   }
 );
 
-export const updateSpect = createAsyncThunk(
-  "products/updateSpect",
+export const updateSpec = createAsyncThunk(
+  "specs/updateSpec",
   async ({ id, data }: { id: string; data: Partial<ProductSpec> }) => {
-    const response = await apiClient.put<ProductSpec>(
-      `/products/specs/${id}/`,
-      data
-    );
-    return response;
+    return productsApi.updateSpec(id, data);
   }
 );
 
 export const deleteSpec = createAsyncThunk(
-  "products/deleteSpec",
+  "specs/deleteSpec",
   async (id: string) => {
-    await apiClient.delete(`/products/specs/${id}/`);
+    await productsApi.deleteSpec(id);
     return id; // o un boolean si querés
   }
 );
@@ -65,7 +43,7 @@ interface fetchSpecsParams {
   page_size?: number;
 }
 
-interface ProductsState {
+interface SpecsState {
   list: ProductSpec[];
   count: number;
   loading: boolean;
@@ -88,7 +66,7 @@ interface ProductsState {
   deleteSuccess: boolean;
 }
 
-const initialState: ProductsState = {
+const initialState: SpecsState = {
   list: [],
   count: 0,
   loading: false,
@@ -111,8 +89,8 @@ const initialState: ProductsState = {
   deleteSuccess: false,
 };
 
-export const spectSlice = createSlice({
-  name: "products",
+export const specsSlice = createSlice({
+  name: "specs",
   initialState,
   reducers: {
     resetCreate(state) {
@@ -183,11 +161,11 @@ export const spectSlice = createSlice({
 
     // UPDATE
     builder
-      .addCase(updateSpect.pending, (state) => {
+      .addCase(updateSpec.pending, (state) => {
         state.updating = true;
         state.updateError = null;
       })
-      .addCase(updateSpect.fulfilled, (state, action) => {
+      .addCase(updateSpec.fulfilled, (state, action) => {
         state.updating = false;
         state.updatedItem = action.payload;
 
@@ -196,7 +174,7 @@ export const spectSlice = createSlice({
           p.id === action.payload.id ? action.payload : p
         );
       })
-      .addCase(updateSpect.rejected, (state, action) => {
+      .addCase(updateSpec.rejected, (state, action) => {
         state.updating = false;
         state.updateError =
           action.error.message || "Error actualizando especificación";
@@ -220,6 +198,6 @@ export const spectSlice = createSlice({
   },
 });
 
-export const { resetCreate, resetUpdate, resetDelete } = spectSlice.actions;
+export const { resetCreate, resetUpdate, resetDelete } = specsSlice.actions;
 
-export default spectSlice.reducer;
+export default specsSlice.reducer;

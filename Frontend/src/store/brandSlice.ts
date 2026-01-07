@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { apiClient } from "@/api/client";
 import { Brand, PaginatedResponse } from "@/types/types";
+import { productsApi } from "@/lib/api/products";
 
 interface FetchBrandsParams {
   page?: number;
@@ -58,48 +58,35 @@ const initialState: BrandsState = {
 export const fetchBrands = createAsyncThunk(
   "brands/fetch",
   async (params: FetchBrandsParams) => {
-    const response = await apiClient.get<PaginatedResponse<Brand>>(
-      `/products/brands/`,
-      {
-        params,
-      }
-    );
-    console.log(response, "AAAA RESPONSE ");
-    return response;
+    return productsApi.listBrands(params);
   }
 );
 
 export const fetchBrand = createAsyncThunk(
   "brands/fetchOne",
   async (id: string) => {
-    const response = await apiClient.get<Brand>(`/products/brands/${id}/`);
-    return response;
+    return productsApi.retrieveBrand(id);
   }
 );
 
 export const createBrand = createAsyncThunk(
   "brands/create",
   async (data: Partial<Brand>) => {
-    const response = await apiClient.post<Brand>(`/products/brands/`, data);
-    return response;
+    return productsApi.createBrand(data);
   }
 );
 
 export const updateBrand = createAsyncThunk(
   "brands/update",
   async ({ id, data }: { id: string; data: Partial<Brand> }) => {
-    const response = await apiClient.patch<Brand>(
-      `/products/brands/${id}/`,
-      data
-    );
-    return response;
+    return productsApi.updateBrand(id, data);
   }
 );
 
 export const deleteBrand = createAsyncThunk(
   "brands/delete",
   async (id: string) => {
-    await apiClient.delete(`/products/brands/${id}/`);
+    await productsApi.deleteBrand(id);
     return id;
   }
 );
