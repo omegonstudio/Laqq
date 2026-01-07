@@ -1,0 +1,11 @@
+{
+  "name": "Laqq Frontend Dev",
+  "dockerComposeFile": "../docker-compose.dev.yml",
+  "service": "frontend",
+  "workspaceFolder": "/app",
+  "shutdownAction": "stopCompose",
+  "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"],
+  "settings": {
+    "typescript.tsdk": "/app/node_modules/typescript/lib"
+  }
+}
