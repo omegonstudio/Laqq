@@ -5,6 +5,8 @@ from django.utils import timezone
 from .utils import generate_secure_password, generate_username_from_contact
 from .emails import send_ticket_created_email
 from users.models import User, UserType, UserState
+from attachments.models import Attachment
+from attachments.serializers import AttachmentSerializer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,7 +22,9 @@ class TicketPrioritySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ServiceTicketSerializer(serializers.ModelSerializer):
-    # Campos de solo lectura calculados automáticamente
+    # Lista de todos los attachments asociados al ticket (read-only)
+    attachments = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = ServiceTicket
         fields = '__all__'
@@ -29,8 +33,20 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
             'assigned_at',
             'started_at',
             'resolved_at',
-            'closed_at'
+            'closed_at',
+            'attachments'
         ]
+
+    def get_attachments(self, obj):
+        """
+        Retorna todos los attachments asociados al ticket.
+        Busca por attachable_type='ServiceTicket' y attachable_id=ticket.id
+        """
+        qs = Attachment.objects.filter(
+            attachable_type='ServiceTicket',
+            attachable_id=obj.id
+        ).order_by('-created_at')
+        return AttachmentSerializer(qs, many=True, context=self.context).data
 
     def validate_description(self, value):
         """Validar que la descripción tenga al menos 20 caracteres"""

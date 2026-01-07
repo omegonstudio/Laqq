@@ -1,6 +1,8 @@
 import uuid
 import os
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.text import get_valid_filename
 
@@ -28,7 +30,7 @@ def attachment_upload_to(instance, filename):
 class Attachment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     file_name = models.CharField(max_length=255, blank=True)
-    content_type = models.CharField(max_length=100, blank=True, null=True)
+    content_type_str = models.CharField(max_length=100, blank=True, null=True, help_text="MIME type del archivo")
     size_bytes = models.IntegerField(blank=True, null=True)
 
     file = models.FileField(upload_to=attachment_upload_to, blank=True, null=True)
@@ -36,9 +38,15 @@ class Attachment(models.Model):
     # Clasificación del archivo (imagen/manual/datasheet/otro)
     role = models.CharField(max_length=32, choices=ROLE_CHOICES, blank=True, null=True)
 
-    # mantenemos attachable meta para relaciones genéricas
+    # Relación genérica usando Django contenttypes framework
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, blank=True, null=True)
+    object_id = models.UUIDField(blank=True, null=True, db_index=True)
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    # Campos legacy para compatibilidad (deprecated - usar content_type y object_id)
     attachable_type = models.CharField(max_length=100, blank=True, null=True, db_index=True)
     attachable_id = models.UUIDField(blank=True, null=True, db_index=True)
+
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
 

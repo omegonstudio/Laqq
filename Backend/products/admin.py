@@ -1,4 +1,6 @@
 from django.contrib import admin, messages
+from django.contrib.contenttypes.admin import GenericTabularInline
+from django.conf import settings
 from django.urls import path
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, HttpResponseRedirect
@@ -27,6 +29,41 @@ class ProductSpecificationInline(admin.TabularInline):
     verbose_name = "Especificación Dinámica"
     verbose_name_plural = "Especificaciones Dinámicas"
 
+
+class AttachmentInline(GenericTabularInline):
+    """
+    Inline para gestionar múltiples attachments de un producto.
+    Funciona como las Especificaciones Dinámicas con tabla + botón "Agregar otro/a".
+    """
+    model = Attachment
+    extra = 1
+    fields = ['file', 'role', 'file_name', 'size_bytes', 'created_at']
+    readonly_fields = ['file_name', 'size_bytes', 'created_at']
+    can_delete = True
+    verbose_name = "Archivo Adjunto"
+    verbose_name_plural = "Archivos Adjuntos"
+
+    # Configurar campos de la relación genérica (usa los nuevos campos)
+    ct_field = 'content_type'
+    ct_fk_field = 'object_id'
+
+    # Excluir campos que se setean automáticamente
+    exclude = ['created_by', 'content_type_str', 'attachable_type', 'attachable_id']
+
+    def save_formset(self, request, form, formset, change):
+        """Setear created_by y campos legacy automáticamente al guardar"""
+        instances = formset.save(commit=False)
+        for instance in instances:
+            if not instance.created_by:
+                instance.created_by = request.user if request.user.is_authenticated else None
+            # Poblar campos legacy para compatibilidad con serializers
+            if not instance.attachable_type:
+                instance.attachable_type = 'product'
+            if not instance.attachable_id and instance.object_id:
+                instance.attachable_id = instance.object_id
+            instance.save()
+        formset.save_m2m()
+
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
     list_display = ['name', 'description', 'created_at']
@@ -43,122 +80,23 @@ class CategoryAdmin(admin.ModelAdmin):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = ['product_code', 'name', 'brand', 'category', 'is_active', 'created_at']
-    inlines = [ProductSpecificationInline, ProductRelationInline]
+    inlines = [ProductSpecificationInline, AttachmentInline, ProductRelationInline]
     search_fields = ['product_code', 'name', 'description']
     list_filter = ['brand', 'category', 'is_active']
     ordering = ['-created_at']
 
     change_list_template = "admin/products/change_list.html"
 
-    # Mostrar attachments en la página de cambio como campo readonly
-    readonly_fields = ('attachments_inline',)
+    # Ocultar el campo image_attachment del formulario (ahora se gestiona via inline)
+    exclude = ['image_attachment']
 
     def get_urls(self):
+        """Solo mantener la URL para bulk upload CSV"""
         urls = super().get_urls()
         my_urls = [
             path('bulk-upload/', self.admin_site.admin_view(self.bulk_upload_view), name='products_bulk_upload'),
-            # ruta para upload desde la interfaz de change form: /admin/<app>/<model>/<uuid>/upload-attachment/
-            path('<uuid:object_id>/upload-attachment/', self.admin_site.admin_view(self.upload_attachment_view), name='products_upload_attachment'),
         ]
         return my_urls + urls
-
-    def attachments_inline(self, obj):
-        """
-        Renderiza listado de attachments y enlace al formulario de subida.
-        Si obj es None (nuevo objeto), muestra indicación.
-        """
-        if obj is None:
-            return "Guarda el producto para poder adjuntar archivos."
-        qs = Attachment.objects.filter(attachable_type='product', attachable_id=obj.id).order_by('-created_at')
-        lines = []
-        for a in qs:
-            try:
-                url = a.file.url if a.file else '#'
-            except Exception:
-                url = '#'
-            display = f'<a href="{url}" target="_blank">{a.file_name or a.id}</a> ({a.role or "other"})'
-            lines.append(display)
-        list_html = '<br/>'.join(lines) if lines else '<em>No hay archivos adjuntos</em>'
-
-        # Construir URL absoluta y determinista para la subida
-        app_label = self.model._meta.app_label
-        model_name = self.model._meta.model_name
-        upload_url = f'/admin/{app_label}/{model_name}/{obj.pk}/upload-attachment/'
-
-        form_html = f'''
-            <div style="margin-top:10px;">
-                <strong>Archivos adjuntos:</strong><br/>
-                {list_html}
-                <hr style="margin:8px 0;"/>
-                <a class="button" href="{upload_url}">Subir nuevo archivo</a>
-            </div>
-        '''
-        return mark_safe(form_html)
-    attachments_inline.short_description = 'Attachments'
-
-    def upload_attachment_view(self, request, object_id):
-        """
-        GET: muestra un formulario simple con CSRF para subir un archivo al producto.
-        POST: procesa el archivo y crea un Attachment vinculado al producto.
-        """
-        product = get_object_or_404(Product, pk=object_id)
-
-        if request.method == 'POST':
-            file_obj = request.FILES.get('file')
-            if not file_obj:
-                messages.error(request, "El campo 'file' es requerido.")
-                return HttpResponseRedirect(request.path)
-
-            role = request.POST.get('role')
-            if not role:
-                if file_obj.content_type and file_obj.content_type.startswith('image/'):
-                    role = 'image'
-                else:
-                    role = 'other'
-
-            att = Attachment(
-                file=file_obj,
-                file_name=file_obj.name,
-                size_bytes=getattr(file_obj, 'size', None),
-                content_type=getattr(file_obj, 'content_type', None),
-                role=role,
-                attachable_type='product',
-                attachable_id=product.id,
-                created_by=request.user if request.user.is_authenticated else None,
-            )
-            att.save()
-            messages.success(request, f'Archivo "{att.file_name}" subido correctamente.')
-            # Redirigir al change view del producto
-            return HttpResponseRedirect(f'../{object_id}/change/')
-
-        # GET: render simple form with CSRF token
-        csrf_token = get_token(request)
-        upload_action = request.path  # se postea a la misma URL
-        html = f"""
-            <html>
-              <head><title>Subir archivo a {product.name}</title></head>
-              <body style="font-family: sans-serif; margin: 20px;">
-                <h2>Subir archivo al producto: {product.name}</h2>
-                <form action="{upload_action}" method="post" enctype="multipart/form-data">
-                    <input type="hidden" name="csrfmiddlewaretoken" value="{csrf_token}" />
-                    <p>
-                        <label>Archivo:</label><br/>
-                        <input type="file" name="file" required />
-                    </p>
-                    <p>
-                        <label>Role (opcional):</label><br/>
-                        <input type="text" name="role" placeholder="image|manual|datasheet|other" />
-                    </p>
-                    <p>
-                        <button type="submit">Subir</button>
-                        &nbsp;
-                        <a href="../../{object_id}/change/">Volver</a>
-                    </p>
-                </form>
-              </body>
-            </html>
-        """
-        return HttpResponse(html)
 
     def bulk_upload_view(self, request):
         """

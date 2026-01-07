@@ -16,7 +16,7 @@ class AttachmentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     parser_classes = [MultiPartParser, FormParser]  # permite multipart uploads
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['attachable_type', 'attachable_id', 'created_by', 'content_type', 'role']
+    filterset_fields = ['attachable_type', 'attachable_id', 'created_by', 'content_type_str', 'role']
     search_fields = ['file_name']
     ordering_fields = ['file_name', 'created_at', 'size_bytes']
     ordering = ['-created_at']
@@ -53,8 +53,8 @@ def serve_attachment(request, pk):
         # si no hay URL pública, servimos el archivo directamente
         try:
             file_handle = att.file.open('rb')
-            response = FileResponse(file_handle, content_type=att.content_type or 'application/octet-stream')
-            disposition = 'inline' if att.content_type and att.content_type.startswith('image/') else 'attachment'
+            response = FileResponse(file_handle, content_type=att.content_type_str or 'application/octet-stream')
+            disposition = 'inline' if att.content_type_str and att.content_type_str.startswith('image/') else 'attachment'
             filename = att.file_name or att.file.name.split('/')[-1]
             response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
             return response
@@ -64,8 +64,8 @@ def serve_attachment(request, pk):
 
     # Fallback a BinaryField (compatibilidad), si existe
     if getattr(att, 'data', None):
-        response = HttpResponse(att.data, content_type=att.content_type or 'application/octet-stream')
-        disposition = 'inline' if att.content_type and att.content_type.startswith('image/') else 'attachment'
+        response = HttpResponse(att.data, content_type=att.content_type_str or 'application/octet-stream')
+        disposition = 'inline' if att.content_type_str and att.content_type_str.startswith('image/') else 'attachment'
         response['Content-Disposition'] = f'{disposition}; filename="{att.file_name}"'
         return response
 
