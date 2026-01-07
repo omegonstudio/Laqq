@@ -50,20 +50,6 @@ class AttachmentInline(GenericTabularInline):
     # Excluir campos que se setean automáticamente
     exclude = ['created_by', 'content_type_str', 'attachable_type', 'attachable_id']
 
-    def save_formset(self, request, form, formset, change):
-        """Setear created_by y campos legacy automáticamente al guardar"""
-        instances = formset.save(commit=False)
-        for instance in instances:
-            if not instance.created_by:
-                instance.created_by = request.user if request.user.is_authenticated else None
-            # Poblar campos legacy para compatibilidad con serializers
-            if not instance.attachable_type:
-                instance.attachable_type = 'product'
-            if not instance.attachable_id and instance.object_id:
-                instance.attachable_id = instance.object_id
-            instance.save()
-        formset.save_m2m()
-
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
     list_display = ['name', 'description', 'created_at']
@@ -147,6 +133,22 @@ class ProductAdmin(admin.ModelAdmin):
         # GET
         form = CSVUploadForm()
         return render(request, 'admin/products/import_products.html', {'form': form})
+
+    def save_formset(self, request, form, formset, change):
+        """Setear created_by y campos legacy automáticamente al guardar attachments"""
+        instances = formset.save(commit=False)
+        for instance in instances:
+            # Solo procesar si es un Attachment
+            if isinstance(instance, Attachment):
+                if not instance.created_by:
+                    instance.created_by = request.user if request.user.is_authenticated else None
+                # Poblar campos legacy para compatibilidad con serializers
+                if not instance.attachable_type:
+                    instance.attachable_type = 'product'
+                if not instance.attachable_id and instance.object_id:
+                    instance.attachable_id = instance.object_id
+            instance.save()
+        formset.save_m2m()
 
 @admin.register(ProductSpec)
 class ProductSpecAdmin(admin.ModelAdmin):
