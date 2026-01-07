@@ -31,22 +31,31 @@ const HeroSection = () => {
             <span className="text-foreground">para </span>
             <span className="text-primary">Laboratorio Científico</span>
           </h1>
-          
+
           <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
-            Proveedor especializado en equipo de laboratorio, material de consumo
-            y servicios técnicos para la industria científica
+            Proveedor especializado en equipo de laboratorio, material de
+            consumo y servicios técnicos para la industria científica
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-center mb-8">
-            <SearchBar onSearch={handleSearch} />
+            <SearchBar
+              onSearch={handleSearch}
+              debounceMs={500} // Espera 500ms en lugar de 300ms
+            />
           </div>
 
           <div className="flex flex-wrap gap-4 justify-center">
             <Link to="/products">
-              <Button size="lg" className="px-8">Explorar Productos</Button>
+              <Button size="lg" className="px-8">
+                Explorar Productos
+              </Button>
             </Link>
             <Link to="/quote">
-              <Button variant="outline" size="lg" className="px-8 bg-white/80 dark:bg-background/80 backdrop-blur-sm">
+              <Button
+                variant="outline"
+                size="lg"
+                className="px-8 bg-white/80 dark:bg-background/80 backdrop-blur-sm"
+              >
                 Solicitar Cotización
               </Button>
             </Link>

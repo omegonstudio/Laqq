@@ -57,50 +57,51 @@ export const formStateToCreateRequest = (
     related_product_ids: formState.related?.map((rel) => rel.id) || [],
   };
 };
-
-/**
- * Convierte ProductFormState a ProductUpdateRequest (solo campos del producto)
- */
 export const formStateToUpdateRequest = (
   formState: ProductFormState,
-  initialData: Product, // ← Agregar parámetro para comparar
+  initialData: Product,
   attachmentId?: string | null
 ): ProductUpdateRequest => {
   const updateRequest: Partial<ProductUpdateRequest> = {};
+  let hasRealChanges = false; // ← Bandera para rastrear cambios
 
-  // Solo incluir campos que cambiaron
+  // Comparar name
   if (formState.name !== initialData.name) {
-    updateRequest.name = formState.name;
+    hasRealChanges = true;
   }
 
   const initialBrand = initialData.brand_id || initialData.brand;
   if (formState.brand !== initialBrand) {
     updateRequest.brand_id = formState.brand;
+    hasRealChanges = true;
   }
 
   const initialCategory = initialData.category_id || initialData.category;
   if (formState.category !== initialCategory) {
     updateRequest.category_id = formState.category;
+    hasRealChanges = true;
   }
 
   if (formState.description !== initialData.description) {
     updateRequest.description = formState.description;
+    hasRealChanges = true;
   }
 
   if (formState.product_code !== initialData.product_code) {
     updateRequest.product_code = formState.product_code;
+    hasRealChanges = true;
   }
 
   if (formState.is_active !== initialData.is_active) {
     updateRequest.is_active = formState.is_active;
+    hasRealChanges = true;
   }
 
-  // Imagen: solo si se modificó
   if (attachmentId !== undefined) {
     updateRequest.image_attachment = attachmentId;
+    hasRealChanges = true;
   }
 
-  // Related: comparar arrays
   const currentRelatedIds =
     formState.related?.map((rel) => rel.id).sort() || [];
   const initialRelatedIds =
@@ -108,6 +109,15 @@ export const formStateToUpdateRequest = (
 
   if (JSON.stringify(currentRelatedIds) !== JSON.stringify(initialRelatedIds)) {
     updateRequest.related_product_ids = currentRelatedIds;
+    hasRealChanges = true;
+  }
+
+  // ✅ SIEMPRE incluir name (requerido por backend)
+  updateRequest.name = formState.name;
+
+  // ✅ Si no hubo cambios reales, retornar objeto vacío para que hasProductChanges sea false
+  if (!hasRealChanges) {
+    return {} as ProductUpdateRequest;
   }
 
   return updateRequest as ProductUpdateRequest;
@@ -115,9 +125,6 @@ export const formStateToUpdateRequest = (
 
 export const hasProductChanges = (updateRequest: ProductUpdateRequest) =>
   Object.keys(updateRequest).length > 0;
-/**
- * Estado inicial vacío para formulario nuevo
- */
 export const getEmptyProductFormState = (): ProductFormState => {
   return {
     name: "",

@@ -9,7 +9,6 @@ import ModalProduct from "../molecules/Modals/EditProduct";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { deleteProduct } from "@/store/productSlice";
-import { Toast } from "@radix-ui/react-toast";
 import { toast } from "sonner";
 
 const ProductsTable: React.FC = () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Button from "@/components/atoms/Button";
 import InputField from "@/components/atoms/InputField";
 import { Product, ProductFormState, ProductSpec } from "@/types/types";
@@ -9,6 +9,8 @@ import Modal from "@/components/common/Modal";
 import {
   productToFormState,
   getEmptyProductFormState,
+  formStateToUpdateRequest,
+  hasProductChanges,
 } from "@/utils/productConverters";
 import { toast } from "sonner";
 import {
@@ -16,6 +18,7 @@ import {
   saveProductEntity,
   syncProductSpecifications,
   uploadProductImage,
+  validateProductForm,
 } from "@/utils/productSaveFlow";
 interface ModalProductProps {
   isOpen: boolean;
@@ -78,35 +81,60 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     if (!isOpen) {
       setImagePreview(null);
       setSelectedRelated("");
-    }
-  }, [isOpen]);
 
+      // ✅ Restaurar al estado inicial
+      if (initialData) {
+        const formState = productToFormState(initialData);
+        setLocalState(formState);
+      } else {
+        setLocalState({
+          ...getEmptyProductFormState(),
+          specs: [
+            {
+              key: "",
+              value: "",
+              unit: "",
+              is_visible: true,
+            },
+          ],
+        });
+      }
+    }
+  }, [isOpen, initialData]);
   // ============================================
   // HANDLERS
   // ============================================
+
+  const handleCancel = () => {
+    onClose(); // El useEffect se encargará de resetear el estado
+  };
+  const validation = useMemo(
+    () => validateProductForm(localState),
+    [localState]
+  );
+  const hasChanges = useMemo(() => {
+    if (!initialData) return true; // Nuevo producto = siempre habilitado
+
+    const updateRequest = formStateToUpdateRequest(
+      localState,
+      initialData,
+      undefined
+    );
+    return hasProductChanges(updateRequest);
+  }, [localState, initialData]);
+
+  // ✅ Botón habilitado solo si: formulario válido Y (es nuevo O tiene cambios)
+  const isSaveEnabled = useMemo(() => {
+    return validation.isValid && (!initialData || hasChanges);
+  }, [validation.isValid, initialData, hasChanges]);
 
   const handleSave = async () => {
     try {
       // ============================================
       // VALIDACIÓN: Campos obligatorios
       // ============================================
-      if (!localState.name.trim()) {
-        toast.error("El nombre del producto es obligatorio");
-        return;
-      }
-
-      if (!localState.product_code.trim()) {
-        toast.error("El código del producto es obligatorio");
-        return;
-      }
-
-      if (!localState.category) {
-        toast.error("Debes seleccionar una categoría");
-        return;
-      }
-
-      if (!localState.brand) {
-        toast.error("Debes seleccionar una marca");
+      if (!validation.isValid) {
+        toast.error(validation.errorMessage || "Formulario inválido");
         return;
       }
 
@@ -269,7 +297,12 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   const handleRemoveSpec = (index: number) => {
     const specs = [...localState.specs];
     specs.splice(index, 1);
-    setLocalState({ ...localState, specs: specs.length ? specs : [{ key: "", value: "", unit: "", is_visible: true }] });
+    setLocalState({
+      ...localState,
+      specs: specs.length
+        ? specs
+        : [{ key: "", value: "", unit: "", is_visible: true }],
+    });
   };
 
   // Filtrar productos disponibles
@@ -485,10 +518,14 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           )} */}
         </div>
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={handleCancel}>
             Cancelar
           </Button>
-          <Button variant="primary" onClick={handleSave}>
+          <Button
+            variant="primary"
+            onClick={handleSave}
+            disabled={!isSaveEnabled}
+          >
             Guardar
           </Button>
         </div>

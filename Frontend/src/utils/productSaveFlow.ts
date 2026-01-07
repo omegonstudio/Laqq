@@ -49,7 +49,9 @@ const diffSpecs = (
   const toUpdate = normalizedNext
     .filter(
       (spec) =>
-        spec.id && initialById.has(spec.id) && hasSpecChanged(spec, initialById.get(spec.id)!)
+        spec.id &&
+        initialById.has(spec.id) &&
+        hasSpecChanged(spec, initialById.get(spec.id)!)
     )
     .map((spec) => ({
       id: spec.id as string,
@@ -62,7 +64,9 @@ const diffSpecs = (
       } as Partial<ProductSpec>,
     }));
 
-  const nextIds = new Set(normalizedNext.map((spec) => spec.id).filter(Boolean));
+  const nextIds = new Set(
+    normalizedNext.map((spec) => spec.id).filter(Boolean)
+  );
   const toDelete = normalizedInitial
     .filter((spec) => spec.id && !nextIds.has(spec.id))
     .map((spec) => spec.id as string);
@@ -70,7 +74,8 @@ const diffSpecs = (
   return { toCreate, toUpdate, toDelete };
 };
 
-export const cleanSpecsForSync = (specs: ProductSpec[] = []) => normalizeSpecs(specs);
+export const cleanSpecsForSync = (specs: ProductSpec[] = []) =>
+  normalizeSpecs(specs);
 
 export const uploadProductImage = async (
   imageAttachment: ProductFormState["image_attachment"],
@@ -112,7 +117,6 @@ export const saveProductEntity = async ({
       initialData,
       attachmentId
     );
-
     if (!hasProductChanges(updateRequest)) {
       return initialData;
     }
@@ -125,7 +129,10 @@ export const saveProductEntity = async ({
     ).unwrap();
   }
 
-  const createRequest = formStateToCreateRequest(formState, attachmentId ?? null);
+  const createRequest = formStateToCreateRequest(
+    formState,
+    attachmentId ?? null
+  );
 
   return dispatch(createProduct(createRequest)).unwrap();
 };
@@ -203,3 +210,39 @@ export const saveProductFlow = async ({
   return product;
 };
 
+export const validateProductForm = (
+  formState: ProductFormState
+): {
+  isValid: boolean;
+  errorMessage?: string;
+} => {
+  if (!formState.name.trim()) {
+    return {
+      isValid: false,
+      errorMessage: "El nombre del producto es obligatorio",
+    };
+  }
+
+  if (!formState.product_code.trim()) {
+    return {
+      isValid: false,
+      errorMessage: "El código del producto es obligatorio",
+    };
+  }
+
+  if (!formState.category) {
+    return {
+      isValid: false,
+      errorMessage: "Debes seleccionar una categoría",
+    };
+  }
+
+  if (!formState.brand) {
+    return {
+      isValid: false,
+      errorMessage: "Debes seleccionar una marca",
+    };
+  }
+
+  return { isValid: true };
+};

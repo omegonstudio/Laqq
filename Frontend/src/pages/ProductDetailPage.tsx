@@ -45,10 +45,36 @@ const ProductDetailPage = () => {
     );
   }
 
-  // useEffect(() => {
-  //   setProduct(products.find((p) => p.id === id));
-  // }, [products]);
+  // Mostrar error si hay error
+  if (selectedError) {
+    return (
+      <div className="py-16">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="text-2xl font-bold mb-4">
+            Error al cargar el producto
+          </h1>
+          <p className="text-muted-foreground mb-4">{selectedError}</p>
+          <Link to="/products">
+            <Button>Volver al Catálogo</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
+  // Mostrar mensaje si no hay producto
+  if (!product) {
+    return (
+      <div className="py-16">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="text-2xl font-bold mb-4">Producto no encontrado</h1>
+          <Link to="/products">
+            <Button>Volver al Catálogo</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
   const specColumns = [
     {
       key: "key",
@@ -63,7 +89,7 @@ const ProductDetailPage = () => {
       label: "Unidad",
     },
   ];
-  const productSpecs = product.specs || product.specifications || [];
+  const productSpecs = product.fixed_specs || product.specifications || [];
   const relatedList = product.related || product.related_products || [];
   if (selectedError) {
     return (
@@ -183,9 +209,7 @@ const ProductDetailPage = () => {
                 </thead>
 
                 <tbody>
-                  {productSpecs
-                    .filter((spec) => spec.is_visible !== false)
-                    .map((spec, index) => (
+                  {product.specs.map((spec, index) => (
                     <tr key={index} className="border-t border-border">
                       {specColumns.map((col) => (
                         <td key={col.key} className="px-4 py-3 text-sm">

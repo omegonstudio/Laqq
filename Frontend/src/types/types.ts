@@ -108,12 +108,14 @@ export interface ProductFormState {
 // SPEC - Para enviar al backend
 // ============================================
 export interface ProductSpecCreateRequest extends ProductSpec {}
-export interface ProductSpecUpdateRequest extends Partial<ProductSpecCreateRequest> {}
+export interface ProductSpecUpdateRequest
+  extends Partial<ProductSpecCreateRequest> {}
 export interface Category {
   id: string;
   name: string;
   parent?: string;
-  subcategories?: Category[];
+  description: string;
+  display_order: number;
 }
 
 export interface Brand {
@@ -121,13 +123,6 @@ export interface Brand {
   name: string;
   logo?: string;
   description?: string;
-}
-
-export interface MenuItem {
-  id: string;
-  name: string;
-  href?: string;
-  subcategories?: Category[];
 }
 
 export interface QuoteItem {
@@ -190,3 +185,11 @@ export interface AttachmentResponse {
   created_at: string;
   created_by?: string | null;
 }
+
+export type CategoryUI = {
+  id: string;
+  name: string;
+  description: string;
+  href: string;
+  subcategories: CategoryUI[];
+};
