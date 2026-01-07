@@ -1,5 +1,42 @@
 from django.contrib import admin
+from django.contrib.contenttypes.admin import GenericTabularInline
 from .models import ServiceTicket, TicketState, TicketPriority
+from attachments.models import Attachment
+
+
+class AttachmentInline(GenericTabularInline):
+    """
+    Inline para gestionar múltiples attachments de un ticket.
+    Funciona como tabla con botón "Agregar otro/a Archivo Adjunto".
+    """
+    model = Attachment
+    extra = 1
+    fields = ['file', 'role', 'file_name', 'size_bytes', 'created_at']
+    readonly_fields = ['file_name', 'size_bytes', 'created_at']
+    can_delete = True
+    verbose_name = "Archivo Adjunto"
+    verbose_name_plural = "Archivos Adjuntos"
+
+    # Configurar campos de la relación genérica (usa los nuevos campos)
+    ct_field = 'content_type'
+    ct_fk_field = 'object_id'
+
+    # Excluir campos que se setean automáticamente
+    exclude = ['created_by', 'content_type_str', 'attachable_type', 'attachable_id']
+
+    def save_formset(self, request, form, formset, change):
+        """Setear created_by y campos legacy automáticamente al guardar"""
+        instances = formset.save(commit=False)
+        for instance in instances:
+            if not instance.created_by:
+                instance.created_by = request.user if request.user.is_authenticated else None
+            # Poblar campos legacy para compatibilidad con serializers
+            if not instance.attachable_type:
+                instance.attachable_type = 'ServiceTicket'
+            if not instance.attachable_id and instance.object_id:
+                instance.attachable_id = instance.object_id
+            instance.save()
+        formset.save_m2m()
 
 @admin.register(TicketState)
 class TicketStateAdmin(admin.ModelAdmin):
@@ -30,6 +67,7 @@ class ServiceTicketAdmin(admin.ModelAdmin):
     search_fields = ['ticket_number', 'product_name', 'description', 'resolution_notes']
     list_filter = ['state', 'priority', 'assigned_user', 'created_at']
     ordering = ['-created_at']
+    inlines = [AttachmentInline]
     readonly_fields = [
         'ticket_number',
         'created_at',
@@ -44,7 +82,7 @@ class ServiceTicketAdmin(admin.ModelAdmin):
             'fields': ('ticket_number', 'contact', 'product', 'product_name')
         }),
         ('Descripción del problema', {
-            'fields': ('description', 'attachment')
+            'fields': ('description',)
         }),
         ('Estado y prioridad', {
             'fields': ('state', 'priority', 'assigned_user')

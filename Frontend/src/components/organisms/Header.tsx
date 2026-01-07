@@ -1,15 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import {
-  ChevronDown,
-  Moon,
-  Search,
-  Sun,
-  User,
-  ShoppingCart,
-} from "lucide-react";
+import { Moon, Search, Sun, User, ShoppingCart } from "lucide-react";
 import NavDropdown from "../molecules/NavDropdown";
-import { menuItems } from "@/utils/data/categories";
 import { useTheme } from "next-themes";
 import { useCart } from "@/contexts/CartContext";
 import CartModal from "./CartModal";
@@ -22,14 +14,22 @@ import {
 } from "@/components/ui/select";
 import logoLight from "@/assets/laqq_marca_color_neg.svg";
 import { useAppSelector } from "@/store/hooks";
+import { buildCategories } from "@/utils/data/categories";
 
 const Header = () => {
+  const { list: categories, loading: loadingCategories } = useAppSelector(
+    (state) => state.categories
+  );
+
   const [searchQuery, setSearchQuery] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { theme, setTheme } = useTheme();
   const { totalItems } = useCart();
   const { list: brands, loading } = useAppSelector((state) => state.brands);
+  const navigate = useNavigate();
+  const menuItems = buildCategories(categories);
+  console.log(menuItems, categories);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -39,6 +39,21 @@ const Header = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const handleBrandClick = (brandId: string) => {
+    navigate(`/products?brand=${brandId}`);
+  };
+
+  // Agrega este useEffect después de los otros useEffect en tu Header:
+
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     if (searchQuery.trim()) {
+  //       navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
+  //     }
+  //   }, 300);
+
+  //   return () => clearTimeout(timer);
+  // }, [searchQuery, navigate]);
   return (
     <>
       {/* Spacer to prevent content jump */}
@@ -90,7 +105,16 @@ const Header = () => {
                 />
               </div>
 
-              <Select defaultValue="all">
+              <Select
+                defaultValue="all"
+                onValueChange={(value) => {
+                  if (value === "all") {
+                    navigate(`/products`);
+                  } else {
+                    handleBrandClick(value);
+                  }
+                }}
+              >
                 <SelectTrigger
                   className={`w-[180px] text-sm rounded-2xl px-4 py-2 border transition-colors ${
                     theme === "dark"
@@ -105,7 +129,7 @@ const Header = () => {
                     Todas las marcas
                   </SelectItem>
                   {brands.map((b) => (
-                    <SelectItem value="all" className="rounded-xl">
+                    <SelectItem key={b.id} value={b.id} className="rounded-xl">
                       {b.name}
                     </SelectItem>
                   ))}

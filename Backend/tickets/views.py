@@ -2,8 +2,10 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+from django.contrib.contenttypes.models import ContentType
 from .models import ServiceTicket, TicketState, TicketPriority
 from .serializers import ServiceTicketSerializer, TicketStateSerializer, TicketPrioritySerializer
 from .permissions import IsAdminOrBackOffice, IsClientOwnerOrStaff, CanAttachFiles
@@ -120,55 +122,313 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
             # No fallar la creación del ticket si falla el email
             pass
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanAttachFiles])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanAttachFiles], parser_classes=[MultiPartParser, FormParser, JSONParser])
     def attach_file(self, request, pk=None):
         """
-        Permite adjuntar archivos a un ticket.
+        Permite adjuntar archivos a un ticket (múltiples archivos soportados).
         Clientes solo pueden adjuntar a sus propios tickets.
+
+        Soporta dos formas de envío:
+        1. Multipart/form-data: enviar archivo como 'file' field (recomendado)
+        2. JSON con base64: enviar 'file_name', 'content_type', 'data' (base64)
+
+        Ejemplo multipart:
+            POST /tickets/{id}/attach_file/
+            Content-Type: multipart/form-data
+            file: <binary file>
+            role: 'image' | 'manual' | 'datasheet' | 'other' (opcional)
+
+        Ejemplo JSON base64:
+            POST /tickets/{id}/attach_file/
+            Content-Type: application/json
+            {
+                "file_name": "document.pdf",
+                "content_type": "application/pdf",
+                "data": "base64_encoded_data...",
+                "role": "manual"
+            }
+        """
+        from django.core.files.base import ContentFile
+        import base64
+
+        ticket = self.get_object()
+
+        # Verificar permiso de objeto
+        self.check_object_permissions(request, ticket)
+
+        # Obtener role (opcional)
+        role = request.data.get('role', 'other')
+
+        # Opción 1: Archivo multipart (recomendado)
+        file_obj = request.FILES.get('file')
+
+        if file_obj:
+            try:
+                # Inferir role por MIME si no se especificó
+                if role == 'other' and file_obj.content_type:
+                    if file_obj.content_type.startswith('image/'):
+                        role = 'image'
+                    elif 'pdf' in file_obj.content_type:
+                        role = 'manual'
+
+                # Crear attachment desde archivo multipart
+                ticket_ct = ContentType.objects.get_for_model(ServiceTicket)
+                attachment = Attachment.objects.create(
+                    file=file_obj,
+                    role=role,
+                    content_type_str=file_obj.content_type or 'application/octet-stream',
+                    content_type=ticket_ct,
+                    object_id=ticket.id,
+                    attachable_type='ServiceTicket',  # legacy
+                    attachable_id=ticket.id,  # legacy
+                    created_by=request.user
+                )
+
+                # Si es el primer attachment, establecerlo como principal
+                if not ticket.attachment:
+                    ticket.attachment = attachment
+                    ticket.save()
+
+                return Response({
+                    'message': 'File attached successfully',
+                    'attachment_id': str(attachment.id),
+                    'ticket_number': ticket.ticket_number,
+                    'file_name': attachment.file_name,
+                    'url': request.build_absolute_uri(attachment.url) if attachment.url else None,
+                    'role': attachment.role
+                }, status=status.HTTP_201_CREATED)
+
+            except Exception as e:
+                return Response(
+                    {'error': f'Error uploading file: {str(e)}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Opción 2: Base64 (para compatibilidad con clientes antiguos)
+        file_name = request.data.get('file_name')
+        content_type = request.data.get('content_type')
+        data_base64 = request.data.get('data')
+
+        if not file_name or not data_base64:
+            return Response(
+                {'error': 'Either "file" (multipart) or "file_name" + "data" (base64) are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Decodificar base64
+            file_data = base64.b64decode(data_base64)
+            django_file = ContentFile(file_data, name=file_name)
+
+            # Inferir role por MIME si no se especificó
+            if role == 'other' and content_type:
+                if content_type.startswith('image/'):
+                    role = 'image'
+                elif 'pdf' in content_type:
+                    role = 'manual'
+
+            # Crear attachment
+            ticket_ct = ContentType.objects.get_for_model(ServiceTicket)
+            attachment = Attachment.objects.create(
+                file=django_file,
+                role=role,
+                content_type_str=content_type or 'application/octet-stream',
+                content_type=ticket_ct,
+                object_id=ticket.id,
+                attachable_type='ServiceTicket',  # legacy
+                attachable_id=ticket.id,  # legacy
+                created_by=request.user
+            )
+
+            # Si es el primer attachment, establecerlo como principal
+            if not ticket.attachment:
+                ticket.attachment = attachment
+                ticket.save()
+
+            return Response({
+                'message': 'File attached successfully',
+                'attachment_id': str(attachment.id),
+                'ticket_number': ticket.ticket_number,
+                'file_name': attachment.file_name,
+                'url': request.build_absolute_uri(attachment.url) if attachment.url else None,
+                'role': attachment.role
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response(
+                {'error': f'Error processing base64 file: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanAttachFiles], parser_classes=[MultiPartParser, FormParser])
+    def attach_files(self, request, pk=None):
+        """
+        Permite adjuntar MÚLTIPLES archivos a un ticket en una sola petición.
+        Clientes solo pueden adjuntar a sus propios tickets.
+
+        Ejemplo multipart:
+            POST /tickets/{id}/attach_files/
+            Content-Type: multipart/form-data
+            files: [<binary file 1>, <binary file 2>, ...]
+            role: 'image' | 'manual' | 'datasheet' | 'other' (opcional, aplica a todos)
+
+        Retorna lista de attachments creados.
         """
         ticket = self.get_object()
 
         # Verificar permiso de objeto
         self.check_object_permissions(request, ticket)
 
-        # Obtener datos del archivo
-        file_name = request.data.get('file_name')
-        content_type = request.data.get('content_type')
-        data = request.data.get('data')  # Binary data or base64 string
+        # Obtener todos los archivos
+        files = request.FILES.getlist('files')  # getlist para múltiples archivos
 
-        if not file_name:
+        if not files:
             return Response(
-                {'error': 'file_name is required'},
+                {'error': 'No files provided. Use "files" field for multiple files.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Obtener role (opcional, aplica a todos los archivos)
+        role = request.data.get('role', 'other')
+
+        attachments_created = []
+        errors = []
+
+        for file_obj in files:
+            try:
+                # Inferir role por MIME si no se especificó
+                current_role = role
+                if current_role == 'other' and file_obj.content_type:
+                    if file_obj.content_type.startswith('image/'):
+                        current_role = 'image'
+                    elif 'pdf' in file_obj.content_type:
+                        current_role = 'manual'
+
+                # Crear attachment
+                ticket_ct = ContentType.objects.get_for_model(ServiceTicket)
+                attachment = Attachment.objects.create(
+                    file=file_obj,
+                    role=current_role,
+                    content_type_str=file_obj.content_type or 'application/octet-stream',
+                    content_type=ticket_ct,
+                    object_id=ticket.id,
+                    attachable_type='ServiceTicket',  # legacy
+                    attachable_id=ticket.id,  # legacy
+                    created_by=request.user
+                )
+
+                # Si es el primer attachment y el ticket no tiene uno principal
+                if not ticket.attachment and len(attachments_created) == 0:
+                    ticket.attachment = attachment
+                    ticket.save()
+
+                attachments_created.append({
+                    'attachment_id': str(attachment.id),
+                    'file_name': attachment.file_name,
+                    'url': request.build_absolute_uri(attachment.url) if attachment.url else None,
+                    'role': attachment.role,
+                    'size_bytes': attachment.size_bytes
+                })
+
+            except Exception as e:
+                errors.append({
+                    'file_name': file_obj.name,
+                    'error': str(e)
+                })
+
+        return Response({
+            'message': f'{len(attachments_created)} file(s) attached successfully',
+            'ticket_number': ticket.ticket_number,
+            'attachments': attachments_created,
+            'errors': errors
+        }, status=status.HTTP_201_CREATED if attachments_created else status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['delete'], url_path='attachments/(?P<attachment_id>[^/.]+)', permission_classes=[IsAuthenticated, CanAttachFiles])
+    def delete_attachment(self, request, pk=None, attachment_id=None):
+        """
+        Elimina un attachment específico de un ticket.
+        Clientes solo pueden eliminar attachments de sus propios tickets.
+
+        Ejemplo:
+            DELETE /tickets/{ticket_id}/attachments/{attachment_id}/
+        """
+        ticket = self.get_object()
+
+        # Verificar permiso de objeto
+        self.check_object_permissions(request, ticket)
 
         try:
-            # Crear attachment
-            attachment = Attachment.objects.create(
-                file_name=file_name,
-                content_type=content_type or 'application/octet-stream',
-                data=data,
+            # Buscar el attachment
+            attachment = Attachment.objects.get(
+                id=attachment_id,
                 attachable_type='ServiceTicket',
-                attachable_id=ticket.id,
-                created_by=request.user
+                attachable_id=ticket.id
             )
 
-            # Asociar attachment al ticket
-            ticket.attachment = attachment
-            ticket.save()
+            # Guardar info antes de eliminar
+            file_name = attachment.file_name
+
+            # Si es el attachment principal del ticket, quitarlo
+            if ticket.attachment and ticket.attachment.id == attachment.id:
+                ticket.attachment = None
+                ticket.save()
+
+            # Eliminar el archivo físico si existe
+            if attachment.file:
+                try:
+                    attachment.file.delete()
+                except Exception:
+                    pass
+
+            # Eliminar el registro
+            attachment.delete()
 
             return Response({
-                'message': 'File attached successfully',
-                'attachment_id': str(attachment.id),
-                'ticket_number': ticket.ticket_number,
-                'file_name': attachment.file_name
+                'message': 'Attachment deleted successfully',
+                'file_name': file_name
             }, status=status.HTTP_200_OK)
 
+        except Attachment.DoesNotExist:
+            return Response(
+                {'error': 'Attachment not found or does not belong to this ticket'},
+                status=status.HTTP_404_NOT_FOUND
+            )
         except Exception as e:
             return Response(
-                {'error': str(e)},
+                {'error': f'Error deleting attachment: {str(e)}'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated, CanAttachFiles])
+    def list_attachments(self, request, pk=None):
+        """
+        Lista todos los attachments de un ticket.
+        Clientes solo pueden ver attachments de sus propios tickets.
+
+        Ejemplo:
+            GET /tickets/{id}/list_attachments/
+
+        Nota: Los attachments también se incluyen automáticamente en el serializer del ticket.
+        """
+        ticket = self.get_object()
+
+        # Verificar permiso de objeto
+        self.check_object_permissions(request, ticket)
+
+        # Buscar todos los attachments del ticket
+        attachments = Attachment.objects.filter(
+            attachable_type='ServiceTicket',
+            attachable_id=ticket.id
+        ).order_by('-created_at')
+
+        from attachments.serializers import AttachmentSerializer
+        serializer = AttachmentSerializer(attachments, many=True, context={'request': request})
+
+        return Response({
+            'ticket_number': ticket.ticket_number,
+            'total_attachments': attachments.count(),
+            'attachments': serializer.data
+        }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOrBackOffice])
     def assign(self, request, pk=None):

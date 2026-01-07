@@ -13,7 +13,7 @@ import BackofficeHome from "./pages/BackofficeHome";
 import UsersPage from "./pages/UsersPage";
 import MessagesPage from "./pages/MessagesPage";
 import NotesPage from "./pages/NotesPage";
-import CategoriesPage from "./pages/CategoriesPage";
+import CategoriesPage from "./pages/backoffice/CategoriesPage";
 import ProductsBackoffice from "./pages/backoffice/ProductsBackoffice";
 import QuotesBackoffice from "./pages/backoffice/QuotesBackoffice";
 import MainLayout from "./components/layouts/MainLayout";

@@ -5,7 +5,7 @@ import {
   ProductCreateRequest,
   ProductUpdateRequest,
 } from "@/types/types";
-import { apiClient } from "@/api/client";
+import { productsApi } from "@/lib/api/products";
 
 interface PaginatedResponse<T> {
   results: T[];
@@ -24,46 +24,35 @@ interface FetchProductsParams {
 export const fetchProducts = createAsyncThunk(
   "products/fetchAll",
   async (params?: FetchProductsParams) => {
-    const res = await apiClient.get<PaginatedResponse<Product>>(
-      "/products/list/",
-      params
-    );
-    return res;
+    return productsApi.list(params);
   }
 );
 
 export const fetchProduct = createAsyncThunk(
   "products/fetchProduct",
   async (id: string) => {
-    const response = await apiClient.get<Product>(`/products/list/${id}`);
-    console.log(response, "aaa response");
-    return response;
+    return productsApi.retrieve(id);
   }
 );
 
 export const createProduct = createAsyncThunk(
   "products/createProduct",
   async (data: ProductCreateRequest) => {
-    const response = await apiClient.post<Product>("/products/list/", data);
-    return response;
+    return productsApi.create(data);
   }
 );
 
 export const updateProduct = createAsyncThunk(
   "products/updateProduct",
   async ({ id, data }: { id: string; data: ProductUpdateRequest }) => {
-    const response = await apiClient.patch<Product>(
-      `/products/list/${id}/`,
-      data
-    );
-    return response;
+    return productsApi.update(id, data);
   }
 );
 
 export const deleteProduct = createAsyncThunk(
   "products/deleteProduct",
   async (id: string) => {
-    await apiClient.delete(`/products/list/${id}/`);
+    await productsApi.delete(id);
     return id;
   }
 );

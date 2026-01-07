@@ -1,11 +1,9 @@
+import { CategoryUI } from "@/types/types";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
-import { MenuItem } from "@/types/types";
-import { cn } from "@/lib/utils";
 
 interface NavDropdownProps {
-  item: MenuItem;
+  item: CategoryUI;
 }
 
 const NavDropdown = ({ item }: NavDropdownProps) => {
@@ -26,7 +24,7 @@ const NavDropdown = ({ item }: NavDropdownProps) => {
           <div className="p-2">
             {item.subcategories.map((sub) => (
               <Link
-                key={sub.id}
+                key={sub.name}
                 to={`/products?category=${sub.id}`}
                 className="block px-4 py-2.5 rounded-xl text-sm hover:bg-muted transition-colors"
               >

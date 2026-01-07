@@ -367,17 +367,13 @@ def seed_notes():
 # ============================================================
 
 def seed_attachments():
-    print("Seeding Attachments...")
-
-    Attachment.objects.get_or_create(
-        id=uuid.uuid4(),
-        file_name="dummy.txt",
-        defaults={
-            "content_type": "text/plain",
-            "size_bytes": 10,
-            "data": b"1234567890",
-        }
-    )
+    """
+    Seed de attachments usando FileField.
+    Los attachments reales se crearán cuando los usuarios suban archivos.
+    Esta función está deshabilitada porque no es necesario crear attachments dummy.
+    """
+    print("Seeding Attachments... (skipped - attachments are created dynamically)")
+    pass
 
 
 # ============================================================

@@ -6,23 +6,37 @@
 // ============================================
 
 export interface ProductSpec {
-  id: string;
-  volume: string;
+  id?: string;
+  product?: string; // UUID del producto al que pertenece
+  key: string;
+  value: string;
+  unit?: string;
+  display_order?: number;
+  is_visible?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProductFixedSpec {
+  id?: string;
+  product: string;
   code: string;
-  dimensions: string;
-  cap: string;
-  outlet: string;
-  accuracy: string;
-  precision: string;
-  additional_specs: string;
-  product: string; // UUID del producto al que pertenece
+  volume?: string | null;
+  dimensions?: string | null;
+  cap?: string | null;
+  outlet?: string | null;
+  accuracy?: string | null;
+  precision?: string | null;
+  additional_specs?: Record<string, unknown> | string | null;
+  created_at?: string;
 }
 
 export interface RelatedProduct {
   id: string;
   name: string;
-  brand: string;
+  brand?: string | null;
   product_code: string;
+  relation_type?: string | null;
 }
 
 export interface Attachment {
@@ -39,14 +53,20 @@ export interface Attachment {
 export interface Product {
   id: string;
   name: string;
-  brand: string; // UUID
-  category: string; // UUID
+  brand: string; // Nombre para mostrar
+  brand_id?: string; // UUID
+  category: string; // Nombre para mostrar
+  category_id?: string; // UUID
   description: string;
   product_code: string;
   image_attachment: string | null; // UUID del Attachment
+  image?: string | null; // Solo para mocks/frontend
   is_active: boolean;
-  specs: ProductSpec[]; // Array de objetos completos
-  related: RelatedProduct[]; // Array de objetos completos
+  specs: ProductSpec[]; // Especificaciones dinámicas
+  specifications?: ProductSpec[]; // Alias de backend
+  fixed_specs?: ProductFixedSpec[]; // Especificaciones fijas opcionales
+  related?: RelatedProduct[]; // Alias de productos relacionados
+  related_products?: RelatedProduct[]; // Campo original del backend
 }
 
 // ============================================
@@ -61,7 +81,7 @@ export interface ProductCreateRequest {
   image_attachment?: string | null; // UUID del Attachment
   is_active: boolean;
   related_product_ids?: string[]; // Array de UUIDs
-  specs?: string[]; // Array de UUIDs (si ya existen)
+  related_product_codes?: string[];
 }
 
 export interface ProductUpdateRequest extends Partial<ProductCreateRequest> {
@@ -74,8 +94,8 @@ export interface ProductUpdateRequest extends Partial<ProductCreateRequest> {
 export interface ProductFormState {
   id?: string;
   name: string;
-  brand: string;
-  category: string;
+  brand: string; // UUID
+  category: string; // UUID
   description: string;
   product_code: string;
   image_attachment: File | string | null; // File cuando seleccionas, string (UUID) cuando viene del backend
@@ -87,24 +107,15 @@ export interface ProductFormState {
 // ============================================
 // SPEC - Para enviar al backend
 // ============================================
-export interface ProductSpecCreateRequest {
-  volume: string;
-  code: string;
-  dimensions: string;
-  cap: string;
-  outlet: string;
-  accuracy: string;
-  additional_specs?: string;
-  product: string; // UUID del producto
-}
-
+export interface ProductSpecCreateRequest extends ProductSpec {}
 export interface ProductSpecUpdateRequest
   extends Partial<ProductSpecCreateRequest> {}
 export interface Category {
   id: string;
   name: string;
   parent?: string;
-  subcategories?: Category[];
+  description: string;
+  display_order: number;
 }
 
 export interface Brand {
@@ -112,13 +123,6 @@ export interface Brand {
   name: string;
   logo?: string;
   description?: string;
-}
-
-export interface MenuItem {
-  id: string;
-  name: string;
-  href?: string;
-  subcategories?: Category[];
 }
 
 export interface QuoteItem {
@@ -181,3 +185,11 @@ export interface AttachmentResponse {
   created_at: string;
   created_by?: string | null;
 }
+
+export type CategoryUI = {
+  id: string;
+  name: string;
+  description: string;
+  href: string;
+  subcategories: CategoryUI[];
+};

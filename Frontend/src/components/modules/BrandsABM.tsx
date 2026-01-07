@@ -31,7 +31,6 @@ const BrandsABM = () => {
   const { list: initialBrands, loading } = useAppSelector(
     (state) => state.brands
   );
-  console.log(initialBrands, "INITIAL");
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredBrands = initialBrands.filter(
