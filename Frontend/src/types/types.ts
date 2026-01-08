@@ -64,7 +64,7 @@ export interface Product {
   is_active: boolean;
   specs: ProductSpec[]; // Especificaciones dinámicas
   specifications?: ProductSpec[]; // Alias de backend
-  fixed_specs?: ProductFixedSpec[]; // Especificaciones fijas opcionales
+  fixed_specs: ProductFixedSpec[]; // Especificaciones fijas opcionales
   related?: RelatedProduct[]; // Alias de productos relacionados
   related_products?: RelatedProduct[]; // Campo original del backend
 }
@@ -102,6 +102,7 @@ export interface ProductFormState {
   is_active: boolean;
   specs: ProductSpec[]; // Objetos completos para editar
   related: RelatedProduct[]; // Objetos completos para mostrar
+  fixed_specs: ProductFixedSpec[]; // Especificaciones fijas opcionales
 }
 
 // ============================================
@@ -110,6 +111,7 @@ export interface ProductFormState {
 export interface ProductSpecCreateRequest extends ProductSpec {}
 export interface ProductSpecUpdateRequest
   extends Partial<ProductSpecCreateRequest> {}
+
 export interface Category {
   id: string;
   name: string;

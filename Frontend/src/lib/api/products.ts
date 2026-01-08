@@ -1,12 +1,13 @@
-import { api } from "./client";
-import { cleanParams, QueryParams } from "./utils";
 import {
-  PaginatedResponse,
   Brand,
   Category,
+  PaginatedResponse,
   Product,
+  ProductFixedSpec,
   ProductSpec,
-} from "@/types/api";
+} from "@/types/types";
+import { api } from "./client";
+import { cleanParams, QueryParams } from "./utils";
 
 const BASE = "/products";
 
@@ -25,7 +26,10 @@ export interface ProductListParams extends PaginationParams {
 
 export const productsApi = {
   list: (params?: ProductListParams) =>
-    api.get<PaginatedResponse<Product>>(`${BASE}/list/`, cleanParams(params as QueryParams)),
+    api.get<PaginatedResponse<Product>>(
+      `${BASE}/list/`,
+      cleanParams(params as QueryParams)
+    ),
   get: (id: string) => api.get<Product>(`${BASE}/list/${id}/`),
   create: (data: Partial<Product>) => api.post<Product>(`${BASE}/list/`, data),
   update: (id: string, data: Partial<Product>) =>
@@ -38,16 +42,23 @@ export const productsApi = {
   retrieve: (id: string) => api.get<Product>(`${BASE}/list/${id}/`),
   delete: (id: string) => api.delete<void>(`${BASE}/list/${id}/`),
   listProducts: (params?: ProductListParams) =>
-    api.get<PaginatedResponse<Product>>(`${BASE}/list/`, cleanParams(params as QueryParams)),
+    api.get<PaginatedResponse<Product>>(
+      `${BASE}/list/`,
+      cleanParams(params as QueryParams)
+    ),
   retrieveProduct: (id: string) => api.get<Product>(`${BASE}/list/${id}/`),
-  createProduct: (data: Partial<Product>) => api.post<Product>(`${BASE}/list/`, data),
+  createProduct: (data: Partial<Product>) =>
+    api.post<Product>(`${BASE}/list/`, data),
   updateProduct: (id: string, data: Partial<Product>) =>
     api.put<Product>(`${BASE}/list/${id}/`, data),
   deleteProduct: (id: string) => api.delete<void>(`${BASE}/list/${id}/`),
 
   // Brands
   listBrands: (params?: PaginationParams) =>
-    api.get<PaginatedResponse<Brand>>(`${BASE}/brands/`, cleanParams(params as QueryParams)),
+    api.get<PaginatedResponse<Brand>>(
+      `${BASE}/brands/`,
+      cleanParams(params as QueryParams)
+    ),
   getBrand: (id: string) => api.get<Brand>(`${BASE}/brands/${id}/`),
   retrieveBrand: (id: string) => api.get<Brand>(`${BASE}/brands/${id}/`),
   createBrand: (data: Partial<Brand>) =>
@@ -61,9 +72,11 @@ export const productsApi = {
 
   // Categories
   listCategories: (params?: PaginationParams) =>
-    api.get<PaginatedResponse<Category>>(`${BASE}/categories/`, cleanParams(params as QueryParams)),
-  getCategory: (id: string) =>
-    api.get<Category>(`${BASE}/categories/${id}/`),
+    api.get<PaginatedResponse<Category>>(
+      `${BASE}/categories/`,
+      cleanParams(params as QueryParams)
+    ),
+  getCategory: (id: string) => api.get<Category>(`${BASE}/categories/${id}/`),
   retrieveCategory: (id: string) =>
     api.get<Category>(`${BASE}/categories/${id}/`),
   createCategory: (data: Partial<Category>) =>
@@ -72,16 +85,19 @@ export const productsApi = {
     api.put<Category>(`${BASE}/categories/${id}/`, data),
   patchCategory: (id: string, data: Partial<Category>) =>
     api.patch<Category>(`${BASE}/categories/${id}/`, data),
-  removeCategory: (id: string) =>
-    api.delete<void>(`${BASE}/categories/${id}/`),
-  deleteCategory: (id: string) =>
-    api.delete<void>(`${BASE}/categories/${id}/`),
+  removeCategory: (id: string) => api.delete<void>(`${BASE}/categories/${id}/`),
+  deleteCategory: (id: string) => api.delete<void>(`${BASE}/categories/${id}/`),
 
   // Specs
   listSpecs: (params?: PaginationParams) =>
-    api.get<PaginatedResponse<ProductSpec>>(`${BASE}/specifications/`, cleanParams(params as QueryParams)),
-  getSpec: (id: string) => api.get<ProductSpec>(`${BASE}/specifications/${id}/`),
-  retrieveSpec: (id: string) => api.get<ProductSpec>(`${BASE}/specifications/${id}/`),
+    api.get<PaginatedResponse<ProductSpec>>(
+      `${BASE}/specifications/`,
+      cleanParams(params as QueryParams)
+    ),
+  getSpec: (id: string) =>
+    api.get<ProductSpec>(`${BASE}/specifications/${id}/`),
+  retrieveSpec: (id: string) =>
+    api.get<ProductSpec>(`${BASE}/specifications/${id}/`),
   createSpec: (data: Partial<ProductSpec>) =>
     api.post<ProductSpec>(`${BASE}/specifications/`, data),
   updateSpec: (id: string, data: Partial<ProductSpec>) =>
@@ -91,8 +107,26 @@ export const productsApi = {
   removeSpec: (id: string) => api.delete<void>(`${BASE}/specifications/${id}/`),
   deleteSpec: (id: string) => api.delete<void>(`${BASE}/specifications/${id}/`),
 
+  // Specs
+  listFixedSpecs: (params?: PaginationParams) =>
+    api.get<PaginatedResponse<ProductFixedSpec>>(
+      `${BASE}/specifications/`,
+      cleanParams(params as QueryParams)
+    ),
+  getFixedSpec: (id: string) =>
+    api.get<ProductFixedSpec>(`${BASE}/specs/${id}/`),
+  retrieveFixedSpec: (id: string) =>
+    api.get<ProductFixedSpec>(`${BASE}/specs/${id}/`),
+  createFixedSpec: (data: Partial<ProductFixedSpec>) =>
+    api.post<ProductFixedSpec>(`${BASE}/specs/`, data),
+  updateFixedSpec: (id: string, data: Partial<ProductFixedSpec>) =>
+    api.put<ProductFixedSpec>(`${BASE}/specs/${id}/`, data),
+  patchFixedSpec: (id: string, data: Partial<ProductFixedSpec>) =>
+    api.patch<ProductFixedSpec>(`${BASE}/specs/${id}/`, data),
+  removeFixedSpec: (id: string) => api.delete<void>(`${BASE}/specs/${id}/`),
+  deleteFixedSpec: (id: string) => api.delete<void>(`${BASE}/specs/${id}/`),
+
   // Bulk upload (multipart)
   bulkUploadProducts: (formData: FormData) =>
     api.post<Record<string, unknown>>(`${BASE}/bulk-upload/`, formData),
 };
-

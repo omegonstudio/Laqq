@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Button from "@/components/atoms/Button";
 import InputField from "@/components/atoms/InputField";
-import { Product, ProductFormState, ProductSpec } from "@/types/types";
+import {
+  Product,
+  ProductFixedSpec,
+  ProductFormState,
+  ProductSpec,
+} from "@/types/types";
 import Select from "@/components/atoms/Select";
 import UploadFile from "@/components/atoms/UploadFile";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -11,15 +16,22 @@ import {
   getEmptyProductFormState,
   formStateToUpdateRequest,
   hasProductChanges,
+  haveSpecsChanged,
+  haveFixedSpecsChanged,
 } from "@/utils/productConverters";
 import { toast } from "sonner";
 import {
+  cleanFixedSpecsForSync,
   cleanSpecsForSync,
   saveProductEntity,
+  syncProductFixedSpecifications,
   syncProductSpecifications,
   uploadProductImage,
   validateProductForm,
+  fixedSpecInitialData,
 } from "@/utils/productSaveFlow";
+import { deleteFixedSpec } from "@/store/fixedSpecsSlice";
+
 interface ModalProductProps {
   isOpen: boolean;
   onClose: () => void;
@@ -50,7 +62,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   // ============================================
 
   useEffect(() => {
-    if (initialData) {
+    if (!isNew) {
       // Convertir Product a ProductFormState
       const formState = productToFormState(initialData);
       setLocalState(formState);
@@ -64,18 +76,11 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     } else {
       setLocalState({
         ...getEmptyProductFormState(),
-        specs: [
-          {
-            key: "",
-            value: "",
-            unit: "",
-            is_visible: true,
-          },
-        ],
       });
+
       setImagePreview(null);
     }
-  }, [initialData]);
+  }, [initialData, isNew]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -89,6 +94,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       } else {
         setLocalState({
           ...getEmptyProductFormState(),
+          fixed_specs: [fixedSpecInitialData],
           specs: [
             {
               key: "",
@@ -113,14 +119,27 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     [localState]
   );
   const hasChanges = useMemo(() => {
-    if (!initialData) return true; // Nuevo producto = siempre habilitado
+    if (!initialData) return true;
 
-    const updateRequest = formStateToUpdateRequest(
+    const productUpdate = formStateToUpdateRequest(
       localState,
       initialData,
       undefined
     );
-    return hasProductChanges(updateRequest);
+
+    const productChanged = hasProductChanges(productUpdate);
+
+    const specsChanged = haveSpecsChanged(
+      localState.specs,
+      initialData.specs || initialData.specifications || []
+    );
+
+    const fixedSpecsChanged = haveFixedSpecsChanged(
+      localState.fixed_specs,
+      initialData.fixed_specs
+    );
+
+    return productChanged || specsChanged || fixedSpecsChanged;
   }, [localState, initialData]);
 
   // ✅ Botón habilitado solo si: formulario válido Y (es nuevo O tiene cambios)
@@ -142,8 +161,11 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       // VALIDACIÓN: Filtrar specs vacías
       // ============================================
       const cleanedSpecs = cleanSpecsForSync(localState.specs || []);
+      const cleanedFixedSpecs = cleanFixedSpecsForSync(
+        localState.fixed_specs || []
+      );
 
-      if (localState.id) {
+      if (!isNew) {
         // ========== EDITAR PRODUCTO EXISTENTE ==========
         if (!initialData) {
           toast.error("No se encontraron datos del producto a editar");
@@ -169,6 +191,17 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           initialSpecs: initialData.specs || [],
         });
 
+        if (localState.fixed_specs.length === 0) {
+          dispatch(deleteFixedSpec(product.fixed_specs[0].id!));
+        } else {
+          await syncProductFixedSpecifications({
+            dispatch,
+            productId: product.id,
+            nextSpecs: cleanedFixedSpecs,
+            initialSpecs: initialData.fixed_specs || [],
+          });
+        }
+
         toast.success("Producto actualizado exitosamente");
       } else {
         // ========== CREAR NUEVO PRODUCTO ==========
@@ -191,7 +224,12 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           nextSpecs: cleanedSpecs,
           initialSpecs: [],
         });
-
+        await syncProductFixedSpecifications({
+          dispatch,
+          productId: product.id,
+          nextSpecs: cleanedFixedSpecs,
+          initialSpecs: [],
+        });
         toast.success("Producto creado exitosamente");
       }
 
@@ -283,6 +321,20 @@ const ModalProduct: React.FC<ModalProductProps> = ({
 
     setLocalState({ ...localState, specs: updatedSpecs });
   };
+  const handleFixedSpecChange = (
+    index: number,
+    field: keyof ProductFixedSpec,
+    value: string
+  ) => {
+    const updatedSpecs = localState.fixed_specs.map((spec, i) => {
+      if (i === index) {
+        return { ...spec, [field]: value };
+      }
+      return spec;
+    });
+
+    setLocalState({ ...localState, fixed_specs: updatedSpecs });
+  };
 
   const handleAddSpec = () => {
     setLocalState({
@@ -297,14 +349,28 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   const handleRemoveSpec = (index: number) => {
     const specs = [...localState.specs];
     specs.splice(index, 1);
+
+    const newSpecs = specs.length
+      ? specs
+      : [{ key: "", value: "", unit: "", is_visible: true }];
+
     setLocalState({
       ...localState,
-      specs: specs.length
-        ? specs
-        : [{ key: "", value: "", unit: "", is_visible: true }],
+      specs: newSpecs,
+    });
+    if (localState.specs.length === 1) {
+      setLocalState({
+        ...localState,
+        specs: [],
+      });
+    }
+  };
+  const handleRemoveFixedSpec = () => {
+    setLocalState({
+      ...localState,
+      fixed_specs: [],
     });
   };
-
   // Filtrar productos disponibles
   const availableProducts = products.filter((prod) => {
     if (localState.id && prod.id === localState.id) return false;
@@ -425,6 +491,68 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         </div>
         <br />
         <label>Especificaciones del producto:</label>
+        {localState.fixed_specs.map((s, index) => (
+          <div key={s.id || index} className="flex flex-col gap-5 items-end">
+            <div className="grid grid-cols-3 gap-2 w-full">
+              <InputField
+                label="Código"
+                value={s.code}
+                onChange={(e) =>
+                  handleFixedSpecChange(index, "code", e.target.value)
+                }
+              />
+              <InputField
+                label="Volumen"
+                value={s.volume}
+                onChange={(e) =>
+                  handleFixedSpecChange(index, "volume", e.target.value)
+                }
+              />
+              <InputField
+                label="Dimensiones"
+                value={s.dimensions}
+                onChange={(e) =>
+                  handleFixedSpecChange(index, "dimensions", e.target.value)
+                }
+              />
+              <InputField
+                label="Tapa"
+                value={s.cap}
+                onChange={(e) =>
+                  handleFixedSpecChange(index, "cap", e.target.value)
+                }
+              />
+              <InputField
+                label="Salida"
+                value={s.outlet}
+                onChange={(e) =>
+                  handleFixedSpecChange(index, "outlet", e.target.value)
+                }
+              />
+              <InputField
+                label="Precisión"
+                value={s.accuracy}
+                onChange={(e) =>
+                  handleFixedSpecChange(index, "accuracy", e.target.value)
+                }
+              />
+            </div>
+            <Button
+              variant="ghost"
+              onClick={() => handleRemoveFixedSpec()}
+              className="text-red-500 hover:text-red-600 border"
+            >
+              Eliminar especificaciones
+            </Button>
+            {/* <InputField
+              label="Adicionales"
+              value={s.additional_specs}
+              onChange={(e) =>
+                handleFixedSpecChange(index, "additional_specs", e.target.value)
+              }
+            /> */}
+          </div>
+        ))}
         <div className="space-y-3">
           {localState.specs.map((s, index) => (
             <div

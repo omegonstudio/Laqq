@@ -19,10 +19,11 @@ export function buildCategories(categories: readonly Category[]): CategoryUI[] {
   categories.forEach((cat) => {
     const current = categoryMap.get(cat.id);
     if (!current) return;
-
     if (cat.parent) {
       const parent = categoryMap.get(cat.parent);
       if (parent) {
+        console.log(parent, "PARENT");
+
         parent.subcategories.push(current);
       }
     } else {

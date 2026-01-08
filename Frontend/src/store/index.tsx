@@ -7,6 +7,7 @@ import categoriesReducer from "./categoriesSlice";
 import { setStoreReference } from "@/api/client"; // ✅ Importar
 import brandsReducer from "./brandSlice";
 import specsReducer from "./specsSlice";
+import fixedSpecsReducer from "./fixedSpecsSlice";
 
 const persistConfig = {
   key: "auth",
@@ -23,6 +24,7 @@ export const store = configureStore({
     categories: categoriesReducer,
     brands: brandsReducer,
     specs: specsReducer,
+    fixedSpecs: fixedSpecsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

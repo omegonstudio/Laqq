@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ProductGrid from "@/components/organisms/ProductGrid";
 import SearchBar from "@/components/molecules/SearchBar";
 import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchProducts } from "@/store/productSlice";
+import { useProductFilters } from "@/hooks/useFilters";
 
 const ProductsPage = () => {
+  const { searchParams, setFilter, clearAll } = useProductFilters();
+  const search = searchParams.get("search") ?? "";
+
   const dispatch = useAppDispatch();
   const { list: products, loading: loadingProducts } = useAppSelector(
     (state) => state.products
@@ -14,8 +18,8 @@ const ProductsPage = () => {
   const { list: brands } = useAppSelector((state) => state.brands);
   const { list: categories } = useAppSelector((state) => state.categories);
 
-  const [searchParams, setSearchParams] = useSearchParams();
   const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
+  const navigate = useNavigate();
 
   useEffect(() => {
     dispatch(fetchProducts({ page: 1, page_size: 20 }));
@@ -50,17 +54,7 @@ const ProductsPage = () => {
     setFilteredProducts(filtered);
   }, [searchParams, products]);
 
-  const handleSearch = (query: string) => {
-    if (query) {
-      setSearchParams({ search: query });
-    } else {
-      setSearchParams({});
-    }
-  };
-
-  const clearFilters = () => {
-    setSearchParams({});
-  };
+  const clearFilters = () => clearAll();
 
   // Obtener nombre de la marca activa
   const activeBrandId = searchParams.get("brand");
@@ -75,7 +69,12 @@ const ProductsPage = () => {
             Explora nuestra amplia selección de equipos y material de
             laboratorio
           </p>
-          <SearchBar onSearch={handleSearch} />
+          <SearchBar
+            debounceMs={300}
+            maxResults={5}
+            value={search}
+            onViewAllResults={(q) => setFilter("search", q)}
+          />
 
           {/* Mostrar filtro activo */}
           {activeBrand && (

@@ -5,11 +5,13 @@ import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
 import Button from "@/components/atoms/Button";
 import { Product } from "@/types/types";
-import ModalProduct from "../molecules/Modals/EditProduct";
+
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { deleteProduct } from "@/store/productSlice";
 import { toast } from "sonner";
+import { fixedSpecInitialData } from "@/utils/productSaveFlow";
+import ModalProduct from "../molecules/Modals/EditProduct";
 
 const ProductsTable: React.FC = () => {
   // Redux state
@@ -42,6 +44,7 @@ const ProductsTable: React.FC = () => {
     related_products: [],
     image_attachment: null,
     is_active: true,
+    fixed_specs: [fixedSpecInitialData],
   });
 
   const handleEdit = (product: Product) => {
@@ -77,6 +80,7 @@ const ProductsTable: React.FC = () => {
     setIsNew(true);
     setCurrentProduct({
       id: "",
+      fixed_specs: [fixedSpecInitialData],
       name: "",
       description: "",
       brand: "",

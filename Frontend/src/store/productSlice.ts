@@ -7,11 +7,6 @@ import {
 } from "@/types/types";
 import { productsApi } from "@/lib/api/products";
 
-interface PaginatedResponse<T> {
-  results: T[];
-  count: number;
-}
-
 interface FetchProductsParams {
   page?: number;
   page_size?: number;
@@ -20,7 +15,37 @@ interface FetchProductsParams {
 // ============================================
 // ASYNC THUNKS
 // ============================================
+export const fetchAllProducts = createAsyncThunk(
+  "products/fetchAllRecursive",
+  async (_, { rejectWithValue }) => {
+    try {
+      const allProducts: Product[] = [];
+      let page = 1;
+      const pageSize = 100; // tamaño de página grande para menos requests
+      let hasMore = true;
 
+      while (hasMore) {
+        const response = await productsApi.list({
+          page,
+          page_size: pageSize,
+        });
+
+        allProducts.push(...response.results);
+
+        // Si ya no hay más páginas, salir del loop
+        hasMore = response.next !== null;
+        page++;
+      }
+
+      return {
+        results: allProducts,
+        count: allProducts.length,
+      };
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  }
+);
 export const fetchProducts = createAsyncThunk(
   "products/fetchAll",
   async (params?: FetchProductsParams) => {
@@ -70,7 +95,7 @@ interface ProductsState {
   selected: Product | null;
   selectedLoading: boolean;
   selectedError: string | null;
-
+  allLoaded: boolean;
   creating: boolean;
   createError: string | null;
 
@@ -86,6 +111,7 @@ const initialState: ProductsState = {
   count: 0,
   loading: false,
   error: null,
+  allLoaded: false,
 
   selected: null,
   selectedLoading: false,
@@ -124,6 +150,25 @@ export const productsSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
+    // FETCH ALL (recursivo - para search y filtros)
+    builder
+      .addCase(fetchAllProducts.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.allLoaded = false;
+      })
+      .addCase(fetchAllProducts.fulfilled, (state, action) => {
+        state.loading = false;
+        state.list = action.payload.results;
+        state.count = action.payload.count;
+        state.allLoaded = true;
+      })
+      .addCase(fetchAllProducts.rejected, (state, action) => {
+        state.loading = false;
+        state.error =
+          action.error.message || "Error obteniendo todos los productos";
+        state.allLoaded = false;
+      });
     // FETCH LIST
     builder
       .addCase(fetchProducts.pending, (state) => {

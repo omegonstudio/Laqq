@@ -4,7 +4,7 @@ import BrandsGrid from "@/components/organisms/BrandsGrid";
 import { mockProducts } from "@/utils/data/mockProducts";
 import { useAppDispatch } from "@/store/hooks";
 import { useEffect } from "react";
-import { fetchProducts } from "@/store/productSlice";
+import { fetchAllProducts, fetchProducts } from "@/store/productSlice";
 import { fetchBrand, fetchBrands } from "@/store/brandSlice";
 import { fetchCategories } from "@/store/categoriesSlice";
 
@@ -12,14 +12,16 @@ const HomePage = () => {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    dispatch(fetchProducts({ page: 1, page_size: 10 }));
+    dispatch(fetchAllProducts());
     dispatch(fetchBrands({ page: 1, page_size: 10 }));
     dispatch(fetchCategories({ page: 1, page_size: 10 }));
   }, [dispatch]);
 
   return (
     <>
-      <HeroSection />
+      <div style={{ position: "relative" }}>
+        <HeroSection />
+      </div>
       <ProductGrid
         products={mockProducts.slice(0, 3)}
         title="Productos Destacados"

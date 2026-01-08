@@ -166,7 +166,7 @@ export interface Product {
   updated_at: string;
   specs: ProductSpec[];
   specifications?: ProductSpec[]; // alias de backend
-  fixed_specs?: ProductFixedSpec[];
+  fixed_specs: ProductFixedSpec[];
   related_product_ids?: string[];
   related_product_codes?: string[];
   related_products: RelatedProduct[];
@@ -340,4 +340,3 @@ export interface DashboardSummary {
   stats: DashboardStats;
   recent_activity: DashboardActivityItem[];
 }
-
