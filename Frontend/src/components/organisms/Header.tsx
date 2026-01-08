@@ -1,6 +1,6 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Moon, Search, Sun, User, ShoppingCart } from "lucide-react";
+import { Moon, Sun, User, ShoppingCart } from "lucide-react";
 import NavDropdown from "../molecules/NavDropdown";
 import { useTheme } from "next-themes";
 import { useCart } from "@/contexts/CartContext";
@@ -14,22 +14,17 @@ import {
 } from "@/components/ui/select";
 import logoLight from "@/assets/laqq_marca_color_neg.svg";
 import { useAppSelector } from "@/store/hooks";
-import { buildCategories } from "@/utils/data/categories";
+import SearchBar from "../molecules/SearchBar";
+import { useProductFilters } from "@/hooks/useFilters";
 
 const Header = () => {
-  const { list: categories, loading: loadingCategories } = useAppSelector(
-    (state) => state.categories
-  );
+  const { searchParams, setFilter } = useProductFilters();
 
-  const [searchQuery, setSearchQuery] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { theme, setTheme } = useTheme();
   const { totalItems } = useCart();
   const { list: brands, loading } = useAppSelector((state) => state.brands);
-  const navigate = useNavigate();
-  const menuItems = buildCategories(categories);
-  console.log(menuItems, categories);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -39,21 +34,10 @@ const Header = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const handleBrandClick = (brandId: string) => {
-    navigate(`/products?brand=${brandId}`);
+  const handleViewAllResults = (query: string) => {
+    setFilter("search", query);
   };
 
-  // Agrega este useEffect después de los otros useEffect en tu Header:
-
-  // useEffect(() => {
-  //   const timer = setTimeout(() => {
-  //     if (searchQuery.trim()) {
-  //       navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
-  //     }
-  //   }, 300);
-
-  //   return () => clearTimeout(timer);
-  // }, [searchQuery, navigate]);
   return (
     <>
       {/* Spacer to prevent content jump */}
@@ -82,7 +66,7 @@ const Header = () => {
 
             {/* Search Section */}
             <div className="flex-1 flex items-center justify-center gap-3">
-              <div
+              {/* <div
                 className={`flex items-center rounded-full px-4 py-2 w-full max-w-lg border ${
                   theme === "dark"
                     ? "border-gray-700 bg-transparent"
@@ -103,17 +87,22 @@ const Header = () => {
                     theme === "dark" ? "text-gray-200" : "text-gray-800"
                   }`}
                 />
+              </div> */}
+              <div
+                className={`flex items-start rounded-full px-4 py-2 w-full max-w-lg
+                }`}
+              >
+                <SearchBar
+                  debounceMs={300}
+                  maxResults={5}
+                  radius
+                  onViewAllResults={handleViewAllResults}
+                  value={searchParams.get("search") ?? ""}
+                />
               </div>
-
               <Select
                 defaultValue="all"
-                onValueChange={(value) => {
-                  if (value === "all") {
-                    navigate(`/products`);
-                  } else {
-                    handleBrandClick(value);
-                  }
-                }}
+                onValueChange={(value) => setFilter("brand", value)}
               >
                 <SelectTrigger
                   className={`w-[180px] text-sm rounded-2xl px-4 py-2 border transition-colors ${
@@ -232,9 +221,7 @@ const Header = () => {
                 scrolled ? "" : "justify-center w-full"
               }`}
             >
-              {menuItems.map((item) => (
-                <NavDropdown key={item.id} item={item} />
-              ))}
+              <NavDropdown />
             </div>
 
             {/* Icons in sticky mode */}

@@ -5,7 +5,13 @@ import type {
   ProductCreateRequest,
   ProductUpdateRequest,
   ProductSpec,
+  ProductFixedSpec,
 } from "@/types/types";
+import {
+  fixedSpecInitialData,
+  normalizeFixedSpecs,
+  normalizeSpecs,
+} from "./productSaveFlow";
 
 export const sanitizeSpecs = (specs: ProductSpec[] = []): ProductSpec[] => {
   return specs
@@ -20,7 +26,37 @@ export const sanitizeSpecs = (specs: ProductSpec[] = []): ProductSpec[] => {
     }))
     .filter((spec) => spec.key || spec.value);
 };
-
+export const sanitizeFixedSpecs = (
+  specs: ProductFixedSpec[] = []
+): ProductFixedSpec[] => {
+  return specs
+    .map((spec) => ({
+      id: spec.id,
+      product: spec.product,
+      code: spec.code?.trim() || null, // ✅ Consistente con los demás
+      volume: spec.volume?.trim() || null, // ✅ Trim strings también
+      dimensions: spec.dimensions?.trim() || null,
+      cap: spec.cap?.trim() || null,
+      outlet: spec.outlet?.trim() || null,
+      accuracy: spec.accuracy?.trim() || null,
+      precision: spec.precision?.trim() || null,
+      // additional_specs: spec.additional_specs?.trim() || null,
+      created_at: spec.created_at || "",
+    }))
+    .filter(
+      (spec) =>
+        // ✅ Filtrar solo si tiene ID o algún campo con valor real
+        spec.id ||
+        spec.code ||
+        spec.volume ||
+        spec.dimensions ||
+        spec.cap ||
+        spec.outlet ||
+        spec.accuracy ||
+        spec.precision
+      // spec.additional_specs
+    );
+};
 /**
  * Convierte un Product (del backend) a ProductFormState (para el formulario)
  */
@@ -36,6 +72,7 @@ export const productToFormState = (product: Product): ProductFormState => {
     is_active: product.is_active,
     specs: sanitizeSpecs(product.specs || product.specifications || []),
     related: product.related || product.related_products || [],
+    fixed_specs: sanitizeFixedSpecs(product.fixed_specs || []),
   };
 };
 
@@ -60,7 +97,9 @@ export const formStateToCreateRequest = (
 export const formStateToUpdateRequest = (
   formState: ProductFormState,
   initialData: Product,
-  attachmentId?: string | null
+  attachmentId?: string | null,
+  specs?: ProductSpec[],
+  fixedSpecs?: ProductFixedSpec[]
 ): ProductUpdateRequest => {
   const updateRequest: Partial<ProductUpdateRequest> = {};
   let hasRealChanges = false; // ← Bandera para rastrear cambios
@@ -123,8 +162,33 @@ export const formStateToUpdateRequest = (
   return updateRequest as ProductUpdateRequest;
 };
 
+export const haveSpecsChanged = (
+  currentSpecs: ProductSpec[],
+  initialSpecs: ProductSpec[] = []
+): boolean => {
+  const normalizedCurrent = normalizeSpecs(currentSpecs);
+  const normalizedInitial = normalizeSpecs(initialSpecs);
+
+  return (
+    JSON.stringify(normalizedCurrent) !== JSON.stringify(normalizedInitial)
+  );
+};
+
+export const haveFixedSpecsChanged = (
+  current: ProductFixedSpec[],
+  initial: ProductFixedSpec[] = []
+): boolean => {
+  const normalizedCurrent = normalizeFixedSpecs(current);
+  const normalizedInitial = normalizeFixedSpecs(initial);
+
+  return (
+    JSON.stringify(normalizedCurrent) !== JSON.stringify(normalizedInitial)
+  );
+};
+
 export const hasProductChanges = (updateRequest: ProductUpdateRequest) =>
   Object.keys(updateRequest).length > 0;
+
 export const getEmptyProductFormState = (): ProductFormState => {
   return {
     name: "",
@@ -136,5 +200,6 @@ export const getEmptyProductFormState = (): ProductFormState => {
     is_active: true,
     specs: [],
     related: [],
+    fixed_specs: [fixedSpecInitialData],
   };
 };

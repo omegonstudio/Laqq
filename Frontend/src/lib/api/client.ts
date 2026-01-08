@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { apiClient } from "@/api/client";
 
 export interface NormalizedApiError {
@@ -38,4 +39,3 @@ export const api = {
     wrap(() => apiClient.patch<T>(path, data)),
   delete: <T>(path: string) => wrap(() => apiClient.delete<T>(path)),
 };
-
