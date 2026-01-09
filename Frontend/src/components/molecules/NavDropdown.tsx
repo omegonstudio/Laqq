@@ -18,7 +18,6 @@ const NavDropdown = () => {
   const handleMouseLeave = (index: number) => {
     setIsOpen((prev) => ({ ...prev, [index]: false }));
   };
-  console.log(menuItems, "MENU ITEMS");
   return (
     <div className="flex gap-5">
       {menuItems.map((item, index) => (

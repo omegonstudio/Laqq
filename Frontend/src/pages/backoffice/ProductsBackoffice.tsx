@@ -9,7 +9,7 @@ const ProductsBackoffice = () => {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    dispatch(fetchProducts({ page: 1, page_size: 20 }));
+    dispatch(fetchProducts({ page: 1, page_size: 10 }));
   }, [dispatch]);
 
   useEffect(() => {
