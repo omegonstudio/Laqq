@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from .models import Brand, Category, Product, ProductSpec, ProductRelation, ProductSpecification
+from attachments.models import Attachment
+from attachments.serializers import AttachmentSerializer
 
 class BrandSerializer(serializers.ModelSerializer):
     class Meta:
@@ -12,7 +14,6 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ProductSpecSerializer(serializers.ModelSerializer):
-    """Serializer para especificaciones FIJAS (campos predefinidos)"""
     class Meta:
         model = ProductSpec
         fields = '__all__'
@@ -92,14 +93,20 @@ class ProductSerializer(serializers.ModelSerializer):
     related_products = serializers.SerializerMethodField(read_only=True)
     related = serializers.SerializerMethodField(read_only=True)
 
+    # Mantengo image_attachment como FK (imagen principal opcional)
+    image_url = serializers.SerializerMethodField(read_only=True)
+
+    # Nuevo: lista de attachments asociados al producto (read-only)
+    attachments = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Product
         fields = [
             'id', 'product_code', 'name', 'brand', 'brand_id', 'category', 'category_id', 'description',
-            'image_attachment', 'is_active', 'created_at', 'updated_at',
+            'image_attachment', 'image_url', 'attachments', 'is_active', 'created_at', 'updated_at',
             'fixed_specs', 'specifications', 'specs', 'related_product_ids', 'related_product_codes', 'related_products', 'related'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'related_products', 'fixed_specs', 'specifications', 'related']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'related_products', 'fixed_specs', 'specifications', 'related', 'image_url', 'attachments']
         extra_kwargs = {
             'product_code': {'required': False, 'allow_blank': True}
         }
@@ -116,6 +123,24 @@ class ProductSerializer(serializers.ModelSerializer):
     def get_related(self, obj):
         # Alias para compatibilidad con el frontend actual
         return self.get_related_products(obj)
+
+    def get_image_url(self, obj):
+        """
+        Devuelve URL absoluta de la imagen si existe image_attachment.
+        Requiere que Attachment tenga una propiedad/url accesible (p.ej. Attachment.file.url o Attachment.url).
+        """
+        if obj.image_attachment:
+            url = getattr(obj.image_attachment, 'url', None)
+            request = self.context.get('request')
+            if url and request:
+                return request.build_absolute_uri(url)
+            return url
+        return None
+
+    def get_attachments(self, obj):
+        # Busca attachments vinculados: attachable_type='product' y attachable_id=obj.id
+        qs = Attachment.objects.filter(attachable_type='product', attachable_id=obj.id).order_by('-created_at')
+        return AttachmentSerializer(qs, many=True, context=self.context).data
 
     def _create_relations_by_codes(self, from_product, codes):
         if not codes:
@@ -196,14 +221,13 @@ class ProductSerializer(serializers.ModelSerializer):
                 display_order = spec.pop('display_order', order)
                 payload = {**spec, 'display_order': display_order}
 
-
-            if spec_id and str(spec_id) in existing_specs:
+                if spec_id and str(spec_id) in existing_specs:
                     ProductSpecification.objects.filter(
                         id=spec_id,
                         product=instance
                     ).update(**payload)
                     kept_ids.add(str(spec_id))
-            else:
+                else:
                     created = ProductSpecification.objects.create(
                         product=spec_product,
                         **payload
