@@ -94,7 +94,7 @@ const Header = () => {
               >
                 <SearchBar
                   debounceMs={300}
-                  maxResults={5}
+                  maxResults={10}
                   radius
                   onViewAllResults={handleViewAllResults}
                   value={searchParams.get("search") ?? ""}

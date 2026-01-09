@@ -41,7 +41,7 @@ const HeroSection = () => {
             {" "}
             <SearchBar
               debounceMs={300}
-              maxResults={6}
+              maxResults={10}
               onViewAllResults={handleViewAllResults}
             />
           </div>

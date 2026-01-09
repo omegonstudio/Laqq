@@ -8,7 +8,7 @@ import { fetchProducts } from "@/store/productSlice";
 import { useProductFilters } from "@/hooks/useFilters";
 
 const ProductsPage = () => {
-  const { searchParams, setFilter, clearAll } = useProductFilters();
+  const { searchParams, setFilter, clearAll, clearBrand } = useProductFilters();
   const search = searchParams.get("search") ?? "";
 
   const dispatch = useAppDispatch();
@@ -54,7 +54,7 @@ const ProductsPage = () => {
     setFilteredProducts(filtered);
   }, [searchParams, products]);
 
-  const clearFilters = () => clearAll();
+  const clearFilters = () => clearBrand();
 
   // Obtener nombre de la marca activa
   const activeBrandId = searchParams.get("brand");
@@ -71,7 +71,7 @@ const ProductsPage = () => {
           </p>
           <SearchBar
             debounceMs={300}
-            maxResults={5}
+            maxResults={10}
             value={search}
             onViewAllResults={(q) => setFilter("search", q)}
           />

@@ -16,7 +16,7 @@ interface SearchBarWithResultsProps {
 
 export default function SearchBar({
   debounceMs = 300,
-  maxResults = 5,
+  maxResults = 10,
   loading = false,
   onViewAllResults,
   radius = false,
