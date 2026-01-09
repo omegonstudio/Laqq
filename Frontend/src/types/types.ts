@@ -154,6 +154,9 @@ export interface PaginatedResponse<T> {
   next: string | null;
   previous: string | null;
   results: T[];
+  page_size: number;
+  total_pages: number;
+  current_page: number;
 }
 export interface ApiListResponse<T> {
   data: T[];

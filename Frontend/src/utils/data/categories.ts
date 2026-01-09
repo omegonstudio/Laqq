@@ -22,8 +22,6 @@ export function buildCategories(categories: readonly Category[]): CategoryUI[] {
     if (cat.parent) {
       const parent = categoryMap.get(cat.parent);
       if (parent) {
-        console.log(parent, "PARENT");
-
         parent.subcategories.push(current);
       }
     } else {

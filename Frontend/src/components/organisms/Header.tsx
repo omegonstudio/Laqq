@@ -25,6 +25,7 @@ const Header = () => {
   const { theme, setTheme } = useTheme();
   const { totalItems } = useCart();
   const { list: brands, loading } = useAppSelector((state) => state.brands);
+  const [selectedBrand, setSelectedBrand] = useState("all");
 
   useEffect(() => {
     const handleScroll = () => {
@@ -38,6 +39,27 @@ const Header = () => {
     setFilter("search", query);
   };
 
+  useEffect(() => {
+    const brandParam = searchParams.get("brand");
+    if (brandParam) {
+      setSelectedBrand(brandParam);
+    }
+  }, [searchParams]);
+
+  const handleBrandChange = (value: string) => {
+    setSelectedBrand(value);
+    setFilter("brand", value);
+  };
+
+  // Encontrar el nombre de la marca seleccionada
+  const getSelectedBrandName = () => {
+    if (!searchParams.get("brand")) return "Todas las marcas";
+    if (selectedBrand === "all") return "Todas las marcas";
+    const brand = brands.find((b) => b.id === selectedBrand);
+    return brand?.name || "Todas las marcas";
+  };
+
+  console.log(searchParams.get("search"));
   return (
     <>
       {/* Spacer to prevent content jump */}
@@ -66,28 +88,6 @@ const Header = () => {
 
             {/* Search Section */}
             <div className="flex-1 flex items-center justify-center gap-3">
-              {/* <div
-                className={`flex items-center rounded-full px-4 py-2 w-full max-w-lg border ${
-                  theme === "dark"
-                    ? "border-gray-700 bg-transparent"
-                    : "border-gray-300 bg-white"
-                }`}
-              >
-                <Search
-                  className={`w-4 h-4 mr-2 ${
-                    theme === "dark" ? "text-gray-400" : "text-gray-500"
-                  }`}
-                />
-                <input
-                  type="text"
-                  placeholder="Buscar productos..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`flex-1 text-sm focus:outline-none bg-transparent ${
-                    theme === "dark" ? "text-gray-200" : "text-gray-800"
-                  }`}
-                />
-              </div> */}
               <div
                 className={`flex items-start rounded-full px-4 py-2 w-full max-w-lg
                 }`}
@@ -111,7 +111,7 @@ const Header = () => {
                       : "bg-white border-gray-300 text-gray-700"
                   }`}
                 >
-                  <SelectValue placeholder="Todas las marcas" />
+                  <SelectValue>{getSelectedBrandName()}</SelectValue>
                 </SelectTrigger>
                 <SelectContent className="rounded-2xl">
                   <SelectItem value="all" className="rounded-xl">

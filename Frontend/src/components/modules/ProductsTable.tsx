@@ -5,23 +5,22 @@ import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
 import Button from "@/components/atoms/Button";
 import { Product } from "@/types/types";
-
-import ModalDelete from "../molecules/Modals/ModalDelete";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { deleteProduct } from "@/store/productSlice";
-import { toast } from "sonner";
+import { deleteProduct, fetchProducts } from "@/store/productSlice";
 import { fixedSpecInitialData } from "@/utils/productSaveFlow";
+import { toast } from "sonner";
 import ModalProduct from "../molecules/Modals/EditProduct";
+import ModalDelete from "../molecules/Modals/ModalDelete";
 
 const ProductsTable: React.FC = () => {
   // Redux state
-  const { list: products, loading: loadingProducts } = useAppSelector(
-    (state) => state.products
-  );
+  const {
+    list: products,
+    pagination,
+    loading: loadingProducts,
+  } = useAppSelector((state) => state.products);
 
-  const { list: categories, loading: loadingCategories } = useAppSelector(
-    (state) => state.categories
-  );
+  const { list: categories } = useAppSelector((state) => state.categories);
 
   // Local UI state
   const dispatch = useAppDispatch();
@@ -47,6 +46,11 @@ const ProductsTable: React.FC = () => {
     fixed_specs: [fixedSpecInitialData],
   });
 
+  // Cargar productos inicialmente
+  useEffect(() => {
+    dispatch(fetchProducts({ page: 1, page_size: 10 }));
+  }, [dispatch]);
+
   const handleEdit = (product: Product) => {
     setCurrentProduct(product);
     setIsModalEditOpen(true);
@@ -58,15 +62,21 @@ const ProductsTable: React.FC = () => {
     setIsModalDeleteOpen(true);
   };
 
-  // ✅ Esta función se ejecuta cuando confirmas en el modal
   const handleConfirmDelete = async () => {
     if (!currentProduct) return;
 
     try {
       await dispatch(deleteProduct(currentProduct.id)).unwrap();
-
       toast.success("Producto eliminado exitosamente");
       setIsModalDeleteOpen(false);
+
+      // Recargar la página actual
+      dispatch(
+        fetchProducts({
+          page: pagination.current_page,
+          page_size: pagination.page_size,
+        })
+      );
     } catch (error: unknown) {
       console.error("Error eliminando producto:", error);
       if (error instanceof Error) {
@@ -76,6 +86,7 @@ const ProductsTable: React.FC = () => {
       }
     }
   };
+
   const handleCreate = () => {
     setIsNew(true);
     setCurrentProduct({
@@ -103,6 +114,17 @@ const ProductsTable: React.FC = () => {
     setIsModalEditOpen(true);
   };
 
+  // Handler para cambio de página
+  const handlePageChange = (newPage: number) => {
+    dispatch(
+      fetchProducts({
+        page: newPage,
+        page_size: pagination.page_size,
+      })
+    );
+  };
+
+  // Filtrado local (si quieres mantenerlo, considera hacerlo en el servidor)
   const filteredProducts = products.filter((product: Product) => {
     const brandName = product.brand ? product.brand.toLowerCase() : "";
     const matchesSearch =
@@ -117,13 +139,12 @@ const ProductsTable: React.FC = () => {
   });
 
   const columns = [
-    { key: "product_code", label: "Código", sortable: true },
-    { key: "name", label: "Nombre", sortable: true },
-    { key: "brand", label: "Marca", sortable: true },
-    { key: "category", label: "Categoría", sortable: true },
+    { key: "product_code", label: "Código", sortable: false }, // Desactivar sorting local
+    { key: "name", label: "Nombre", sortable: false },
+    { key: "brand", label: "Marca", sortable: false },
+    { key: "category", label: "Categoría", sortable: false },
   ];
 
-  // ✅ Construir opciones del select con "Todos" al inicio
   const categoryOptions = [
     { value: "all", label: "Todas las categorías" },
     ...categories.map((cat) => ({
@@ -146,7 +167,7 @@ const ProductsTable: React.FC = () => {
           <Select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            options={categoryOptions} // ✅ Usar el array con "Todos"
+            options={categoryOptions}
             className="max-w-xs"
           />
         </div>
@@ -171,6 +192,13 @@ const ProductsTable: React.FC = () => {
             label: "Eliminar",
           },
         ]}
+        serverPagination={{
+          currentPage: pagination.current_page,
+          totalPages: pagination.total_pages,
+          totalItems: pagination.count,
+          pageSize: pagination.page_size,
+          onPageChange: handlePageChange,
+        }}
       />
 
       <ModalProduct

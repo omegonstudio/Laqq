@@ -1,27 +1,40 @@
-// store/productSlice.ts
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { productsApi } from "@/lib/api/products";
 import {
   Product,
   ProductCreateRequest,
   ProductUpdateRequest,
 } from "@/types/types";
-import { productsApi } from "@/lib/api/products";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+
+// ============================================
+// TYPES
+// ============================================
 
 interface FetchProductsParams {
   page?: number;
   page_size?: number;
 }
 
+interface PaginationInfo {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  page_size: number;
+  current_page: number;
+  total_pages: number;
+}
+
 // ============================================
 // ASYNC THUNKS
 // ============================================
+
 export const fetchAllProducts = createAsyncThunk(
   "products/fetchAllRecursive",
   async (_, { rejectWithValue }) => {
     try {
       const allProducts: Product[] = [];
       let page = 1;
-      const pageSize = 100; // tamaño de página grande para menos requests
+      const pageSize = 100;
       let hasMore = true;
 
       while (hasMore) {
@@ -31,8 +44,6 @@ export const fetchAllProducts = createAsyncThunk(
         });
 
         allProducts.push(...response.results);
-
-        // Si ya no hay más páginas, salir del loop
         hasMore = response.next !== null;
         page++;
       }
@@ -40,12 +51,18 @@ export const fetchAllProducts = createAsyncThunk(
       return {
         results: allProducts,
         count: allProducts.length,
+        next: null,
+        previous: null,
+        page_size: allProducts.length,
+        current_page: 1,
+        total_pages: 1,
       };
     } catch (error) {
       return rejectWithValue(error);
     }
   }
 );
+
 export const fetchProducts = createAsyncThunk(
   "products/fetchAll",
   async (params?: FetchProductsParams) => {
@@ -88,14 +105,16 @@ export const deleteProduct = createAsyncThunk(
 
 interface ProductsState {
   list: Product[];
-  count: number;
+  pagination: PaginationInfo;
   loading: boolean;
   error: string | null;
 
   selected: Product | null;
   selectedLoading: boolean;
   selectedError: string | null;
+
   allLoaded: boolean;
+
   creating: boolean;
   createError: string | null;
 
@@ -106,9 +125,18 @@ interface ProductsState {
   deleteError: string | null;
 }
 
+const initialPagination: PaginationInfo = {
+  count: 0,
+  next: null,
+  previous: null,
+  page_size: 20,
+  current_page: 1,
+  total_pages: 1,
+};
+
 const initialState: ProductsState = {
   list: [],
-  count: 0,
+  pagination: initialPagination,
   loading: false,
   error: null,
   allLoaded: false,
@@ -148,6 +176,9 @@ export const productsSlice = createSlice({
       state.selected = null;
       state.selectedError = null;
     },
+    resetPagination(state) {
+      state.pagination = initialPagination;
+    },
   },
   extraReducers: (builder) => {
     // FETCH ALL (recursivo - para search y filtros)
@@ -160,7 +191,14 @@ export const productsSlice = createSlice({
       .addCase(fetchAllProducts.fulfilled, (state, action) => {
         state.loading = false;
         state.list = action.payload.results;
-        state.count = action.payload.count;
+        state.pagination = {
+          count: action.payload.count,
+          next: action.payload.next,
+          previous: action.payload.previous,
+          page_size: action.payload.page_size,
+          current_page: action.payload.current_page,
+          total_pages: action.payload.total_pages,
+        };
         state.allLoaded = true;
       })
       .addCase(fetchAllProducts.rejected, (state, action) => {
@@ -169,6 +207,7 @@ export const productsSlice = createSlice({
           action.error.message || "Error obteniendo todos los productos";
         state.allLoaded = false;
       });
+
     // FETCH LIST
     builder
       .addCase(fetchProducts.pending, (state) => {
@@ -178,7 +217,14 @@ export const productsSlice = createSlice({
       .addCase(fetchProducts.fulfilled, (state, action) => {
         state.loading = false;
         state.list = action.payload.results;
-        state.count = action.payload.count;
+        state.pagination = {
+          count: action.payload.count,
+          next: action.payload.next,
+          previous: action.payload.previous,
+          page_size: action.payload.page_size,
+          current_page: action.payload.current_page,
+          total_pages: action.payload.total_pages,
+        };
       })
       .addCase(fetchProducts.rejected, (state, action) => {
         state.loading = false;
@@ -210,7 +256,7 @@ export const productsSlice = createSlice({
       .addCase(createProduct.fulfilled, (state, action) => {
         state.creating = false;
         state.list.unshift(action.payload);
-        state.count += 1;
+        state.pagination.count += 1;
       })
       .addCase(createProduct.rejected, (state, action) => {
         state.creating = false;
@@ -251,7 +297,7 @@ export const productsSlice = createSlice({
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.deleting = false;
         state.list = state.list.filter((p) => p.id !== action.payload);
-        state.count -= 1;
+        state.pagination.count -= 1;
 
         if (state.selected?.id === action.payload) {
           state.selected = null;
@@ -264,7 +310,12 @@ export const productsSlice = createSlice({
   },
 });
 
-export const { resetCreate, resetUpdate, resetDelete, clearSelected } =
-  productsSlice.actions;
+export const {
+  resetCreate,
+  resetUpdate,
+  resetDelete,
+  clearSelected,
+  resetPagination,
+} = productsSlice.actions;
 
 export default productsSlice.reducer;
