@@ -26,7 +26,16 @@ export const useProductFilters = () => {
     params.delete("search");
     navigateWithParams(params);
   };
-
+  const clearBrand = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("brand");
+    navigateWithParams(params);
+  };
+  const clearCategory = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("category");
+    navigateWithParams(params);
+  };
   const clearAll = () => {
     navigate("/products");
   };
@@ -35,6 +44,8 @@ export const useProductFilters = () => {
     searchParams,
     setFilter,
     clearSearch,
+    clearBrand,
+    clearCategory,
     clearAll,
   };
 };
