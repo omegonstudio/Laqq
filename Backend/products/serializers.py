@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from drf_yasg.utils import swagger_serializer_method
 from .models import Brand, Category, Product, ProductSpec, ProductRelation, ProductSpecification
 from attachments.models import Attachment
 from attachments.serializers import AttachmentSerializer
@@ -56,7 +57,16 @@ class ProductSerializer(serializers.ModelSerializer):
     specifications = ProductSpecificationSerializer(source='dynamic_specifications', many=True, read_only=True)
 
     # Alias de escritura/lectura para specs dinámicas (compatibilidad con frontend)
-    specs = ProductSpecificationSerializer(source='dynamic_specifications', many=True, required=False)
+    # Separamos en dos campos para evitar problemas con Swagger:
+    # - specs: para lectura (SerializerMethodField con decorador para Swagger)
+    # - specs_data: para escritura (JSONField simple, usado en create/update)
+    specs = serializers.SerializerMethodField(read_only=True)
+    specs_data = serializers.ListField(
+        child=serializers.DictField(),
+        required=False,
+        write_only=True,
+        help_text='Array de especificaciones dinámicas: [{"key": "Voltaje", "value": "220V", "unit": "V", "display_order": 0, "is_visible": true}]'
+    )
 
     # Brand as name for reading, ID for writing
     brand = serializers.CharField(source='brand.name', read_only=True)
@@ -103,10 +113,10 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'product_code', 'name', 'brand', 'brand_id', 'category', 'category_id', 'description',
-            'image_attachment', 'image_url', 'attachments', 'is_active', 'created_at', 'updated_at',
-            'fixed_specs', 'specifications', 'specs', 'related_product_ids', 'related_product_codes', 'related_products', 'related'
+            'image_attachment', 'image_url', 'attachments', 'is_active', 'is_featured', 'created_at', 'updated_at',
+            'fixed_specs', 'specifications', 'specs', 'specs_data', 'related_product_ids', 'related_product_codes', 'related_products', 'related'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'related_products', 'fixed_specs', 'specifications', 'related', 'image_url', 'attachments']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'related_products', 'fixed_specs', 'specifications', 'specs', 'related', 'image_url', 'attachments']
         extra_kwargs = {
             'product_code': {'required': False, 'allow_blank': True}
         }
@@ -142,6 +152,11 @@ class ProductSerializer(serializers.ModelSerializer):
         qs = Attachment.objects.filter(attachable_type='product', attachable_id=obj.id).order_by('-created_at')
         return AttachmentSerializer(qs, many=True, context=self.context).data
 
+    @swagger_serializer_method(serializer_or_field=ProductSpecificationSerializer)
+    def get_specs(self, obj):
+        """Retorna las especificaciones dinámicas del producto (mismo que 'specifications')"""
+        return ProductSpecificationSerializer(obj.dynamic_specifications.all(), many=True).data
+
     def _create_relations_by_codes(self, from_product, codes):
         if not codes:
             return
@@ -158,7 +173,8 @@ class ProductSerializer(serializers.ModelSerializer):
         # handle both related_products (instances via PK) and related_product_codes
         related_codes = validated_data.pop('related_product_codes', None)
         related_instances = validated_data.pop('related_products', None)  # source -> related_products
-        specs_data = validated_data.pop('dynamic_specifications', None)
+        # specs_data viene del campo write_only 'specs_data' del serializer
+        specs_data = validated_data.pop('specs_data', None)
 
         product = super().create(validated_data)
 
@@ -191,7 +207,8 @@ class ProductSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         related_codes = validated_data.pop('related_product_codes', None)
         related_instances = validated_data.pop('related_products', None)
-        specs_data = validated_data.pop('dynamic_specifications', None)
+        # specs_data viene del campo write_only 'specs_data' del serializer
+        specs_data = validated_data.pop('specs_data', None)
 
         product = super().update(instance, validated_data)
 
