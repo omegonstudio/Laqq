@@ -58,17 +58,17 @@ class BrandAdmin(admin.ModelAdmin):
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'parent', 'display_order', 'created_at']
+    list_display = ['name', 'parent', 'level', 'display_order', 'created_at']
     search_fields = ['name', 'description']
-    list_filter = ['parent']
+    list_filter = ['level', 'parent']
     ordering = ['display_order', 'name']
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['product_code', 'name', 'brand', 'category', 'is_active', 'created_at']
+    list_display = ['product_code', 'name', 'brand', 'category', 'is_active', 'is_featured', 'created_at']
     inlines = [ProductSpecificationInline, AttachmentInline, ProductRelationInline]
     search_fields = ['product_code', 'name', 'description']
-    list_filter = ['brand', 'category', 'is_active']
+    list_filter = ['brand', 'category', 'is_active', 'is_featured']
     ordering = ['-created_at']
 
     change_list_template = "admin/products/change_list.html"

@@ -37,7 +37,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['parent', 'display_order']
+    filterset_fields = ['parent', 'display_order', 'level']
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'display_order', 'created_at']
     ordering = ['display_order']
@@ -47,10 +47,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         'from_relations__to_product__brand',
         'dynamic_specifications'
     )
-    serializer_class = ProductSerializer    
+    serializer_class = ProductSerializer
     permission_classes = [IsReadOnlyOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['brand', 'category', 'is_active']
+    filterset_fields = ['brand', 'category', 'is_active', 'is_featured']
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'created_at', 'updated_at']
     ordering = ['-created_at']
