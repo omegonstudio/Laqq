@@ -5,6 +5,10 @@ echo "========================================"
 echo "  LAQQ - Initializing Application"
 echo "========================================"
 
+echo "Fixing permissions for static and media volumes..."
+mkdir -p /app/staticfiles /app/mediafiles
+chown -R appuser:appgroup /app/staticfiles /app/mediafiles
+
 echo "Waiting for PostgreSQL..."
 
 while ! pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" > /dev/null 2>&1; do

@@ -33,7 +33,6 @@ jobs:
         env:
           DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
           DROPLET_USER: ${{ secrets.DROPLET_USER }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
         run: |
           ssh -i ~/.ssh/id_rsa "$DROPLET_USER@$DROPLET_HOST" <<'EOF_DEPLOY'
@@ -57,16 +56,15 @@ jobs:
           git pull origin main
 
           echo "[deploy] Construyendo/levantando contenedores"
-          docker compose -f docker-compose.prod.yml pull || true
           docker compose -f docker-compose.prod.yml up -d --build
 
-          echo "[deploy] Aplicando migraciones"
-          docker compose -f docker-compose.prod.yml exec -T backend python manage.py migrate --noinput
+          #echo "[deploy] Aplicando migraciones"
+          #docker compose -f docker-compose.prod.yml exec -T backend python manage.py migrate --noinput
           # Si querés semillas en prod, descomenta la siguiente línea
           # docker compose -f docker-compose.prod.yml exec -T backend python scripts/seed_data.py
 
-          echo "[deploy] Limpieza de imágenes antiguas"
-          docker system prune -f
+          #echo "[deploy] Limpieza de imágenes antiguas"
+          #docker system prune -f
           EOF_DEPLOY
 
       - name: Logs (solo si falla)
