@@ -60,7 +60,7 @@ fi
 
 echo ""
 echo "========================================"
-echo "  LAQQ - Ready!"
+echo "  LAQQ - Ready!!"
 echo "========================================"
 echo ""
 echo "  API: http://localhost:8000"
