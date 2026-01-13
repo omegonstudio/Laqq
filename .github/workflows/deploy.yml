@@ -15,64 +15,48 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configurar SSH
+      - name: Start SSH agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Agregar droplet a known_hosts
+      - name: Add droplet to known_hosts
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Desplegar en droplet
+      - name: Deploy on droplet
         env:
           DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
           DROPLET_USER: ${{ secrets.DROPLET_USER }}
           DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
         run: |
-          ssh "$DROPLET_USER@$DROPLET_HOST" <<'EOF_DEPLOY'
-          set -euo pipefail
+          ssh "$DROPLET_USER@$DROPLET_HOST" << 'EOF'
+          set -e
 
           cd "$DEPLOY_DIR"
-          PREV_COMMIT=$(git rev-parse HEAD || echo "")
 
-          rollback() {
-            if [ -n "$PREV_COMMIT" ]; then
-              echo "[rollback] Restaurando commit $PREV_COMMIT"
-              git reset --hard "$PREV_COMMIT" || true
-              docker compose -f docker-compose.prod.yml up -d || true
-            fi
-          }
-          trap rollback ERR
-
-          echo "[deploy] Actualizando código"
+          echo "[deploy] Pulling code"
           git fetch origin main
-          git checkout main
-          git pull origin main
+          git reset --hard origin/main
 
-          echo "[deploy] Construyendo/levantando contenedores"
+          echo "[deploy] Building & starting containers"
           docker compose -f docker-compose.prod.yml up -d --build
 
-          #echo "[deploy] Aplicando migraciones"
-          #docker compose -f docker-compose.prod.yml exec -T backend python manage.py migrate --noinput
-          # Si querés semillas en prod, descomenta la siguiente línea
-          # docker compose -f docker-compose.prod.yml exec -T backend python scripts/seed_data.py
+          echo "[deploy] Done"
+          EOF
 
-          #echo "[deploy] Limpieza de imágenes antiguas"
-          #docker system prune -f
-          EOF_DEPLOY
-
-      - name: Logs (solo si falla)
+      - name: Logs on failure
         if: failure()
         env:
           DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
           DROPLET_USER: ${{ secrets.DROPLET_USER }}
           DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
         run: |
-          ssh "$DROPLET_USER@$DROPLET_HOST" "cd '$DEPLOY_DIR' && docker compose -f docker-compose.prod.yml logs --tail=200"
-
+          ssh "$DROPLET_USER@$DROPLET_HOST" \
+          "cd '$DEPLOY_DIR' && docker compose -f docker-compose.prod.yml logs --tail=200"
