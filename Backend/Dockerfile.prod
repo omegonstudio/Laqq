@@ -44,11 +44,10 @@ RUN mkdir -p /app/staticfiles /app/mediafiles && \
 COPY --chown=appuser:appgroup entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Ejecutar entrypoint como root para fix de permisos
-ENTRYPOINT ["/app/entrypoint.sh"]
-
 # Luego bajar privilegios
 USER appuser
+# Ejecutar entrypoint como root para fix de permisos
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 EXPOSE 8000
 
