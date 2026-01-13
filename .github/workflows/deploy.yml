@@ -1,15 +1,45 @@
-- name: Deploy on droplet
-  env:
-    DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
-    DROPLET_USER: deploy
-  run: |
-    ssh "$DROPLET_USER@$DROPLET_HOST" <<'EOF'
-    set -e
+name: Deploy to DigitalOcean
 
-    cd /opt/apps/Laqq
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
 
-    git fetch origin main
-    git reset --hard origin/main
+concurrency:
+  group: laqq-deploy
+  cancel-in-progress: false
 
-    docker compose -f docker-compose.prod.yml up -d --build
-    EOF
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add droplet to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy on droplet
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+          DROPLET_USER: deploy
+          DEPLOY_DIR: /opt/apps/Laqq
+        run: |
+          ssh "$DROPLET_USER@$DROPLET_HOST" <<'EOF'
+          set -e
+
+          cd "$DEPLOY_DIR"
+
+          git fetch origin main
+          git reset --hard origin/main
+
+          docker compose -f docker-compose.prod.yml up -d --build
+          EOF
