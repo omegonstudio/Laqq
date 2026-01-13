@@ -5,9 +5,6 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 concurrency:
   group: laqq-deploy
   cancel-in-progress: false
@@ -20,7 +17,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Start SSH agent
+      - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -33,30 +30,17 @@ jobs:
       - name: Deploy on droplet
         env:
           DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
-          DROPLET_USER: ${{ secrets.DROPLET_USER }}
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
+          DROPLET_USER: deploy
+          DEPLOY_DIR: /opt/apps/Laqq
         run: |
-          ssh "$DROPLET_USER@$DROPLET_HOST" << 'EOF'
+          ssh "$DROPLET_USER@$DROPLET_HOST" <<'EOF'
           set -e
 
           cd "$DEPLOY_DIR"
 
-          echo "[deploy] Pulling code"
           git fetch origin main
           git reset --hard origin/main
 
-          echo "[deploy] Building & starting containers"
           docker compose -f docker-compose.prod.yml up -d --build
-
-          echo "[deploy] Done"
           EOF
 
-      - name: Logs on failure
-        if: failure()
-        env:
-          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
-          DROPLET_USER: ${{ secrets.DROPLET_USER }}
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
-        run: |
-          ssh "$DROPLET_USER@$DROPLET_HOST" \
-          "cd '$DEPLOY_DIR' && docker compose -f docker-compose.prod.yml logs --tail=200"
