@@ -10,21 +10,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy-prod:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Preparar SSH
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add droplet to known_hosts
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 -d > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy en Droplet
         run: |
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes \
-          deploy@${{ secrets.DROPLET_HOST }} "bash -s" <<'REMOTE'
+          ssh deploy@${{ secrets.DROPLET_HOST }} "bash -s" <<'REMOTE'
             set -euo pipefail
 
             echo "=== DEPLOY LAQQ PROD ==="
@@ -42,9 +47,6 @@ jobs:
               git clone "$REPO" .
             fi
 
-            echo "-> Guardando commit previo"
-            git rev-parse --short HEAD > .last_deploy_commit || true
-
             echo "-> Fetch + reset"
             git fetch origin
             git reset --hard "origin/$BRANCH"
@@ -52,20 +54,14 @@ jobs:
             echo "-> Bajando stack previo"
             docker compose -f "$COMPOSE" down --remove-orphans || true
 
-            echo "-> Build sin cache"
-            docker compose -f "$COMPOSE" build --no-cache
+            echo "-> Build"
+            docker compose -f "$COMPOSE" build
 
-            echo "-> Levantando stack"
+            echo "-> Up"
             docker compose -f "$COMPOSE" up -d --remove-orphans
 
-            echo "-> Estado de contenedores"
+            echo "-> Estado"
             docker compose -f "$COMPOSE" ps
 
-            echo "-> Logs backend (últimas 120 líneas)"
-            docker logs laqq-backend --tail=120 || true
-
-            echo "-> Logs frontend (últimas 120 líneas)"
-            docker logs laqq-frontend --tail=120 || true
-
-            echo "=== DEPLOY LAQQ COMPLETADO ==="
+            echo "=== DEPLOY COMPLETADO ==="
           REMOTE
