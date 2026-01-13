@@ -598,17 +598,20 @@ class ClientPortalAPITestCase(APITestCase):
         # Autenticar como cliente
         self.client.force_authenticate(user=client_user)
 
-        # Adjuntar archivo (usando campos correctos del modelo Attachment)
+        # Adjuntar archivo usando multipart/form-data
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        test_file = SimpleUploadedFile(
+            'image.jpg',
+            b'fake image content',
+            content_type='image/jpeg'
+        )
         response = self.client.post(
             f'/tickets/{ticket.id}/attach_file/',
-            {
-                'file_name': 'image.jpg',
-                'content_type': 'image/jpeg'
-                # data is optional - omitted for test simplicity
-            }
+            {'file': test_file},
+            format='multipart'
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('attachment_id', response.data)
         self.assertEqual(response.data['file_name'], 'image.jpg')
 

@@ -14,8 +14,12 @@ class Brand(models.Model):
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
     name = models.CharField(max_length=100)
-    parent = models.ForeignKey('self', on_delete=models.SET_NULL, blank=True, null=True)
+    parent = models.ForeignKey('self', on_delete=models.SET_NULL, blank=True, null=True, related_name='children')
     description = models.TextField(blank=True, null=True)
+    level = models.IntegerField(
+        default=0,
+        help_text='Nivel de jerarquía (0 = categoría raíz, 1 = subcategoría, etc.)'
+    )
     display_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -29,6 +33,10 @@ class Product(models.Model):
     description = models.TextField(blank=True, null=True)
     image_attachment = models.ForeignKey(Attachment, on_delete=models.SET_NULL, blank=True, null=True)
     is_active = models.BooleanField(default=True)
+    is_featured = models.BooleanField(
+        default=False,
+        help_text='Marcar como producto destacado para mostrar en sección especial'
+    )
     # Many-to-many self relation via ProductRelation
     related_products = models.ManyToManyField(
         'self',

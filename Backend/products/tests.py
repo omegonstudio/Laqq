@@ -91,6 +91,76 @@ class CategoryAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
+    def test_create_category_with_level(self):
+        """Crear categoría con nivel específico"""
+        data = {
+            'name': 'Subcategory Level 1',
+            'display_order': 2,
+            'level': 1
+        }
+        response = self.client.post('/products/categories/', data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['level'], 1)
+        # Verify in database
+        category = Category.objects.get(name='Subcategory Level 1')
+        self.assertEqual(category.level, 1)
+
+    def test_filter_categories_by_level(self):
+        """Filtrar categorías por nivel de jerarquía"""
+        # Create categories with different levels
+        Category.objects.create(name='Root Category', level=0, display_order=1)
+        Category.objects.create(name='Sub Category', level=1, display_order=2)
+        Category.objects.create(name='Sub Sub Category', level=2, display_order=3)
+
+        # Filter by level 1
+        response = self.client.get('/products/categories/?level=1')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['name'], 'Sub Category')
+
+        # Filter by level 0
+        response = self.client.get('/products/categories/?level=0')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Should return 2: the one from setUp (default level=0) and 'Root Category'
+        self.assertEqual(len(response.data['results']), 2)
+
+    def test_category_hierarchy_levels(self):
+        """Verificar niveles en jerarquía de categorías"""
+        # Create parent category (level 0)
+        parent = Category.objects.create(name='Parent Category', level=0)
+
+        # Create child category (level 1)
+        child = Category.objects.create(
+            name='Child Category',
+            parent=parent,
+            level=1
+        )
+
+        # Create grandchild category (level 2)
+        grandchild = Category.objects.create(
+            name='Grandchild Category',
+            parent=child,
+            level=2
+        )
+
+        # Verify parent has no parent and level 0
+        response = self.client.get(f'/products/categories/{parent.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['level'], 0)
+        self.assertIsNone(response.data['parent'])
+
+        # Verify child has parent and level 1
+        response = self.client.get(f'/products/categories/{child.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['level'], 1)
+        self.assertEqual(str(response.data['parent']), str(parent.id))
+
+        # Verify grandchild has parent and level 2
+        response = self.client.get(f'/products/categories/{grandchild.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['level'], 2)
+        self.assertEqual(str(response.data['parent']), str(child.id))
+
 
 class ProductAPITestCase(APITestCase):
     """Tests para el CRUD de Productos"""
@@ -207,6 +277,95 @@ class ProductAPITestCase(APITestCase):
         response = self.client.get('/products/list/?search=Test')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
+
+    def test_create_featured_product(self):
+        """Crear un producto marcado como destacado"""
+        data = {
+            'name': 'Featured Product',
+            'brand_id': self.brand.id,
+            'category_id': self.category.id,
+            'is_active': True,
+            'is_featured': True
+        }
+        response = self.client.post('/products/list/', data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['is_featured'], True)
+        # Verify in database
+        product = Product.objects.get(name='Featured Product')
+        self.assertTrue(product.is_featured)
+
+    def test_filter_featured_products(self):
+        """Filtrar solo productos destacados"""
+        # Create a featured product
+        Product.objects.create(
+            name='Featured Product',
+            brand=self.brand,
+            category=self.category,
+            is_active=True,
+            is_featured=True
+        )
+        # Create a non-featured product
+        Product.objects.create(
+            name='Regular Product',
+            brand=self.brand,
+            category=self.category,
+            is_active=True,
+            is_featured=False
+        )
+        response = self.client.get('/products/list/?is_featured=true')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['name'], 'Featured Product')
+
+    def test_update_is_featured_field(self):
+        """Actualizar campo is_featured de un producto"""
+        # Initially not featured
+        self.assertFalse(self.product.is_featured)
+        # Update to featured
+        data = {
+            'name': self.product.name,
+            'brand_id': self.brand.id,
+            'category_id': self.category.id,
+            'is_active': True,
+            'is_featured': True
+        }
+        response = self.client.put(f'/products/list/{self.product.id}/', data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['is_featured'], True)
+        # Verify in database
+        self.product.refresh_from_db()
+        self.assertTrue(self.product.is_featured)
+
+    def test_list_only_featured_products(self):
+        """Listar únicamente productos destacados"""
+        # Create multiple products with different featured status
+        Product.objects.create(
+            name='Featured 1',
+            brand=self.brand,
+            category=self.category,
+            is_active=True,
+            is_featured=True
+        )
+        Product.objects.create(
+            name='Featured 2',
+            brand=self.brand,
+            category=self.category,
+            is_active=True,
+            is_featured=True
+        )
+        Product.objects.create(
+            name='Regular',
+            brand=self.brand,
+            category=self.category,
+            is_active=True,
+            is_featured=False
+        )
+        response = self.client.get('/products/list/?is_featured=true')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 2)
+        # Verify all returned products are featured
+        for product in response.data['results']:
+            self.assertTrue(product['is_featured'])
 
 
 class ProductSpecAPITestCase(APITestCase):
