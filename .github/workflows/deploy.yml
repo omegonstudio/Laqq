@@ -20,14 +20,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configurar SSH
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Agregar droplet a known_hosts
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$DROPLET_HOST" >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
 
       - name: Desplegar en droplet
         env:
@@ -35,7 +35,7 @@ jobs:
           DROPLET_USER: ${{ secrets.DROPLET_USER }}
           DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
         run: |
-          ssh -i ~/.ssh/id_rsa "$DROPLET_USER@$DROPLET_HOST" <<'EOF_DEPLOY'
+          ssh "$DROPLET_USER@$DROPLET_HOST" <<'EOF_DEPLOY'
           set -euo pipefail
 
           cd "$DEPLOY_DIR"
@@ -74,4 +74,5 @@ jobs:
           DROPLET_USER: ${{ secrets.DROPLET_USER }}
           DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
         run: |
-          ssh -i ~/.ssh/id_rsa "$DROPLET_USER@$DROPLET_HOST" "cd '$DEPLOY_DIR' && docker compose -f docker-compose.prod.yml logs --tail=200"
+          ssh "$DROPLET_USER@$DROPLET_HOST" "cd '$DEPLOY_DIR' && docker compose -f docker-compose.prod.yml logs --tail=200"
+
