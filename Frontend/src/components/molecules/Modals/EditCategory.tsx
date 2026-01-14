@@ -20,10 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Category } from "@/types/types";
+import { Category, CategoryUI } from "@/types/types";
 
 import { createCategory, updateCategory } from "@/store/categoriesSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { buildCategories } from "@/utils/data/categories";
 
 interface CategoryFormState {
   id?: string;
@@ -31,6 +32,7 @@ interface CategoryFormState {
   parent?: string;
   display_order: number;
   description: string;
+  level: number;
 }
 
 interface ModalCategoryProps {
@@ -46,6 +48,7 @@ const getEmptyCategoryFormState = (): CategoryFormState => ({
   parent: undefined,
   display_order: 0,
   description: "",
+  level: 0,
 });
 
 const categoryToFormState = (category: Category): CategoryFormState => ({
@@ -54,7 +57,32 @@ const categoryToFormState = (category: Category): CategoryFormState => ({
   parent: category.parent,
   display_order: category.display_order,
   description: category.description,
+  level: category.level, // ← IMPORTANTE
 });
+interface FlatCategory {
+  id: string;
+  name: string;
+  level: number;
+}
+const flattenCategories = (
+  categories: CategoryUI[],
+  level = 0,
+  acc: FlatCategory[] = []
+): FlatCategory[] => {
+  for (const cat of categories) {
+    acc.push({
+      id: cat.id,
+      name: cat.name,
+      level,
+    });
+
+    if (cat.subcategories?.length) {
+      flattenCategories(cat.subcategories, level + 1, acc);
+    }
+  }
+
+  return acc;
+};
 
 const validateCategoryForm = (formState: CategoryFormState) => {
   if (!formState.name.trim()) {
@@ -98,9 +126,21 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
   const [initialParentId, setInitialParentId] = useState<string | undefined>(
     undefined
   );
+  const menuItems = buildCategories(categories);
+  const flatCategories = flattenCategories(menuItems);
+
   const dispatch = useAppDispatch();
   const { creating, updating } = useAppSelector((state) => state.categories);
-  console.log(initialData, "INITIAL DATA");
+  console.log(menuItems, "menu items");
+  const allowedParentCategories = useMemo(() => {
+    return flatCategories.filter((cat) => {
+      // no puede ser padre de sí misma
+      if (cat.id === localState.id) return false;
+
+      // regla de niveles
+      return cat.level < localState.level;
+    });
+  }, [flatCategories, localState.id, localState.level]);
 
   useEffect(() => {
     if (initialData) {
@@ -185,6 +225,16 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
   const availableParentCategories = categories.filter(
     (cat) => !localState.id || cat.id !== localState.id
   );
+  const isDisabled = (cat: FlatCategory) => {
+    // nunca permitir auto-referencia
+    if (cat.id === localState.id) return true;
+
+    // permitir mostrar el padre actual aunque sea inválido hoy
+    if (cat.id === localState.parent) return false;
+
+    // regla normal
+    return cat.level >= localState.level;
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -217,30 +267,53 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="parent">Categoría padre (opcional)</Label>
-            <Select
-              value={localState.parent || "none"}
-              onValueChange={(value) =>
-                setLocalState({
-                  ...localState,
-                  parent: value === "none" ? undefined : value,
-                })
-              }
-            >
-              <SelectTrigger id="parent">
-                <SelectValue placeholder="Sin categoría padre (raíz)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin categoría padre (raíz)</SelectItem>
-                {availableParentCategories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>
-                    {cat.name}
+          {localState.level > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="parent">Categoría padre (opcional)</Label>
+              <Select
+                value={localState.parent || "none"}
+                onValueChange={(value) =>
+                  setLocalState({
+                    ...localState,
+                    parent: value === "none" ? undefined : value,
+                  })
+                }
+              >
+                <SelectTrigger id="parent">
+                  <SelectValue placeholder="Sin categoría padre (raíz)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    Sin categoría padre (raíz)
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+
+                  {flatCategories.map((cat) => {
+                    const disabled = isDisabled(cat);
+
+                    return (
+                      <SelectItem
+                        key={cat.id}
+                        value={cat.id}
+                        disabled={disabled}
+                      >
+                        <span
+                          className={`
+          block
+          ${disabled ? "opacity-50" : ""}
+          ${cat.level === 0 ? "uppercase text-sm font-bold" : ""}
+          ${cat.level === 1 ? "text-sm pl-3 font-semibold" : ""}
+          ${cat.level === 2 ? "text-xs pl-6" : ""}
+        `}
+                        >
+                          {cat.name}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="display_order">Orden de visualización</Label>

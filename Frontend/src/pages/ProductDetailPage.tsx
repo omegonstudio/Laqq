@@ -7,6 +7,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearSelected, fetchProduct } from "@/store/productSlice";
 import { unifyProductSpecs } from "@/components/atoms/specsTable";
+import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
 
 const ProductDetailPage = () => {
   const [activeTab, setActiveTab] = useState<"details" | "related">("details");
@@ -96,8 +97,8 @@ const ProductDetailPage = () => {
         <div className="grid lg:grid-cols-2 gap-12 mb-12">
           <div className="bg-muted rounded-2xl p-8 flex items-center justify-center">
             <img
-              src="./laqq_iso_negro.svg"
-              alt={product.name}
+              src={product.image_url ? product.image_url : placeholderImage}
+              alt={product.image_url}
               className="max-w-full max-h-96 object-contain"
             />
           </div>
