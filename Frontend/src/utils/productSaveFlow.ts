@@ -1,11 +1,15 @@
-import { createAttachment } from "@/utils/fileConvert";
 import {
   formStateToCreateRequest,
   formStateToUpdateRequest,
   hasProductChanges,
   sanitizeSpecs,
 } from "@/utils/productConverters";
-import { createProduct, updateProduct } from "@/store/productSlice";
+import {
+  createProduct,
+  fetchProducts,
+  refreshProductEverywhere,
+  updateProduct,
+} from "@/store/productSlice";
 import { createSpec, updateSpec, deleteSpec } from "@/store/specsSlice";
 import { AppDispatch } from "@/store";
 import {
@@ -32,13 +36,19 @@ export const fixedSpecInitialData: ProductFixedSpec = {
   precision: "",
   additional_specs: null,
 };
-export const normalizeSpecs = (specs: ProductSpec[] = []): ProductSpec[] =>
-  sanitizeSpecs(
+export const normalizeSpecs = (specs: ProductSpec[] = []): ProductSpec[] => {
+  return sanitizeSpecs(
     specs.map((spec, index) => ({
-      ...spec,
+      key: spec.key.trim(),
+      product: spec.product,
+      value: spec.value.trim(),
+      unit: spec.unit?.trim() || null,
+      is_visible: spec.is_visible ?? true,
+      id: spec.id,
       display_order: spec.display_order ?? index,
     }))
   );
+};
 
 export const normalizeFixedSpecs = (
   specs: ProductFixedSpec[] = []
@@ -68,15 +78,16 @@ export const normalizeFixedSpecs = (
     );
 };
 
-const hasSpecChanged = (next: ProductSpec, prev: ProductSpec) => {
+const hasSpecChanged = (next: ProductSpec, prev: ProductSpec): boolean => {
   return (
     next.key !== prev.key ||
     next.value !== prev.value ||
     next.unit !== prev.unit ||
-    next.is_visible !== prev.is_visible ||
-    next.display_order !== prev.display_order
+    next.display_order !== prev.display_order ||
+    next.is_visible !== prev.is_visible
   );
 };
+
 const hasSpecFixedChanged = (
   next: ProductFixedSpec,
   prev: ProductFixedSpec
@@ -92,56 +103,30 @@ const hasSpecFixedChanged = (
     next.accuracy !== prev.accuracy ||
     next.precision !== prev.precision ||
     next.additional_specs !== prev.additional_specs;
-  console.log("EJECUTA HAS");
-  if (changed) {
-    console.log("Fixed spec changed:", { next, prev });
-  }
-
   return changed;
 };
 
-const diffSpecs = (
-  productId: string,
-  nextSpecs: ProductSpec[],
-  initialSpecs: ProductSpec[] = []
-) => {
-  const normalizedNext = normalizeSpecs(nextSpecs);
-  const normalizedInitial = normalizeSpecs(initialSpecs);
-  const initialById = new Map(
-    normalizedInitial.filter((spec) => spec.id).map((spec) => [spec.id, spec])
+const diffSpecs = (nextSpecs: ProductSpec[], prevSpecs: ProductSpec[] = []) => {
+  // Crear mapa de specs anteriores por ID para acceso rápido
+  const prevById = new Map(
+    prevSpecs.filter((s) => s.id).map((s) => [s.id!, s])
   );
 
-  const toCreate = normalizedNext
-    .filter((spec) => !spec.id)
-    .map((spec) => ({
-      ...spec,
-      product: productId,
-    }));
+  // Separar specs con y sin ID
+  const toCreate = nextSpecs.filter((s) => !s.id);
 
-  const toUpdate = normalizedNext
-    .filter(
-      (spec) =>
-        spec.id &&
-        initialById.has(spec.id) &&
-        hasSpecChanged(spec, initialById.get(spec.id)!)
-    )
-    .map((spec) => ({
-      id: spec.id as string,
-      data: {
-        key: spec.key,
-        value: spec.value,
-        unit: spec.unit,
-        display_order: spec.display_order,
-        is_visible: spec.is_visible,
-      } as Partial<ProductSpec>,
-    }));
+  const toUpdate = nextSpecs
+    .filter((s) => s.id) // Solo las que tienen ID
+    .filter((s) => {
+      const prev = prevById.get(s.id!);
+      return prev && hasSpecChanged(s, prev); // Solo si cambió algo
+    });
 
-  const nextIds = new Set(
-    normalizedNext.map((spec) => spec.id).filter(Boolean)
-  );
-  const toDelete = normalizedInitial
-    .filter((spec) => spec.id && !nextIds.has(spec.id))
-    .map((spec) => spec.id as string);
+  // IDs que había antes pero ya no están
+  const nextIds = new Set(nextSpecs.filter((s) => s.id).map((s) => s.id));
+  const toDelete = prevSpecs
+    .filter((s) => s.id && !nextIds.has(s.id))
+    .map((s) => s.id!);
 
   return { toCreate, toUpdate, toDelete };
 };
@@ -205,64 +190,48 @@ export const cleanSpecsForSync = (specs: ProductSpec[] = []) =>
 export const cleanFixedSpecsForSync = (specs: ProductFixedSpec[] = []) =>
   normalizeFixedSpecs(specs);
 
-export const uploadProductImage = async (
-  imageAttachment: ProductFormState["image_attachment"],
-  currentAttachment?: string | null
-): Promise<string | null | undefined> => {
-  if (imageAttachment instanceof File) {
-    const attachment = await createAttachment(imageAttachment);
-    return attachment.id;
-  }
-
-  if (typeof imageAttachment === "string") {
-    if (imageAttachment !== currentAttachment) {
-      return imageAttachment;
-    }
-    return undefined;
-  }
-
-  if (imageAttachment === null && currentAttachment) {
-    return null;
-  }
-
-  return undefined;
-};
-
 export const saveProductEntity = async ({
   dispatch,
   formState,
   initialData,
   attachmentId,
+  isNew,
 }: {
   dispatch: AppDispatch;
   formState: ProductFormState;
   initialData?: Product | null;
   attachmentId?: string | null;
+  isNew: boolean;
 }): Promise<Product> => {
-  if (initialData?.id) {
-    const updateRequest = formStateToUpdateRequest(
-      formState,
-      initialData,
-      attachmentId
-    );
-    if (!hasProductChanges(updateRequest)) {
-      return initialData;
-    }
-
+  // ===== CREATE =====
+  if (isNew) {
     return dispatch(
-      updateProduct({
-        id: initialData.id,
-        data: updateRequest,
+      createProduct({
+        ...formState,
+        image_attachment: attachmentId,
+        brand_id: formState.brand, // Map brand to brand_id
+        category_id: formState.category, // Map category to category_id
       })
     ).unwrap();
   }
 
-  const createRequest = formStateToCreateRequest(
+  // ===== UPDATE =====
+  const updateRequest = formStateToUpdateRequest(
     formState,
-    attachmentId ?? null
+    initialData,
+    attachmentId
   );
 
-  return dispatch(createProduct(createRequest)).unwrap();
+  if (!hasProductChanges(updateRequest)) {
+    return initialData;
+  }
+
+  return dispatch(
+    updateProduct({
+      id: initialData.id,
+      data: updateRequest,
+    })
+  ).unwrap();
 };
 
 export const syncProductSpecifications = async ({
@@ -276,29 +245,43 @@ export const syncProductSpecifications = async ({
   nextSpecs: ProductSpec[];
   initialSpecs?: ProductSpec[];
 }) => {
+  const normalizedNext = normalizeSpecs(nextSpecs);
+  const normalizedPrev = normalizeSpecs(initialSpecs);
+
   const { toCreate, toUpdate, toDelete } = diffSpecs(
-    productId,
-    nextSpecs,
-    initialSpecs
+    normalizedNext,
+    normalizedPrev
   );
 
   for (const spec of toCreate) {
-    await dispatch(createSpec(spec)).unwrap();
+    await dispatch(
+      createSpec({
+        ...spec,
+        product: productId, // ← Agregar productId aquí
+      })
+    ).unwrap();
   }
 
   for (const spec of toUpdate) {
     await dispatch(
       updateSpec({
-        id: spec.id,
-        data: spec.data,
+        id: spec.id!,
+        data: {
+          key: spec.key,
+          value: spec.value,
+          unit: spec.unit,
+          display_order: spec.display_order,
+          is_visible: spec.is_visible,
+        },
       })
     ).unwrap();
   }
 
+  // Eliminar specs
   for (const specId of toDelete) {
     await dispatch(deleteSpec(specId)).unwrap();
   }
-
+  dispatch(fetchProducts({ page: 1, page_size: 10 })); // Refrescar el producto después de las operaciones
   return {
     created: toCreate.length,
     updated: toUpdate.length,
@@ -317,8 +300,6 @@ export const syncProductFixedSpecifications = async ({
   nextSpecs: ProductFixedSpec[];
   initialSpecs?: ProductFixedSpec[];
 }) => {
-  console.log("EJECUTA SYNC");
-
   const { toCreate, toUpdate, toDelete } = diffFixedSpecs(
     productId,
     nextSpecs,
@@ -348,37 +329,27 @@ export const syncProductFixedSpecifications = async ({
   };
 };
 
-export const saveProductFlow = async ({
-  dispatch,
-  formState,
-  initialData,
-}: {
-  dispatch: AppDispatch;
-  formState: ProductFormState;
-  initialData?: Product | null;
-}) => {
-  const cleanedSpecs = cleanSpecsForSync(formState.specs);
-  const attachmentId = await uploadProductImage(
-    formState.image_attachment,
-    initialData?.image_attachment ?? null
-  );
+// export const saveProductFlow = async ({
+//   dispatch,
+//   formState,
+//   initialData,
+// }: {
+//   dispatch: AppDispatch;
+//   formState: ProductFormState;
+//   initialData?: Product | null;
+// }) => {
+//   const cleanedSpecs = cleanSpecsForSync(formState.specs);
 
-  const product = await saveProductEntity({
-    dispatch,
-    formState: { ...formState, specs: cleanedSpecs },
-    initialData,
-    attachmentId,
-  });
+//   const product = await saveProductEntity({
+//     dispatch,
+//     formState: { ...formState, specs: cleanedSpecs },
+//     initialData,
+//   });
+//   console.log("DISPATCH REFRESH", product.id);
+//   dispatch(refreshProductEverywhere(product.id));
 
-  await syncProductSpecifications({
-    dispatch,
-    productId: product.id,
-    nextSpecs: cleanedSpecs,
-    initialSpecs: initialData?.specs || [],
-  });
-
-  return product;
-};
+//   return product;
+// };
 
 export const validateProductForm = (
   formState: ProductFormState

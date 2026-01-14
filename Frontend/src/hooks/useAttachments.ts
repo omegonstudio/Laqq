@@ -1,13 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  attachmentsApi,
-  AttachmentListParams,
-} from "@/lib/api/attachments";
-import { Attachment, PaginatedResponse } from "@/types/api";
+import { attachmentsApi, AttachmentListParams } from "@/lib/api/attachments";
+import { PaginatedResponse } from "@/types/api";
 import { NormalizedApiError } from "@/lib/api/client";
+import {
+  Attachment,
+  AttachmentCreatePayload,
+  AttachmentUpdatePayload,
+} from "@/types/types";
 
-const listKey = (params?: AttachmentListParams) => ["attachments", "list", params];
+const listKey = (params?: AttachmentListParams) => [
+  "attachments",
+  "list",
+  params,
+];
+
 const detailKey = (id?: string) => ["attachments", "detail", id];
+
+/* =========================
+   Queries
+========================= */
 
 export const useAttachments = (params?: AttachmentListParams) =>
   useQuery<PaginatedResponse<Attachment>, NormalizedApiError>({
@@ -23,10 +34,14 @@ export const useAttachment = (id?: string) =>
     enabled: Boolean(id),
   });
 
+/* =========================
+   Mutations
+========================= */
+
 export const useCreateAttachment = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Attachment, NormalizedApiError, FormData | Partial<Attachment>>({
+  return useMutation<Attachment, NormalizedApiError, AttachmentCreatePayload>({
     mutationFn: (payload) => attachmentsApi.create(payload),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["attachments"] });
@@ -41,7 +56,7 @@ export const useUpdateAttachment = () => {
   return useMutation<
     Attachment,
     NormalizedApiError,
-    { id: string; payload: FormData | Partial<Attachment> }
+    { id: string; payload: AttachmentUpdatePayload }
   >({
     mutationFn: ({ id, payload }) => attachmentsApi.update(id, payload),
     onSuccess: (data) => {
@@ -51,13 +66,17 @@ export const useUpdateAttachment = () => {
   });
 };
 
+/**
+ * PATCH solo para metadata
+ * (no File, no multipart)
+ */
 export const usePatchAttachment = () => {
   const queryClient = useQueryClient();
 
   return useMutation<
     Attachment,
     NormalizedApiError,
-    { id: string; payload: Partial<Attachment> }
+    { id: string; payload: Partial<Omit<AttachmentUpdatePayload, "file">> }
   >({
     mutationFn: ({ id, payload }) => attachmentsApi.patch(id, payload),
     onSuccess: (data) => {
@@ -78,4 +97,3 @@ export const useDeleteAttachment = () => {
     },
   });
 };
-

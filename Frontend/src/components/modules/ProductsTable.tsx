@@ -12,6 +12,25 @@ import { toast } from "sonner";
 import ModalProduct from "../molecules/Modals/EditProduct";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 
+const currentInitialData: Product = {
+  id: "",
+  name: "",
+  description: "",
+  brand: "",
+  brand_id: "",
+  category: "",
+  category_id: "",
+  product_code: "",
+  specs: [],
+  related: [],
+  related_products: [],
+  image_attachment: null,
+  is_active: true,
+  fixed_specs: [fixedSpecInitialData],
+  image_url: null,
+  is_featured: false,
+};
+
 const ProductsTable: React.FC = () => {
   // Redux state
   const {
@@ -29,23 +48,12 @@ const ProductsTable: React.FC = () => {
   const [isModalEditOpen, setIsModalEditOpen] = useState(false);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
   const [isNew, setIsNew] = useState(false);
-  const [currentProduct, setCurrentProduct] = useState<Product | null>({
-    id: "",
-    name: "",
-    description: "",
-    brand: "",
-    brand_id: "",
-    category: "",
-    category_id: "",
-    product_code: "",
-    specs: [],
-    related: [],
-    related_products: [],
-    image_attachment: null,
-    is_active: true,
-    fixed_specs: [fixedSpecInitialData],
-  });
-
+  const [currentProduct, setCurrentProduct] = useState<Product | null>(
+    currentInitialData
+  );
+  useEffect(() => {
+    console.log(products, "PRODUCTOS");
+  }, [products]);
   // Cargar productos inicialmente
   useEffect(() => {
     dispatch(fetchProducts({ page: 1, page_size: 10 }));
@@ -89,28 +97,7 @@ const ProductsTable: React.FC = () => {
 
   const handleCreate = () => {
     setIsNew(true);
-    setCurrentProduct({
-      id: "",
-      fixed_specs: [fixedSpecInitialData],
-      name: "",
-      description: "",
-      brand: "",
-      is_active: true,
-      category: "",
-      category_id: "",
-      product_code: "",
-      specs: [
-        {
-          key: "",
-          value: "",
-          unit: "",
-          is_visible: true,
-        },
-      ],
-      related: [],
-      related_products: [],
-      image_attachment: null,
-    });
+    setCurrentProduct(currentInitialData);
     setIsModalEditOpen(true);
   };
 
@@ -212,7 +199,7 @@ const ProductsTable: React.FC = () => {
         isOpen={isModalDeleteOpen}
         onClose={() => {
           setIsModalDeleteOpen(false);
-          setCurrentProduct(null);
+          setCurrentProduct(currentInitialData);
         }}
         itemName={currentProduct?.name || ""}
         onConfirm={handleConfirmDelete}

@@ -3,25 +3,13 @@ import {
   Product,
   ProductCreateRequest,
   ProductUpdateRequest,
+  PaginationInfo,
 } from "@/types/types";
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-
-// ============================================
-// TYPES
-// ============================================
 
 interface FetchProductsParams {
   page?: number;
   page_size?: number;
-}
-
-interface PaginationInfo {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  page_size: number;
-  current_page: number;
-  total_pages: number;
 }
 
 // ============================================
@@ -60,6 +48,14 @@ export const fetchAllProducts = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error);
     }
+  }
+);
+export const refreshProductEverywhere = createAsyncThunk(
+  "products/refreshEverywhere",
+  async (productId: string) => {
+    console.log(productId, "AAA");
+    // Siempre traemos el producto actualizado del backend
+    return productsApi.retrieve(productId);
   }
 );
 
@@ -207,6 +203,20 @@ export const productsSlice = createSlice({
           action.error.message || "Error obteniendo todos los productos";
         state.allLoaded = false;
       });
+    builder.addCase(refreshProductEverywhere.fulfilled, (state, action) => {
+      const updated = action.payload;
+
+      // 1️⃣ Reemplazar en la lista principal
+      state.list = state.list.map((p) => (p.id === updated.id ? updated : p));
+
+      // 2️⃣ Reemplazar selected si aplica
+      if (state.selected?.id === updated.id) {
+        state.selected = updated;
+      }
+
+      // ⚠️ No tocamos pagination
+      // ⚠️ No tocamos loading
+    });
 
     // FETCH LIST
     builder

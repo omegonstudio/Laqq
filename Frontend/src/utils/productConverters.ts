@@ -68,11 +68,16 @@ export const productToFormState = (product: Product): ProductFormState => {
     category: product.category_id || product.category || "",
     description: product.description || "",
     product_code: product.product_code || "",
-    image_attachment: product.image_attachment, // Es un UUID string
+    image_file: null, // ← nunca viene del backend
+    image_attachment_id: product.image_attachment, // UUID
+    is_featured: product.is_featured || false,
     is_active: product.is_active,
     specs: sanitizeSpecs(product.specs || product.specifications || []),
     related: product.related || product.related_products || [],
-    fixed_specs: sanitizeFixedSpecs(product.fixed_specs || []),
+    fixed_specs:
+      product.fixed_specs.length > 0
+        ? sanitizeFixedSpecs(product.fixed_specs)
+        : [fixedSpecInitialData],
   };
 };
 
@@ -97,9 +102,7 @@ export const formStateToCreateRequest = (
 export const formStateToUpdateRequest = (
   formState: ProductFormState,
   initialData: Product,
-  attachmentId?: string | null,
-  specs?: ProductSpec[],
-  fixedSpecs?: ProductFixedSpec[]
+  attachmentId?: string | null
 ): ProductUpdateRequest => {
   const updateRequest: Partial<ProductUpdateRequest> = {};
   let hasRealChanges = false; // ← Bandera para rastrear cambios
@@ -133,6 +136,10 @@ export const formStateToUpdateRequest = (
 
   if (formState.is_active !== initialData.is_active) {
     updateRequest.is_active = formState.is_active;
+    hasRealChanges = true;
+  }
+  if (formState.is_featured !== initialData.is_featured) {
+    updateRequest.is_featured = formState.is_featured;
     hasRealChanges = true;
   }
 
@@ -196,10 +203,12 @@ export const getEmptyProductFormState = (): ProductFormState => {
     category: "",
     description: "",
     product_code: "",
-    image_attachment: null,
+    image_attachment_id: "",
+    image_file: null,
     is_active: true,
     specs: [],
     related: [],
     fixed_specs: [fixedSpecInitialData],
+    is_featured: false,
   };
 };

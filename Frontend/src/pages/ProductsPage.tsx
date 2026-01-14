@@ -5,6 +5,8 @@ import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchProducts } from "@/store/productSlice";
 import { useProductFilters } from "@/hooks/useFilters";
+import { fetchBrands } from "@/store/brandSlice";
+import { fetchCategories } from "@/store/categoriesSlice";
 
 const ProductsPage = () => {
   const { searchParams, setFilter, clearBrand } = useProductFilters();
@@ -26,6 +28,8 @@ const ProductsPage = () => {
   useEffect(() => {
     dispatch(fetchProducts({ page: 1, page_size: 9 }));
     setCurrentPage(1);
+    dispatch(fetchBrands({ page: 1, page_size: 10 }));
+    dispatch(fetchCategories({ page: 1, page_size: 10 }));
     setAllProducts([]); // Resetear al montar
   }, [dispatch]);
 
@@ -64,7 +68,7 @@ const ProductsPage = () => {
     }
 
     if (category) {
-      filtered = filtered.filter((p) => p.category === category);
+      filtered = filtered.filter((p) => p.category_id === category);
     }
 
     if (brand) {

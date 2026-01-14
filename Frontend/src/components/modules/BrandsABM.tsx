@@ -8,7 +8,6 @@ import { Brand } from "@/types/types";
 import { deleteBrand, fetchBrand, fetchBrands } from "@/store/brandSlice";
 import { toast } from "sonner";
 import ModalDelete from "../molecules/Modals/ModalDelete";
-import { fetchProducts } from "@/store/productSlice";
 import ModalBrands from "../molecules/Modals/editBrand";
 
 const BrandsABM = () => {
@@ -25,7 +24,7 @@ const BrandsABM = () => {
     id: "",
     name: "",
     description: "",
-    logo: null,
+    logo_attachment: null,
   });
 
   const { list: initialBrands, loading } = useAppSelector(
@@ -50,7 +49,7 @@ const BrandsABM = () => {
       id: "",
       name: "",
       description: "",
-      logo: null,
+      logo_attachment: null,
     });
     setIsModalEditOpen(true);
   };
