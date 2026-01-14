@@ -76,7 +76,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
         body: JSON.stringify({ username, password }),
       });
-      console.log(username, password);
       if (!response.ok) {
         setIsLoading(false);
         return false;
@@ -87,7 +86,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Guardar tokens
       localStorage.setItem("laqq_refresh_token", data.refresh);
       localStorage.setItem("laqq_access_token", data.access);
-      console.log(data.refresh, "");
       // Segunda petición automática: refrescar token
       const newAccessToken = await refreshAccessToken(data.refresh);
 

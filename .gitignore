@@ -15,6 +15,7 @@ desktop.ini
 # IDE
 .idea/
 .vscode/
+.claude/
 *.iml
 
 # Python / Django

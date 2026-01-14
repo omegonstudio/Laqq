@@ -30,7 +30,6 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ProductSpecSerializer(serializers.ModelSerializer):
-    """Serializer para especificaciones FIJAS (campos predefinidos)"""
     class Meta:
         model = ProductSpec
         fields = '__all__'

@@ -21,18 +21,6 @@ export interface ProductAccessory {
   accessory: string;
 }
 
-export interface Attachment {
-  id: string;
-  file_name: string;
-  content_type: string | null;
-  size_bytes: number | null;
-  data: string | null;
-  attachable_type: string | null;
-  attachable_id: string | null;
-  created_by: string | null;
-  created_at: string;
-}
-
 export interface ContactState {
   id: string;
   name: string;
@@ -166,7 +154,7 @@ export interface Product {
   updated_at: string;
   specs: ProductSpec[];
   specifications?: ProductSpec[]; // alias de backend
-  fixed_specs?: ProductFixedSpec[];
+  fixed_specs: ProductFixedSpec[];
   related_product_ids?: string[];
   related_product_codes?: string[];
   related_products: RelatedProduct[];
@@ -340,4 +328,3 @@ export interface DashboardSummary {
   stats: DashboardStats;
   recent_activity: DashboardActivityItem[];
 }
-

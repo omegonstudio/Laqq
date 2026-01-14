@@ -5,16 +5,22 @@
 // TIPOS BASE (lo que viene del backend)
 // ============================================
 
+export interface PaginationInfo {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  page_size: number;
+  current_page: number;
+  total_pages: number;
+}
 export interface ProductSpec {
   id?: string;
-  product?: string; // UUID del producto al que pertenece
+  product: string; // UUID del producto al que pertenece
   key: string;
   value: string;
   unit?: string;
   display_order?: number;
   is_visible?: boolean;
-  created_at?: string;
-  updated_at?: string;
 }
 
 export interface ProductFixedSpec {
@@ -39,19 +45,12 @@ export interface RelatedProduct {
   relation_type?: string | null;
 }
 
-export interface Attachment {
-  id: string;
-  file_name: string;
-  content_type: string | null;
-  size_bytes: number | null;
-  data: string | null;
-}
-
 // ============================================
 // PRODUCT - Respuesta del backend (GET)
 // ============================================
 export interface Product {
   id: string;
+  is_featured: boolean;
   name: string;
   brand: string; // Nombre para mostrar
   brand_id?: string; // UUID
@@ -64,8 +63,9 @@ export interface Product {
   is_active: boolean;
   specs: ProductSpec[]; // Especificaciones dinámicas
   specifications?: ProductSpec[]; // Alias de backend
-  fixed_specs?: ProductFixedSpec[]; // Especificaciones fijas opcionales
+  fixed_specs: ProductFixedSpec[]; // Especificaciones fijas opcionales
   related?: RelatedProduct[]; // Alias de productos relacionados
+  image_url: string | null; // URL de la imagen
   related_products?: RelatedProduct[]; // Campo original del backend
 }
 
@@ -82,6 +82,7 @@ export interface ProductCreateRequest {
   is_active: boolean;
   related_product_ids?: string[]; // Array de UUIDs
   related_product_codes?: string[];
+  is_featured?: boolean;
 }
 
 export interface ProductUpdateRequest extends Partial<ProductCreateRequest> {
@@ -93,15 +94,19 @@ export interface ProductUpdateRequest extends Partial<ProductCreateRequest> {
 // ============================================
 export interface ProductFormState {
   id?: string;
+  is_featured: boolean;
   name: string;
   brand: string; // UUID
   category: string; // UUID
   description: string;
   product_code: string;
-  image_attachment: File | string | null; // File cuando seleccionas, string (UUID) cuando viene del backend
+  image_file: File | null;
+  /** Attachment actual asociado (UUID) */
+  image_attachment_id: string | null;
   is_active: boolean;
   specs: ProductSpec[]; // Objetos completos para editar
   related: RelatedProduct[]; // Objetos completos para mostrar
+  fixed_specs: ProductFixedSpec[]; // Especificaciones fijas opcionales
 }
 
 // ============================================
@@ -110,18 +115,34 @@ export interface ProductFormState {
 export interface ProductSpecCreateRequest extends ProductSpec {}
 export interface ProductSpecUpdateRequest
   extends Partial<ProductSpecCreateRequest> {}
+
 export interface Category {
   id: string;
   name: string;
   parent?: string;
   description: string;
   display_order: number;
+  level: number;
 }
 
+export interface CategoryUI {
+  id: string;
+  name: string;
+  description: string;
+  href: string;
+  subcategories: CategoryUI[];
+}
 export interface Brand {
   id: string;
   name: string;
-  logo?: string;
+  logo_attachment?: string;
+  description?: string;
+}
+
+export interface BrandFormState {
+  id: string;
+  name: string;
+  loglogo_attachmento?: File;
   description?: string;
 }
 
@@ -152,6 +173,9 @@ export interface PaginatedResponse<T> {
   next: string | null;
   previous: string | null;
   results: T[];
+  page_size: number;
+  total_pages: number;
+  current_page: number;
 }
 export interface ApiListResponse<T> {
   data: T[];
@@ -162,34 +186,28 @@ export interface ApiItemResponse<T> {
   data: T;
   meta?: Record<string, unknown>;
 }
-// types/attachment.types.ts
-// types/attachment.types.ts
 
-export interface AttachmentCreateRequest {
-  file_name: string;
-  content_type?: string | null;
-  size_bytes?: number | null;
-  data?: string; // Base64 string
-  attachable_type?: string | null;
-  attachable_id?: string | null;
-}
-
-export interface AttachmentResponse {
+export interface Attachment {
   id: string;
   file_name: string;
-  content_type?: string | null;
-  size_bytes?: number | null;
-  data?: string | null;
-  attachable_type?: string | null;
-  attachable_id?: string | null;
-  created_at: string;
-  created_by?: string | null;
+  content_type_str: string | null;
+  size_bytes: number | null;
+  file: string; // URL
+  url: string;
+  role: "image" | "manual" | "datasheet" | "other" | null;
+  attachable_type: string | null;
+  attachable_id: string | null;
+}
+export interface AttachmentCreatePayload {
+  file: File;
+  role?: Attachment["role"];
+  attachable_type?: string;
+  attachable_id?: string;
 }
 
-export type CategoryUI = {
-  id: string;
-  name: string;
-  description: string;
-  href: string;
-  subcategories: CategoryUI[];
-};
+export interface AttachmentUpdatePayload {
+  file?: File; // opcional en update
+  role?: Attachment["role"];
+  attachable_type?: string;
+  attachable_id?: string;
+}

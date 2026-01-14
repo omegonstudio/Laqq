@@ -3,16 +3,16 @@ import Button from "../atoms/Button";
 import SearchBar from "../molecules/SearchBar";
 import { useNavigate } from "react-router-dom";
 import heroImage from "@/assets/hero-lab.jpg";
+import { useProductFilters } from "@/hooks/useFilters";
 
 const HeroSection = () => {
-  const navigate = useNavigate();
+  const { setFilter } = useProductFilters();
 
-  const handleSearch = (query: string) => {
-    navigate(`/products?search=${encodeURIComponent(query)}`);
+  const handleViewAllResults = (query: string) => {
+    setFilter("search", query);
   };
-
   return (
-    <section className="relative py-24 lg:py-36 overflow-hidden">
+    <section className="relative min-h-[600px] flex items-center justify-center bg-gradient-to-b from-background to-muted/20">
       {/* Background image with gradient overlay */}
       <div className="absolute inset-0 z-0">
         <img
@@ -37,14 +37,16 @@ const HeroSection = () => {
             consumo y servicios técnicos para la industria científica
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-center mb-8">
+          <div className="max-w-2xl mx-auto">
+            {" "}
             <SearchBar
-              onSearch={handleSearch}
-              debounceMs={500} // Espera 500ms en lugar de 300ms
+              debounceMs={300}
+              maxResults={10}
+              onViewAllResults={handleViewAllResults}
             />
           </div>
 
-          <div className="flex flex-wrap gap-4 justify-center">
+          <div className="flex flex-wrap justify-center gap-2 pt-4">
             <Link to="/products">
               <Button size="lg" className="px-8">
                 Explorar Productos

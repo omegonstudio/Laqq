@@ -1,32 +1,61 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
 import ProductGrid from "@/components/organisms/ProductGrid";
 import SearchBar from "@/components/molecules/SearchBar";
 import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchProducts } from "@/store/productSlice";
+import { useProductFilters } from "@/hooks/useFilters";
+import { fetchBrands } from "@/store/brandSlice";
+import { fetchCategories } from "@/store/categoriesSlice";
 
 const ProductsPage = () => {
+  const { searchParams, setFilter, clearBrand } = useProductFilters();
+  const search = searchParams.get("search") ?? "";
+
   const dispatch = useAppDispatch();
-  const { list: products, loading: loadingProducts } = useAppSelector(
-    (state) => state.products
-  );
+  const {
+    list: products,
+    pagination,
+    loading,
+  } = useAppSelector((state) => state.products);
   const { list: brands } = useAppSelector((state) => state.brands);
-  const { list: categories } = useAppSelector((state) => state.categories);
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
+  // Cargar primera página
   useEffect(() => {
-    dispatch(fetchProducts({ page: 1, page_size: 20 }));
+    dispatch(fetchProducts({ page: 1, page_size: 9 }));
+    setCurrentPage(1);
+    dispatch(fetchBrands({ page: 1, page_size: 10 }));
+    dispatch(fetchCategories({ page: 1, page_size: 10 }));
+    setAllProducts([]); // Resetear al montar
   }, [dispatch]);
 
+  // Acumular productos cuando llegan nuevos
+  useEffect(() => {
+    if (products.length > 0) {
+      setAllProducts((prev) => {
+        // Si es la página 1, reemplazar todo
+        if (currentPage === 1) {
+          return products;
+        }
+        // Si es página siguiente, agregar sin duplicados
+        const existingIds = new Set(prev.map((p) => p.id));
+        const newProducts = products.filter((p) => !existingIds.has(p.id));
+        return [...prev, ...newProducts];
+      });
+    }
+  }, [products, currentPage]);
+
+  // Aplicar filtros locales
   useEffect(() => {
     const search = searchParams.get("search");
     const category = searchParams.get("category");
     const brand = searchParams.get("brand");
 
-    let filtered = products;
+    let filtered = allProducts;
 
     if (search) {
       const searchLower = search.toLowerCase();
@@ -39,7 +68,7 @@ const ProductsPage = () => {
     }
 
     if (category) {
-      filtered = filtered.filter((p) => p.category === category);
+      filtered = filtered.filter((p) => p.category_id === category);
     }
 
     if (brand) {
@@ -48,24 +77,30 @@ const ProductsPage = () => {
     }
 
     setFilteredProducts(filtered);
-  }, [searchParams, products]);
+  }, [searchParams, allProducts, brands]);
 
-  const handleSearch = (query: string) => {
-    if (query) {
-      setSearchParams({ search: query });
-    } else {
-      setSearchParams({});
-    }
+  // Handler para "Ver más"
+  const handleLoadMore = () => {
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    dispatch(fetchProducts({ page: nextPage, page_size: 9 }));
   };
 
+  // Determinar si hay más páginas
+  const hasMore = currentPage < pagination.total_pages;
+
   const clearFilters = () => {
-    setSearchParams({});
+    clearBrand();
+    // Opcional: recargar desde la página 1
+    setCurrentPage(1);
+    dispatch(fetchProducts({ page: 1, page_size: 9 }));
+    setAllProducts([]);
   };
 
   // Obtener nombre de la marca activa
   const activeBrandId = searchParams.get("brand");
   const activeBrand = brands.find((b) => b.id === activeBrandId);
-  console.log(products, "PRODUCTOS");
+
   return (
     <div className="py-16">
       <div className="container mx-auto px-4">
@@ -75,7 +110,12 @@ const ProductsPage = () => {
             Explora nuestra amplia selección de equipos y material de
             laboratorio
           </p>
-          <SearchBar onSearch={handleSearch} />
+          <SearchBar
+            debounceMs={300}
+            maxResults={10}
+            value={search}
+            onViewAllResults={(q) => setFilter("search", q)}
+          />
 
           {/* Mostrar filtro activo */}
           {activeBrand && (
@@ -97,7 +137,12 @@ const ProductsPage = () => {
         </div>
       </div>
 
-      <ProductGrid products={filteredProducts} />
+      <ProductGrid
+        products={filteredProducts}
+        hasMore={hasMore}
+        onLoadMore={handleLoadMore}
+        loading={loading}
+      />
     </div>
   );
 };

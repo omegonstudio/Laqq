@@ -1,13 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { productsApi, ProductListParams, PaginationParams } from "@/lib/api/products";
 import {
-  Brand,
-  Category,
-  PaginatedResponse,
-  Product,
-  ProductSpec,
-} from "@/types/api";
+  productsApi,
+  ProductListParams,
+  PaginationParams,
+} from "@/lib/api/products";
+
 import { NormalizedApiError } from "@/lib/api/client";
+import { Brand, Category, Product, ProductSpec } from "@/types/types";
+import { PaginatedResponse } from "@/types/api";
 
 const listKey = (params?: ProductListParams) => ["products", "list", params];
 const detailKey = (id?: string) => ["products", "detail", id];
@@ -19,7 +19,11 @@ const categoriesKey = (params?: PaginationParams) => [
   params,
 ];
 const categoryDetailKey = (id?: string) => ["categories", "detail", id];
-const specsKey = (params?: PaginationParams) => ["product-specs", "list", params];
+const specsKey = (params?: PaginationParams) => [
+  "product-specs",
+  "list",
+  params,
+];
 const specDetailKey = (id?: string) => ["product-specs", "detail", id];
 
 export const useProductsList = (params?: ProductListParams) =>

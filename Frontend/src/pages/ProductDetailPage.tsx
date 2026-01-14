@@ -1,16 +1,13 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ShoppingCart } from "lucide-react";
 import Button from "@/components/atoms/Button";
 import Badge from "@/components/atoms/Badge";
 import { useEffect, useState } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { Product } from "@/types/types";
-import {
-  clearSelected,
-  fetchProduct,
-  fetchProducts,
-} from "@/store/productSlice";
+import { clearSelected, fetchProduct } from "@/store/productSlice";
+import { unifyProductSpecs } from "@/components/atoms/specsTable";
+import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
 
 const ProductDetailPage = () => {
   const [activeTab, setActiveTab] = useState<"details" | "related">("details");
@@ -22,6 +19,7 @@ const ProductDetailPage = () => {
     selectedError,
   } = useAppSelector((state) => state.products);
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (id) {
@@ -75,49 +73,15 @@ const ProductDetailPage = () => {
       </div>
     );
   }
-  const specColumns = [
-    {
-      key: "key",
-      label: "Especificación",
-    },
-    {
-      key: "value",
-      label: "Valor",
-    },
-    {
-      key: "unit",
-      label: "Unidad",
-    },
-  ];
-  const productSpecs = product.fixed_specs || product.specifications || [];
+
+  // Calcular especificaciones y productos relacionados
+  const unifiedSpecs = unifyProductSpecs(product);
   const relatedList = product.related || product.related_products || [];
-  if (selectedError) {
-    return (
-      <div className="py-16">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-2xl font-bold mb-4">
-            Error al cargar el producto
-          </h1>
-          <p className="text-muted-foreground mb-4">{selectedError}</p>
-          <Link to="/products">
-            <Button>Volver al Catálogo</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-  if (!product) {
-    return (
-      <div className="py-16">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-2xl font-bold mb-4">Producto no encontrado</h1>
-          <Link to="/products">
-            <Button>Volver al Catálogo</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const hasSpecs = unifiedSpecs.length > 0;
+  const hasRelated = relatedList.length > 0;
+
+  // Si no hay ninguna de las dos secciones, no mostrar el contenedor
+  const showDetailsSection = hasSpecs || hasRelated;
 
   return (
     <div className="py-16">
@@ -133,8 +97,8 @@ const ProductDetailPage = () => {
         <div className="grid lg:grid-cols-2 gap-12 mb-12">
           <div className="bg-muted rounded-2xl p-8 flex items-center justify-center">
             <img
-              src="./laqq_iso_negro.svg"
-              alt={product.name}
+              src={product.image_url ? product.image_url : placeholderImage}
+              alt={product.image_url}
               className="max-w-full max-h-96 object-contain"
             />
           </div>
@@ -166,86 +130,87 @@ const ProductDetailPage = () => {
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-8">
-          <div className="flex gap-4 mb-6 border-b border-border">
-            <button
-              onClick={() => setActiveTab("details")}
-              className={`px-4 py-2 font-medium transition-colors ${
-                activeTab === "details"
-                  ? "text-primary border-b-2 border-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Especificaciones
-            </button>
-            {relatedList.length > 0 && (
-              <button
-                onClick={() => setActiveTab("related")}
-                className={`px-4 py-2 font-medium transition-colors ${
-                  activeTab === "related"
-                    ? "text-primary border-b-2 border-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Productos Relacionados
-              </button>
-            )}
-          </div>
-
-          {activeTab === "details" && (
-            <div className="overflow-x-auto">
-              <table className="w-full border border-border rounded-xl overflow-hidden">
-                <thead className="bg-primary/10">
-                  <tr>
-                    {specColumns.map((col) => (
-                      <th
-                        key={col.key}
-                        className="px-4 py-3 text-left font-bold"
-                      >
-                        {col.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {product.specs.map((spec, index) => (
-                    <tr key={index} className="border-t border-border">
-                      {specColumns.map((col) => (
-                        <td key={col.key} className="px-4 py-3 text-sm">
-                          {spec[col.key] ?? "-"}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {activeTab === "related" && (
-            <div className="space-y-4">
-              {relatedList.map((item, index) => (
-                <div
-                  key={index}
-                  className="border border-border rounded-xl p-4 hover:bg-muted/30 transition-colors"
+        {/* Solo mostrar esta sección si hay especificaciones o productos relacionados */}
+        {showDetailsSection && (
+          <div className="bg-card border border-border rounded-2xl p-8">
+            <div className="flex gap-4 mb-6 border-b border-border">
+              {hasSpecs && (
+                <button
+                  onClick={() => setActiveTab("details")}
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    activeTab === "details"
+                      ? "text-primary border-b-2 border-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <Badge variant="secondary" className="mb-2">
-                        {item.brand || "Relacionado"}
-                      </Badge>
-                      <h3 className="font-bold mb-1">{item.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Código: {item.product_code}
-                      </p>
+                  Especificaciones
+                </button>
+              )}
+              {hasRelated && (
+                <button
+                  onClick={() => setActiveTab("related")}
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    activeTab === "related"
+                      ? "text-primary border-b-2 border-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Productos Relacionados
+                </button>
+              )}
+            </div>
+
+            {activeTab === "details" && hasSpecs && (
+              <div className="overflow-x-auto">
+                <table className="w-full border border-border rounded-xl overflow-hidden">
+                  <thead className="bg-primary/10">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-bold">
+                        Especificación
+                      </th>
+                      <th className="px-4 py-3 text-left font-bold">Valor</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {unifiedSpecs.map((spec, index) => (
+                      <tr key={index} className="border-t border-border">
+                        <td className="px-4 py-3 text-sm font-medium">
+                          {spec.specification}
+                        </td>
+                        <td className="px-4 py-3 text-sm">{spec.value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {activeTab === "related" && hasRelated && (
+              <div className="space-y-4">
+                {relatedList.map((item, index) => (
+                  <div
+                    key={index}
+                    onClick={() => navigate(`/product/${item.id}`)}
+                    className="border border-border rounded-xl p-4 hover:bg-muted/30 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <Badge variant="secondary" className="mb-2">
+                          {item.brand || "Relacionado"}
+                        </Badge>
+                        <h3 className="font-bold mb-1">{item.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Código: {item.product_code}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -7,7 +7,7 @@ import Modal from "@/components/common/Modal";
 import InputField from "@/components/atoms/InputField";
 import UploadFile from "@/components/atoms/UploadFile";
 import Button from "@/components/atoms/Button";
-import { createAttachment } from "@/utils/fileConvert";
+import { attachmentsApi } from "@/lib/api/attachments";
 
 interface ModalBrandsProps {
   isOpen: boolean;
@@ -29,7 +29,7 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
     id: "",
     name: "",
     description: "",
-    logo: null,
+    logo_attachment: null,
   });
 
   const [imageFile, setImageFile] = useState<File | null>(null); // Archivo seleccionado
@@ -44,15 +44,15 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
       setLocalState(initialData);
 
       // Si hay logo (URL), mostrar preview
-      if (initialData.logo) {
-        setImagePreview(initialData.logo);
+      if (initialData.logo_attachment) {
+        setImagePreview(initialData.logo_attachment);
       }
     } else {
       setLocalState({
         id: "",
         name: "",
         description: "",
-        logo: null,
+        logo_attachment: null,
       });
       setImagePreview(null);
     }
@@ -72,6 +72,8 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
   // ============================================
 
   const handleSave = async () => {
+    const initialImage = initialData.logo_attachment ?? null;
+    const currentImage = localState.logo_attachment ?? null;
     try {
       // ============================================
       // VALIDACIÓN: Campos obligatorios
@@ -86,39 +88,54 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
         return;
       }
 
-      let logoUrl: string | null = localState.logo; // Mantener URL existente por defecto
+      let attachmentId: string | null = localState.logo_attachment; // Mantener URL existente por defecto
 
       // ============================================
       // MANEJO DE IMAGEN
       // ============================================s
-      if (imageFile) {
-        // Si hay un nuevo archivo, subirlo
-        console.log("📤 Subiendo nueva imagen...");
-        try {
-          const attachment = await createAttachment(imageFile);
-          logoUrl = attachment.id; // Asumiendo que createAttachment devuelve { id, url }
-          console.log("✅ Imagen subida:", logoUrl);
-        } catch (error) {
-          toast.error("Error al subir la imagen");
-          throw error;
-        }
-      } else if (imagePreview === null && localState.logo !== null) {
-        // Si se eliminó la imagen existente
-        logoUrl = null;
-      }
 
-      if (localState.id) {
+      if (!isNew) {
         // ========== EDITAR MARCA EXISTENTE ==========
+        if (imageFile && !initialImage) {
+          // Si hay un nuevo archivo, subirlo
+          console.log("📤 Subiendo nueva imagen...");
+          console.log("CREANDO ATTACHMENT PARA MARCA:", localState.name);
+          try {
+            const attachment = await attachmentsApi.create({
+              file: imageFile,
+              role: "image",
+              attachable_type: "product",
+            });
+            attachmentId = attachment.id; // Asumiendo que createAttachment devuelve { id, url }
+            console.log("✅ Imagen subida:", attachmentId);
+          } catch (error) {
+            toast.error("Error al subir la imagen");
+            throw error;
+          }
+        } else if (initialImage && !currentImage) {
+          console.log("BORRANDO ATTACHMENT PARA MARCA:", localState.name);
 
+          const attachment = await attachmentsApi.remove(initialImage);
+          console.log("✅ Imagen eliminada:", attachment);
+          attachmentId = null;
+        } else if (initialImage && currentImage) {
+          console.log("ACTUALIZANDO ATTACHMENT PARA MARCA:", localState.name);
+
+          const attachment = await attachmentsApi.update(initialImage, {
+            file: imageFile,
+          });
+          console.log("✅ Imagen eliminada:", attachment);
+          attachmentId = attachment.id;
+        }
         const updateData: Partial<Brand> = {
           name: localState.name,
           description: localState.description,
-          logo: logoUrl,
+          logo_attachment: attachmentId,
         };
 
         // Solo incluir logo si cambió
-        if (logoUrl !== initialData?.logo) {
-          updateData.logo = logoUrl;
+        if (attachmentId !== initialData?.logo_attachment) {
+          updateData.logo_attachment = attachmentId;
         }
 
         const updatedBrand = await dispatch(
@@ -132,11 +149,26 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
         toast.success("Marca actualizada exitosamente");
       } else {
         // ========== CREAR NUEVA MARCA ==========
-
+        if (imageFile) {
+          // Si hay un nuevo archivo, subirlo
+          console.log("CREANDO ATTACHMENT PARA MARCA NUEVA:", localState.name);
+          try {
+            const attachment = await attachmentsApi.create({
+              file: imageFile,
+              role: "image",
+              attachable_type: "product",
+            });
+            attachmentId = attachment.id; // Asumiendo que createAttachment devuelve { id, url }
+            console.log("✅ Imagen subida:", attachmentId);
+          } catch (error) {
+            toast.error("Error al subir la imagen");
+            throw error;
+          }
+        }
         const createData: Omit<Brand, "id"> = {
           name: localState.name,
           description: localState.description,
-          logo: logoUrl,
+          logo_attachment: attachmentId,
         };
 
         const createdBrand = await dispatch(createBrand(createData)).unwrap();
@@ -174,7 +206,7 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
   const handleRemoveImage = () => {
     setImageFile(null);
     setImagePreview(null);
-    setLocalState({ ...localState, logo: null });
+    setLocalState({ ...localState, logo_attachment: null });
   };
 
   return (

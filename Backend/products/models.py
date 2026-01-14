@@ -92,11 +92,6 @@ class ProductRelation(models.Model):
         ]
 
 class ProductSpec(models.Model):
-    """
-    Especificaciones FIJAS de productos.
-    Campos predefinidos: volume, dimensions, cap, outlet, accuracy, precision.
-    Para especificaciones dinámicas personalizadas, usar ProductSpecification.
-    """
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='fixed_specs')
     code = models.CharField(max_length=120)
@@ -121,53 +116,47 @@ class ProductSpec(models.Model):
 
 class ProductSpecification(models.Model):
     """
-    Especificaciones DINÁMICAS de productos.
-    Permite al admin agregar especificaciones personalizadas clave-valor.
-
-    Ejemplo:
-        - key: "Voltaje", value: "220", unit: "V"
-        - key: "Material", value: "Acero inoxidable", unit: ""
-        - key: "Certificado", value: "ISO 8655", unit: ""
+    Especificaciones dinámicas para productos.
+    Permite agregar especificaciones clave-valor flexibles sin modificar el esquema.
     """
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
         related_name='dynamic_specifications',
-        help_text="Producto al que pertenece esta especificación"
+        help_text='Producto al que pertenece esta especificación'
     )
     key = models.CharField(
         max_length=100,
-        help_text="Nombre de la especificación (ej: Voltaje, Material, Temperatura)"
+        help_text='Nombre de la especificación (ej: Voltaje, Material, Temperatura)'
     )
     value = models.TextField(
-        help_text="Valor de la especificación (ej: 220V, Acero inoxidable)"
+        help_text='Valor de la especificación (ej: 220V, Acero inoxidable)'
     )
     unit = models.CharField(
         max_length=20,
         blank=True,
         default='',
-        help_text="Unidad de medida opcional (ej: V, °C, ml, kg)"
+        help_text='Unidad de medida opcional (ej: V, °C, ml, kg)'
     )
     display_order = models.IntegerField(
         default=0,
-        help_text="Orden de visualización (menor número = primero)"
+        help_text='Orden de visualización (menor número = primero)'
     )
     is_visible = models.BooleanField(
         default=True,
-        help_text="Mostrar esta especificación en el frontend"
+        help_text='Mostrar esta especificación en el frontend'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = 'Especificación Dinámica'
+        verbose_name_plural = 'Especificaciones Dinámicas'
         ordering = ['display_order', 'key']
-        verbose_name = "Especificación Dinámica"
-        verbose_name_plural = "Especificaciones Dinámicas"
         indexes = [
             models.Index(fields=['product', 'display_order']),
         ]
 
     def __str__(self):
-        unit_str = f" {self.unit}" if self.unit else ""
-        return f"{self.product.name} - {self.key}: {self.value}{unit_str}"
+        return f"{self.product.name} - {self.key}: {self.value}"

@@ -14,25 +14,16 @@ done
 
 echo "[OK] PostgreSQL is up - continuing..."
 
-# Make migrations (detect model changes)
-echo ""
-echo "Checking for model changes..."
-python manage.py makemigrations --noinput
-
-# Run migrations
 echo ""
 echo "Running migrations..."
 python manage.py migrate --noinput
 
-# Load seed data (only if LOAD_SEED_DATA=true)
 if [ "$LOAD_SEED_DATA" = "true" ]; then
     echo ""
     echo "Loading seed data..."
     python scripts/seed_data.py
-    echo "[OK] Seed data loaded"
 fi
 
-# Create superuser if it doesn't exist
 echo ""
 echo "Checking superuser..."
 python manage.py shell << EOF
@@ -46,12 +37,11 @@ if not User.objects.filter(email='laqq@gmail.com').exists():
         is_staff=True,
         is_active=True
     )
-    print('[OK] Superuser created: laqq@gmail.com / laqq')
+    print('[OK] Superuser created')
 else:
     print('[OK] Superuser already exists')
 EOF
 
-# Collect static files (for production)
 if [ "$DJANGO_ENV" = "production" ]; then
     echo ""
     echo "Collecting static files..."
@@ -60,16 +50,7 @@ fi
 
 echo ""
 echo "========================================"
-echo "  LAQQ - Ready!"
+echo "  LAQQ - Ready!!"
 echo "========================================"
-echo ""
-echo "  API: http://localhost:8000"
-echo "  Admin: http://localhost:8000/admin/"
-echo "  Email: laqq@gmail.com"
-echo "  Pass: laqq"
-echo ""
-echo "========================================"
-echo ""
 
-# Execute the main command
 exec "$@"

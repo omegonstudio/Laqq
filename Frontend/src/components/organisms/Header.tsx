@@ -1,6 +1,6 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Moon, Search, Sun, User, ShoppingCart } from "lucide-react";
+import { Moon, Sun, User, ShoppingCart } from "lucide-react";
 import NavDropdown from "../molecules/NavDropdown";
 import { useTheme } from "next-themes";
 import { useCart } from "@/contexts/CartContext";
@@ -14,22 +14,18 @@ import {
 } from "@/components/ui/select";
 import logoLight from "@/assets/laqq_marca_color_neg.svg";
 import { useAppSelector } from "@/store/hooks";
-import { buildCategories } from "@/utils/data/categories";
+import SearchBar from "../molecules/SearchBar";
+import { useProductFilters } from "@/hooks/useFilters";
 
 const Header = () => {
-  const { list: categories, loading: loadingCategories } = useAppSelector(
-    (state) => state.categories
-  );
+  const { searchParams, setFilter } = useProductFilters();
 
-  const [searchQuery, setSearchQuery] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { theme, setTheme } = useTheme();
   const { totalItems } = useCart();
   const { list: brands, loading } = useAppSelector((state) => state.brands);
-  const navigate = useNavigate();
-  const menuItems = buildCategories(categories);
-  console.log(menuItems, categories);
+  const [selectedBrand, setSelectedBrand] = useState("all");
 
   useEffect(() => {
     const handleScroll = () => {
@@ -39,21 +35,31 @@ const Header = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const handleBrandClick = (brandId: string) => {
-    navigate(`/products?brand=${brandId}`);
+  const handleViewAllResults = (query: string) => {
+    setFilter("search", query);
   };
 
-  // Agrega este useEffect después de los otros useEffect en tu Header:
+  useEffect(() => {
+    const brandParam = searchParams.get("brand");
+    if (brandParam) {
+      setSelectedBrand(brandParam);
+    }
+  }, [searchParams]);
 
-  // useEffect(() => {
-  //   const timer = setTimeout(() => {
-  //     if (searchQuery.trim()) {
-  //       navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
-  //     }
-  //   }, 300);
+  const handleBrandChange = (value: string) => {
+    setSelectedBrand(value);
+    setFilter("brand", value);
+  };
 
-  //   return () => clearTimeout(timer);
-  // }, [searchQuery, navigate]);
+  // Encontrar el nombre de la marca seleccionada
+  const getSelectedBrandName = () => {
+    if (!searchParams.get("brand")) return "Todas las marcas";
+    if (selectedBrand === "all") return "Todas las marcas";
+    const brand = brands.find((b) => b.id === selectedBrand);
+    return brand?.name || "Todas las marcas";
+  };
+
+  console.log(searchParams.get("search"));
   return (
     <>
       {/* Spacer to prevent content jump */}
@@ -83,37 +89,20 @@ const Header = () => {
             {/* Search Section */}
             <div className="flex-1 flex items-center justify-center gap-3">
               <div
-                className={`flex items-center rounded-full px-4 py-2 w-full max-w-lg border ${
-                  theme === "dark"
-                    ? "border-gray-700 bg-transparent"
-                    : "border-gray-300 bg-white"
+                className={`flex items-start rounded-full px-4 py-2 w-full max-w-lg
                 }`}
               >
-                <Search
-                  className={`w-4 h-4 mr-2 ${
-                    theme === "dark" ? "text-gray-400" : "text-gray-500"
-                  }`}
-                />
-                <input
-                  type="text"
-                  placeholder="Buscar productos..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`flex-1 text-sm focus:outline-none bg-transparent ${
-                    theme === "dark" ? "text-gray-200" : "text-gray-800"
-                  }`}
+                <SearchBar
+                  debounceMs={300}
+                  maxResults={10}
+                  radius
+                  onViewAllResults={handleViewAllResults}
+                  value={searchParams.get("search") ?? ""}
                 />
               </div>
-
               <Select
                 defaultValue="all"
-                onValueChange={(value) => {
-                  if (value === "all") {
-                    navigate(`/products`);
-                  } else {
-                    handleBrandClick(value);
-                  }
-                }}
+                onValueChange={(value) => setFilter("brand", value)}
               >
                 <SelectTrigger
                   className={`w-[180px] text-sm rounded-2xl px-4 py-2 border transition-colors ${
@@ -122,7 +111,7 @@ const Header = () => {
                       : "bg-white border-gray-300 text-gray-700"
                   }`}
                 >
-                  <SelectValue placeholder="Todas las marcas" />
+                  <SelectValue>{getSelectedBrandName()}</SelectValue>
                 </SelectTrigger>
                 <SelectContent className="rounded-2xl">
                   <SelectItem value="all" className="rounded-xl">
@@ -232,9 +221,7 @@ const Header = () => {
                 scrolled ? "" : "justify-center w-full"
               }`}
             >
-              {menuItems.map((item) => (
-                <NavDropdown key={item.id} item={item} />
-              ))}
+              <NavDropdown />
             </div>
 
             {/* Icons in sticky mode */}
