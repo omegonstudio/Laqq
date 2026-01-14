@@ -61,6 +61,44 @@ class BrandAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
+    def test_brand_without_logo_returns_null_url(self):
+        """Verificar que logo_url es null cuando no hay logo_attachment"""
+        response = self.client.get(f'/products/brands/{self.brand.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data['logo_url'])
+        self.assertIn('logo_url', response.data)
+
+    def test_brand_with_logo_returns_url(self):
+        """Verificar que logo_url se devuelve cuando hay logo_attachment"""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        # Create an attachment for the brand logo
+        test_file = SimpleUploadedFile(
+            'brand-logo.png',
+            b'fake image content',
+            content_type='image/png'
+        )
+
+        attachment = Attachment.objects.create(
+            file=test_file,
+            role='image',
+            content_type_str='image/png',
+            attachable_type='brand',
+            attachable_id=self.brand.id
+        )
+
+        # Assign logo to brand
+        self.brand.logo_attachment = attachment
+        self.brand.save()
+
+        # Fetch brand via API
+        response = self.client.get(f'/products/brands/{self.brand.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(response.data['logo_url'])
+        self.assertIn('logo_url', response.data)
+        # Verify it's a URL string
+        self.assertTrue(isinstance(response.data['logo_url'], str))
+
 
 class CategoryAPITestCase(APITestCase):
     """Tests para el CRUD de Categorías de productos"""
@@ -160,6 +198,45 @@ class CategoryAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['level'], 2)
         self.assertEqual(str(response.data['parent']), str(child.id))
+
+    def test_auto_calculate_level_without_parent(self):
+        """Verificar que level se auto-calcula como 0 cuando no hay parent"""
+        # Create category without parent (no level specified)
+        category = Category.objects.create(name='Root Category', display_order=1)
+        self.assertEqual(category.level, 0)
+
+    def test_auto_calculate_level_with_parent(self):
+        """Verificar que level se auto-calcula basándose en el parent"""
+        # Create parent (level 0)
+        parent = Category.objects.create(name='Parent', display_order=1)
+        self.assertEqual(parent.level, 0)
+
+        # Create child WITHOUT specifying level - should auto-calculate to 1
+        child = Category.objects.create(name='Child', parent=parent, display_order=2)
+        self.assertEqual(child.level, 1)
+
+        # Create grandchild WITHOUT specifying level - should auto-calculate to 2
+        grandchild = Category.objects.create(name='Grandchild', parent=child, display_order=3)
+        self.assertEqual(grandchild.level, 2)
+
+    def test_auto_calculate_level_via_api(self):
+        """Verificar que level se auto-calcula al crear categoría via API"""
+        # Create parent via API
+        parent_data = {'name': 'API Parent', 'display_order': 1}
+        parent_response = self.client.post('/products/categories/', parent_data)
+        self.assertEqual(parent_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(parent_response.data['level'], 0)
+        parent_id = parent_response.data['id']
+
+        # Create child via API WITHOUT sending level - should auto-calculate
+        child_data = {
+            'name': 'API Child',
+            'parent': parent_id,
+            'display_order': 2
+        }
+        child_response = self.client.post('/products/categories/', child_data)
+        self.assertEqual(child_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(child_response.data['level'], 1)
 
 
 class ProductAPITestCase(APITestCase):

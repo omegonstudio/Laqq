@@ -5,9 +5,24 @@ from attachments.models import Attachment
 from attachments.serializers import AttachmentSerializer
 
 class BrandSerializer(serializers.ModelSerializer):
+    logo_url = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Brand
-        fields = '__all__'
+        fields = ['id', 'name', 'description', 'logo_attachment', 'logo_url', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'logo_url', 'created_at', 'updated_at']
+
+    def get_logo_url(self, obj):
+        """
+        Devuelve URL absoluta del logo si existe logo_attachment.
+        """
+        if obj.logo_attachment:
+            url = getattr(obj.logo_attachment, 'url', None)
+            request = self.context.get('request')
+            if url and request:
+                return request.build_absolute_uri(url)
+            return url
+        return None
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
