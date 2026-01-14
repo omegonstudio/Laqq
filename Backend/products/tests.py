@@ -99,6 +99,24 @@ class BrandAPITestCase(APITestCase):
         # Verify it's a URL string
         self.assertTrue(isinstance(response.data['logo_url'], str))
 
+    def test_delete_brand_sets_products_brand_to_null(self):
+        """Verificar que al borrar una marca, los productos quedan con brand=None"""
+        # Create a product with this brand
+        category = Category.objects.create(name='Test Category')
+        product = Product.objects.create(
+            name='Product with Brand',
+            brand=self.brand,
+            category=category
+        )
+
+        # Delete the brand
+        self.brand.delete()
+
+        # Verify product still exists but brand is None
+        product.refresh_from_db()
+        self.assertIsNone(product.brand)
+        self.assertEqual(Product.objects.count(), 1)
+
 
 class CategoryAPITestCase(APITestCase):
     """Tests para el CRUD de Categorías de productos"""
@@ -130,11 +148,15 @@ class CategoryAPITestCase(APITestCase):
         self.assertEqual(len(response.data['results']), 1)
 
     def test_create_category_with_level(self):
-        """Crear categoría con nivel específico"""
+        """Crear categoría con nivel específico (usando parent para auto-calcular)"""
+        # Create parent first
+        parent = Category.objects.create(name='Parent Category', display_order=1)
+
+        # Create child with parent - level should auto-calculate to 1
         data = {
             'name': 'Subcategory Level 1',
-            'display_order': 2,
-            'level': 1
+            'parent': parent.id,
+            'display_order': 2
         }
         response = self.client.post('/products/categories/', data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -145,10 +167,10 @@ class CategoryAPITestCase(APITestCase):
 
     def test_filter_categories_by_level(self):
         """Filtrar categorías por nivel de jerarquía"""
-        # Create categories with different levels
-        Category.objects.create(name='Root Category', level=0, display_order=1)
-        Category.objects.create(name='Sub Category', level=1, display_order=2)
-        Category.objects.create(name='Sub Sub Category', level=2, display_order=3)
+        # Create categories with different levels using parent hierarchy
+        root = Category.objects.create(name='Root Category', display_order=1)
+        sub = Category.objects.create(name='Sub Category', parent=root, display_order=2)
+        subsub = Category.objects.create(name='Sub Sub Category', parent=sub, display_order=3)
 
         # Filter by level 1
         response = self.client.get('/products/categories/?level=1')
@@ -237,6 +259,24 @@ class CategoryAPITestCase(APITestCase):
         child_response = self.client.post('/products/categories/', child_data)
         self.assertEqual(child_response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(child_response.data['level'], 1)
+
+    def test_delete_category_sets_products_category_to_null(self):
+        """Verificar que al borrar una categoría, los productos quedan con category=None"""
+        # Create a product with this category
+        brand = Brand.objects.create(name='Test Brand')
+        product = Product.objects.create(
+            name='Product with Category',
+            brand=brand,
+            category=self.category
+        )
+
+        # Delete the category
+        self.category.delete()
+
+        # Verify product still exists but category is None
+        product.refresh_from_db()
+        self.assertIsNone(product.category)
+        self.assertEqual(Product.objects.count(), 1)
 
 
 class ProductAPITestCase(APITestCase):
