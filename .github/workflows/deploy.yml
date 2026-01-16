@@ -1,79 +1,67 @@
-name: Deploy to DigitalOcean
+name: Deploy LAQQ (PROD)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 concurrency:
-  group: laqq-deploy
-  cancel-in-progress: false
+  group: laqq-prod
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configurar SSH
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add droplet to known_hosts
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$DROPLET_HOST" >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Desplegar en droplet
-        env:
-          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
-          DROPLET_USER: ${{ secrets.DROPLET_USER }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
+      - name: Deploy en Droplet
         run: |
-          ssh -i ~/.ssh/id_rsa "$DROPLET_USER@$DROPLET_HOST" <<'EOF_DEPLOY'
-          set -euo pipefail
+          ssh deploy@${{ secrets.DROPLET_HOST }} "bash -s" <<'REMOTE'
+            set -euo pipefail
 
-          cd "$DEPLOY_DIR"
-          PREV_COMMIT=$(git rev-parse HEAD || echo "")
+            echo "=== DEPLOY LAQQ PROD ==="
 
-          rollback() {
-            if [ -n "$PREV_COMMIT" ]; then
-              echo "[rollback] Restaurando commit $PREV_COMMIT"
-              git reset --hard "$PREV_COMMIT" || true
-              docker compose -f docker-compose.prod.yml up -d || true
+            REPO="https://github.com/omegonstudio/Laqq.git"
+            DIR="/opt/apps/Laqq"
+            BRANCH="main"
+            COMPOSE="docker-compose.prod.yml"
+
+            mkdir -p "$DIR"
+            cd "$DIR"
+
+            if [ ! -d ".git" ]; then
+              echo "-> Clonando repositorio"
+              git clone "$REPO" .
             fi
-          }
-          trap rollback ERR
 
-          echo "[deploy] Actualizando código"
-          git fetch origin main
-          git checkout main
-          git pull origin main
+            echo "-> Fetch + reset"
+            git fetch origin
+            git reset --hard "origin/$BRANCH"
 
-          echo "[deploy] Construyendo/levantando contenedores"
-          docker compose -f docker-compose.prod.yml pull || true
-          docker compose -f docker-compose.prod.yml up -d --build
+            echo "-> Bajando stack previo"
+            docker compose -f "$COMPOSE" down --remove-orphans || true
 
-          echo "[deploy] Aplicando migraciones"
-          docker compose -f docker-compose.prod.yml exec -T backend python manage.py migrate --noinput
-          # Si querés semillas en prod, descomenta la siguiente línea
-          # docker compose -f docker-compose.prod.yml exec -T backend python scripts/seed_data.py
+            echo "-> Build"
+            docker compose -f "$COMPOSE" build
 
-          echo "[deploy] Limpieza de imágenes antiguas"
-          docker system prune -f
-          EOF_DEPLOY
+            echo "-> Up"
+            docker compose -f "$COMPOSE" up -d --remove-orphans
 
-      - name: Logs (solo si falla)
-        if: failure()
-        env:
-          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
-          DROPLET_USER: ${{ secrets.DROPLET_USER }}
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
-        run: |
-          ssh -i ~/.ssh/id_rsa "$DROPLET_USER@$DROPLET_HOST" "cd '$DEPLOY_DIR' && docker compose -f docker-compose.prod.yml logs --tail=200"
+            echo "-> Estado"
+            docker compose -f "$COMPOSE" ps
+
+            echo "=== DEPLOY COMPLETADO ==="
+          REMOTE
