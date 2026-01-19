@@ -47,21 +47,46 @@ class QuoteItemViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='bulk')
     def bulk_create(self, request):
         """
-        Crea múltiples items de cotización en una sola petición.
+        Crea y/o actualiza múltiples items de cotización en una sola petición.
 
-        Ejemplo de payload:
+        Comportamiento:
+        - Items sin 'id': Se crean nuevos
+        - Items con 'id': Se actualizan los existentes
+        - Puede mezclar creación y actualización en el mismo request
+
+        Ejemplo de payload (crear):
         {
             "data": [
                 {
                     "quote": "uuid-de-cotización",
                     "product": "uuid-de-producto",
                     "quantity": 2,
-                    "unit_price": "100.50",
-                    "subtotal": "201.00"
+                    "unit_price": "100.50"
+                }
+            ]
+        }
+
+        Ejemplo de payload (actualizar):
+        {
+            "data": [
+                {
+                    "id": "uuid-del-item-existente",
+                    "quantity": 5,
+                    "unit_price": "200.00"
+                }
+            ]
+        }
+
+        Ejemplo de payload (mixto):
+        {
+            "data": [
+                {
+                    "id": "uuid-existente",
+                    "quantity": 3
                 },
                 {
-                    "quote": "uuid-de-cotización",
-                    "product": "uuid-de-producto-2",
+                    "quote": "uuid-quote",
+                    "product": "uuid-producto",
                     "quantity": 1,
                     "unit_price": "50.00"
                 }
@@ -70,12 +95,27 @@ class QuoteItemViewSet(viewsets.ModelViewSet):
         """
         serializer = BulkQuoteItemSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        items = serializer.save()
+        result = serializer.save()
+
+        created_count = len(result.get('created', []))
+        updated_count = len(result.get('updated', []))
+        total_count = created_count + updated_count
+
+        message_parts = []
+        if created_count > 0:
+            message_parts.append(f'{created_count} created')
+        if updated_count > 0:
+            message_parts.append(f'{updated_count} updated')
+
+        # Serializar todos los items
+        all_items = result.get('created', []) + result.get('updated', [])
 
         return Response(
             {
-                'message': f'{len(items)} item(s) created successfully',
-                'items': QuoteItemSerializer(items, many=True).data
+                'message': f'{total_count} item(s) processed: {", ".join(message_parts)}',
+                'created': QuoteItemSerializer(result.get('created', []), many=True).data,
+                'updated': QuoteItemSerializer(result.get('updated', []), many=True).data,
+                'items': QuoteItemSerializer(all_items, many=True).data
             },
-            status=status.HTTP_201_CREATED
+            status=status.HTTP_201_CREATED if created_count > 0 else status.HTTP_200_OK
         )
