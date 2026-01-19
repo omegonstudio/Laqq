@@ -39,6 +39,10 @@ env/
 
 # Node / Frontend
 node_modules/
+/Frontend/node_modules/
+devcontainer
+package-lock.json
+/Frontend/package-lock.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
