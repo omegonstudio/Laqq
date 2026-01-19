@@ -72,9 +72,18 @@ class Attachment(models.Model):
     def save(self, *args, **kwargs):
         # sincroniza file_name/size/content_type con file si está presente
         if self.file:
+            import mimetypes
             self.file_name = os.path.basename(self.file.name)
             try:
                 self.size_bytes = self.file.size
             except Exception:
                 pass
+            # Auto-detectar content_type si no está presente
+            if not self.content_type_str:
+                # Intentar obtener del archivo
+                content_type = getattr(self.file, 'content_type', None)
+                # Si no está, inferir por extensión
+                if not content_type:
+                    content_type = mimetypes.guess_type(self.file.name)[0]
+                self.content_type_str = content_type or 'application/octet-stream'
         super().save(*args, **kwargs)

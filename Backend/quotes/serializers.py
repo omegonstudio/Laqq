@@ -65,3 +65,32 @@ class QuoteSerializer(serializers.ModelSerializer):
         if value is not None and value < 0:
             raise serializers.ValidationError("Total amount cannot be negative")
         return value
+
+class BulkQuoteItemSerializer(serializers.Serializer):
+    """
+    Serializer para creación masiva de items de cotización.
+    Acepta un array de items en el campo 'data'.
+    """
+    data = QuoteItemSerializer(many=True)
+
+    def create(self, validated_data):
+        items_data = validated_data.get('data', [])
+        created_items = []
+
+        for item_data in items_data:
+            # Auto-calculate subtotal if not provided
+            if 'subtotal' not in item_data or item_data['subtotal'] is None:
+                quantity = item_data.get('quantity', 1)
+                unit_price = item_data.get('unit_price', 0) or 0
+                item_data['subtotal'] = quantity * unit_price
+
+            item = QuoteItem.objects.create(**item_data)
+            created_items.append(item)
+
+        return created_items
+
+    def to_representation(self, instance):
+        """
+        Retorna la lista de items creados serializados.
+        """
+        return QuoteItemSerializer(instance, many=True).data
