@@ -1,5 +1,10 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { Brand, BrandFormState, PaginatedResponse } from "@/types/types";
+import {
+  Brand,
+  BrandFormState,
+  PaginatedResponse,
+  PaginationInfo,
+} from "@/types/types";
 import { productsApi } from "@/lib/api/products";
 
 interface FetchBrandsParams {
@@ -12,6 +17,7 @@ interface BrandsState {
   count: number;
   loading: boolean;
   error: string | null;
+  pagination: PaginationInfo;
 
   selected: Brand | null;
   selectedLoading: boolean;
@@ -20,6 +26,7 @@ interface BrandsState {
   creating: boolean;
   createError: string | null;
   createdItem: Brand | null;
+  allLoaded: boolean;
 
   updating: boolean;
   updateError: string | null;
@@ -29,12 +36,22 @@ interface BrandsState {
   deleteError: string | null;
   deleteSuccess: boolean;
 }
+const initialPagination: PaginationInfo = {
+  count: 0,
+  next: null,
+  previous: null,
+  page_size: 20,
+  current_page: 1,
+  total_pages: 1,
+};
 
 const initialState: BrandsState = {
+  pagination: initialPagination,
   list: [],
   count: 0,
   loading: false,
   error: null,
+  allLoaded: false,
 
   selected: null,
   selectedLoading: false,
@@ -55,6 +72,40 @@ const initialState: BrandsState = {
 
 // ---- THUNKS ----
 
+export const fetchAllBrands = createAsyncThunk(
+  "brands/fetchAllBrand",
+  async (_, { rejectWithValue }) => {
+    try {
+      const allBrands: Brand[] = [];
+      let page = 1;
+      const pageSize = 100;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await productsApi.listBrands({
+          page,
+          page_size: pageSize,
+        });
+
+        allBrands.push(...response.results);
+        hasMore = response.next !== null;
+        page++;
+      }
+      console.log(allBrands, "AAAAAAAAAAA");
+      return {
+        results: allBrands,
+        count: allBrands.length,
+        next: null,
+        previous: null,
+        page_size: allBrands.length,
+        current_page: 1,
+        total_pages: 1,
+      };
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  }
+);
 export const fetchBrands = createAsyncThunk(
   "brands/fetch",
   async (params: FetchBrandsParams) => {
@@ -129,7 +180,31 @@ export const brandsSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || "Error cargando marcas";
       });
-
+    builder
+      .addCase(fetchAllBrands.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.allLoaded = false;
+      })
+      .addCase(fetchAllBrands.fulfilled, (state, action) => {
+        state.loading = false;
+        state.list = action.payload.results;
+        state.pagination = {
+          count: action.payload.count,
+          next: action.payload.next,
+          previous: action.payload.previous,
+          page_size: action.payload.page_size,
+          current_page: action.payload.current_page,
+          total_pages: action.payload.total_pages,
+        };
+        state.allLoaded = true;
+      })
+      .addCase(fetchAllBrands.rejected, (state, action) => {
+        state.loading = false;
+        state.error =
+          action.error.message || "Error obteniendo todas las marcas";
+        state.allLoaded = false;
+      });
     // GET ONE
     builder
       .addCase(fetchBrand.pending, (state) => {

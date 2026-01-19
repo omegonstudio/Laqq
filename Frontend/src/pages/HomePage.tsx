@@ -4,7 +4,7 @@ import BrandsGrid from "@/components/organisms/BrandsGrid";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useEffect } from "react";
 import { fetchAllProducts } from "@/store/productSlice";
-import { fetchBrands } from "@/store/brandSlice";
+import { fetchAllBrands, fetchBrands } from "@/store/brandSlice";
 import { fetchCategories } from "@/store/categoriesSlice";
 
 const HomePage = () => {
@@ -12,7 +12,7 @@ const HomePage = () => {
   useEffect(() => {
     dispatch(fetchAllProducts());
 
-    dispatch(fetchBrands({ page: 1, page_size: 30 }));
+    dispatch(fetchAllBrands());
     dispatch(fetchCategories({ page: 1, page_size: 10 }));
   }, [dispatch]);
 
