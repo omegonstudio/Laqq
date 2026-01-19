@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { Brand, PaginatedResponse } from "@/types/types";
+import { Brand, BrandFormState, PaginatedResponse } from "@/types/types";
 import { productsApi } from "@/lib/api/products";
 
 interface FetchBrandsParams {
@@ -71,14 +71,14 @@ export const fetchBrand = createAsyncThunk(
 
 export const createBrand = createAsyncThunk(
   "brands/create",
-  async (data: Partial<Brand>) => {
+  async (data: Partial<BrandFormState>) => {
     return productsApi.createBrand(data);
   }
 );
 
 export const updateBrand = createAsyncThunk(
   "brands/update",
-  async ({ id, data }: { id: string; data: Partial<Brand> }) => {
+  async ({ id, data }: { id: string; data: Partial<BrandFormState> }) => {
     return productsApi.updateBrand(id, data);
   }
 );

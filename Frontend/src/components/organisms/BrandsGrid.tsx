@@ -23,9 +23,9 @@ const BrandsGrid = () => {
               onClick={() => handleBrandClick(brand.id)}
               className="flex items-center justify-center p-4 grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer hover:scale-110"
             >
-              {brand.logo ? (
+              {brand.logo_url ? (
                 <img
-                  src={brand.logo}
+                  src={brand.logo_url}
                   alt={brand.name}
                   className="max-h-12 w-auto object-contain"
                 />

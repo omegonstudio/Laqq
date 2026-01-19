@@ -1,7 +1,6 @@
 import HeroSection from "@/components/organisms/HeroSection";
 import ProductGrid from "@/components/organisms/ProductGrid";
 import BrandsGrid from "@/components/organisms/BrandsGrid";
-import { mockProducts } from "@/utils/data/mockProducts";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useEffect } from "react";
 import { fetchAllProducts } from "@/store/productSlice";
@@ -13,7 +12,7 @@ const HomePage = () => {
   useEffect(() => {
     dispatch(fetchAllProducts());
 
-    dispatch(fetchBrands({ page: 1, page_size: 10 }));
+    dispatch(fetchBrands({ page: 1, page_size: 30 }));
     dispatch(fetchCategories({ page: 1, page_size: 10 }));
   }, [dispatch]);
 
