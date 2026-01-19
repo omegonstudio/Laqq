@@ -203,6 +203,76 @@ class QuoteItemAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
+    def test_bulk_create_quote_items(self):
+        """Crear múltiples items de cotización en una sola petición"""
+        # Create additional products
+        product2 = Product.objects.create(
+            name='Product 2',
+            brand=self.brand,
+            category=self.category
+        )
+        product3 = Product.objects.create(
+            name='Product 3',
+            brand=self.brand,
+            category=self.category
+        )
+
+        # Bulk create payload
+        data = {
+            'data': [
+                {
+                    'quote': str(self.quote.id),
+                    'product': str(product2.id),
+                    'quantity': 5,
+                    'unit_price': '75.50'
+                },
+                {
+                    'quote': str(self.quote.id),
+                    'product': str(product3.id),
+                    'quantity': 3,
+                    'unit_price': '120.00',
+                    'subtotal': '360.00'
+                }
+            ]
+        }
+
+        response = self.client.post('/quotes/items/bulk/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('message', response.data)
+        self.assertIn('items', response.data)
+        self.assertEqual(len(response.data['items']), 2)
+
+        # Verify first item (auto-calculated subtotal)
+        self.assertEqual(float(response.data['items'][0]['subtotal']), 377.50)
+
+        # Verify second item (manual subtotal)
+        self.assertEqual(float(response.data['items'][1]['subtotal']), 360.00)
+
+        # Verify total items in database
+        self.assertEqual(QuoteItem.objects.filter(quote=self.quote).count(), 3)
+
+    def test_bulk_create_empty_array(self):
+        """Validar que se maneja correctamente un array vacío"""
+        data = {'data': []}
+        response = self.client.post('/quotes/items/bulk/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(response.data['items']), 0)
+
+    def test_bulk_create_validation_error(self):
+        """Validar que errores de validación se reportan correctamente"""
+        data = {
+            'data': [
+                {
+                    'quote': str(self.quote.id),
+                    'product': str(self.product.id),
+                    'quantity': 0,  # Invalid: quantity must be > 0
+                    'unit_price': '100.00'
+                }
+            ]
+        }
+        response = self.client.post('/quotes/items/bulk/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 @override_settings(TESTING=False)
 class QuoteEmailNotificationTestCase(APITestCase):
