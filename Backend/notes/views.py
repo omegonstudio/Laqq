@@ -3,6 +3,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import NoteType, NoteState, Note
 from .serializers import NoteTypeSerializer, NoteStateSerializer, NoteSerializer
+from rest_framework.permissions import AllowAny  
 
 class NoteTypeViewSet(viewsets.ModelViewSet):
     queryset = NoteType.objects.all()
@@ -25,6 +26,7 @@ class NoteStateViewSet(viewsets.ModelViewSet):
 class NoteViewSet(viewsets.ModelViewSet):
     queryset = Note.objects.all()
     serializer_class = NoteSerializer
+    permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['note_type', 'state', 'author']
     search_fields = ['title', 'summary', 'content']
