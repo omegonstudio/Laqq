@@ -114,7 +114,11 @@ class QuoteItemAPITestCase(APITestCase):
 
     def setUp(self):
         self.client = APIClient()
+        # Create user with admin type to have permission to view quote items
+        self.user_type = UserType.objects.create(id='admin', name='Admin')
         self.user = User.objects.create_user(username='testuser', password='testpass123')
+        self.user.user_type = self.user_type
+        self.user.save()
         self.client.force_authenticate(user=self.user)
 
         # Create required related objects
@@ -408,3 +412,163 @@ class QuoteEmailNotificationTestCase(APITestCase):
         # Only business email should be sent (customer has no email)
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn('Nueva Cotización', mail.outbox[0].subject)
+
+
+class PublicEndpointsTestCase(APITestCase):
+    """Tests para verificar que los endpoints públicos funcionan sin autenticación"""
+
+    def setUp(self):
+        # Cliente SIN autenticación
+        self.client = APIClient()
+
+        # Create required related objects
+        self.contact_state = ContactState.objects.create(id='active', name='Active')
+        self.contact = Contact.objects.create(
+            company_name='Test Company',
+            first_name='John',
+            last_name='Doe',
+            email='john@test.com',
+            state=self.contact_state
+        )
+        self.quote_type = QuoteType.objects.create(id='standard', name='Standard')
+        self.quote_state = QuoteState.objects.create(id='draft', name='Draft')
+
+        # Create products
+        self.brand = Brand.objects.create(name='Test Brand')
+        self.category = Category.objects.create(name='Test Category')
+        self.product = Product.objects.create(
+            name='Test Product',
+            brand=self.brand,
+            category=self.category
+        )
+
+    def test_create_quote_without_authentication(self):
+        """✅ POST /quotes/list/ - Crear cotización sin autenticación (público)"""
+        data = {
+            'contact': self.contact.id,
+            'quote_type': self.quote_type.id,
+            'state': self.quote_state.id,
+            'total_amount': 1000.00,
+            'message': 'Cotización desde web pública'
+        }
+        response = self.client.post('/quotes/list/', data)
+
+        # Debe funcionar sin token
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('quote_number', response.data)
+        self.assertTrue(response.data['quote_number'].startswith('Q-'))
+
+    def test_create_quote_item_without_authentication(self):
+        """✅ POST /quotes/items/ - Agregar item sin autenticación (público)"""
+        # Primero crear una cotización
+        quote = Quote.objects.create(
+            quote_number='Q-2026-00001',
+            contact=self.contact,
+            quote_type=self.quote_type,
+            state=self.quote_state
+        )
+
+        data = {
+            'quote': quote.id,
+            'product': self.product.id,
+            'quantity': 5,
+            'unit_price': 100.00
+        }
+        response = self.client.post('/quotes/items/', data)
+
+        # Debe funcionar sin token
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(float(response.data['subtotal']), 500.00)
+
+    def test_list_quotes_requires_authentication(self):
+        """🔒 GET /quotes/list/ - Ver cotizaciones REQUIERE autenticación"""
+        response = self.client.get('/quotes/list/')
+
+        # Debe retornar 401 Unauthorized
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_list_quote_items_requires_authentication(self):
+        """🔒 GET /quotes/items/ - Ver items REQUIERE autenticación"""
+        response = self.client.get('/quotes/items/')
+
+        # Debe retornar 401 Unauthorized
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_update_quote_requires_authentication(self):
+        """🔒 PUT /quotes/list/{id}/ - Editar cotización REQUIERE autenticación"""
+        quote = Quote.objects.create(
+            quote_number='Q-2026-00002',
+            contact=self.contact,
+            quote_type=self.quote_type,
+            state=self.quote_state
+        )
+
+        data = {'total_amount': 2000.00}
+        response = self.client.patch(f'/quotes/list/{quote.id}/', data)
+
+        # Debe retornar 401 Unauthorized
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_delete_quote_requires_authentication(self):
+        """🔒 DELETE /quotes/list/{id}/ - Eliminar cotización REQUIERE autenticación"""
+        quote = Quote.objects.create(
+            quote_number='Q-2026-00003',
+            contact=self.contact,
+            quote_type=self.quote_type,
+            state=self.quote_state
+        )
+
+        response = self.client.delete(f'/quotes/list/{quote.id}/')
+
+        # Debe retornar 401 Unauthorized
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class PublicProductEndpointsTestCase(APITestCase):
+    """Tests para verificar que los endpoints de productos son públicos"""
+
+    def setUp(self):
+        # Cliente SIN autenticación
+        self.client = APIClient()
+
+        self.brand = Brand.objects.create(name='Test Brand')
+        self.category = Category.objects.create(name='Test Category')
+        self.product = Product.objects.create(
+            name='Test Product',
+            brand=self.brand,
+            category=self.category,
+            is_active=True
+        )
+
+    def test_list_products_without_authentication(self):
+        """✅ GET /products/list/ - Ver productos sin autenticación (público)"""
+        response = self.client.get('/products/list/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+
+    def test_list_brands_without_authentication(self):
+        """✅ GET /products/brands/ - Ver marcas sin autenticación (público)"""
+        response = self.client.get('/products/brands/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+
+    def test_list_categories_without_authentication(self):
+        """✅ GET /products/categories/ - Ver categorías sin autenticación (público)"""
+        response = self.client.get('/products/categories/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+
+    def test_create_product_requires_authentication(self):
+        """🔒 POST /products/list/ - Crear producto REQUIERE autenticación"""
+        data = {
+            'name': 'New Product',
+            'brand': self.brand.id,
+            'category': self.category.id
+        }
+        response = self.client.post('/products/list/', data)
+
+        # Debe retornar 401 o 403
+        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
