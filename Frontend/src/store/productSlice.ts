@@ -10,6 +10,9 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 interface FetchProductsParams {
   page?: number;
   page_size?: number;
+  search?: string;
+  brand?: string;
+  category?: string;
 }
 
 // ============================================

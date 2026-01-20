@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import InputField from "../atoms/InputField";
 import Button from "../atoms/Button";
-import { Product, QuoteFormData, QuoteItem } from "@/types/types";
+import { Product, QuoteItem } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   Command,
@@ -19,8 +19,32 @@ import {
 import { Check, ChevronsUpDown, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { create } from "domain";
-import { createQuote, createQuoteItemsBulk } from "@/store/quotesSlice";
-import { QuoteItemUI } from "@/types/api";
+import {
+  createQuote,
+  createQuoteFormState,
+  createQuoteItemsBulk,
+} from "@/store/quotesSlice";
+import { QuoteFormState } from "@/types/api";
+import { useCart } from "@/contexts/CartContext";
+
+const initialState: QuoteFormState = {
+  contact: {
+    email: "",
+    first_name: "",
+    last_name: "",
+    phone: "",
+    country: "",
+    message: "",
+    company_name: "",
+  },
+  quote: {
+    quote_type: "EQUIPMENT",
+    message: "",
+    state: "PENDING",
+    user: null,
+  },
+  items: [],
+};
 
 function ProductSearchCombobox({
   products,
@@ -115,70 +139,73 @@ function ProductSearchCombobox({
 
 function QuoteForm() {
   const dispatch = useAppDispatch();
-
+  const {
+    items: itemsCart,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    totalItems,
+  } = useCart();
   // Replace mockProducts with your Redux selector:
   const { list: products, loading: loadingProducts } = useAppSelector(
     (state) => state.products
   );
-  // const products = mockProducts;
-  console.log(products);
-  const [formData, setFormData] = useState<QuoteFormData>({
-    name: "",
-    company: "",
-    email: "",
-    phone: "",
-    message: "",
-  });
 
-  const [items, setItems] = useState<QuoteItemUI[]>([]);
+  useEffect(() => {
+    setFormState((prev) => ({
+      ...prev,
+      items: itemsCart.map((item) => ({
+        product: item.id,
+        quantity: item.quantity,
+        unit_price: "0", // Ensure `unit_price` exists in `CartItem`
+      })),
+    }));
+  }, [itemsCart]);
+  // const products = mockProducts;
+  const [formState, setFormState] = useState<QuoteFormState>(initialState);
 
   const addItem = () => {
-    setItems((prev) => [
+    setFormState((prev) => ({
       ...prev,
-      {
-        id: crypto.randomUUID(),
-        productId: "",
-        quantity: 1,
-      },
-    ]);
+      items: [
+        ...prev.items,
+        {
+          product: "",
+          quantity: 1,
+          unit_price: "0",
+        },
+      ],
+    }));
   };
 
-  const removeItem = (id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
-  };
+  // const removeItem = (id: string) => {
+  //   setItems((prev) => prev.filter((item) => item.id !== id));
+  // };
 
   const getProductById = (productId: string) =>
     products.find((p) => p.id === productId) ?? null;
 
-  const updateItemProduct = (itemId: string, product: Product | null) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, productId: product?.id ?? "" } : item
-      )
-    );
+  const updateItemProduct = (index: number, product: Product | null) => {
+    setFormState((prev) => ({
+      ...prev,
+      items: prev.items.map((item, i) =>
+        i === index ? { ...item, product: product?.id ?? "" } : item
+      ),
+    }));
   };
 
-  const updateItemQuantity = (itemId: string, quantity: number) => {
-    setItems((prev) =>
-      prev.map((item) => (item.id === itemId ? { ...item, quantity } : item))
-    );
+  const updateItemQuantity = (index: number, quantity: number) => {
+    setFormState((prev) => ({
+      ...prev,
+      items: prev.items.map((item, i) =>
+        i === index ? { ...item, quantity } : item
+      ),
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Quote request:", formData);
-    const quoteResult = await dispatch(createQuote(formData)).unwrap();
-    const quoteId = quoteResult.id;
-
-    const bulkPayload = items.map((item) => ({
-      quote: quoteId,
-      product: item.productId,
-      quantity: item.quantity,
-    }));
-
-    await dispatch(createQuoteItemsBulk(bulkPayload));
-
-    // toast({ title: "Solicitud Enviada", description: "Nos pondremos en contacto contigo pronto." })
+    const quoteResult = await dispatch(createQuoteFormState(formState));
   };
 
   return (
@@ -186,30 +213,59 @@ function QuoteForm() {
       <div className="grid md:grid-cols-2 gap-4">
         <InputField
           label="Nombre"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
-        />
-        <InputField
-          label="Empresa"
-          value={formData.company}
+          value={formState.contact.first_name}
           onChange={(e) =>
-            setFormData({ ...formData, company: e.target.value })
+            setFormState((prev) => ({
+              ...prev,
+              contact: { ...prev.contact, first_name: e.target.value },
+            }))
           }
           required
         />
         <InputField
+          label="Apellido"
+          value={formState.contact.last_name}
+          onChange={(e) =>
+            setFormState((prev) => ({
+              ...prev,
+              contact: { ...prev.contact, last_name: e.target.value },
+            }))
+          }
+          required
+        />
+        <InputField
+          label="Empresa"
+          value={formState.contact.company_name}
+          onChange={(e) =>
+            setFormState((prev) => ({
+              ...prev,
+              contact: { ...prev.contact, company_name: e.target.value },
+            }))
+          }
+        />
+
+        <InputField
           label="Email"
           type="email"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          value={formState.contact.email}
+          onChange={(e) =>
+            setFormState({
+              ...formState,
+              contact: { ...formState.contact, email: e.target.value },
+            })
+          }
           required
         />
         <InputField
           label="Teléfono"
           type="tel"
-          value={formData.phone}
-          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+          value={formState.contact.phone}
+          onChange={(e) =>
+            setFormState({
+              ...formState,
+              contact: { ...formState.contact, phone: e.target.value },
+            })
+          }
           required
         />
       </div>
@@ -221,15 +277,15 @@ function QuoteForm() {
             <Plus className="w-4 h-4 mr-1" /> Agregar Producto
           </Button>
         </div>
-        {items.map((item) => {
-          const selectedProduct = getProductById(item.productId);
+        {formState.items.map((item, index) => {
+          const selectedProduct = getProductById(item.product);
 
           return (
-            <div key={item.id} className="flex gap-2">
+            <div key={index} className="flex gap-2">
               <ProductSearchCombobox
                 products={products}
                 selectedProduct={selectedProduct}
-                onSelect={(product) => updateItemProduct(item.id, product)}
+                onSelect={(product) => updateItemProduct(index, product)}
               />
 
               <InputField
@@ -238,7 +294,7 @@ function QuoteForm() {
                 min={1}
                 className="w-24"
                 onChange={(e) =>
-                  updateItemQuantity(item.id, Number(e.target.value) || 1)
+                  updateItemQuantity(index, Number(e.target.value) || 1)
                 }
               />
             </div>
@@ -249,9 +305,12 @@ function QuoteForm() {
       <div>
         <label className="block text-sm font-medium mb-2">Mensaje</label>
         <textarea
-          value={formData.message}
+          value={formState.contact.message}
           onChange={(e) =>
-            setFormData({ ...formData, message: e.target.value })
+            setFormState({
+              ...formState,
+              contact: { ...formState.contact, message: e.target.value },
+            })
           }
           className="w-full px-4 py-2.5 rounded-xl border border-input bg-background min-h-[120px] focus:outline-none focus:ring-2 focus:ring-primary"
           placeholder="Información adicional..."

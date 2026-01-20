@@ -1,6 +1,12 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { quotesApi } from "@/lib/api/quotes";
-import { Quote, QuoteItem, QuoteType, QuoteState } from "@/types/api";
+import {
+  Quote,
+  QuoteItem,
+  QuoteType,
+  QuoteState,
+  QuoteFormState,
+} from "@/types/api";
 import { PaginationInfo } from "@/types/types";
 
 interface FetchQuotesParams {
@@ -18,6 +24,12 @@ export const createQuoteItemsBulk = createAsyncThunk(
   "quotes/bulk",
   async (payload: Partial<QuoteItemBulkCreate>) => {
     return quotesApi.bulk(payload);
+  }
+);
+export const createQuoteFormState = createAsyncThunk(
+  "quotes/bulk",
+  async (payload: Partial<QuoteFormState>) => {
+    return quotesApi.from(payload);
   }
 );
 // =================== TYPES ===================

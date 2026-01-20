@@ -156,14 +156,6 @@ export interface QuoteItem {
   subtotal: number;
 }
 
-export interface QuoteFormData {
-  name: string;
-  company: string;
-  email: string;
-  phone: string;
-  message: string;
-}
-
 export interface TicketFormData {
   name: string;
   email: string;

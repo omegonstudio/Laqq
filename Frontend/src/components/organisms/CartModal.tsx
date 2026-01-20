@@ -2,6 +2,7 @@ import { X, Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import Button from "@/components/atoms/Button";
 import { Link } from "react-router-dom";
+import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
 
 interface CartModalProps {
   isOpen: boolean;
@@ -9,16 +10,14 @@ interface CartModalProps {
 }
 
 const CartModal = ({ isOpen, onClose }: CartModalProps) => {
-  const { items, removeFromCart, updateQuantity, clearCart, totalItems } = useCart();
+  const { items, removeFromCart, updateQuantity, clearCart, totalItems } =
+    useCart();
 
   if (!isOpen) return null;
-
+  console.log(items);
   return (
     <>
-      <div 
-        className="fixed inset-0 bg-black/50 z-50"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />
       <div className="fixed right-0 top-0 h-full w-full max-w-md bg-background z-50 shadow-xl flex flex-col">
         <div className="flex items-center justify-between p-6 border-b border-border">
           <h2 className="text-2xl font-bold">Carrito ({totalItems})</h2>
@@ -33,7 +32,9 @@ const CartModal = ({ isOpen, onClose }: CartModalProps) => {
         <div className="flex-1 overflow-y-auto p-6">
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <p className="text-muted-foreground mb-4">Tu carrito está vacío</p>
+              <p className="text-muted-foreground mb-4">
+                Tu carrito está vacío
+              </p>
               <Link to="/products" onClick={onClose}>
                 <Button variant="outline">Ver Productos</Button>
               </Link>
@@ -48,7 +49,7 @@ const CartModal = ({ isOpen, onClose }: CartModalProps) => {
                   <div className="flex gap-4">
                     <div className="w-20 h-20 bg-muted rounded-lg flex-shrink-0">
                       <img
-                        src={item.image}
+                        src={item.image_url ? item.image_url : placeholderImage}
                         alt={item.name}
                         className="w-full h-full object-contain p-2"
                       />
@@ -62,7 +63,9 @@ const CartModal = ({ isOpen, onClose }: CartModalProps) => {
                       </p>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() =>
+                            updateQuantity(item.id, item.quantity - 1)
+                          }
                           className="p-1 hover:bg-muted rounded transition-colors"
                         >
                           <Minus className="w-4 h-4" />
@@ -71,7 +74,9 @@ const CartModal = ({ isOpen, onClose }: CartModalProps) => {
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() =>
+                            updateQuantity(item.id, item.quantity + 1)
+                          }
                           className="p-1 hover:bg-muted rounded transition-colors"
                         >
                           <Plus className="w-4 h-4" />
@@ -93,11 +98,7 @@ const CartModal = ({ isOpen, onClose }: CartModalProps) => {
 
         {items.length > 0 && (
           <div className="p-6 border-t border-border space-y-3">
-            <Button
-              variant="ghost"
-              className="w-full"
-              onClick={clearCart}
-            >
+            <Button variant="ghost" className="w-full" onClick={clearCart}>
               Vaciar Carrito
             </Button>
             <Link to="/quote" onClick={onClose}>

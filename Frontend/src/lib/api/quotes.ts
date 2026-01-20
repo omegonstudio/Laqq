@@ -1,9 +1,9 @@
-import { QuoteFormData } from "@/types/types";
 import { api } from "./client";
 import { cleanParams, QueryParams } from "./utils";
 import {
   PaginatedResponse,
   Quote,
+  QuoteFormState,
   QuoteItem,
   QuoteState,
   QuoteType,
@@ -38,9 +38,9 @@ export const quotesApi = {
       cleanParams(params as QueryParams)
     ),
   get: (id: string) => api.get<Quote>(`${BASE}/list/${id}/`),
-  create: (payload: Partial<QuoteFormData>) =>
+  create: (payload: Partial<Quote>) =>
     api.post<Quote>(`${BASE}/list/`, payload),
-  update: (id: string, payload: Partial<QuoteFormData>) =>
+  update: (id: string, payload: Partial<Quote>) =>
     api.put<Quote>(`${BASE}/list/${id}/`, payload),
   patch: (id: string, payload: Partial<Quote>) =>
     api.patch<Quote>(`${BASE}/list/${id}/`, payload),
@@ -60,10 +60,13 @@ export const quotesApi = {
     api.patch<QuoteItem>(`${BASE}/items/${id}/`, payload),
   removeItem: (id: string) => api.delete<void>(`${BASE}/items/${id}/`),
 
-  // ===================ITEMS===================
+  // ======================================
 
   bulk: (payload: Partial<QuoteItemBulkCreate>) =>
-    api.post<QuoteItemBulkCreate>(`${BASE}/quotes/items/bulk/`, payload),
+    api.post<QuoteItemBulkCreate>(`${BASE}/items/bulk/`, payload),
+
+  from: (payload: Partial<QuoteFormState>) =>
+    api.post<QuoteFormState>(`${BASE}/list/from-package/`, payload),
 
   // =================== TYPES===================
   listTypes: (params?: { search?: string }) =>
