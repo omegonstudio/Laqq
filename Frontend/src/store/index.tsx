@@ -8,6 +8,8 @@ import { setStoreReference } from "@/api/client"; // ✅ Importar
 import brandsReducer from "./brandSlice";
 import specsReducer from "./specsSlice";
 import fixedSpecsReducer from "./fixedSpecsSlice";
+import quotesReducer from "./quotesSlice";
+import contacts from "./contacts";
 
 const persistConfig = {
   key: "auth",
@@ -25,6 +27,8 @@ export const store = configureStore({
     brands: brandsReducer,
     specs: specsReducer,
     fixedSpecs: fixedSpecsReducer,
+    quotes: quotesReducer,
+    contacts: contacts,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

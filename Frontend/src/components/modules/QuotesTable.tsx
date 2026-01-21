@@ -1,72 +1,131 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Eye, FileText, Trash2 } from "lucide-react";
 import Table from "@/components/common/Table";
 import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
-import { mockQuotes, BackofficeQuote } from "@/utils/mockData/quotes";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchQuotes } from "@/store/quotesSlice";
+import { Quote, QuoteWithContact } from "@/types/api";
+import { toast } from "sonner";
+import { generateQuotePdf } from "@/utils/useQuotePDF";
+import QuotePreviewDialog from "../atoms/QuotePreview";
+import { fetchContacts } from "@/store/contacts";
 
 const QuotesTable = () => {
-  const [quotes] = useState<BackofficeQuote[]>(mockQuotes);
+  const dispatch = useAppDispatch();
+
+  const { list: quotes } = useAppSelector((state) => state.quotes);
+  const { list: contacts } = useAppSelector((state) => state.contacts);
+  const { list: products } = useAppSelector((state) => state.products);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [previewQuote, setPreviewQuote] = useState<QuoteWithContact | null>(
+    null
+  );
 
-  const filteredQuotes = quotes.filter(quote => {
-    const matchesSearch = quote.empresa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         quote.numero.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || quote.estado === statusFilter;
-    return matchesSearch && matchesStatus;
+  useEffect(() => {
+    dispatch(fetchQuotes({ page: 1, page_size: 50 }));
+    dispatch(fetchContacts({ page: 1, page_size: 50 }));
+  }, [dispatch]);
+
+  // 👉 Mapa de contactos por ID
+  const contactsById = useMemo(() => {
+    return new Map(contacts.map((c) => [c.id, c]));
+  }, [contacts]);
+
+  const productsById = useMemo(
+    () => new Map(products.map((p) => [p.id, p])),
+    [products]
+  );
+
+  // 👉 Quotes enriquecidas con contacto
+  const enrichedQuotes: QuoteWithContact[] = useMemo(() => {
+    return quotes.map((quote) => {
+      const contact = contactsById.get(quote.contact);
+
+      return {
+        ...quote,
+        contactInfo: contact
+          ? {
+              first_name: contact.first_name,
+              last_name: contact.last_name,
+              email: contact.email,
+              company_name: contact.company_name,
+            }
+          : undefined,
+
+        items: quote.items?.map((item) => {
+          const product = productsById.get(item.product);
+
+          return {
+            ...item,
+            productName: product?.name ?? "Producto desconocido",
+          };
+        }),
+      };
+    });
+  }, [quotes, contactsById, productsById]);
+  const filteredQuotes = enrichedQuotes.filter((quote) => {
+    const matchesStatus =
+      statusFilter === "all" || quote.state === statusFilter;
+    return matchesStatus;
   });
 
-  const handleView = (quote: BackofficeQuote) => {
-    console.log("Ver cotización:", quote);
-  };
-
-  const handlePDF = (quote: BackofficeQuote) => {
-    console.log("Generar PDF:", quote);
-  };
-
-  const handleDelete = (quote: BackofficeQuote) => {
-    console.log("Eliminar cotización:", quote);
-  };
-
   const columns = [
-    { key: "numero", label: "N° Cotización", sortable: true },
-    { key: "empresa", label: "Empresa", sortable: true },
-    { key: "pais", label: "País", sortable: true },
-    { key: "email", label: "Email", sortable: true },
-    { key: "usuario", label: "Usuario", sortable: true },
-    { key: "fecha", label: "Fecha", sortable: true },
-    { key: "tipo", label: "Tipo", sortable: true },
-    { key: "estado", label: "Estado", sortable: true },
+    { key: "quote_number", label: "N° Cotización", sortable: true },
+    { key: "contactInfo.company_name", label: "Empresa", sortable: true },
+    { key: "contactInfo.email", label: "Email", sortable: true },
+    { key: "quote_type", label: "Tipo", sortable: true },
+    { key: "state", label: "Estado", sortable: true },
   ];
 
   const actions = [
-    { icon: <Eye size={16} />, onClick: handleView, label: "Ver detalles" },
-    { icon: <FileText size={16} />, onClick: handlePDF, label: "Generar PDF" },
-    { icon: <Trash2 size={16} />, onClick: handleDelete, color: "red", label: "Eliminar" },
+    {
+      icon: <Eye size={16} />,
+      label: "Ver",
+      onClick: (quote: QuoteWithContact) => setPreviewQuote(quote),
+    },
+    {
+      icon: <FileText size={16} />,
+      label: "PDF",
+      onClick: (quote: QuoteWithContact) => {
+        generateQuotePdf(quote);
+        toast.success("PDF generado");
+      },
+    },
+    {
+      icon: <Trash2 size={16} />,
+      label: "Eliminar",
+      color: "red",
+      onClick: (quote: QuoteWithContact) => console.log("Eliminar", quote),
+    },
   ];
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
+      <div className="flex gap-4">
         <InputField
-          placeholder="Buscar por empresa o número..."
+          placeholder="Buscar..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-md"
         />
+
         <Select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           options={[
-            { value: "all", label: "Todos los estados" },
-            { value: "Pendiente", label: "Pendiente" },
-            { value: "Enviada", label: "Enviada" },
-            { value: "Confirmada", label: "Confirmada" }
+            { value: "all", label: "Todos" },
+            { value: "NEW", label: "Nueva" },
+            { value: "CONFIRMED", label: "Confirmada" },
           ]}
-          className="max-w-xs"
         />
       </div>
+
+      <QuotePreviewDialog
+        open={!!previewQuote}
+        onOpenChange={(open) => !open && setPreviewQuote(null)}
+        quote={previewQuote}
+      />
 
       <Table columns={columns} data={filteredQuotes} actions={actions} />
     </div>

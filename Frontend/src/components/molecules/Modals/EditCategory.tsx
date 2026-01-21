@@ -48,7 +48,7 @@ const getEmptyCategoryFormState = (): CategoryFormState => ({
   parent: undefined,
   display_order: 0,
   description: "",
-  level: 0,
+  level: 10,
 });
 
 const categoryToFormState = (category: Category): CategoryFormState => ({
@@ -131,31 +131,11 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
 
   const dispatch = useAppDispatch();
   const { creating, updating } = useAppSelector((state) => state.categories);
-  console.log(menuItems, "menu items");
-  const allowedParentCategories = useMemo(() => {
-    return flatCategories.filter((cat) => {
-      // no puede ser padre de sí misma
-      if (cat.id === localState.id) return false;
 
-      // regla de niveles
-      return cat.level < localState.level;
-    });
-  }, [flatCategories, localState.id, localState.level]);
-
+  // Elimina los dos useEffect actuales y reemplázalos por este único:
   useEffect(() => {
-    if (initialData) {
-      const formState = categoryToFormState(initialData);
-      setLocalState(formState);
-      setInitialParentId(initialData.parent);
-    } else {
-      setLocalState(getEmptyCategoryFormState());
-      setInitialParentId(undefined);
-    }
-  }, [initialData]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      if (initialData) {
+    if (isOpen) {
+      if (!isNew && initialData) {
         const formState = categoryToFormState(initialData);
         setLocalState(formState);
         setInitialParentId(initialData.parent);
@@ -164,7 +144,7 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
         setInitialParentId(undefined);
       }
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, isNew]);
 
   const validation = useMemo(
     () => validateCategoryForm(localState),
@@ -221,10 +201,7 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
       toast.error(errorMessage);
     }
   };
-
-  const availableParentCategories = categories.filter(
-    (cat) => !localState.id || cat.id !== localState.id
-  );
+  console.log(flatCategories, localState, "AA");
   const isDisabled = (cat: FlatCategory) => {
     // nunca permitir auto-referencia
     if (cat.id === localState.id) return true;
@@ -298,12 +275,20 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
                       >
                         <span
                           className={`
-          block
-          ${disabled ? "opacity-50" : ""}
-          ${cat.level === 0 ? "uppercase text-sm font-bold" : ""}
-          ${cat.level === 1 ? "text-sm pl-3 font-semibold" : ""}
-          ${cat.level === 2 ? "text-xs pl-6" : ""}
-        `}
+                              block
+                              ${disabled ? "opacity-50" : ""}
+                              ${
+                                cat.level === 0
+                                  ? "uppercase text-sm font-bold"
+                                  : ""
+                              }
+                              ${
+                                cat.level === 1
+                                  ? "text-sm pl-3 font-semibold"
+                                  : ""
+                              }
+                              ${cat.level === 2 ? "text-xs pl-6" : ""}
+                            `}
                         >
                           {cat.name}
                         </span>

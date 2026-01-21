@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import InputField from "../atoms/InputField";
 import Button from "../atoms/Button";
-import { Product, QuoteItem } from "@/types/types";
+import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   Command,
@@ -26,6 +26,7 @@ import {
 } from "@/store/quotesSlice";
 import { QuoteFormState } from "@/types/api";
 import { useCart } from "@/contexts/CartContext";
+import { toast } from "sonner";
 
 const initialState: QuoteFormState = {
   contact: {
@@ -205,7 +206,19 @@ function QuoteForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const quoteResult = await dispatch(createQuoteFormState(formState));
+
+    try {
+      const result = await dispatch(createQuoteFormState(formState)).unwrap();
+
+      // result === QuoteFormState (respuesta de la API)
+      toast.success("Cotización creada");
+
+      console.log(result);
+      setFormState(initialState);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      toast.error("Error al crear la cotización");
+    }
   };
 
   return (

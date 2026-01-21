@@ -178,6 +178,7 @@ export interface QuoteItem {
 //   subtotal?: string;
 // }
 export interface contactQuote {
+  id?: string;
   email: string;
   first_name: string;
   last_name: string;
@@ -186,6 +187,21 @@ export interface contactQuote {
   message: string;
   company_name: string;
 }
+
+export type ContactInfo = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  company_name: string;
+};
+export type QuoteItemWithProduct = QuoteItem & {
+  productName?: string;
+};
+export type QuoteWithContact = Omit<Quote, "items"> & {
+  contactInfo?: ContactInfo;
+  items?: QuoteItemWithProduct[];
+};
+
 export interface Quote {
   id: string;
   quote_number: string;

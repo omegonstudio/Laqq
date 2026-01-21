@@ -19,6 +19,7 @@ const CategoriesABM = () => {
     null
   );
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
+
   const categoryData = useMemo(() => {
     // Creamos un mapa id -> name
     const idToNameMap = new Map<string, string>();
@@ -60,16 +61,27 @@ const CategoriesABM = () => {
       }
     }
   };
-
+  console.log(selectedCategory, "SELECTED CATEGORY");
   const handleNewCategory = () => {
     setSelectedCategory(null);
     setIsModalOpen(true);
   };
+  const getCategoryName = (id: string | undefined): string => {
+    if (!id) return "Categoría nivel 0";
+    const category = categories.find((cat) => cat.id === id);
+    return category?.name || "";
+  };
+  const tableData = useMemo(() => {
+    return categories.map((cat) => ({
+      ...cat, // ← Mantiene TODOS los datos originales incluyendo parent (ID)
+      parentName: getCategoryName(cat.parent), // ← Agrega solo el nombre para visualización
+    }));
+  }, [categories]);
 
   const columns = [
     { key: "name", label: "Nombre", sortable: true },
     { key: "display_order", label: "Orden", sortable: true },
-    { key: "parent", label: "Categoría padre", sortable: true },
+    { key: "parentName", label: "Categoría padre", sortable: true },
   ];
 
   const actions = [
@@ -95,7 +107,8 @@ const CategoriesABM = () => {
         </Button>
       </div>
 
-      <Table columns={columns} data={categoryData} actions={actions} />
+      <Table columns={columns} data={tableData} actions={actions} />
+
       <ModalCategory
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

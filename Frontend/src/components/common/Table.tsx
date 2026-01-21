@@ -51,7 +51,7 @@ const Table = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-
+  console.log(data, "DATA EN TABLEEE");
   const isServerPaginated = !!serverPagination;
 
   const handleSort = (key: string) => {
