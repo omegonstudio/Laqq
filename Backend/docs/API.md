@@ -9,7 +9,15 @@ Production: https://your-domain.com/api/
 
 ## 🔑 Autenticación
 
-Todos los endpoints (excepto `/auth/login/` y `/auth/refresh/`) requieren un token JWT válido.
+⚠️ **IMPORTANTE:** Algunos endpoints son **públicos** y no requieren autenticación. Ver [PUBLIC_ENDPOINTS.md](PUBLIC_ENDPOINTS.md) para la lista completa.
+
+La mayoría de los endpoints requieren un token JWT válido, excepto:
+- Endpoints de login y refresh token
+- Catálogo de productos (GET)
+- Crear cotizaciones (POST)
+- Ver marcas y categorías
+
+Para todos los demás endpoints, se requiere autenticación.
 
 ### Headers Requeridos
 

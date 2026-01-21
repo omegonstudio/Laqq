@@ -10,15 +10,16 @@
 
 1. [Arquitectura](#arquitectura)
 2. [Configuración Inicial](#configuración-necesaria)
-3. [Autenticación y Usuarios](#autenticación-jwt)
-4. [Productos y Catálogo](#módulo-productos)
-5. [Contactos y CRM](#módulo-contactos)
-6. [Cotizaciones](#módulo-cotizaciones)
-7. [Tickets de Servicio](#módulo-tickets)
-8. [Dashboard y Estadísticas](#dashboard-y-estadísticas)
-9. [Manejo de Archivos](#adjuntos-y-archivos)
-10. [Códigos de Ejemplo](#ejemplos-de-integración)
-11. [Errores Comunes](#errores-comunes)
+3. [Endpoints Públicos](#endpoints-públicos)
+4. [Autenticación y Usuarios](#autenticación-jwt)
+5. [Productos y Catálogo](#módulo-productos)
+6. [Contactos y CRM](#módulo-contactos)
+7. [Cotizaciones](#módulo-cotizaciones)
+8. [Tickets de Servicio](#módulo-tickets)
+9. [Dashboard y Estadísticas](#dashboard-y-estadísticas)
+10. [Manejo de Archivos](#adjuntos-y-archivos)
+11. [Códigos de Ejemplo](#ejemplos-de-integración)
+12. [Errores Comunes](#errores-comunes)
 
 ---
 
@@ -122,6 +123,63 @@ LAQQ tiene 6 módulos principales que el frontend debe integrar:
 | **Cotizaciones** | Sistema de cotizaciones y carrito | `/quotes/` |
 | **Tickets** | Servicio técnico y soporte | `/tickets/` |
 | **Dashboard** | Estadísticas y métricas | `/dashboard/` |
+
+---
+
+## 🌐 Endpoints Públicos
+
+**⚠️ IMPORTANTE:** Varios endpoints son **públicos** y **NO requieren autenticación JWT**.
+
+### Endpoints Públicos (Sin Token)
+
+#### GET (Lectura)
+- `GET /products/list/` - Ver catálogo de productos
+- `GET /products/brands/` - Ver marcas
+- `GET /products/categories/` - Ver categorías
+- `GET /attachments/` - Ver archivos adjuntos (imágenes, documentos)
+- `GET /notes/list/` - Ver notas/blog
+
+#### POST (Creación)
+- `POST /quotes/list/` - **Crear cotización anónima** (sin login)
+- `POST /quotes/items/` - **Agregar items a cotización** (sin login)
+- `POST /users/token/` - Login (obtener token)
+- `POST /users/token/refresh/` - Refresh token
+
+### Flujo Típico de Usuario Anónimo
+
+```javascript
+// 1. Ver productos (sin token)
+const products = await fetch('http://localhost:8000/products/list/');
+
+// 2. Crear cotización (sin token)
+const quote = await fetch('http://localhost:8000/quotes/list/', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    contact: {
+      company_name: "Distribuidora SA",
+      first_name: "María",
+      last_name: "González",
+      email: "compras@distmed.com.ar",
+      phone: "+54 11 5555-6666"
+    },
+    message: "Solicito cotización"
+  })
+});
+
+// 3. Agregar productos a la cotización (sin token)
+const item = await fetch('http://localhost:8000/quotes/items/', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    quote: quoteId,
+    product: productId,
+    quantity: 10
+  })
+});
+```
+
+**Ver documentación completa:** [docs/PUBLIC_ENDPOINTS.md](PUBLIC_ENDPOINTS.md)
 
 ---
 

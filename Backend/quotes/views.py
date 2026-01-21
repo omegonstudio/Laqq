@@ -5,7 +5,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import QuoteType, QuoteState, Quote, QuoteItem
 from .serializers import QuoteTypeSerializer, QuoteStateSerializer, QuoteSerializer, QuoteItemSerializer, BulkQuoteItemSerializer, QuotePackageSerializer
-from .permissions import CanCreateOrAdmin
+from .permissions import CanCreateOrAdmin, AllowPublicQuoteItems
 import logging
 
 logger = logging.getLogger(__name__)
@@ -208,6 +208,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
 class QuoteItemViewSet(viewsets.ModelViewSet):
     queryset = QuoteItem.objects.all()
     serializer_class = QuoteItemSerializer
+    permission_classes = [AllowPublicQuoteItems]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['quote']
     search_fields = ['product_name', 'product_code']
