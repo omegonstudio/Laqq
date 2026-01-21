@@ -207,6 +207,179 @@ class QuoteItemAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
+    def test_bulk_create_quote_items(self):
+        """Crear múltiples items de cotización en una sola petición"""
+        # Create additional products
+        product2 = Product.objects.create(
+            name='Product 2',
+            brand=self.brand,
+            category=self.category
+        )
+        product3 = Product.objects.create(
+            name='Product 3',
+            brand=self.brand,
+            category=self.category
+        )
+
+        # Bulk create payload
+        data = {
+            'data': [
+                {
+                    'quote': str(self.quote.id),
+                    'product': str(product2.id),
+                    'quantity': 5,
+                    'unit_price': '75.50'
+                },
+                {
+                    'quote': str(self.quote.id),
+                    'product': str(product3.id),
+                    'quantity': 3,
+                    'unit_price': '120.00',
+                    'subtotal': '360.00'
+                }
+            ]
+        }
+
+        response = self.client.post('/quotes/items/bulk/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('message', response.data)
+        self.assertIn('items', response.data)
+        self.assertEqual(len(response.data['items']), 2)
+
+        # Verify first item (auto-calculated subtotal)
+        self.assertEqual(float(response.data['items'][0]['subtotal']), 377.50)
+
+        # Verify second item (manual subtotal)
+        self.assertEqual(float(response.data['items'][1]['subtotal']), 360.00)
+
+        # Verify total items in database
+        self.assertEqual(QuoteItem.objects.filter(quote=self.quote).count(), 3)
+
+    def test_bulk_create_empty_array(self):
+        """Validar que se maneja correctamente un array vacío"""
+        data = {'data': []}
+        response = self.client.post('/quotes/items/bulk/', data, format='json')
+        # Empty array returns 200 OK (no creation happened)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['items']), 0)
+
+    def test_bulk_create_validation_error(self):
+        """Validar que errores de validación se reportan correctamente"""
+        data = {
+            'data': [
+                {
+                    'quote': str(self.quote.id),
+                    'product': str(self.product.id),
+                    'quantity': 0,  # Invalid: quantity must be > 0
+                    'unit_price': '100.00'
+                }
+            ]
+        }
+        response = self.client.post('/quotes/items/bulk/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_bulk_update_quote_items(self):
+        """Actualizar múltiples items existentes en una sola petición"""
+        # Create additional items to update
+        item2 = QuoteItem.objects.create(
+            quote=self.quote,
+            product=self.product,
+            quantity=3,
+            unit_price=50.00,
+            subtotal=150.00
+        )
+
+        # Bulk update payload
+        data = {
+            'data': [
+                {
+                    'id': str(self.quote_item.id),
+                    'quantity': 10,
+                    'unit_price': '200.00'
+                },
+                {
+                    'id': str(item2.id),
+                    'quantity': 5,
+                    'unit_price': '75.00'
+                }
+            ]
+        }
+
+        response = self.client.post('/quotes/items/bulk/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('message', response.data)
+        self.assertIn('updated', response.data)
+        self.assertEqual(len(response.data['updated']), 2)
+
+        # Verify items were updated
+        self.quote_item.refresh_from_db()
+        self.assertEqual(self.quote_item.quantity, 10)
+        self.assertEqual(float(self.quote_item.unit_price), 200.00)
+        self.assertEqual(float(self.quote_item.subtotal), 2000.00)
+
+        item2.refresh_from_db()
+        self.assertEqual(item2.quantity, 5)
+        self.assertEqual(float(item2.unit_price), 75.00)
+        self.assertEqual(float(item2.subtotal), 375.00)
+
+    def test_bulk_mixed_create_and_update(self):
+        """Crear y actualizar items en la misma petición"""
+        product2 = Product.objects.create(
+            name='New Product',
+            brand=self.brand,
+            category=self.category
+        )
+
+        # Mixed payload: update existing + create new
+        data = {
+            'data': [
+                {
+                    'id': str(self.quote_item.id),
+                    'quantity': 8,
+                    'unit_price': '150.00'
+                },
+                {
+                    'quote': str(self.quote.id),
+                    'product': str(product2.id),
+                    'quantity': 2,
+                    'unit_price': '99.99'
+                }
+            ]
+        }
+
+        response = self.client.post('/quotes/items/bulk/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('created', response.data)
+        self.assertIn('updated', response.data)
+        self.assertEqual(len(response.data['created']), 1)
+        self.assertEqual(len(response.data['updated']), 1)
+
+        # Verify update
+        self.quote_item.refresh_from_db()
+        self.assertEqual(self.quote_item.quantity, 8)
+
+        # Verify creation
+        new_item = QuoteItem.objects.filter(product=product2).first()
+        self.assertIsNotNone(new_item)
+        self.assertEqual(new_item.quantity, 2)
+        self.assertEqual(float(new_item.unit_price), 99.99)
+
+    def test_bulk_update_nonexistent_item(self):
+        """Validar error al intentar actualizar un item que no existe"""
+        fake_uuid = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        data = {
+            'data': [
+                {
+                    'id': fake_uuid,
+                    'quantity': 5,
+                    'unit_price': '100.00'
+                }
+            ]
+        }
+        response = self.client.post('/quotes/items/bulk/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('does not exist', str(response.data))
+
 
 @override_settings(TESTING=False)
 class QuoteEmailNotificationTestCase(APITestCase):
