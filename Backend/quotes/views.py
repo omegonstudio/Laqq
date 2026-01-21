@@ -185,7 +185,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
         - El contacto nuevo se crea con estado "new" si existe, o el primer estado disponible
         - Los items son opcionales, se puede crear una cotización sin items
         """
-        serializer = QuotePackageSerializer(data=request.data)
+        serializer = QuotePackageSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         result = serializer.save()
 

@@ -2,6 +2,8 @@ from rest_framework import serializers
 from .models import QuoteType, QuoteState, Quote, QuoteItem
 from contacts.models import Contact, ContactState
 from products.models import Product
+from products.serializers import ProductSerializer
+from contacts.serializers import ContactSerializer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -51,6 +53,17 @@ class QuoteItemSerializer(serializers.ModelSerializer):
             unit_price = validated_data.get('unit_price', instance.unit_price) or 0
             validated_data['subtotal'] = quantity * unit_price
         return super().update(instance, validated_data)
+
+class QuoteItemDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer para QuoteItem que incluye todos los detalles del producto.
+    Usado en respuestas donde se necesita información completa del producto.
+    """
+    product = ProductSerializer(read_only=True)
+
+    class Meta:
+        model = QuoteItem
+        fields = '__all__'
 
 class QuoteSerializer(serializers.ModelSerializer):
     items = QuoteItemSerializer(many=True, read_only=True, source='quoteitem_set')
@@ -427,12 +440,16 @@ class QuotePackageSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         """
-        Retornar la representación serializada del resultado
+        Retornar la representación serializada del resultado con todas las propiedades.
+        - contact: Incluye todas las propiedades del contacto
+        - quote: Incluye todas las propiedades de la cotización
+        - items: Incluye todas las propiedades de los items Y todos los detalles de cada producto
         """
-        from contacts.serializers import ContactSerializer
+        # Pasar el contexto de request para URLs absolutas en attachments e imágenes
+        context = {'request': self.context.get('request')}
 
         return {
-            'contact': ContactSerializer(instance['contact']).data,
-            'quote': QuoteSerializer(instance['quote']).data,
-            'items': QuoteItemSerializer(instance['items'], many=True).data
+            'contact': ContactSerializer(instance['contact'], context=context).data,
+            'quote': QuoteSerializer(instance['quote'], context=context).data,
+            'items': QuoteItemDetailSerializer(instance['items'], many=True, context=context).data
         }
