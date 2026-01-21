@@ -66,12 +66,26 @@ class QuoteItemDetailSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class QuoteSerializer(serializers.ModelSerializer):
-    items = QuoteItemSerializer(many=True, read_only=True, source='quoteitem_set')
+    """
+    Serializer estándar para Quote con detalles completos de contact y products.
+    Usado en endpoints de listado y detalle de cotizaciones.
+    """
+    # Incluir detalles completos del contacto
+    contact = ContactSerializer(read_only=True)
+    contact_id = serializers.PrimaryKeyRelatedField(
+        queryset=Contact.objects.all(),
+        source='contact',
+        write_only=True,
+        required=False
+    )
+
+    # Incluir items con detalles completos de productos
+    items = QuoteItemDetailSerializer(many=True, read_only=True, source='quoteitem_set')
 
     class Meta:
         model = Quote
         fields = '__all__'
-        read_only_fields = ['quote_number']
+        read_only_fields = ['quote_number', 'contact', 'items']
         extra_kwargs = {
             'quote_number': {'required': False, 'allow_blank': True}
         }
