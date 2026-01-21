@@ -1,4 +1,12 @@
+import { useDashboardSummary } from "@/hooks/useDashboard";
 import { Package, Users, FileText, Mail, TrendingUp, Activity } from "lucide-react";
+
+type StatCardProps = {
+  icon: React.ElementType;
+  label: string;
+  value: number | string;
+  color: string;
+};
 
 const StatCard = ({ icon: Icon, label, value, color }: any) => (
   <div className="bg-card p-6 rounded-2xl border border-border hover:shadow-md transition-shadow">
@@ -14,7 +22,20 @@ const StatCard = ({ icon: Icon, label, value, color }: any) => (
   </div>
 );
 
+
+
 const BackofficeHome = () => {
+  const { data, isLoading, isError } = useDashboardSummary();
+
+  if (isLoading) {
+    return <div className="p-6 text-muted-foreground">Cargando dashboard…</div>;
+  }
+
+  if (isError || !data) {
+    return <div className="p-6 text-destructive">Error al cargar el dashboard</div>;
+  }
+
+  const { stats } = data;
   return (
     <div className="space-y-6">
       <div>
@@ -26,25 +47,25 @@ const BackofficeHome = () => {
         <StatCard
           icon={Users}
           label="Usuarios Activos"
-          value="24"
+          value={stats.active_users}
           color="bg-primary"
         />
         <StatCard
           icon={Package}
           label="Productos"
-          value="156"
+          value={stats.products}
           color="bg-blue-500"
         />
         <StatCard
           icon={FileText}
           label="Cotizaciones"
-          value="48"
+          value={stats.quotes}
           color="bg-green-500"
         />
         <StatCard
           icon={Mail}
           label="Mensajes Nuevos"
-          value="12"
+          value={stats.new_messages}
           color="bg-purple-500"
         />
       </div>

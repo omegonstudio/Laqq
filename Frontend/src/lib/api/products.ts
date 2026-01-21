@@ -1,5 +1,6 @@
 import {
   Brand,
+  BrandFormState,
   Category,
   PaginatedResponse,
   Product,
@@ -61,9 +62,9 @@ export const productsApi = {
     ),
   getBrand: (id: string) => api.get<Brand>(`${BASE}/brands/${id}/`),
   retrieveBrand: (id: string) => api.get<Brand>(`${BASE}/brands/${id}/`),
-  createBrand: (data: Partial<Brand>) =>
+  createBrand: (data: Partial<BrandFormState>) =>
     api.post<Brand>(`${BASE}/brands/`, data),
-  updateBrand: (id: string, data: Partial<Brand>) =>
+  updateBrand: (id: string, data: Partial<BrandFormState>) =>
     api.put<Brand>(`${BASE}/brands/${id}/`, data),
   patchBrand: (id: string, data: Partial<Brand>) =>
     api.patch<Brand>(`${BASE}/brands/${id}/`, data),

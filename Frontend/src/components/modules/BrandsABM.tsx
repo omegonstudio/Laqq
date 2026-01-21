@@ -25,6 +25,7 @@ const BrandsABM = () => {
     name: "",
     description: "",
     logo_attachment: null,
+    logo_url: null,
   });
 
   const { list: initialBrands, loading } = useAppSelector(
@@ -50,6 +51,7 @@ const BrandsABM = () => {
       name: "",
       description: "",
       logo_attachment: null,
+      logo_url: null,
     });
     setIsModalEditOpen(true);
   };

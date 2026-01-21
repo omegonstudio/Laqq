@@ -166,11 +166,26 @@ export interface QuoteItem {
   quote: string;
   product: string;
   quantity: number;
-  unit_price: string | null;
-  subtotal: string | null;
-  created_at: string;
+  unit_price: number;
+  subtotal: number;
 }
-
+// interface QuoteItem {
+//   id?: string;
+//   quote?: string;
+//   product: string;
+//   quantity: number;
+//   unit_price: string;
+//   subtotal?: string;
+// }
+export interface contactQuote {
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  country: string;
+  message: string;
+  company_name: string;
+}
 export interface Quote {
   id: string;
   quote_number: string;
@@ -184,7 +199,21 @@ export interface Quote {
   updated_at: string;
   items?: QuoteItem[];
 }
-
+export interface QuoteFormState {
+  contact: contactQuote;
+  quote: {
+    quote_type: string;
+    message: string;
+    state: string;
+    user?: string | null;
+  };
+  items: QuoteItemUI[];
+}
+export interface QuoteItemUI {
+  product: string;
+  quantity: number;
+  unit_price: string;
+}
 export interface QuoteState {
   id: string;
   name: string;

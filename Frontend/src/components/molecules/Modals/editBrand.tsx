@@ -2,7 +2,7 @@ import { toast } from "sonner";
 import { createBrand, updateBrand } from "@/store/brandSlice";
 import { useState, useEffect } from "react";
 import { useAppDispatch } from "@/store/hooks";
-import { Brand } from "@/types/types";
+import { Brand, BrandFormState } from "@/types/types";
 import Modal from "@/components/common/Modal";
 import InputField from "@/components/atoms/InputField";
 import UploadFile from "@/components/atoms/UploadFile";
@@ -30,6 +30,7 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
     name: "",
     description: "",
     logo_attachment: null,
+    logo_url: null,
   });
 
   const [imageFile, setImageFile] = useState<File | null>(null); // Archivo seleccionado
@@ -45,7 +46,7 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
 
       // Si hay logo (URL), mostrar preview
       if (initialData.logo_attachment) {
-        setImagePreview(initialData.logo_attachment);
+        setImagePreview(initialData.logo_url);
       }
     } else {
       setLocalState({
@@ -53,6 +54,7 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
         name: "",
         description: "",
         logo_attachment: null,
+        logo_url: null,
       });
       setImagePreview(null);
     }
@@ -165,7 +167,7 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
             throw error;
           }
         }
-        const createData: Omit<Brand, "id"> = {
+        const createData: Omit<BrandFormState, "id"> = {
           name: localState.name,
           description: localState.description,
           logo_attachment: attachmentId,

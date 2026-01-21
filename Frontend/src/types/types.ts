@@ -137,28 +137,23 @@ export interface Brand {
   name: string;
   logo_attachment?: string;
   description?: string;
+  logo_url: string;
 }
 
 export interface BrandFormState {
   id: string;
   name: string;
-  loglogo_attachmento?: File;
+  logo_attachment?: string;
   description?: string;
 }
 
 export interface QuoteItem {
   id: string;
+  quote: string;
   product: string;
   quantity: number;
-}
-
-export interface QuoteFormData {
-  name: string;
-  company: string;
-  email: string;
-  phone: string;
-  items: QuoteItem[];
-  message: string;
+  unit_price: number;
+  subtotal: number;
 }
 
 export interface TicketFormData {

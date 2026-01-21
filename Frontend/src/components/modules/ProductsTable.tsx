@@ -11,7 +11,6 @@ import { fixedSpecInitialData } from "@/utils/productSaveFlow";
 import { toast } from "sonner";
 import ModalProduct from "../molecules/Modals/EditProduct";
 import ModalDelete from "../molecules/Modals/ModalDelete";
-
 const currentInitialData: Product = {
   id: "",
   name: "",
@@ -40,24 +39,51 @@ const ProductsTable: React.FC = () => {
   } = useAppSelector((state) => state.products);
 
   const { list: categories } = useAppSelector((state) => state.categories);
+  const { list: brands } = useAppSelector((state) => state.brands);
 
   // Local UI state
   const dispatch = useAppDispatch();
   const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [brandFilter, setBrandFilter] = useState("all");
   const [isModalEditOpen, setIsModalEditOpen] = useState(false);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
   const [isNew, setIsNew] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<Product | null>(
     currentInitialData
   );
+
+  // Debounce para el search
   useEffect(() => {
-    console.log(products, "PRODUCTOS");
-  }, [products]);
-  // Cargar productos inicialmente
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Fetch productos cuando cambian los filtros o la búsqueda
   useEffect(() => {
-    dispatch(fetchProducts({ page: 1, page_size: 10 }));
-  }, [dispatch]);
+    const params: {
+      page: number;
+      page_size: number;
+      search?: string;
+      brand?: string;
+    } = {
+      page: 1,
+      page_size: 10,
+    };
+
+    if (debouncedSearch.trim()) {
+      params.search = debouncedSearch.trim();
+    }
+
+    if (brandFilter !== "all") {
+      params.brand = brandFilter;
+    }
+
+    dispatch(fetchProducts(params));
+  }, [dispatch, debouncedSearch, brandFilter]);
 
   const handleEdit = (product: Product) => {
     setCurrentProduct(product);
@@ -78,13 +104,26 @@ const ProductsTable: React.FC = () => {
       toast.success("Producto eliminado exitosamente");
       setIsModalDeleteOpen(false);
 
-      // Recargar la página actual
-      dispatch(
-        fetchProducts({
-          page: pagination.current_page,
-          page_size: pagination.page_size,
-        })
-      );
+      // Recargar con los filtros actuales
+      const params: {
+        page: number;
+        page_size: number;
+        search?: string;
+        brand?: string;
+      } = {
+        page: pagination.current_page,
+        page_size: pagination.page_size,
+      };
+
+      if (debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+
+      if (brandFilter !== "all") {
+        params.brand = brandFilter;
+      }
+
+      dispatch(fetchProducts(params));
     } catch (error: unknown) {
       console.error("Error eliminando producto:", error);
       if (error instanceof Error) {
@@ -101,42 +140,41 @@ const ProductsTable: React.FC = () => {
     setIsModalEditOpen(true);
   };
 
-  // Handler para cambio de página
+  // Handler para cambio de página (mantiene los filtros)
   const handlePageChange = (newPage: number) => {
-    dispatch(
-      fetchProducts({
-        page: newPage,
-        page_size: pagination.page_size,
-      })
-    );
+    const params: {
+      page: number;
+      page_size: number;
+      search?: string;
+      brand?: string;
+    } = {
+      page: newPage,
+      page_size: pagination.page_size,
+    };
+
+    if (debouncedSearch.trim()) {
+      params.search = debouncedSearch.trim();
+    }
+
+    if (brandFilter !== "all") {
+      params.brand = brandFilter;
+    }
+
+    dispatch(fetchProducts(params));
   };
 
-  // Filtrado local (si quieres mantenerlo, considera hacerlo en el servidor)
-  const filteredProducts = products.filter((product: Product) => {
-    const brandName = product.brand ? product.brand.toLowerCase() : "";
-    const matchesSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      brandName.includes(searchTerm.toLowerCase());
-
-    const categoryName = product.category || "";
-    const matchesCategory =
-      categoryFilter === "all" || categoryName === categoryFilter;
-
-    return matchesSearch && matchesCategory;
-  });
-
   const columns = [
-    { key: "product_code", label: "Código", sortable: false }, // Desactivar sorting local
+    { key: "product_code", label: "Codigo", sortable: false },
     { key: "name", label: "Nombre", sortable: false },
     { key: "brand", label: "Marca", sortable: false },
-    { key: "category", label: "Categoría", sortable: false },
+    { key: "category", label: "Categoria", sortable: false },
   ];
 
-  const categoryOptions = [
-    { value: "all", label: "Todas las categorías" },
-    ...categories.map((cat) => ({
-      value: cat.name,
-      label: cat.name,
+  const brandOptions = [
+    { value: "all", label: "Todas las marcas" },
+    ...brands.map((brand) => ({
+      value: brand.id,
+      label: brand.name,
     })),
   ];
 
@@ -152,9 +190,9 @@ const ProductsTable: React.FC = () => {
           />
 
           <Select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            options={categoryOptions}
+            value={brandFilter}
+            onChange={(e) => setBrandFilter(e.target.value)}
+            options={brandOptions}
             className="max-w-xs"
           />
         </div>
@@ -170,7 +208,7 @@ const ProductsTable: React.FC = () => {
 
       <Table
         columns={columns}
-        data={filteredProducts}
+        data={products}
         actions={[
           { icon: <Edit2 size={16} />, onClick: handleEdit, label: "Editar" },
           {
