@@ -8,7 +8,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django.contrib.contenttypes.models import ContentType
 from .models import ServiceTicket, TicketState, TicketPriority
 from .serializers import ServiceTicketSerializer, TicketStateSerializer, TicketPrioritySerializer
-from .permissions import IsAdminOrBackOffice, IsClientOwnerOrStaff, CanAttachFiles
+from .permissions import IsAdminOrBackOffice, IsClientOwnerOrStaff, CanAttachFiles, CanCreateTicketOrStaff
 from attachments.models import Attachment
 from .emails import send_ticket_created_email
 import secrets
@@ -42,7 +42,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
         'contact', 'product', 'state', 'priority', 'assigned_user'
     ).all()
     serializer_class = ServiceTicketSerializer
-    permission_classes = [IsAuthenticated, IsClientOwnerOrStaff]
+    permission_classes = [CanCreateTicketOrStaff]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = [
         'contact',
@@ -72,12 +72,18 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Filtrar tickets según el tipo de usuario:
+        - Usuarios no autenticados: queryset vacío (solo pueden hacer POST)
         - Clientes: solo ven sus propios tickets (basado en email)
         - Admin/BackOffice: ven todos los tickets
         """
         user = self.request.user
         queryset = super().get_queryset()
 
+        # Si no está autenticado, devolver queryset vacío
+        if not user.is_authenticated:
+            return queryset.none()
+
+        # Si es cliente, filtrar solo sus tickets
         if user.user_type_id in ['client', 'CLIENT']:
             # Filtrar solo tickets del cliente (matching por email)
             queryset = queryset.filter(contact__email=user.email)
