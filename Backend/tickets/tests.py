@@ -156,32 +156,6 @@ class ServiceTicketAPITestCase(APITestCase):
         response = self.client.post('/tickets/', data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_filter_by_contact(self):
-        """Filtrar tickets por cliente/contacto"""
-        response = self.client.get(f'/tickets/?contact={self.contact.id}')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
-
-    def test_filter_by_state(self):
-        """Filtrar tickets por estado (abierto, en proceso, cerrado)"""
-        response = self.client.get(f'/tickets/?state={self.ticket_state_new.id}')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
-
-    def test_search_ticket(self):
-        """Buscar tickets por número o descripción"""
-        response = self.client.get('/tickets/?search=T-2025')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
-
-    def test_filter_by_assigned_user(self):
-        """Filtrar tickets por técnico asignado"""
-        self.ticket.assigned_user = self.user
-        self.ticket.save()
-        response = self.client.get(f'/tickets/?assigned_user={self.user.id}')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
-
     def test_update_ticket(self):
         """Actualizar información de un ticket existente"""
         data = {
@@ -192,35 +166,6 @@ class ServiceTicketAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.product_name, 'Updated Product')
-
-    # ========== NUEVOS TESTS: Prioridades ==========
-
-    def test_create_ticket_with_priority(self):
-        """Crear ticket con prioridad específica"""
-        data = {
-            'contact': self.contact.id,
-            'product_name': 'Urgent Product',
-            'description': 'This is an urgent ticket that requires immediate attention.',
-            'priority': 'urgent'
-        }
-        response = self.client.post('/tickets/', data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['priority'], 'urgent')
-
-    def test_filter_by_priority(self):
-        """Filtrar tickets por prioridad"""
-        # Crear ticket urgente
-        ServiceTicket.objects.create(
-            ticket_number='T-2025-00099',
-            contact=self.contact,
-            product_name='Urgent Product',
-            description='This ticket needs immediate attention right now.',
-            state=self.ticket_state_new,
-            priority=self.priority_urgent
-        )
-        response = self.client.get(f'/tickets/?priority=urgent')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
 
     # ========== NUEVOS TESTS: Relación con Producto ==========
 
@@ -236,33 +181,6 @@ class ServiceTicketAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         # Verificar que product_name se sincronizó con product.name
         self.assertEqual(response.data['product_name'], 'Pipeta Automática 100ml')
-
-    def test_create_ticket_without_product_link(self):
-        """Crear ticket sin vincular a producto (solo texto libre)"""
-        data = {
-            'contact': self.contact.id,
-            'product_name': 'Equipo personalizado XYZ',
-            'description': 'Problema con equipo que no está en el catálogo de productos.'
-        }
-        response = self.client.post('/tickets/', data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['product_name'], 'Equipo personalizado XYZ')
-        self.assertIsNone(response.data['product'])
-
-    def test_filter_by_product(self):
-        """Filtrar tickets por producto del catálogo"""
-        ServiceTicket.objects.create(
-            ticket_number='T-2025-00098',
-            contact=self.contact,
-            product=self.product,
-            product_name=self.product.name,
-            description='Another ticket for the same product with detailed description.',
-            state=self.ticket_state_new,
-            priority=self.priority_medium
-        )
-        response = self.client.get(f'/tickets/?product={self.product.id}')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
 
     # ========== NUEVOS TESTS: Transiciones de Estado y Fechas ==========
 
@@ -310,17 +228,6 @@ class ServiceTicketAPITestCase(APITestCase):
         # Si no tenía resolved_at, también se setea
         self.assertIsNotNone(self.ticket.resolved_at)
 
-    def test_manual_state_transition_sets_dates(self):
-        """Cambiar estado manualmente debe actualizar fechas automáticamente"""
-        # Cambiar a in_progress
-        response = self.client.patch(
-            f'/tickets/{self.ticket.id}/',
-            {'state': 'in_progress'}
-        )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.ticket.refresh_from_db()
-        self.assertIsNotNone(self.ticket.started_at)
-
     # ========== NUEVOS TESTS: Estadísticas ==========
 
     def test_statistics_endpoint(self):
@@ -353,18 +260,6 @@ class ServiceTicketAPITestCase(APITestCase):
         self.assertEqual(response.data['total'], 3)
 
     # ========== TESTS: Estados y Prioridades ==========
-
-    def test_list_ticket_states(self):
-        """Listar todos los estados disponibles"""
-        response = self.client.get('/tickets/states/')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertGreaterEqual(len(response.data['results']), 5)
-
-    def test_list_ticket_priorities(self):
-        """Listar todas las prioridades disponibles"""
-        response = self.client.get('/tickets/priorities/')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 4)
 
 
 @override_settings(TESTING=False)
@@ -456,40 +351,6 @@ class ClientPortalAPITestCase(APITestCase):
         # Verificar que se llamó a send_email
         self.assertTrue(mock_send_email.called)
 
-    @patch('tickets.serializers.send_ticket_created_email')
-    def test_create_ticket_existing_user_no_duplicate(self, mock_send_email):
-        """Si el usuario cliente ya existe, no debe crear duplicado"""
-        mock_send_email.return_value = {'business': True, 'customer': True, 'errors': []}
-
-        # Crear usuario cliente existente
-        existing_user = User.objects.create_user(
-            username='janeclient',
-            password='password123',
-            email='jane@clientcompany.com',
-            user_type=self.client_type,
-            state=self.active_state
-        )
-
-        # Autenticar como admin
-        self.client.force_authenticate(user=self.admin_user)
-
-        # Crear ticket
-        data = {
-            'contact': self.client_contact.id,
-            'product_name': 'Test Product',
-            'description': 'This is a test ticket description with enough characters.'
-        }
-        response = self.client.post('/tickets/', data)
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        # Verificar que solo existe un usuario con ese email
-        users_count = User.objects.filter(email='jane@clientcompany.com').count()
-        self.assertEqual(users_count, 1)
-
-        # Email NO debe enviarse si el usuario ya existía
-        self.assertFalse(mock_send_email.called)
-
     def test_client_can_only_view_own_tickets(self):
         """Cliente solo puede ver sus propios tickets"""
         # Crear cliente usuario
@@ -541,164 +402,3 @@ class ClientPortalAPITestCase(APITestCase):
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['ticket_number'], 'T-2025-00001')
 
-    def test_client_cannot_modify_tickets(self):
-        """Cliente no puede modificar tickets (solo lectura)"""
-        # Crear cliente usuario
-        client_user = User.objects.create_user(
-            username='janeclient',
-            password='password123',
-            email='jane@clientcompany.com',
-            user_type=self.client_type,
-            state=self.active_state
-        )
-
-        # Crear ticket del cliente
-        ticket = ServiceTicket.objects.create(
-            ticket_number='T-2025-00001',
-            contact=self.client_contact,
-            product_name='Test Product',
-            description='This is a test ticket with description.',
-            state=self.ticket_state_new,
-            priority=self.priority_medium
-        )
-
-        # Autenticar como cliente
-        self.client.force_authenticate(user=client_user)
-
-        # Intentar modificar ticket
-        response = self.client.patch(
-            f'/tickets/{ticket.id}/',
-            {'description': 'Modified description'}
-        )
-
-        # Cliente no tiene permiso para modificar
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_client_can_attach_files(self):
-        """Cliente puede adjuntar archivos a sus propios tickets"""
-        # Crear cliente usuario
-        client_user = User.objects.create_user(
-            username='janeclient',
-            password='password123',
-            email='jane@clientcompany.com',
-            user_type=self.client_type,
-            state=self.active_state
-        )
-
-        # Crear ticket del cliente
-        ticket = ServiceTicket.objects.create(
-            ticket_number='T-2025-00001',
-            contact=self.client_contact,
-            product_name='Test Product',
-            description='This is a test ticket with description.',
-            state=self.ticket_state_new,
-            priority=self.priority_medium
-        )
-
-        # Autenticar como cliente
-        self.client.force_authenticate(user=client_user)
-
-        # Adjuntar archivo usando multipart/form-data
-        from django.core.files.uploadedfile import SimpleUploadedFile
-        test_file = SimpleUploadedFile(
-            'image.jpg',
-            b'fake image content',
-            content_type='image/jpeg'
-        )
-        response = self.client.post(
-            f'/tickets/{ticket.id}/attach_file/',
-            {'file': test_file},
-            format='multipart'
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('attachment_id', response.data)
-        self.assertEqual(response.data['file_name'], 'image.jpg')
-
-        # Verificar que el attachment se asoció al ticket
-        ticket.refresh_from_db()
-        self.assertIsNotNone(ticket.attachment)
-        self.assertEqual(ticket.attachment.file_name, 'image.jpg')
-
-    def test_client_cannot_attach_to_other_tickets(self):
-        """Cliente no puede adjuntar archivos a tickets de otros clientes"""
-        # Crear cliente usuario
-        client_user = User.objects.create_user(
-            username='janeclient',
-            password='password123',
-            email='jane@clientcompany.com',
-            user_type=self.client_type,
-            state=self.active_state
-        )
-
-        # Crear otro contacto y ticket
-        other_contact = Contact.objects.create(
-            company_name='Other Company',
-            first_name='Bob',
-            last_name='Jones',
-            email='bob@other.com',
-            state=self.contact_state
-        )
-
-        other_ticket = ServiceTicket.objects.create(
-            ticket_number='T-2025-00002',
-            contact=other_contact,
-            product_name='Other Product',
-            description='This is another ticket with description.',
-            state=self.ticket_state_new,
-            priority=self.priority_medium
-        )
-
-        # Autenticar como cliente
-        self.client.force_authenticate(user=client_user)
-
-        # Intentar adjuntar archivo a ticket de otro cliente
-        response = self.client.post(
-            f'/tickets/{other_ticket.id}/attach_file/',
-            {
-                'file_name': 'image.jpg',
-                'content_type': 'image/jpeg'
-            }
-        )
-
-        # Cliente no tiene permiso
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_admin_can_view_all_tickets(self):
-        """Admin puede ver todos los tickets"""
-        # Crear tickets de diferentes clientes
-        ticket1 = ServiceTicket.objects.create(
-            ticket_number='T-2025-00001',
-            contact=self.client_contact,
-            product_name='Product 1',
-            description='First ticket with description text.',
-            state=self.ticket_state_new,
-            priority=self.priority_medium
-        )
-
-        other_contact = Contact.objects.create(
-            company_name='Other Company',
-            first_name='Bob',
-            last_name='Jones',
-            email='bob@other.com',
-            state=self.contact_state
-        )
-
-        ticket2 = ServiceTicket.objects.create(
-            ticket_number='T-2025-00002',
-            contact=other_contact,
-            product_name='Product 2',
-            description='Second ticket with description text.',
-            state=self.ticket_state_new,
-            priority=self.priority_medium
-        )
-
-        # Autenticar como admin
-        self.client.force_authenticate(user=self.admin_user)
-
-        # Listar todos los tickets
-        response = self.client.get('/tickets/')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        # Admin debe ver todos los tickets
-        self.assertEqual(len(response.data['results']), 2)

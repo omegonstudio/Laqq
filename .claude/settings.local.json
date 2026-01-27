@@ -12,10 +12,7 @@
       "Bash(docker restart:*)",
       "Bash(curl:*)",
       "Bash(grep:*)",
-      "Bash(python manage.py test quotes.tests.PublicEndpointsTestCase -v 2)",
-      "Bash(python manage.py test quotes.tests.PublicProductEndpointsTestCase -v 2)",
-      "Bash(python manage.py test quotes.tests.PublicProductEndpointsTestCase quotes.tests.PublicEndpointsTestCase -v 2)",
-      "Bash(python manage.py test quotes -v 2)"
+      "Bash(git stash:*)"
     ]
   }
 }

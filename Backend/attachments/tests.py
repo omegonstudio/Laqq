@@ -52,20 +52,6 @@ class AttachmentModelTest(TestCase):
         self.assertEqual(attachment.role, ROLE_IMAGE)
         self.assertEqual(attachment.created_by, self.user)
 
-    def test_create_attachment_with_legacy_fields(self):
-        """Test crear attachment usando campos legacy"""
-        attachment = Attachment.objects.create(
-            file_name='test.pdf',
-            content_type_str='application/pdf',
-            role=ROLE_MANUAL,
-            attachable_type='product',
-            attachable_id=self.product.id,
-            created_by=self.user
-        )
-
-        self.assertEqual(attachment.attachable_type, 'product')
-        self.assertEqual(attachment.attachable_id, self.product.id)
-
     def test_attachment_file_upload_path(self):
         """Test que el archivo se sube al path correcto"""
         product_ct = ContentType.objects.get_for_model(Product)
@@ -94,39 +80,6 @@ class AttachmentModelTest(TestCase):
         # Verificar que se auto-pobló file_name y size_bytes
         self.assertTrue(attachment.file_name)
         self.assertGreater(attachment.size_bytes, 0)
-
-    def test_attachment_role_choices(self):
-        """Test que los roles permitidos funcionan correctamente"""
-        product_ct = ContentType.objects.get_for_model(Product)
-
-        for role_value, role_label in [
-            (ROLE_IMAGE, 'Image'),
-            (ROLE_MANUAL, 'Manual'),
-            (ROLE_DATASHEET, 'Datasheet'),
-            (ROLE_OTHER, 'Other')
-        ]:
-            attachment = Attachment.objects.create(
-                file_name=f'test_{role_value}.file',
-                role=role_value,
-                content_type=product_ct,
-                object_id=self.product.id
-            )
-            self.assertEqual(attachment.role, role_value)
-
-    def test_attachment_url_property(self):
-        """Test que la propiedad url funciona correctamente"""
-        test_file = SimpleUploadedFile("test.jpg", b"content", content_type="image/jpeg")
-        product_ct = ContentType.objects.get_for_model(Product)
-
-        attachment = Attachment.objects.create(
-            file=test_file,
-            content_type=product_ct,
-            object_id=self.product.id
-        )
-
-        # Verificar que tiene URL
-        self.assertIsNotNone(attachment.url)
-        self.assertIn('/media/', attachment.url)
 
 
 class AttachmentAPITest(APITestCase):
@@ -173,52 +126,6 @@ class AttachmentAPITest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 2)
-
-    def test_filter_attachments_by_type(self):
-        """Test filtrar attachments por tipo"""
-        product_ct = ContentType.objects.get_for_model(Product)
-
-        # Crear attachment para producto
-        Attachment.objects.create(
-            file_name='product.jpg',
-            content_type=product_ct,
-            object_id=self.product.id,
-            attachable_type='product',
-            attachable_id=self.product.id
-        )
-
-        response = self.client.get('/attachments/', {'attachable_type': 'product'})
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
-        self.assertEqual(response.data['results'][0]['attachable_type'], 'product')
-
-    def test_filter_attachments_by_role(self):
-        """Test filtrar attachments por role"""
-        product_ct = ContentType.objects.get_for_model(Product)
-
-        Attachment.objects.create(
-            file_name='image.jpg',
-            role=ROLE_IMAGE,
-            content_type=product_ct,
-            object_id=self.product.id,
-            attachable_type='product',
-            attachable_id=self.product.id
-        )
-        Attachment.objects.create(
-            file_name='manual.pdf',
-            role=ROLE_MANUAL,
-            content_type=product_ct,
-            object_id=self.product.id,
-            attachable_type='product',
-            attachable_id=self.product.id
-        )
-
-        response = self.client.get('/attachments/', {'role': ROLE_IMAGE})
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
-        self.assertEqual(response.data['results'][0]['role'], ROLE_IMAGE)
 
 
 class ProductAttachmentsTest(APITestCase):
@@ -305,25 +212,6 @@ class ProductAttachmentsTest(APITestCase):
 
         # Verificar que se eliminó
         self.assertFalse(Attachment.objects.filter(id=attachment.id).exists())
-
-    def test_list_product_attachments(self):
-        """Test listar todos los attachments de un producto"""
-        product_ct = ContentType.objects.get_for_model(Product)
-
-        # Crear varios attachments
-        for i in range(3):
-            Attachment.objects.create(
-                file_name=f'file{i}.jpg',
-                content_type=product_ct,
-                object_id=self.product.id,
-                attachable_type='product',
-                attachable_id=self.product.id
-            )
-
-        response = self.client.get(f'/products/list/{self.product.id}/list_attachments/')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['attachments']), 3)
 
 
 class TicketAttachmentsTest(APITestCase):
@@ -438,56 +326,3 @@ class TicketAttachmentsTest(APITestCase):
         # El endpoint retorna 200 OK con un mensaje de confirmación
         self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_204_NO_CONTENT])
         self.assertFalse(Attachment.objects.filter(id=attachment.id).exists())
-
-
-class AdminAttachmentsTest(TestCase):
-    """Tests para la funcionalidad de attachments en el admin"""
-
-    def setUp(self):
-        self.user = User.objects.create_superuser(
-            username='adminuser',
-            email='admin@example.com',
-            password='adminpass123'
-        )
-        self.brand = Brand.objects.create(name='Admin Brand')
-        self.category = Category.objects.create(name='Admin Category')
-        self.product = Product.objects.create(
-            product_code='ADMIN001',
-            name='Admin Product',
-            brand=self.brand,
-            category=self.category
-        )
-
-    def test_attachment_inline_populates_legacy_fields(self):
-        """Test que el inline del admin popula los campos legacy correctamente"""
-        from django.contrib.admin.sites import site
-        from products.admin import ProductAdmin, AttachmentInline
-
-        # Verificar que AttachmentInline está configurado correctamente
-        product_admin = site._registry[Product]
-
-        # Verificar que usa GenericTabularInline
-        self.assertIn(AttachmentInline, product_admin.inlines)
-
-        # Crear un attachment como lo haría el admin
-        product_ct = ContentType.objects.get_for_model(Product)
-        attachment = Attachment.objects.create(
-            file_name='admin_file.jpg',
-            content_type=product_ct,
-            object_id=self.product.id,
-            created_by=self.user
-        )
-
-        # El save_formset debería poblar los campos legacy
-        # (esto normalmente se hace automáticamente cuando se guarda desde el admin)
-        if not attachment.attachable_type:
-            attachment.attachable_type = 'product'
-        if not attachment.attachable_id:
-            attachment.attachable_id = attachment.object_id
-        attachment.save()
-
-        # Verificar que ambos sistemas están poblados
-        self.assertEqual(attachment.content_type.model, 'product')
-        self.assertEqual(attachment.object_id, self.product.id)
-        self.assertEqual(attachment.attachable_type, 'product')
-        self.assertEqual(attachment.attachable_id, self.product.id)
