@@ -78,7 +78,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = super().get_queryset()
 
-        if user.user_type_id == 'client':
+        if user.user_type_id in ['client', 'CLIENT']:
             # Filtrar solo tickets del cliente (matching por email)
             queryset = queryset.filter(contact__email=user.email)
 
