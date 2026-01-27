@@ -56,6 +56,14 @@ export interface Message {
   created_at: string;
   updated_at: string;
 }
+export interface MessageCreate {
+  company_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  country: string | null;
+  message: string;
+  state: string;
+}
 
 export interface NoteType {
   id: string;
@@ -219,6 +227,7 @@ export interface ContactInfo {
   message: string;
   state: string;
   assigned_user: string | null;
+  id: string;
 }
 
 // =================== QUOTE ITEM TYPES ===================

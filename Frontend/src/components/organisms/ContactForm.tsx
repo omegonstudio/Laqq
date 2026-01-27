@@ -3,18 +3,24 @@ import { Mail, Phone, MapPin } from "lucide-react";
 import InputField from "../atoms/InputField";
 import Button from "../atoms/Button";
 import { toast } from "@/hooks/use-toast";
+import { useAppDispatch } from "@/store/hooks";
+import { createContact, createMessage } from "@/store/contacts";
+import { MessageCreate } from "@/types/api";
 
 const ContactForm = () => {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    subject: "",
+  const dispatch = useAppDispatch();
+  const [formData, setFormData] = useState<MessageCreate>({
+    company_name: "",
+    first_name: "",
+    last_name: "",
+    country: "",
     message: "",
+    state: "NEW",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Contact form:", formData);
+    dispatch(createMessage(formData));
     toast({
       title: "Mensaje Enviado",
       description: "Te responderemos a la brevedad posible.",
@@ -34,8 +40,10 @@ const ContactForm = () => {
 
           <div className="grid md:grid-cols-2 gap-8">
             <div>
-              <h2 className="text-2xl font-bold mb-6">Información de Contacto</h2>
-              
+              <h2 className="text-2xl font-bold mb-6">
+                Información de Contacto
+              </h2>
+
               <div className="space-y-6">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -66,8 +74,10 @@ const ContactForm = () => {
                   <div>
                     <h3 className="font-bold mb-1">Dirección</h3>
                     <p className="text-muted-foreground">
-                      Av. Insurgentes Sur 1234<br />
-                      Col. Del Valle, Ciudad de México<br />
+                      Av. Insurgentes Sur 1234
+                      <br />
+                      Col. Del Valle, Ciudad de México
+                      <br />
                       C.P. 03100, México
                     </p>
                   </div>
@@ -77,7 +87,8 @@ const ContactForm = () => {
               <div className="mt-8 p-6 bg-muted/30 rounded-2xl">
                 <h3 className="font-bold mb-2">Horario de Atención</h3>
                 <p className="text-muted-foreground">
-                  Lunes a Viernes: 9:00 - 18:00<br />
+                  Lunes a Viernes: 9:00 - 18:00
+                  <br />
                   Sábados: 9:00 - 14:00
                 </p>
               </div>
@@ -85,35 +96,52 @@ const ContactForm = () => {
 
             <div className="bg-card border border-border rounded-2xl p-8">
               <h2 className="text-2xl font-bold mb-6">Envíanos un Mensaje</h2>
-              
+
               <form onSubmit={handleSubmit} className="space-y-4">
                 <InputField
                   label="Nombre"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  value={formData.first_name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, first_name: e.target.value })
+                  }
                   required
                 />
-
                 <InputField
+                  label="Apellido"
+                  value={formData.last_name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, last_name: e.target.value })
+                  }
+                  required
+                />
+                {/* <InputField
                   label="Email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   required
-                />
+                /> */}
 
-                <InputField
+                {/* <InputField
                   label="Asunto"
                   value={formData.subject}
-                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, subject: e.target.value })
+                  }
                   required
-                />
+                /> */}
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Mensaje</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Mensaje
+                  </label>
                   <textarea
                     value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, message: e.target.value })
+                    }
                     className="w-full px-4 py-2.5 rounded-xl border border-input bg-background min-h-[150px] focus:outline-none focus:ring-2 focus:ring-primary"
                     required
                   />

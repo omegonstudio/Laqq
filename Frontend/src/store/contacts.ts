@@ -1,37 +1,43 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { contactQuote, PaginatedResponse } from "@/types/api";
-import { contactsApi } from "@/lib/api/contacts";
+import {
+  Contact,
+  ContactState,
+  Message,
+  MessageCreate,
+  PaginatedResponse,
+} from "@/types/api";
+import {
+  contactsApi,
+  MessageListParams,
+  ContactListParams,
+} from "@/lib/api/contacts";
 
-// Params (paginación)
-interface FetchCategoriesParams {
-  page?: number;
-  page_size?: number;
-}
+/* ---------- STATE ---------- */
 
-interface CategoriesState {
-  list: contactQuote[];
+interface ContactsState {
+  /* CONTACTS */
+  list: Contact[];
   count: number;
   loading: boolean;
   error: string | null;
 
-  selected: contactQuote | null;
+  selected: Contact | null;
   selectedLoading: boolean;
   selectedError: string | null;
 
-  creating: boolean;
-  createError: string | null;
-  createdItem: contactQuote | null;
+  /* STATES */
+  states: ContactState[];
+  statesLoading: boolean;
+  statesError: string | null;
 
-  updating: boolean;
-  updateError: string | null;
-  updatedItem: contactQuote | null;
-
-  deleting: boolean;
-  deleteError: string | null;
-  deleteSuccess: boolean;
+  /* MESSAGES */
+  messages: Message[];
+  messagesCount: number;
+  messagesLoading: boolean;
+  messagesError: string | null;
 }
 
-const initialState: CategoriesState = {
+const initialState: ContactsState = {
   list: [],
   count: 0,
   loading: false,
@@ -41,78 +47,86 @@ const initialState: CategoriesState = {
   selectedLoading: false,
   selectedError: null,
 
-  creating: false,
-  createError: null,
-  createdItem: null,
+  states: [],
+  statesLoading: false,
+  statesError: null,
 
-  updating: false,
-  updateError: null,
-  updatedItem: null,
-
-  deleting: false,
-  deleteError: null,
-  deleteSuccess: false,
+  messages: [],
+  messagesCount: 0,
+  messagesLoading: false,
+  messagesError: null,
 };
 
-// ---- THUNKS ----
+/* ---------- THUNKS ---------- */
 
-export const fetchContacts = createAsyncThunk(
-  "categories/fetch",
-  async (params?: FetchCategoriesParams) => {
-    return contactsApi.list(params);
-  }
-);
+/* CONTACTS */
+export const fetchContacts = createAsyncThunk<
+  PaginatedResponse<Contact>,
+  ContactListParams | undefined
+>("contacts/fetch", async (params) => {
+  return contactsApi.list(params);
+});
 
-export const fetchcontactQuote = createAsyncThunk(
-  "categories/fetchOne",
-  async (id: string) => {
+export const fetchContact = createAsyncThunk<Contact, string>(
+  "contacts/fetchOne",
+  async (id) => {
     return contactsApi.get(id);
   }
 );
 
-export const createcontactQuote = createAsyncThunk(
-  "categories/create",
-  async (data: Partial<contactQuote>) => {
+export const createContact = createAsyncThunk<Contact, Partial<Contact>>(
+  "contacts/create",
+  async (data) => {
     return contactsApi.create(data);
   }
 );
 
-export const updatecontactQuote = createAsyncThunk(
-  "categories/update",
-  async ({ id, data }: { id: string; data: Partial<contactQuote> }) => {
-    return contactsApi.update(id, data);
-  }
-);
+export const updateContact = createAsyncThunk<
+  Contact,
+  { id: string; data: Partial<Contact> }
+>("contacts/update", async ({ id, data }) => {
+  return contactsApi.update(id, data);
+});
 
-export const deletecontactQuote = createAsyncThunk(
-  "categories/delete",
-  async (id: string) => {
+export const deleteContact = createAsyncThunk<string, string>(
+  "contacts/delete",
+  async (id) => {
     await contactsApi.remove(id);
     return id;
   }
 );
 
-// ---- SLICE ----
+/* STATES */
+export const fetchContactStates = createAsyncThunk<
+  PaginatedResponse<ContactState>,
+  { search?: string } | undefined
+>("contacts/fetchStates", async (params) => {
+  return contactsApi.listStates(params);
+});
 
-export const categoriesSlice = createSlice({
-  name: "categories",
+/* MESSAGES */
+export const fetchMessages = createAsyncThunk<
+  PaginatedResponse<Message>,
+  MessageListParams | undefined
+>("contacts/fetchMessages", async (params) => {
+  return contactsApi.listMessages(params);
+});
+
+export const createMessage = createAsyncThunk<
+  Message, // lo que devuelve la API
+  MessageCreate // lo que enviás
+>("contacts/createMessage", async (data) => {
+  return contactsApi.createMessage(data);
+});
+
+/* ---------- SLICE ---------- */
+
+export const contactsSlice = createSlice({
+  name: "contacts",
   initialState,
-  reducers: {
-    resetCreate(state) {
-      state.createdItem = null;
-      state.createError = null;
-    },
-    resetUpdate(state) {
-      state.updatedItem = null;
-      state.updateError = null;
-    },
-    resetDelete(state) {
-      state.deleteSuccess = false;
-      state.deleteError = null;
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
-    // LIST
+    /* CONTACTS LIST */
     builder
       .addCase(fetchContacts.pending, (state) => {
         state.loading = true;
@@ -120,7 +134,7 @@ export const categoriesSlice = createSlice({
       })
       .addCase(
         fetchContacts.fulfilled,
-        (state, action: PayloadAction<PaginatedResponse<contactQuote>>) => {
+        (state, action: PayloadAction<PaginatedResponse<Contact>>) => {
           state.loading = false;
           state.list = action.payload.results;
           state.count = action.payload.count;
@@ -128,83 +142,59 @@ export const categoriesSlice = createSlice({
       )
       .addCase(fetchContacts.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || "Error cargando categorías";
+        state.error = action.error.message || "Error cargando contactos";
       });
 
-    // GET ONE
+    /* CONTACT GET ONE */
     builder
-      .addCase(fetchcontactQuote.pending, (state) => {
+      .addCase(fetchContact.pending, (state) => {
         state.selectedLoading = true;
         state.selectedError = null;
       })
-      .addCase(fetchcontactQuote.fulfilled, (state, action) => {
+      .addCase(fetchContact.fulfilled, (state, action) => {
         state.selectedLoading = false;
         state.selected = action.payload;
       })
-      .addCase(fetchcontactQuote.rejected, (state, action) => {
+      .addCase(fetchContact.rejected, (state, action) => {
         state.selectedLoading = false;
-        state.selectedError =
-          action.error.message || "Error cargando categoría";
+        state.selectedError = action.error.message || "Error cargando contacto";
       });
 
-    // CREATE
+    /* STATES */
     builder
-      .addCase(createcontactQuote.pending, (state) => {
-        state.creating = true;
-        state.createError = null;
+      .addCase(fetchContactStates.pending, (state) => {
+        state.statesLoading = true;
+        state.statesError = null;
       })
-      .addCase(createcontactQuote.fulfilled, (state, action) => {
-        state.creating = false;
-        state.createdItem = action.payload;
-        state.list.unshift(action.payload);
+      .addCase(fetchContactStates.fulfilled, (state, action) => {
+        state.statesLoading = false;
+        state.states = action.payload.results;
       })
-      .addCase(createcontactQuote.rejected, (state, action) => {
-        state.creating = false;
-        state.createError = action.error.message || "Error creando categoría";
+      .addCase(fetchContactStates.rejected, (state, action) => {
+        state.statesLoading = false;
+        state.statesError = action.error.message || "Error cargando estados";
       });
 
-    // UPDATE
+    /* MESSAGES */
     builder
-      .addCase(updatecontactQuote.pending, (state) => {
-        state.updating = true;
-        state.updateError = null;
+      .addCase(fetchMessages.pending, (state) => {
+        state.messagesLoading = true;
+        state.messagesError = null;
       })
-      .addCase(updatecontactQuote.fulfilled, (state, action) => {
-        state.updating = false;
-        state.updatedItem = action.payload;
-
-        state.list = state.list.map((c) =>
-          c.id === action.payload.id ? action.payload : c
-        );
+      .addCase(fetchMessages.fulfilled, (state, action) => {
+        state.messagesLoading = false;
+        state.messages = action.payload.results;
+        state.messagesCount = action.payload.count;
       })
-      .addCase(updatecontactQuote.rejected, (state, action) => {
-        state.updating = false;
-        state.updateError =
-          action.error.message || "Error actualizando categoría";
+      .addCase(fetchMessages.rejected, (state, action) => {
+        state.messagesLoading = false;
+        state.messagesError = action.error.message || "Error cargando mensajes";
       });
 
-    // DELETE
-    builder
-      .addCase(deletecontactQuote.pending, (state) => {
-        state.deleting = true;
-        state.deleteError = null;
-      })
-      .addCase(deletecontactQuote.fulfilled, (state, action) => {
-        state.deleting = false;
-        state.deleteSuccess = true;
-
-        // remover de la lista
-        state.list = state.list.filter((c) => c.id !== action.payload);
-      })
-      .addCase(deletecontactQuote.rejected, (state, action) => {
-        state.deleting = false;
-        state.deleteError =
-          action.error.message || "Error eliminando categoría";
-      });
+    builder.addCase(createMessage.fulfilled, (state, action) => {
+      state.messages.unshift(action.payload);
+    });
   },
 });
 
-export const { resetCreate, resetUpdate, resetDelete } =
-  categoriesSlice.actions;
-
-export default categoriesSlice.reducer;
+export default contactsSlice.reducer;
