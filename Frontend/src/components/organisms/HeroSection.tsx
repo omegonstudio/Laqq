@@ -52,13 +52,13 @@ const HeroSection = () => {
                 Explorar Productos
               </Button>
             </Link>
-            <Link to="/quote">
+            <Link to="/contact">
               <Button
                 variant="outline"
                 size="lg"
                 className="px-8 bg-white/80 dark:bg-background/80 backdrop-blur-sm"
               >
-                Solicitar Cotización
+                Contactar
               </Button>
             </Link>
           </div>

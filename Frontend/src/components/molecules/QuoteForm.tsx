@@ -18,15 +18,11 @@ import {
 } from "@/components/ui/popover";
 import { Check, ChevronsUpDown, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { create } from "domain";
-import {
-  createQuote,
-  createQuoteFormState,
-  createQuoteItemsBulk,
-} from "@/store/quotesSlice";
 import { QuoteFormState } from "@/types/api";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { createQuoteFromForm } from "@/store/quotesSlice";
 
 const initialState: QuoteFormState = {
   contact: {
@@ -34,9 +30,11 @@ const initialState: QuoteFormState = {
     first_name: "",
     last_name: "",
     phone: "",
-    country: "",
+    country: "Argentina",
     message: "",
     company_name: "",
+    state: "PENDING", // Agregado según ContactInfo
+    assigned_user: null, // Agregado según ContactInfo
   },
   quote: {
     quote_type: "EQUIPMENT",
@@ -51,7 +49,7 @@ function ProductSearchCombobox({
   products,
   selectedProduct,
   onSelect,
-  placeholder = "Nombreee del producto o código",
+  placeholder = "Nombre del producto o código",
 }: {
   products: Product[];
   selectedProduct: Product | null;
@@ -73,12 +71,13 @@ function ProductSearchCombobox({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild className="bg-blue-500">
+      <PopoverTrigger asChild>
         <Button
-          variant="primary"
+          type="button"
+          variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full bg-red-500 justify-between rounded-xl border-input bg-background px-4 py-2.5 h-auto font-normal hover:bg-background"
+          className="w-full justify-between rounded-xl border-input px-4 py-2.5 h-auto font-normal hover:bg-accent"
         >
           {selectedProduct ? (
             <span className="truncate">
@@ -87,12 +86,11 @@ function ProductSearchCombobox({
           ) : (
             <span className="text-muted-foreground">{placeholder}</span>
           )}
-
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-(--radix-popover-trigger-width) p-0"
+        className="w-[--radix-popover-trigger-width] p-0"
         align="start"
       >
         <Command shouldFilter={false}>
@@ -140,30 +138,29 @@ function ProductSearchCombobox({
 
 function QuoteForm() {
   const dispatch = useAppDispatch();
-  const {
-    items: itemsCart,
-    removeFromCart,
-    updateQuantity,
-    clearCart,
-    totalItems,
-  } = useCart();
-  // Replace mockProducts with your Redux selector:
+  const navigate = useNavigate();
+  const { items: itemsCart, clearCart } = useCart();
+
   const { list: products, loading: loadingProducts } = useAppSelector(
     (state) => state.products
   );
+  const { creating } = useAppSelector((state) => state.quotes);
 
-  useEffect(() => {
-    setFormState((prev) => ({
-      ...prev,
-      items: itemsCart.map((item) => ({
-        product: item.id,
-        quantity: item.quantity,
-        unit_price: "0", // Ensure `unit_price` exists in `CartItem`
-      })),
-    }));
-  }, [itemsCart]);
-  // const products = mockProducts;
   const [formState, setFormState] = useState<QuoteFormState>(initialState);
+
+  // Sincronizar items del carrito con el formulario
+  useEffect(() => {
+    if (itemsCart.length > 0) {
+      setFormState((prev) => ({
+        ...prev,
+        items: itemsCart.map((item) => ({
+          product: item.id,
+          quantity: item.quantity,
+          unit_price: "0",
+        })),
+      }));
+    }
+  }, [itemsCart]);
 
   const addItem = () => {
     setFormState((prev) => ({
@@ -179,9 +176,12 @@ function QuoteForm() {
     }));
   };
 
-  // const removeItem = (id: string) => {
-  //   setItems((prev) => prev.filter((item) => item.id !== id));
-  // };
+  const removeItem = (index: number) => {
+    setFormState((prev) => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+    }));
+  };
 
   const getProductById = (productId: string) =>
     products.find((p) => p.id === productId) ?? null;
@@ -199,7 +199,7 @@ function QuoteForm() {
     setFormState((prev) => ({
       ...prev,
       items: prev.items.map((item, i) =>
-        i === index ? { ...item, quantity } : item
+        i === index ? { ...item, quantity: Math.max(1, quantity) } : item
       ),
     }));
   };
@@ -207,92 +207,122 @@ function QuoteForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validaciones
+    if (formState.items.length === 0) {
+      toast.error("Debes agregar al menos un producto");
+      return;
+    }
+
+    if (formState.items.some((item) => !item.product)) {
+      toast.error("Todos los items deben tener un producto seleccionado");
+      return;
+    }
+
     try {
-      const result = await dispatch(createQuoteFormState(formState)).unwrap();
+      const result = await dispatch(createQuoteFromForm(formState)).unwrap();
 
-      // result === QuoteFormState (respuesta de la API)
-      toast.success("Cotización creada");
+      toast.success("Cotización creada exitosamente");
 
-      console.log(result);
+      // Limpiar formulario y carrito
       setFormState(initialState);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      toast.error("Error al crear la cotización");
+      clearCart();
+
+      // Opcional: redirigir a la lista de cotizaciones
+      // navigate("/quotes");
+
+      console.log("Cotización creada:", result);
+    } catch (err) {
+      console.error("Error al crear cotización:", err);
+      toast.error(err.message || "Error al crear la cotización");
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid md:grid-cols-2 gap-4">
-        <InputField
-          label="Nombre"
-          value={formState.contact.first_name}
-          onChange={(e) =>
-            setFormState((prev) => ({
-              ...prev,
-              contact: { ...prev.contact, first_name: e.target.value },
-            }))
-          }
-          required
-        />
-        <InputField
-          label="Apellido"
-          value={formState.contact.last_name}
-          onChange={(e) =>
-            setFormState((prev) => ({
-              ...prev,
-              contact: { ...prev.contact, last_name: e.target.value },
-            }))
-          }
-          required
-        />
-        <InputField
-          label="Empresa"
-          value={formState.contact.company_name}
-          onChange={(e) =>
-            setFormState((prev) => ({
-              ...prev,
-              contact: { ...prev.contact, company_name: e.target.value },
-            }))
-          }
-        />
-
-        <InputField
-          label="Email"
-          type="email"
-          value={formState.contact.email}
-          onChange={(e) =>
-            setFormState({
-              ...formState,
-              contact: { ...formState.contact, email: e.target.value },
-            })
-          }
-          required
-        />
-        <InputField
-          label="Teléfono"
-          type="tel"
-          value={formState.contact.phone}
-          onChange={(e) =>
-            setFormState({
-              ...formState,
-              contact: { ...formState.contact, phone: e.target.value },
-            })
-          }
-          required
-        />
+      {/* Información del contacto */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Información de Contacto</h3>
+        <div className="grid md:grid-cols-2 gap-4">
+          <InputField
+            label="Nombre"
+            value={formState.contact.first_name}
+            onChange={(e) =>
+              setFormState((prev) => ({
+                ...prev,
+                contact: { ...prev.contact, first_name: e.target.value },
+              }))
+            }
+            required
+          />
+          <InputField
+            label="Apellido"
+            value={formState.contact.last_name}
+            onChange={(e) =>
+              setFormState((prev) => ({
+                ...prev,
+                contact: { ...prev.contact, last_name: e.target.value },
+              }))
+            }
+            required
+          />
+          <InputField
+            label="Empresa"
+            value={formState.contact.company_name}
+            onChange={(e) =>
+              setFormState((prev) => ({
+                ...prev,
+                contact: { ...prev.contact, company_name: e.target.value },
+              }))
+            }
+            required
+          />
+          <InputField
+            label="Email"
+            type="email"
+            value={formState.contact.email}
+            onChange={(e) =>
+              setFormState((prev) => ({
+                ...prev,
+                contact: { ...prev.contact, email: e.target.value },
+              }))
+            }
+            required
+          />
+          <InputField
+            label="Teléfono"
+            type="number"
+            value={formState.contact.phone}
+            onChange={(e) =>
+              setFormState((prev) => ({
+                ...prev,
+                contact: { ...prev.contact, phone: e.target.value },
+              }))
+            }
+            required
+          />
+          <InputField
+            label="País"
+            value={formState.contact.country}
+            onChange={(e) =>
+              setFormState((prev) => ({
+                ...prev,
+                contact: { ...prev.contact, country: e.target.value },
+              }))
+            }
+          />
+        </div>
       </div>
 
+      {/* Productos */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium">Productos</label>
+          <h3 className="text-lg font-semibold">Productos</h3>
           <Button type="button" variant="ghost" size="sm" onClick={addItem}>
             <Plus className="w-4 h-4 mr-1" /> Agregar Producto
           </Button>
         </div>
         {formState.items.map((item, index) => {
           const selectedProduct = getProductById(item.product);
-
           return (
             <div key={index} className="flex gap-2">
               <ProductSearchCombobox
@@ -315,23 +345,32 @@ function QuoteForm() {
         })}
       </div>
 
+      {/* Mensaje adicional */}
       <div>
-        <label className="block text-sm font-medium mb-2">Mensaje</label>
+        <label className="block text-sm font-medium mb-2">
+          Mensaje Adicional
+        </label>
         <textarea
           value={formState.contact.message}
           onChange={(e) =>
-            setFormState({
-              ...formState,
-              contact: { ...formState.contact, message: e.target.value },
-            })
+            setFormState((prev) => ({
+              ...prev,
+              contact: { ...prev.contact, message: e.target.value },
+            }))
           }
-          className="w-full px-4 py-2.5 rounded-xl border border-input bg-background min-h-[120px] focus:outline-none focus:ring-2 focus:ring-primary"
-          placeholder="Información adicional..."
+          className="w-full px-4 py-2.5 rounded-xl border border-input bg-background min-h-[120px] focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          placeholder="Información adicional sobre la cotización..."
         />
       </div>
 
-      <Button type="submit" size="lg" className="w-full">
-        Enviar Solicitud
+      {/* Botón de envío */}
+      <Button
+        type="submit"
+        size="lg"
+        className="w-full"
+        disabled={creating || loadingProducts}
+      >
+        {creating ? "Creando cotización..." : "Enviar Solicitud"}
       </Button>
     </form>
   );

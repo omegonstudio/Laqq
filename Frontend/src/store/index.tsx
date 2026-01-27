@@ -10,6 +10,7 @@ import specsReducer from "./specsSlice";
 import fixedSpecsReducer from "./fixedSpecsSlice";
 import quotesReducer from "./quotesSlice";
 import contacts from "./contacts";
+import users from "./usersSlice";
 
 const persistConfig = {
   key: "auth",
@@ -29,6 +30,7 @@ export const store = configureStore({
     fixedSpecs: fixedSpecsReducer,
     quotes: quotesReducer,
     contacts: contacts,
+    users: users,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

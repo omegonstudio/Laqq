@@ -1,9 +1,10 @@
-import { QuoteWithContact } from "@/types/api";
+import { QuoteRender } from "@/types/api";
+import { convertQuotesState, convertQuotesTypes } from "./quotesConvert";
 
-const generateQuoteHTML = (quote: QuoteWithContact): string => {
-  const contact = quote.contactInfo;
+const generateQuoteHTML = (quote: QuoteRender): string => {
+  const contact = quote.contact;
 
-  return `
+  return `  
   <html>
     <body style="font-family: Arial; padding: 40px;">
       <h1>Cotización #${quote.quote_number}</h1>
@@ -15,34 +16,57 @@ const generateQuoteHTML = (quote: QuoteWithContact): string => {
         <p><strong>Empresa:</strong> ${contact.company_name}</p>
         <p><strong>Contacto:</strong> ${contact.first_name} ${contact.last_name}</p>
         <p><strong>Email:</strong> ${contact.email}</p>
+        <p><strong>Teléfono:</strong> ${contact.phone}</p>
       `
           : ""
       }
 
       <hr />
 
-      <p><strong>Estado:</strong> ${quote.state}</p>
-      <p><strong>Tipo:</strong> ${quote.quote_type}</p>
-      <p><strong>Fecha:</strong> ${new Date(
-        quote.created_at
-      ).toLocaleDateString()}</p>
+      <p><strong>Estado:</strong> ${convertQuotesState(quote.state)}</p>
+      <p><strong>Tipo:</strong> ${convertQuotesTypes(quote.quote_type)}</p>
+      <p><strong>Fecha de creación:</strong> ${quote.created_at}</p>
+      <p><strong>Última modificación:</strong> ${quote.updated_at}</p>
 
       <h3>Ítems</h3>
-      <ul>
-        ${quote.items
-          ?.map(
-            (i) => `<li>${i.product} - ${i.quantity} x $${i.unit_price}</li>`
-          )
-          .join("")}
-      </ul>
 
-      <h2>Total: $${quote.total_amount}</h2>
+      <table width="100%" border="1" cellspacing="0" cellpadding="8" style="border-collapse: collapse;">
+        <thead style="background-color: #f2f2f2;">
+          <tr>
+            <th align="left">Producto</th>
+            <th align="left">Código</th>
+            <th align="right">Cantidad</th>
+            <th align="right">Precio unitario</th>
+            <th align="right">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${quote.items
+            ?.map(
+              (i) => `
+            <tr>
+              <td>${i.product.name}</td>
+              <td>${i.product.product_code}</td>
+              <td align="right">${i.quantity}</td>
+              <td align="right">$${i.unit_price}</td>
+              <td align="right">$${
+                Number(i.quantity) * Number(i.unit_price)
+              }</td>
+            </tr>
+          `
+            )
+            .join("")}
+        </tbody>
+      </table>
+
+      <h2 style="text-align: right; margin-top: 20px;">
+        Total: $${quote.total_amount}
+      </h2>
     </body>
   </html>
   `;
 };
-
-export const generateQuotePdf = (quote: QuoteWithContact) => {
+export const generateQuotePdf = (quote: QuoteRender) => {
   const iframe = document.createElement("iframe");
   iframe.style.display = "none";
   document.body.appendChild(iframe);

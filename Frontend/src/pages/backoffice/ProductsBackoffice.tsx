@@ -1,6 +1,6 @@
 import ProductsTable from "@/components/modules/ProductsTable";
-import { fetchBrands } from "@/store/brandSlice";
-import { fetchCategories } from "@/store/categoriesSlice";
+import { fetchAllBrands, fetchBrands } from "@/store/brandSlice";
+import { fetchAllCategories } from "@/store/categoriesSlice";
 import { useAppDispatch } from "@/store/hooks";
 import { fetchProducts } from "@/store/productSlice";
 import { useEffect } from "react";
@@ -13,11 +13,11 @@ const ProductsBackoffice = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(fetchCategories({ page: 1, page_size: 20 }));
+    dispatch(fetchAllCategories());
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(fetchBrands({ page: 1, page_size: 20 }));
+    dispatch(fetchAllBrands());
   }, [dispatch]);
 
   return (

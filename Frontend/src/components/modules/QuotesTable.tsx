@@ -4,91 +4,107 @@ import Table from "@/components/common/Table";
 import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchQuotes } from "@/store/quotesSlice";
-import { Quote, QuoteWithContact } from "@/types/api";
+import {
+  deleteQuote,
+  fetchQuotes,
+  fetchQuoteStates,
+  fetchQuoteTypes,
+} from "@/store/quotesSlice";
+import { QuoteRender, QuoteStateType, QuoteTypeEnum } from "@/types/api";
 import { toast } from "sonner";
 import { generateQuotePdf } from "@/utils/useQuotePDF";
 import QuotePreviewDialog from "../atoms/QuotePreview";
-import { fetchContacts } from "@/store/contacts";
+import { convertQuotesState, convertQuotesTypes } from "@/utils/quotesConvert";
+import ModalDelete from "../molecules/Modals/ModalDelete";
 
 const QuotesTable = () => {
   const dispatch = useAppDispatch();
 
-  const { list: quotes } = useAppSelector((state) => state.quotes);
-  const { list: contacts } = useAppSelector((state) => state.contacts);
-  const { list: products } = useAppSelector((state) => state.products);
+  const { list: quotes, pagination } = useAppSelector((state) => state.quotes);
+  const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [previewQuote, setPreviewQuote] = useState<QuoteWithContact | null>(
-    null
-  );
+  const [typesFilters, setTypesFilters] = useState("all");
+  const [isModalEditOpen, setIsModalEditOpen] = useState(false);
 
+  const [previewQuote, setPreviewQuote] = useState<QuoteRender | null>(null);
   useEffect(() => {
     dispatch(fetchQuotes({ page: 1, page_size: 50 }));
-    dispatch(fetchContacts({ page: 1, page_size: 50 }));
+    dispatch(fetchQuoteStates());
+    dispatch(fetchQuoteTypes());
   }, [dispatch]);
 
-  // 👉 Mapa de contactos por ID
-  const contactsById = useMemo(() => {
-    return new Map(contacts.map((c) => [c.id, c]));
-  }, [contacts]);
+  useEffect(() => {
+    const params: {
+      page: number;
+      page_size: number;
+      state?: string;
+      search?: string;
+      quote_type?: string;
+    } = {
+      page: 1,
+      page_size: 50,
+    };
 
-  const productsById = useMemo(
-    () => new Map(products.map((p) => [p.id, p])),
-    [products]
-  );
+    if (statusFilter !== "all") {
+      params.state = statusFilter;
+    }
+    if (typesFilters !== "all") {
+      params.quote_type = typesFilters;
+    }
 
-  // 👉 Quotes enriquecidas con contacto
-  const enrichedQuotes: QuoteWithContact[] = useMemo(() => {
-    return quotes.map((quote) => {
-      const contact = contactsById.get(quote.contact);
+    if (searchTerm.trim()) {
+      params.search = searchTerm;
+    }
 
-      return {
-        ...quote,
-        contactInfo: contact
-          ? {
-              first_name: contact.first_name,
-              last_name: contact.last_name,
-              email: contact.email,
-              company_name: contact.company_name,
-            }
-          : undefined,
+    dispatch(fetchQuotes(params));
+  }, [dispatch, statusFilter, searchTerm, typesFilters]);
 
-        items: quote.items?.map((item) => {
-          const product = productsById.get(item.product);
+  const quotesStates = useAppSelector((state) => state.quotes.states);
+  const quotesTypes = useAppSelector((state) => state.quotes.types);
 
-          return {
-            ...item,
-            productName: product?.name ?? "Producto desconocido",
-          };
-        }),
-      };
-    });
-  }, [quotes, contactsById, productsById]);
-  const filteredQuotes = enrichedQuotes.filter((quote) => {
-    const matchesStatus =
-      statusFilter === "all" || quote.state === statusFilter;
-    return matchesStatus;
-  });
+  const filteredQuotes = quotes.map((quote) => ({
+    ...quote,
+    company_name: quote.contact?.company_name || "-",
+    email: quote.contact?.email || "-",
+  }));
 
   const columns = [
     { key: "quote_number", label: "N° Cotización", sortable: true },
-    { key: "contactInfo.company_name", label: "Empresa", sortable: true },
-    { key: "contactInfo.email", label: "Email", sortable: true },
-    { key: "quote_type", label: "Tipo", sortable: true },
-    { key: "state", label: "Estado", sortable: true },
+    { key: "company_name", label: "Empresa", sortable: true },
+    { key: "email", label: "Email", sortable: true },
+    {
+      key: "quote_type",
+      label: "Tipo",
+      sortable: true,
+      render: (value: QuoteTypeEnum) => convertQuotesTypes(value),
+    },
+    {
+      key: "state",
+      label: "Estado",
+      sortable: true,
+      render: (value: QuoteStateType) => convertQuotesState(value),
+    },
   ];
+  const handleOpenDeleteModal = (product: QuoteRender) => {
+    setPreviewQuote(product);
+    setIsModalDeleteOpen(true);
+  };
+  const handleEdit = (quote: QuoteRender) => {
+    setPreviewQuote(quote);
+    setIsModalEditOpen(true);
+  };
 
   const actions = [
     {
       icon: <Eye size={16} />,
       label: "Ver",
-      onClick: (quote: QuoteWithContact) => setPreviewQuote(quote),
+      onClick: handleEdit,
     },
     {
       icon: <FileText size={16} />,
       label: "PDF",
-      onClick: (quote: QuoteWithContact) => {
+      onClick: (quote: QuoteRender) => {
         generateQuotePdf(quote);
         toast.success("PDF generado");
       },
@@ -97,10 +113,39 @@ const QuotesTable = () => {
       icon: <Trash2 size={16} />,
       label: "Eliminar",
       color: "red",
-      onClick: (quote: QuoteWithContact) => console.log("Eliminar", quote),
+      onClick: handleOpenDeleteModal,
     },
   ];
 
+  const handleConfirmDelete = async () => {
+    if (!previewQuote) return;
+
+    try {
+      await dispatch(deleteQuote(previewQuote.id)).unwrap();
+      toast.success("Cotización eliminada exitosamente");
+      setIsModalDeleteOpen(false);
+
+      // Recargar con los filtros actuales
+      const params: {
+        page: number;
+        page_size: number;
+        search?: string;
+        brand?: string;
+      } = {
+        page: pagination.current_page,
+        page_size: pagination.page_size,
+      };
+
+      dispatch(fetchQuotes(params));
+    } catch (error: unknown) {
+      console.error("Error eliminando cotización:", error);
+      if (error instanceof Error) {
+        toast.error(error.message || "Error al eliminar la cotización");
+      } else {
+        toast.error("Error al eliminar la cotización");
+      }
+    }
+  };
   return (
     <div className="space-y-4">
       <div className="flex gap-4">
@@ -109,25 +154,50 @@ const QuotesTable = () => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-
+        <Select
+          value={typesFilters}
+          onChange={(e) => setTypesFilters(e.target.value)}
+          options={[
+            { value: "all", label: "Todos los tipos" },
+            ...quotesTypes.map((item) => ({
+              value: item.id,
+              label: convertQuotesTypes(item.name),
+            })),
+          ]}
+        />
         <Select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           options={[
-            { value: "all", label: "Todos" },
-            { value: "NEW", label: "Nueva" },
-            { value: "CONFIRMED", label: "Confirmada" },
+            { value: "all", label: "Todos los estados" },
+            ...quotesStates.map((item) => ({
+              value: item.id,
+              label: convertQuotesState(item.name),
+            })),
           ]}
         />
       </div>
-
       <QuotePreviewDialog
-        open={!!previewQuote}
-        onOpenChange={(open) => !open && setPreviewQuote(null)}
+        open={isModalEditOpen}
+        onOpenChange={(open) => {
+          setIsModalEditOpen(open);
+          if (!open) {
+            setPreviewQuote(null);
+          }
+        }}
         quote={previewQuote}
       />
 
       <Table columns={columns} data={filteredQuotes} actions={actions} />
+      <ModalDelete
+        isOpen={isModalDeleteOpen}
+        onClose={() => {
+          setIsModalDeleteOpen(false);
+          setPreviewQuote(null);
+        }}
+        itemName={previewQuote?.quote_number || ""}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 };

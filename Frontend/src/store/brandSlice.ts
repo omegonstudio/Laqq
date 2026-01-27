@@ -91,7 +91,6 @@ export const fetchAllBrands = createAsyncThunk(
         hasMore = response.next !== null;
         page++;
       }
-      console.log(allBrands, "AAAAAAAAAAA");
       return {
         results: allBrands,
         count: allBrands.length,

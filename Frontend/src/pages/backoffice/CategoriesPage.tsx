@@ -1,5 +1,5 @@
 import CategoriesABM from "@/components/modules/CategoriesABM";
-import { fetchCategories } from "@/store/categoriesSlice";
+import { fetchAllCategories } from "@/store/categoriesSlice";
 import { useAppDispatch } from "@/store/hooks";
 import { useEffect } from "react";
 
@@ -7,7 +7,7 @@ const CategoriesPage = () => {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    dispatch(fetchCategories({ page: 1, page_size: 20 }));
+    dispatch(fetchAllCategories());
   }, [dispatch]);
 
   return (

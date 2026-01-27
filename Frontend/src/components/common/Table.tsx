@@ -12,6 +12,8 @@ interface TableColumn {
   key: string;
   label: string;
   sortable?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  render?: (value: any, row: any) => React.ReactNode;
 }
 
 interface TableAction {
@@ -51,7 +53,6 @@ const Table = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  console.log(data, "DATA EN TABLEEE");
   const isServerPaginated = !!serverPagination;
 
   const handleSort = (key: string) => {
@@ -159,11 +160,10 @@ const Table = ({
                   )}
                 >
                   {columns.map((column) => (
-                    <td
-                      key={column.key}
-                      className="px-4 py-3 text-sm text-foreground"
-                    >
-                      {row[column.key]}
+                    <td className="px-4 py-3 text-sm text-foreground">
+                      {column.render
+                        ? column.render(row[column.key], row)
+                        : row[column.key]}
                     </td>
                   ))}
                   {actions && actions.length > 0 && (

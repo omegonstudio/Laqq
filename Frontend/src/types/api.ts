@@ -161,78 +161,140 @@ export interface Product {
   related?: RelatedProduct[];
 }
 
-export interface QuoteItem {
-  id: string;
-  quote: string;
-  product: string;
-  quantity: number;
-  unit_price: number;
-  subtotal: number;
-}
-// interface QuoteItem {
-//   id?: string;
-//   quote?: string;
-//   product: string;
-//   quantity: number;
-//   unit_price: string;
-//   subtotal?: string;
-// }
-export interface contactQuote {
-  id?: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  phone: string;
-  country: string;
-  message: string;
-  company_name: string;
-}
+// =================== QUOTE ENUMS ===================
 
-export type ContactInfo = {
-  first_name: string;
-  last_name: string;
-  email: string;
-  company_name: string;
-};
-export type QuoteItemWithProduct = QuoteItem & {
-  productName?: string;
-};
-export type QuoteWithContact = Omit<Quote, "items"> & {
-  contactInfo?: ContactInfo;
-  items?: QuoteItemWithProduct[];
-};
+export type QuoteStateType =
+  | "CONFIRMED"
+  | "EXPIRED"
+  | "PENDING"
+  | "REJECTED"
+  | "SENT";
+export type QuoteTypeEnum =
+  | "EQUIPMENT"
+  | "FURNITURE"
+  | "PROCESSED"
+  | "SUPPLIES";
 
+// =================== QUOTE TYPES ===================
+
+// Para ESCRIBIR (POST/PUT) - Lo que envías a la API
 export interface Quote {
+  id?: string;
+  quote_number?: string;
+  contact: string; // UUID del contacto
+  user: string | null;
+  quote_type: QuoteTypeEnum;
+  state: QuoteStateType;
+  message: string | null;
+  total_amount: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Para LEER (GET) - Lo que recibes de la API
+export interface QuoteRender {
   id: string;
   quote_number: string;
-  contact: string;
+  contact: ContactInfo; // Objeto completo
+  contact_id: string;
   user: string | null;
-  quote_type: string;
-  state: string;
+  quote_type: QuoteTypeEnum;
+  state: QuoteStateType;
   message: string | null;
   total_amount: string | null;
   created_at: string;
   updated_at: string;
-  items?: QuoteItem[];
+  items: QuoteItemRender[]; // Items con productos completos
 }
-export interface QuoteFormState {
-  contact: contactQuote;
-  quote: {
-    quote_type: string;
-    message: string;
-    state: string;
-    user?: string | null;
-  };
-  items: QuoteItemUI[];
+
+// =================== CONTACT TYPES ===================
+
+export interface ContactInfo {
+  first_name: string;
+  last_name: string;
+  email: string;
+  company_name: string;
+  country: string;
+  phone: string;
+  message: string;
+  state: string;
+  assigned_user: string | null;
 }
-export interface QuoteItemUI {
-  product: string;
+
+// =================== QUOTE ITEM TYPES ===================
+
+// Para ESCRIBIR (POST/PUT)
+export interface QuoteItem {
+  id?: string;
+  quote: string; // UUID
+  product: string; // UUID
+  quantity: number;
+  unit_price: string; // Decimal como string
+  subtotal: string; // Decimal como string
+}
+
+// Para LEER (GET)
+export interface QuoteItemRender {
+  id: string;
+  quote: string;
+  product: Product; // Objeto completo
   quantity: number;
   unit_price: string;
+  subtotal: string;
 }
+
+// =================== PAYLOAD TYPES ===================
+
+// Para crear una cotización completa con contacto
+export interface QuoteCreatePayload {
+  contact: ContactInfo;
+  contact_id?: string;
+  message?: string | null;
+  total_amount?: string | null;
+  user?: string | null;
+  quote_type: QuoteTypeEnum;
+  state: QuoteStateType;
+}
+
+// Para actualizar una cotización
+export interface QuoteUpdatePayload {
+  contact?: ContactInfo;
+  contact_id?: string;
+  message?: string | null;
+  total_amount?: string | null;
+  user?: string | null;
+  quote_type?: QuoteTypeEnum;
+  state?: QuoteStateType;
+}
+
+// Para crear items en bulk
+export interface QuoteItemBulkCreate {
+  quote: string; // UUID
+  product: string; // UUID
+  quantity: number;
+}
+
+// Para el formulario completo (desde UI)
+export interface QuoteFormState {
+  contact: ContactInfo;
+  quote: {
+    quote_type: QuoteTypeEnum;
+    message: string;
+    state: QuoteStateType;
+    user?: string | null;
+  };
+  items: Array<{
+    product: string; // UUID
+    quantity: number;
+    unit_price?: string;
+  }>;
+}
+
+// =================== METADATA TYPES ===================
+
 export interface QuoteState {
   id: string;
-  name: string;
+  name: QuoteStateType;
   color: string | null;
   description: string | null;
   created_at: string;
@@ -240,7 +302,7 @@ export interface QuoteState {
 
 export interface QuoteType {
   id: string;
-  name: string;
+  name: QuoteTypeEnum;
   description: string | null;
   created_at: string;
 }
