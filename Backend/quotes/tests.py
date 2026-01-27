@@ -74,7 +74,7 @@ class QuoteAPITestCase(APITestCase):
     def test_create_quote_auto_number(self):
         """Crear cotización con número automático (Q-YYYY-XXXXX)"""
         data = {
-            'contact': self.contact.id,
+            'contact_id': self.contact.id,
             'quote_type': self.quote_type.id,
             'state': self.quote_state.id,
             'total_amount': 500.00
@@ -88,7 +88,7 @@ class QuoteAPITestCase(APITestCase):
         """Validar que el monto total no sea negativo"""
         data = {
             'quote_number': 'Q-2025-99999',
-            'contact': self.contact.id,
+            'contact_id': self.contact.id,
             'quote_type': self.quote_type.id,
             'state': self.quote_state.id,
             'total_amount': -100.00
@@ -411,7 +411,7 @@ class QuoteEmailNotificationTestCase(APITestCase):
 
         # Create quote via API
         data = {
-            'contact': self.contact.id,
+            'contact_id': self.contact.id,
             'quote_type': self.quote_type.id,
             'state': self.quote_state.id,
             'total_amount': 1000.00,

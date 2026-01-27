@@ -270,19 +270,23 @@ class ClientPortalAPITestCase(APITestCase):
         self.client = APIClient()
 
         # Crear user types y states
-        self.admin_type = UserType.objects.create(
+        self.admin_type, _ = UserType.objects.get_or_create(
             id='admin',
-            name='Administrador',
-            description='Usuario admin'
+            defaults={
+                'name': 'Administrador',
+                'description': 'Usuario admin'
+            }
         )
-        self.client_type = UserType.objects.create(
+        self.client_type, _ = UserType.objects.get_or_create(
             id='client',
-            name='Cliente',
-            description='Usuario cliente'
+            defaults={
+                'name': 'Cliente',
+                'description': 'Usuario cliente'
+            }
         )
-        self.active_state = UserState.objects.create(
+        self.active_state, _ = UserState.objects.get_or_create(
             id='active',
-            name='Activo'
+            defaults={'name': 'Activo'}
         )
 
         # Crear usuario admin
