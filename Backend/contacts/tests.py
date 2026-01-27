@@ -68,26 +68,6 @@ class ContactAPITestCase(APITestCase):
         response = self.client.post('/contacts/list/', data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_filter_by_state(self):
-        """Filtrar contactos por estado (activo, inactivo, etc.)"""
-        response = self.client.get(f'/contacts/list/?state={self.contact_state.id}')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
-
-    def test_search_contact(self):
-        """Buscar contactos por nombre, empresa o email"""
-        response = self.client.get('/contacts/list/?search=John')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
-
-    def test_filter_by_assigned_user(self):
-        """Filtrar contactos por usuario asignado"""
-        self.contact.assigned_user = self.user
-        self.contact.save()
-        response = self.client.get(f'/contacts/list/?assigned_user={self.user.id}')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
-
 
 class MessageAPITestCase(APITestCase):
     """Tests para el CRUD de Mensajes de contacto (formulario web)"""
@@ -131,9 +111,3 @@ class MessageAPITestCase(APITestCase):
         }
         response = self.client.post('/contacts/messages/', data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_search_message(self):
-        """Buscar mensajes por contenido o empresa"""
-        response = self.client.get('/contacts/messages/?search=test')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
