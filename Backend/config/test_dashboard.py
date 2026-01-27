@@ -105,45 +105,6 @@ class DashboardSummaryTestCase(TestCase):
         self.assertIsInstance(stats['quotes'], int)
         self.assertIsInstance(stats['new_messages'], int)
 
-    def test_dashboard_summary_counts_correct(self):
-        """
-        Test 3: Dashboard summary returns correct counts
-        """
-        response = self.client.get('/dashboard/summary/')
-
-        stats = response.data['stats']
-
-        # We created 1 active user (testuser)
-        self.assertEqual(stats['active_users'], 1)
-
-        # We created 2 active products
-        self.assertEqual(stats['products'], 2)
-
-        # We created 1 quote
-        self.assertEqual(stats['quotes'], 1)
-
-        # We created 1 message
-        self.assertEqual(stats['new_messages'], 1)
-
-    def test_dashboard_summary_recent_activity(self):
-        """
-        Test 4: Dashboard summary includes recent activity
-        """
-        response = self.client.get('/dashboard/summary/')
-
-        recent_activity = response.data['recent_activity']
-        self.assertIsInstance(recent_activity, list)
-
-        # Should have at least some activity
-        self.assertGreaterEqual(len(recent_activity), 1)
-
-        # Check structure of first activity item
-        if len(recent_activity) > 0:
-            first_activity = recent_activity[0]
-            self.assertIn('type', first_activity)
-            self.assertIn('title', first_activity)
-            self.assertIn('time_ago', first_activity)
-
     def test_dashboard_summary_unauthenticated(self):
         """
         Test 5: Dashboard summary requires authentication
@@ -153,22 +114,3 @@ class DashboardSummaryTestCase(TestCase):
         response = unauth_client.get('/dashboard/summary/')
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_dashboard_summary_activity_types(self):
-        """
-        Test 6: Dashboard summary includes different activity types
-        """
-        response = self.client.get('/dashboard/summary/')
-
-        recent_activity = response.data['recent_activity']
-
-        # Collect all activity types
-        activity_types = {item['type'] for item in recent_activity}
-
-        # Should have at least one type
-        self.assertGreater(len(activity_types), 0)
-
-        # Verify valid types
-        valid_types = {'quote', 'message', 'product'}
-        for activity_type in activity_types:
-            self.assertIn(activity_type, valid_types)

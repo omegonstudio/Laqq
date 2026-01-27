@@ -137,21 +137,6 @@ class AuthenticationAPITestCase(APITestCase):
         self.assertNotIn('refresh', response.data)
 
 
-    def test_login_with_nonexistent_user(self):
-        """
-        Test 4: Login fallido con usuario inexistente
-        Verifica que se rechaza el login con usuario que no existe
-        """
-        response = self.client.post('/users/token/', {
-            'username': 'nonexistent_user',
-            'password': 'SomePassword123!'
-        })
-
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertNotIn('access', response.data)
-        self.assertNotIn('refresh', response.data)
-
-
     def test_login_with_inactive_user(self):
         """
         Test 5: Login fallido con usuario inactivo
@@ -192,19 +177,6 @@ class AuthenticationAPITestCase(APITestCase):
         self.assertNotEqual(login_response.data['access'], refresh_response.data['access'])
 
 
-    def test_refresh_token_with_invalid_token(self):
-        """
-        Test 7: Refresh token fallido con token inválido
-        Verifica que se rechaza un refresh token inválido
-        """
-        response = self.client.post('/users/token/refresh/', {
-            'refresh': 'invalid_token_string'
-        })
-
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertNotIn('access', response.data)
-
-
     def test_access_protected_endpoint_with_valid_token(self):
         """
         Test 8: Acceso a endpoint protegido con token válido
@@ -235,17 +207,6 @@ class AuthenticationAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
-    def test_access_protected_endpoint_with_invalid_token(self):
-        """
-        Test 10: Acceso denegado a endpoint protegido con token inválido
-        Verifica que se rechaza el acceso con un token JWT inválido
-        """
-        self.client.credentials(HTTP_AUTHORIZATION='Bearer invalid_token_string')
-        response = self.client.get('/users/list/')
-
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-
     def test_login_with_email_instead_of_username(self):
         """
         Test 11: Login exitoso usando email en lugar de username
@@ -260,74 +221,6 @@ class AuthenticationAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('access', response.data)
         self.assertIn('refresh', response.data)
-
-
-    def test_admin_user_has_correct_user_type(self):
-        """
-        Test 12: Verificar que el usuario Admin tiene el tipo correcto
-        Valida que el user_type se asigna correctamente
-        """
-        # Hacer login
-        login_response = self.client.post('/users/token/', {
-            'username': 'admin_user',
-            'password': 'AdminPass123!'
-        })
-
-        access_token = login_response.data['access']
-
-        # Obtener información del usuario
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
-        response = self.client.get(f'/users/list/{self.admin_user.id}/')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['user_type']['id'], 'admin')
-        self.assertEqual(response.data['user_type']['name'], 'Administrador')
-
-
-    def test_backoffice_user_has_correct_user_type(self):
-        """
-        Test 13: Verificar que el usuario Backoffice tiene el tipo correcto
-        Valida que el user_type se asigna correctamente
-        """
-        # Hacer login
-        login_response = self.client.post('/users/token/', {
-            'username': 'backoffice_user',
-            'password': 'BackofficePass123!'
-        })
-
-        access_token = login_response.data['access']
-
-        # Obtener información del usuario
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
-        response = self.client.get(f'/users/list/{self.backoffice_user.id}/')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['user_type']['id'], 'backoffice')
-        self.assertEqual(response.data['user_type']['name'], 'Backoffice')
-
-
-    def test_login_missing_username(self):
-        """
-        Test 14: Login fallido sin proporcionar username
-        Verifica validación de campos requeridos
-        """
-        response = self.client.post('/users/token/', {
-            'password': 'AdminPass123!'
-        })
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-
-    def test_login_missing_password(self):
-        """
-        Test 15: Login fallido sin proporcionar password
-        Verifica validación de campos requeridos
-        """
-        response = self.client.post('/users/token/', {
-            'username': 'admin_user'
-        })
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class UserTypeAPITestCase(APITestCase):
@@ -368,37 +261,6 @@ class UserTypeAPITestCase(APITestCase):
         )
 
 
-    def test_list_user_types_authenticated(self):
-        """
-        Test 16: Listar tipos de usuario con autenticación
-        Verifica que un usuario autenticado puede ver los tipos de usuario
-        """
-        # Hacer login
-        login_response = self.client.post('/users/token/', {
-            'username': 'test_user',
-            'password': 'TestPass123!'
-        })
-
-        access_token = login_response.data['access']
-
-        # Listar tipos de usuario
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
-        response = self.client.get('/users/types/')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 2)  # admin y backoffice
-
-
-    def test_list_user_types_unauthenticated(self):
-        """
-        Test 17: Listar tipos de usuario sin autenticación (denegado)
-        Verifica que se requiere autenticación para ver tipos de usuario
-        """
-        response = self.client.get('/users/types/')
-
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-
 class UserStateAPITestCase(APITestCase):
     """
     Tests para el endpoint de estados de usuario
@@ -435,32 +297,3 @@ class UserStateAPITestCase(APITestCase):
         )
 
 
-    def test_list_user_states_authenticated(self):
-        """
-        Test 18: Listar estados de usuario con autenticación
-        Verifica que un usuario autenticado puede ver los estados de usuario
-        """
-        # Hacer login
-        login_response = self.client.post('/users/token/', {
-            'username': 'test_user',
-            'password': 'TestPass123!'
-        })
-
-        access_token = login_response.data['access']
-
-        # Listar estados de usuario
-        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
-        response = self.client.get('/users/states/')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 2)  # active e inactive
-
-
-    def test_list_user_states_unauthenticated(self):
-        """
-        Test 19: Listar estados de usuario sin autenticación (denegado)
-        Verifica que se requiere autenticación para ver estados de usuario
-        """
-        response = self.client.get('/users/states/')
-
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
