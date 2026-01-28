@@ -5,11 +5,12 @@ import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchProducts } from "@/store/productSlice";
 import { useProductFilters } from "@/hooks/useFilters";
-import { fetchBrands } from "@/store/brandSlice";
-import { fetchCategories } from "@/store/categoriesSlice";
+import { fetchAllBrands, fetchBrands } from "@/store/brandSlice";
+import { fetchAllCategories, fetchCategories } from "@/store/categoriesSlice";
 
 const ProductsPage = () => {
-  const { searchParams, setFilter, clearBrand } = useProductFilters();
+  const { searchParams, setFilter, clearBrand, clearCategory } =
+    useProductFilters();
   const search = searchParams.get("search") ?? "";
 
   const dispatch = useAppDispatch();
@@ -19,6 +20,7 @@ const ProductsPage = () => {
     loading,
   } = useAppSelector((state) => state.products);
   const { list: brands } = useAppSelector((state) => state.brands);
+  const { list: categories } = useAppSelector((state) => state.categories);
 
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -28,8 +30,8 @@ const ProductsPage = () => {
   useEffect(() => {
     dispatch(fetchProducts({ page: 1, page_size: 9 }));
     setCurrentPage(1);
-    dispatch(fetchBrands({ page: 1, page_size: 10 }));
-    dispatch(fetchCategories({ page: 1, page_size: 10 }));
+    dispatch(fetchAllBrands());
+    dispatch(fetchAllCategories());
     setAllProducts([]); // Resetear al montar
   }, [dispatch]);
 
@@ -89,8 +91,15 @@ const ProductsPage = () => {
   // Determinar si hay más páginas
   const hasMore = currentPage < pagination.total_pages;
 
-  const clearFilters = () => {
+  const clearFilterBrand = () => {
     clearBrand();
+    // Opcional: recargar desde la página 1
+    setCurrentPage(1);
+    dispatch(fetchProducts({ page: 1, page_size: 9 }));
+    setAllProducts([]);
+  };
+  const clearFilterCategory = () => {
+    clearCategory();
     // Opcional: recargar desde la página 1
     setCurrentPage(1);
     dispatch(fetchProducts({ page: 1, page_size: 9 }));
@@ -99,8 +108,10 @@ const ProductsPage = () => {
 
   // Obtener nombre de la marca activa
   const activeBrandId = searchParams.get("brand");
+  const activeCategoryId = searchParams.get("category");
   const activeBrand = brands.find((b) => b.id === activeBrandId);
-
+  const activeCategory = categories.find((b) => b.id === activeCategoryId);
+  console.log(activeCategory, "AAAAAAAAAAAAAA");
   return (
     <div className="py-16">
       <div className="container mx-auto px-4">
@@ -116,24 +127,41 @@ const ProductsPage = () => {
             value={search}
             onViewAllResults={(q) => setFilter("search", q)}
           />
-
-          {/* Mostrar filtro activo */}
-          {activeBrand && (
-            <div className="mt-4 flex items-center justify-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                Filtrando por marca:
-              </span>
-              <div className="inline-flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full">
-                <span className="font-medium">{activeBrand.name}</span>
-                <button
-                  onClick={clearFilters}
-                  className="text-primary hover:text-primary/80 font-bold"
-                >
-                  ×
-                </button>
+          <div className="flex justify-between">
+            {/* Mostrar filtro activo */}
+            {activeBrand && (
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Filtrando por marca:
+                </span>
+                <div className="inline-flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full">
+                  <span className="font-medium">{activeBrand.name}</span>
+                  <button
+                    onClick={clearFilterBrand}
+                    className="text-primary hover:text-primary/80 font-bold"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+            {activeCategory && (
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Filtrando por categoría:
+                </span>
+                <div className="inline-flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full">
+                  <span className="font-medium">{activeCategory.name}</span>
+                  <button
+                    onClick={clearFilterCategory}
+                    className="text-primary hover:text-primary/80 font-bold"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

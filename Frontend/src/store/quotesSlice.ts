@@ -6,38 +6,94 @@ import {
   QuoteType,
   QuoteState,
   QuoteFormState,
+  QuoteRender,
+  QuoteUpdatePayload,
+  QuoteItemRender,
+  QuoteCreatePayload,
 } from "@/types/api";
 import { PaginationInfo } from "@/types/types";
 
-interface FetchQuotesParams {
-  page?: number;
-  page_size?: number;
-}
-// types/quote-api.types.ts
-export interface QuoteItemBulkCreate {
-  quote: string; // quoteId (UUID)
-  product: string; // productId (UUID)
-  quantity: number; // > 0
-}
+// =================== ASYNC THUNKS ===================
 
-export const createQuoteItemsBulk = createAsyncThunk(
-  "quotes/bulk",
-  async (payload: Partial<QuoteItemBulkCreate>) => {
-    return quotesApi.bulk(payload);
+// QUOTES
+export const fetchQuotes = createAsyncThunk(
+  "quotes/fetchAll",
+  async (params?: { page?: number; page_size?: number }) => {
+    return quotesApi.list(params);
   }
 );
-export const createQuoteFormState = createAsyncThunk(
-  "quotes/bulk",
-  async (payload: Partial<QuoteFormState>) => {
-    return quotesApi.from(payload);
+
+export const fetchQuote = createAsyncThunk(
+  "quotes/fetchOne",
+  async (id: string) => {
+    return quotesApi.get(id);
   }
 );
-// =================== TYPES ===================
 
+export const createQuote = createAsyncThunk(
+  "quotes/create",
+  async (payload: QuoteCreatePayload) => {
+    return quotesApi.create(payload);
+  }
+);
+
+export const createQuoteFromForm = createAsyncThunk(
+  "quotes/createFromForm",
+  async (payload: QuoteFormState) => {
+    return quotesApi.createFromForm(payload);
+  }
+);
+
+export const updateQuote = createAsyncThunk(
+  "quotes/update",
+  async ({ id, data }: { id: string; data: QuoteUpdatePayload }) => {
+    return quotesApi.update(id, data);
+  }
+);
+
+export const deleteQuote = createAsyncThunk(
+  "quotes/delete",
+  async (id: string) => {
+    await quotesApi.remove(id);
+    return id;
+  }
+);
+
+// ITEMS
+export const fetchQuoteItems = createAsyncThunk(
+  "quotes/fetchItems",
+  async (params?: { page?: number; page_size?: number; quote?: string }) => {
+    return quotesApi.listItems(params);
+  }
+);
+
+export const createQuoteItem = createAsyncThunk(
+  "quotes/createItem",
+  async (payload: Omit<QuoteItem, "id">) => {
+    return quotesApi.createItem(payload);
+  }
+);
+
+export const updateQuoteItem = createAsyncThunk(
+  "quotes/updateItem",
+  async ({ id, data }: { id: string; data: Partial<QuoteItem> }) => {
+    return quotesApi.updateItem(id, data);
+  }
+);
+
+export const deleteQuoteItem = createAsyncThunk(
+  "quotes/deleteItem",
+  async (id: string) => {
+    await quotesApi.removeItem(id);
+    return id;
+  }
+);
+
+// TYPES
 export const fetchQuoteTypes = createAsyncThunk(
   "quotes/fetchTypes",
-  async (params?: { search?: string }) => {
-    return quotesApi.listTypes(params);
+  async () => {
+    return quotesApi.listTypes();
   }
 );
 
@@ -50,7 +106,7 @@ export const fetchQuoteType = createAsyncThunk(
 
 export const createQuoteType = createAsyncThunk(
   "quotes/createType",
-  async (payload: Partial<QuoteType>) => {
+  async (payload: Omit<QuoteType, "id" | "created_at">) => {
     return quotesApi.createType(payload);
   }
 );
@@ -70,12 +126,11 @@ export const deleteQuoteType = createAsyncThunk(
   }
 );
 
-// =================== STATES ===================
-
+// STATES
 export const fetchQuoteStates = createAsyncThunk(
   "quotes/fetchStates",
-  async (params?: { search?: string }) => {
-    return quotesApi.listStates(params);
+  async () => {
+    return quotesApi.listStates();
   }
 );
 
@@ -88,7 +143,7 @@ export const fetchQuoteState = createAsyncThunk(
 
 export const createQuoteState = createAsyncThunk(
   "quotes/createState",
-  async (payload: Partial<QuoteState>) => {
+  async (payload: Omit<QuoteState, "id" | "created_at">) => {
     return quotesApi.createState(payload);
   }
 );
@@ -108,89 +163,26 @@ export const deleteQuoteState = createAsyncThunk(
   }
 );
 
-export const fetchQuotes = createAsyncThunk(
-  "quotes/fetchAll",
-  async (params?: FetchQuotesParams) => {
-    return quotesApi.list(params);
-  }
-);
-export const fetchQuote = createAsyncThunk(
-  "quotes/fetchOne",
-  async (id: string) => {
-    return quotesApi.get(id);
-  }
-);
-export const createQuote = createAsyncThunk(
-  "quotes/create",
-  async (payload: Partial<Quote>) => {
-    return quotesApi.create(payload);
-  }
-);
+// =================== STATE ===================
 
-export const updateQuote = createAsyncThunk(
-  "quotes/update",
-  async ({ id, data }: { id: string; data: Partial<Quote> }) => {
-    return quotesApi.update(id, data);
-  }
-);
-
-export const deleteQuote = createAsyncThunk(
-  "quotes/delete",
-  async (id: string) => {
-    await quotesApi.remove(id);
-    return id;
-  }
-);
-export const fetchQuoteItems = createAsyncThunk(
-  "quotes/fetchItems",
-  async (params?: FetchQuotesParams) => {
-    return quotesApi.listItems(params);
-  }
-);
-
-export const createQuoteItem = createAsyncThunk(
-  "quotes/createItem",
-  async (payload: Partial<QuoteItem>) => {
-    return quotesApi.createItem(payload);
-  }
-);
-
-export const updateQuoteItem = createAsyncThunk(
-  "quotes/updateItem",
-  async ({ id, data }: { id: string; data: Partial<QuoteItem> }) => {
-    return quotesApi.updateItem(id, data);
-  }
-);
-
-export const deleteQuoteItem = createAsyncThunk(
-  "quotes/deleteItem",
-  async (id: string) => {
-    await quotesApi.removeItem(id);
-    return id;
-  }
-);
 interface QuotesState {
-  // Quotes
-  list: Quote[];
+  list: QuoteRender[];
   pagination: PaginationInfo;
   loading: boolean;
   error: string | null;
 
-  selected: Quote | null;
+  selected: QuoteRender | null;
   selectedLoading: boolean;
   selectedError: string | null;
 
-  // Items
-  items: QuoteItem[];
+  items: QuoteItemRender[];
   itemsLoading: boolean;
   itemsError: string | null;
 
-  // Types
   types: QuoteType[];
   typesLoading: boolean;
   typesError: string | null;
 
-  // States
   states: QuoteState[];
   statesLoading: boolean;
   statesError: string | null;
@@ -282,8 +274,8 @@ export const quotesSlice = createSlice({
     });
 
     builder.addCase(updateQuote.fulfilled, (state, action) => {
-      state.list = state.list.map((q) =>
-        q.id === action.payload.id ? action.payload : q
+      state.list = state.list.map(
+        (q) => (q.id === action.payload.id ? action.payload : q) // action.payload es QuoteRender
       );
       if (state.selected?.id === action.payload.id) {
         state.selected = action.payload;

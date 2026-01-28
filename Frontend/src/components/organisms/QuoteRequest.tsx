@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import QuoteForm from "../molecules/QuoteForm";
 
 const QuoteRequest = () => {
@@ -9,6 +10,12 @@ const QuoteRequest = () => {
             <h1 className="text-4xl font-bold mb-4">Solicitar Cotización</h1>
             <p className="text-xl text-muted-foreground">
               Completa el formulario y nos pondremos en contacto contigo pronto
+            </p>
+            <p className="text-xl text-muted-foreground">
+              Para ver más productos{" "}
+              <Link to="/products" className="text-primary underline">
+                click aquí
+              </Link>
             </p>
           </div>
 

@@ -32,116 +32,129 @@ import LevelsPage from "./pages/complementary/LevelsPage";
 import RRHHPage from "./pages/complementary/RRHHPage";
 import AccessoriesPage from "./pages/complementary/AccessoriesPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { useAppDispatch } from "./store/hooks";
+import { useEffect } from "react";
+import { fetchAllCategories } from "./store/categoriesSlice";
+import { fetchAllBrands } from "./store/brandSlice";
 
 const queryClient = new QueryClient();
+const App = () => {
+  const dispatch = useAppDispatch();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <CartProvider>
-          <BrowserRouter>
-            <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Index />} />
-              <Route
-                path="/products"
-                element={
-                  <MainLayout>
-                    <ProductsPage />
-                  </MainLayout>
-                }
-              />
-              <Route
-                path="/product/:id"
-                element={
-                  <MainLayout>
-                    <ProductDetailPage />
-                  </MainLayout>
-                }
-              />
-              <Route
-                path="/quote"
-                element={
-                  <MainLayout>
-                    <QuotePage />
-                  </MainLayout>
-                }
-              />
-              <Route
-                path="/support"
-                element={
-                  <MainLayout>
-                    <SupportPage />
-                  </MainLayout>
-                }
-              />
-              <Route
-                path="/certificates"
-                element={
-                  <MainLayout>
-                    <CertificatesPage />
-                  </MainLayout>
-                }
-              />
-              <Route
-                path="/company"
-                element={
-                  <MainLayout>
-                    <CompanyPage />
-                  </MainLayout>
-                }
-              />
-              <Route
-                path="/contact"
-                element={
-                  <MainLayout>
-                    <ContactPage />
-                  </MainLayout>
-                }
-              />
+  useEffect(() => {
+    dispatch(fetchAllCategories());
+    dispatch(fetchAllBrands());
+    // dispatch(fetchAllProducts());
+  }, [dispatch]);
 
-              {/* Auth route */}
-              <Route path="/login" element={<LoginPage />} />
-
-              {/* Protected backoffice routes */}
-              <Route
-                path="/backoffice"
-                element={
-                  <ProtectedRoute>
-                    <BackofficeLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<BackofficeHome />} />
-                <Route path="users" element={<UsersPage />} />
-                <Route path="products" element={<ProductsBackoffice />} />
-                <Route path="quotes" element={<QuotesBackoffice />} />
-                <Route path="messages" element={<MessagesPage />} />
-                <Route path="notes" element={<NotesPage />} />
-                <Route path="brands" element={<BrandsPage />} />
-                <Route path="categories" element={<CategoriesPage />} />
-                <Route path="contacts" element={<ContactsPage />} />
-                <Route path="complementary/states" element={<StatesPage />} />
-                <Route path="complementary/types" element={<TypesPage />} />
-                <Route path="complementary/levels" element={<LevelsPage />} />
-                <Route path="complementary/rrhh" element={<RRHHPage />} />
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <CartProvider>
+            <BrowserRouter>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<Index />} />
                 <Route
-                  path="complementary/accessories"
-                  element={<AccessoriesPage />}
+                  path="/products"
+                  element={
+                    <MainLayout>
+                      <ProductsPage />
+                    </MainLayout>
+                  }
                 />
-              </Route>
+                <Route
+                  path="/product/:id"
+                  element={
+                    <MainLayout>
+                      <ProductDetailPage />
+                    </MainLayout>
+                  }
+                />
+                <Route
+                  path="/quote"
+                  element={
+                    <MainLayout>
+                      <QuotePage />
+                    </MainLayout>
+                  }
+                />
+                <Route
+                  path="/support"
+                  element={
+                    <MainLayout>
+                      <SupportPage />
+                    </MainLayout>
+                  }
+                />
+                <Route
+                  path="/certificates"
+                  element={
+                    <MainLayout>
+                      <CertificatesPage />
+                    </MainLayout>
+                  }
+                />
+                <Route
+                  path="/company"
+                  element={
+                    <MainLayout>
+                      <CompanyPage />
+                    </MainLayout>
+                  }
+                />
+                <Route
+                  path="/contact"
+                  element={
+                    <MainLayout>
+                      <ContactPage />
+                    </MainLayout>
+                  }
+                />
 
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </CartProvider>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+                {/* Auth route */}
+                <Route path="/login" element={<LoginPage />} />
+
+                {/* Protected backoffice routes */}
+                <Route
+                  path="/backoffice"
+                  element={
+                    <ProtectedRoute>
+                      <BackofficeLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<BackofficeHome />} />
+                  <Route path="users" element={<UsersPage />} />
+                  <Route path="products" element={<ProductsBackoffice />} />
+                  <Route path="quotes" element={<QuotesBackoffice />} />
+                  <Route path="messages" element={<MessagesPage />} />
+                  <Route path="notes" element={<NotesPage />} />
+                  <Route path="brands" element={<BrandsPage />} />
+                  <Route path="categories" element={<CategoriesPage />} />
+                  <Route path="contacts" element={<ContactsPage />} />
+                  <Route path="complementary/states" element={<StatesPage />} />
+                  <Route path="complementary/types" element={<TypesPage />} />
+                  <Route path="complementary/levels" element={<LevelsPage />} />
+                  <Route path="complementary/rrhh" element={<RRHHPage />} />
+                  <Route
+                    path="complementary/accessories"
+                    element={<AccessoriesPage />}
+                  />
+                </Route>
+
+                {/* Catch-all */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </CartProvider>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
