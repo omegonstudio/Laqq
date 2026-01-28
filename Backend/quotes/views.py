@@ -34,7 +34,14 @@ class QuoteViewSet(viewsets.ModelViewSet):
     permission_classes = [CanCreateOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['contact', 'user', 'quote_type', 'state']
-    search_fields = ['quote_number', 'message']
+    search_fields = [
+        'quote_number',
+        'message',
+        'contact__email',
+        'contact__first_name',
+        'contact__last_name',
+        'contact__company_name'
+    ]
     ordering_fields = ['quote_number', 'created_at', 'updated_at', 'total_amount']
     ordering = ['-created_at']
 
