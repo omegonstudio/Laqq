@@ -81,6 +81,7 @@ class MessageAPITestCase(APITestCase):
             company_name='Test Company',
             first_name='John',
             last_name='Doe',
+            email='john@example.com',
             message='This is a test message with enough characters to pass validation.',
             state=self.contact_state
         )
@@ -95,6 +96,7 @@ class MessageAPITestCase(APITestCase):
         """Crear un nuevo mensaje desde formulario de contacto"""
         data = {
             'company_name': 'New Company',
+            'email': 'newcustomer@example.com',
             'message': 'This is a new message with enough characters to pass validation.',
             'state': self.contact_state.id
         }
@@ -106,7 +108,19 @@ class MessageAPITestCase(APITestCase):
         """Validar que el mensaje tenga al menos 10 caracteres"""
         data = {
             'company_name': 'Test Company',
+            'email': 'test@example.com',
             'message': 'Short',
+            'state': self.contact_state.id
+        }
+        response = self.client.post('/contacts/messages/', data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_validate_invalid_email_in_message(self):
+        """Validar que el email tenga formato correcto en mensajes"""
+        data = {
+            'company_name': 'Test Company',
+            'email': 'invalid-email',
+            'message': 'This is a valid message with enough characters.',
             'state': self.contact_state.id
         }
         response = self.client.post('/contacts/messages/', data)

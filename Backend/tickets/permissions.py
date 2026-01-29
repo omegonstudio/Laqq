@@ -1,6 +1,38 @@
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 
+class CanCreateTicketOrStaff(BasePermission):
+    """
+    POST: Público (permite crear tickets sin autenticación desde la web)
+    GET: Solo autenticados (admin/backoffice ven todos, clientes ven solo los suyos)
+    PUT/PATCH/DELETE: Solo admin/backoffice
+    """
+    def has_permission(self, request, view):
+        # POST público para crear tickets desde la web
+        if request.method == 'POST':
+            return True
+
+        # OPTIONS/HEAD para CORS
+        if request.method in ['OPTIONS', 'HEAD']:
+            return True
+
+        # Resto de operaciones: requiere autenticación
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+
+        # Admin, backoffice y clientes autenticados pueden ver
+        if user.is_superuser:
+            return True
+
+        # GET: admin, backoffice o cliente
+        if request.method in SAFE_METHODS:
+            return user.user_type_id in ['ADMIN', 'BACKOFFICE', 'admin', 'back', 'client', 'CLIENT']
+
+        # PUT/PATCH/DELETE: solo admin/backoffice
+        return user.user_type_id in ['ADMIN', 'BACKOFFICE', 'admin', 'back']
+
+
 class IsAdminOrBackOffice(BasePermission):
     """
     Permite acceso completo a admin y backoffice.

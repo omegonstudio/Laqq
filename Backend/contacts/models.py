@@ -28,6 +28,7 @@ class Message(models.Model):
     company_name = models.CharField(max_length=120, blank=True, null=True)
     first_name = models.CharField(max_length=80, blank=True, null=True)
     last_name = models.CharField(max_length=80, blank=True, null=True)
+    email = models.EmailField()
     country = models.CharField(max_length=80, blank=True, null=True)
     message = models.TextField()
     state = models.ForeignKey(ContactState, on_delete=models.PROTECT)
