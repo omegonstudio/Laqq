@@ -9,6 +9,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils.html import strip_tags
+from config.resend_mail import send_email_message
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,7 @@ def send_contact_to_business(contact):
         safe_print("="*80 + "\n")
 
         # Send email
-        email.send(fail_silently=False)
+        email.send(send_email_message(email))
         logger.info(f"Contact email sent to business: {settings.BUSINESS_EMAIL} for {contact.email}")
 
         return True
@@ -189,7 +190,7 @@ def send_welcome_to_contact(contact):
         safe_print("="*80 + "\n")
 
         # Send email
-        email.send(fail_silently=False)
+        email.send(send_email_message(email))
         logger.info(f"Welcome email sent to contact: {contact.email}")
 
         return True
@@ -291,7 +292,7 @@ def send_message_to_business(message):
         safe_print("="*80 + "\n")
 
         # Send email
-        email.send(fail_silently=False)
+        email.send(send_email_message(email))
         logger.info(f"Message email sent to business: {settings.BUSINESS_EMAIL}")
 
         return True
