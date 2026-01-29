@@ -1,56 +1,76 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, Mail, Trash2 } from "lucide-react";
 import Table from "@/components/common/Table";
 import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
-import { mockMessages, BackofficeMessage } from "@/utils/mockData/messages";
 import Badge from "@/components/atoms/Badge";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchMessages } from "@/store/contacts";
+import { Message } from "@/types/api";
+import { MessageDetailModal } from "../molecules/Modals/EditMessage";
 
 const MessagesTable = () => {
-  const [messages] = useState<BackofficeMessage[]>(mockMessages);
+  const dispatch = useAppDispatch();
+  useEffect(() => {
+    dispatch(fetchMessages({ page: 1, page_size: 20 }));
+  }, [dispatch]);
+  const { messages } = useAppSelector((state) => state.contacts);
+  //const [messages] = useState<BackofficeMessage[]>(mockMessages);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-
-  const filteredMessages = messages.filter(message => {
-    const matchesSearch = message.empresa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         message.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         message.apellido.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || message.estado === statusFilter;
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const filteredMessages = messages.filter((message) => {
+    const matchesSearch =
+      message.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      message.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      message.last_name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" || message.state === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   // Transform data to include badge for estado
-  const dataWithBadges = filteredMessages.map(msg => ({
+  const dataWithBadges = filteredMessages.map((msg) => ({
     ...msg,
-    estado: <Badge variant={msg.estado === "Nuevo" ? "default" : "secondary"}>{msg.estado}</Badge>
+    estado: (
+      <Badge variant={msg.state === "Nuevo" ? "default" : "secondary"}>
+        {msg.state}
+      </Badge>
+    ),
   }));
 
-  const handleView = (message: BackofficeMessage) => {
-    console.log("Ver mensaje:", message);
+  const handleView = (message: Message) => {
+    setSelectedMessage(message);
+    setIsModalOpen(true);
   };
-
-  const handleReply = (message: BackofficeMessage) => {
+  const handleReply = (message: Message) => {
     console.log("Responder mensaje:", message);
   };
 
-  const handleDelete = (message: BackofficeMessage) => {
+  const handleDelete = (message: Message) => {
     console.log("Eliminar mensaje:", message);
   };
 
   const columns = [
-    { key: "empresa", label: "Empresa", sortable: true },
-    { key: "apellido", label: "Apellido", sortable: true },
-    { key: "nombre", label: "Nombre", sortable: true },
-    { key: "pais", label: "País", sortable: true },
-    { key: "fecha", label: "Fecha", sortable: true },
-    { key: "mensaje", label: "Mensaje", sortable: false },
-    { key: "estado", label: "Estado", sortable: true },
+    { key: "company_name", label: "Empresa", sortable: true },
+    { key: "last_name", label: "Apellido", sortable: true },
+    { key: "first_name", label: "Nombre", sortable: true },
+    { key: "country", label: "País", sortable: true },
+    { key: "created_at", label: "Fecha", sortable: true },
+    { key: "message", label: "Mensaje", sortable: false },
+    { key: "state", label: "Estado", sortable: true },
   ];
 
   const actions = [
     { icon: <Eye size={16} />, onClick: handleView, label: "Ver detalles" },
     { icon: <Mail size={16} />, onClick: handleReply, label: "Responder" },
-    { icon: <Trash2 size={16} />, onClick: handleDelete, color: "red", label: "Eliminar" },
+    {
+      icon: <Trash2 size={16} />,
+      onClick: handleDelete,
+      color: "red",
+      label: "Eliminar",
+    },
   ];
 
   return (
@@ -68,13 +88,18 @@ const MessagesTable = () => {
           options={[
             { value: "all", label: "Todos los estados" },
             { value: "Nuevo", label: "Nuevos" },
-            { value: "Respondido", label: "Respondidos" }
+            { value: "Respondido", label: "Respondidos" },
           ]}
           className="max-w-xs"
         />
       </div>
 
       <Table columns={columns} data={dataWithBadges} actions={actions} />
+      <MessageDetailModal
+        message={selectedMessage}
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+      />
     </div>
   );
 };

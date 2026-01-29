@@ -19,7 +19,7 @@ from .serializers import (
 )
 from .permissions import (
     IsAdminOrBackOffice,
-    CanAttachFiles
+    CanAttachFiles, CanCreateTicketOrStaff
 )
 
 from attachments.models import Attachment
@@ -67,7 +67,7 @@ class TicketPriorityViewSet(viewsets.ModelViewSet):
 
 class ServiceTicketViewSet(viewsets.ModelViewSet):
     serializer_class = ServiceTicketSerializer
-
+    permission_classes = [CanCreateTicketOrStaff]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
 
     filterset_fields = [
@@ -115,11 +115,23 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
     # -------------------------
 
     def get_queryset(self):
-        queryset = ServiceTicket.objects.all()
-        email = self.request.query_params.get("email")
+        """
+        Filtrar tickets según el tipo de usuario:
+        - Usuarios no autenticados: queryset vacío (solo pueden hacer POST)
+        - Clientes: solo ven sus propios tickets (basado en email)
+        - Admin/BackOffice: ven todos los tickets
+        """
+        user = self.request.user
+        queryset = super().get_queryset()
 
-        if email:
-            queryset = queryset.filter(contact__email=email)
+        # Si no está autenticado, devolver queryset vacío
+        if not user.is_authenticated:
+            return queryset.none()
+
+        # Si es cliente, filtrar solo sus tickets
+        if user.user_type_id in ['client', 'CLIENT']:
+            # Filtrar solo tickets del cliente (matching por email)
+            queryset = queryset.filter(contact__email=user.email)
 
         return queryset
 

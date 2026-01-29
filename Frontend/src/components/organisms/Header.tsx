@@ -46,11 +46,6 @@ const Header = () => {
     }
   }, [searchParams]);
 
-  const handleBrandChange = (value: string) => {
-    setSelectedBrand(value);
-    setFilter("brand", value);
-  };
-
   // Encontrar el nombre de la marca seleccionada
   const getSelectedBrandName = () => {
     if (!searchParams.get("brand")) return "Todas las marcas";
@@ -59,7 +54,6 @@ const Header = () => {
     return brand?.name || "Todas las marcas";
   };
 
-  console.log(searchParams.get("search"));
   return (
     <>
       {/* Spacer to prevent content jump */}
@@ -128,29 +122,6 @@ const Header = () => {
 
             {/* Icons - 20% larger (w-6 h-6 instead of w-5 h-5) */}
             <div className="flex items-center gap-4">
-              {/* Botones comentados
-              <Link
-                to="/quote"
-                className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
-                  theme === "dark"
-                    ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
-                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
-                }`}
-              >
-                Solicitud de cotización
-              </Link>
-              <Link
-                to="/service"
-                className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
-                  theme === "dark"
-                    ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
-                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
-                }`}
-              >
-                Servicio técnico
-              </Link>
-              */}
-
               <button
                 onClick={() => setCartOpen(true)}
                 className="relative p-2 hover:bg-muted rounded-lg transition-colors"
@@ -222,6 +193,26 @@ const Header = () => {
               }`}
             >
               <NavDropdown />
+              <Link
+                to="/quote"
+                className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
+                  theme === "dark"
+                    ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
+                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
+                }`}
+              >
+                Solicitud de cotización
+              </Link>
+              <Link
+                to="/support"
+                className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
+                  theme === "dark"
+                    ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
+                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
+                }`}
+              >
+                Servicio técnico
+              </Link>
             </div>
 
             {/* Icons in sticky mode */}

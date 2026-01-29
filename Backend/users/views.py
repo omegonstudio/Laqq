@@ -3,7 +3,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.contrib.auth import get_user_model
 from .models import UserType, UserState
-from .serializers import UserSerializer, UserCreateSerializer, UserTypeSerializer, UserStateSerializer
+from .serializers import UserSerializer, UserCreateSerializer, UserTypeSerializer, UserStateSerializer, MyTokenObtainPairSerializer
+
+# Simple JWT view base
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 User = get_user_model()
 
@@ -41,3 +44,9 @@ class UserViewSet(viewsets.ModelViewSet):
             return UserCreateSerializer
         return UserSerializer
 
+
+#
+# View basada en TokenObtainPairView que usa nuestro serializer personalizado
+#
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer

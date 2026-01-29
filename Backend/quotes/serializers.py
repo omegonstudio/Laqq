@@ -76,7 +76,7 @@ class QuoteSerializer(serializers.ModelSerializer):
         queryset=Contact.objects.all(),
         source='contact',
         write_only=True,
-        required=False
+        required=True
     )
 
     # Incluir items con detalles completos de productos

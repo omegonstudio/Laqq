@@ -1,74 +1,203 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Eye, FileText, Trash2 } from "lucide-react";
 import Table from "@/components/common/Table";
 import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
-import { mockQuotes, BackofficeQuote } from "@/utils/mockData/quotes";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  deleteQuote,
+  fetchQuotes,
+  fetchQuoteStates,
+  fetchQuoteTypes,
+} from "@/store/quotesSlice";
+import { QuoteRender, QuoteStateType, QuoteTypeEnum } from "@/types/api";
+import { toast } from "sonner";
+import { generateQuotePdf } from "@/utils/useQuotePDF";
+import QuotePreviewDialog from "../atoms/QuotePreview";
+import { convertQuotesState, convertQuotesTypes } from "@/utils/quotesConvert";
+import ModalDelete from "../molecules/Modals/ModalDelete";
 
 const QuotesTable = () => {
-  const [quotes] = useState<BackofficeQuote[]>(mockQuotes);
+  const dispatch = useAppDispatch();
+
+  const { list: quotes, pagination } = useAppSelector((state) => state.quotes);
+  const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [typesFilters, setTypesFilters] = useState("all");
+  const [isModalEditOpen, setIsModalEditOpen] = useState(false);
 
-  const filteredQuotes = quotes.filter(quote => {
-    const matchesSearch = quote.empresa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         quote.numero.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || quote.estado === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const [previewQuote, setPreviewQuote] = useState<QuoteRender | null>(null);
+  useEffect(() => {
+    dispatch(fetchQuotes({ page: 1, page_size: 50 }));
+    dispatch(fetchQuoteStates());
+    dispatch(fetchQuoteTypes());
+  }, [dispatch]);
 
-  const handleView = (quote: BackofficeQuote) => {
-    console.log("Ver cotización:", quote);
-  };
+  useEffect(() => {
+    const params: {
+      page: number;
+      page_size: number;
+      state?: string;
+      search?: string;
+      quote_type?: string;
+    } = {
+      page: 1,
+      page_size: 50,
+    };
 
-  const handlePDF = (quote: BackofficeQuote) => {
-    console.log("Generar PDF:", quote);
-  };
+    if (statusFilter !== "all") {
+      params.state = statusFilter;
+    }
+    if (typesFilters !== "all") {
+      params.quote_type = typesFilters;
+    }
 
-  const handleDelete = (quote: BackofficeQuote) => {
-    console.log("Eliminar cotización:", quote);
-  };
+    if (searchTerm.trim()) {
+      params.search = searchTerm;
+    }
+
+    dispatch(fetchQuotes(params));
+  }, [dispatch, statusFilter, searchTerm, typesFilters]);
+
+  const quotesStates = useAppSelector((state) => state.quotes.states);
+  const quotesTypes = useAppSelector((state) => state.quotes.types);
+
+  const filteredQuotes = quotes.map((quote) => ({
+    ...quote,
+    company_name: quote.contact?.company_name || "-",
+    email: quote.contact?.email || "-",
+  }));
 
   const columns = [
-    { key: "numero", label: "N° Cotización", sortable: true },
-    { key: "empresa", label: "Empresa", sortable: true },
-    { key: "pais", label: "País", sortable: true },
+    { key: "quote_number", label: "N° Cotización", sortable: true },
+    { key: "company_name", label: "Empresa", sortable: true },
     { key: "email", label: "Email", sortable: true },
-    { key: "usuario", label: "Usuario", sortable: true },
-    { key: "fecha", label: "Fecha", sortable: true },
-    { key: "tipo", label: "Tipo", sortable: true },
-    { key: "estado", label: "Estado", sortable: true },
+    {
+      key: "quote_type",
+      label: "Tipo",
+      sortable: true,
+      render: (value: QuoteTypeEnum) => convertQuotesTypes(value),
+    },
+    {
+      key: "state",
+      label: "Estado",
+      sortable: true,
+      render: (value: QuoteStateType) => convertQuotesState(value),
+    },
   ];
+  const handleOpenDeleteModal = (product: QuoteRender) => {
+    setPreviewQuote(product);
+    setIsModalDeleteOpen(true);
+  };
+  const handleEdit = (quote: QuoteRender) => {
+    setPreviewQuote(quote);
+    setIsModalEditOpen(true);
+  };
 
   const actions = [
-    { icon: <Eye size={16} />, onClick: handleView, label: "Ver detalles" },
-    { icon: <FileText size={16} />, onClick: handlePDF, label: "Generar PDF" },
-    { icon: <Trash2 size={16} />, onClick: handleDelete, color: "red", label: "Eliminar" },
+    {
+      icon: <Eye size={16} />,
+      label: "Ver",
+      onClick: handleEdit,
+    },
+    {
+      icon: <FileText size={16} />,
+      label: "PDF",
+      onClick: (quote: QuoteRender) => {
+        generateQuotePdf(quote);
+        toast.success("PDF generado");
+      },
+    },
+    {
+      icon: <Trash2 size={16} />,
+      label: "Eliminar",
+      color: "red",
+      onClick: handleOpenDeleteModal,
+    },
   ];
 
+  const handleConfirmDelete = async () => {
+    if (!previewQuote) return;
+
+    try {
+      await dispatch(deleteQuote(previewQuote.id)).unwrap();
+      toast.success("Cotización eliminada exitosamente");
+      setIsModalDeleteOpen(false);
+
+      // Recargar con los filtros actuales
+      const params: {
+        page: number;
+        page_size: number;
+        search?: string;
+        brand?: string;
+      } = {
+        page: pagination.current_page,
+        page_size: pagination.page_size,
+      };
+
+      dispatch(fetchQuotes(params));
+    } catch (error: unknown) {
+      console.error("Error eliminando cotización:", error);
+      if (error instanceof Error) {
+        toast.error(error.message || "Error al eliminar la cotización");
+      } else {
+        toast.error("Error al eliminar la cotización");
+      }
+    }
+  };
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
+      <div className="flex gap-4">
         <InputField
-          placeholder="Buscar por empresa o número..."
+          placeholder="Buscar..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-md"
+        />
+        <Select
+          value={typesFilters}
+          onChange={(e) => setTypesFilters(e.target.value)}
+          options={[
+            { value: "all", label: "Todos los tipos" },
+            ...quotesTypes.map((item) => ({
+              value: item.id,
+              label: convertQuotesTypes(item.name),
+            })),
+          ]}
         />
         <Select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           options={[
             { value: "all", label: "Todos los estados" },
-            { value: "Pendiente", label: "Pendiente" },
-            { value: "Enviada", label: "Enviada" },
-            { value: "Confirmada", label: "Confirmada" }
+            ...quotesStates.map((item) => ({
+              value: item.id,
+              label: convertQuotesState(item.name),
+            })),
           ]}
-          className="max-w-xs"
         />
       </div>
+      <QuotePreviewDialog
+        open={isModalEditOpen}
+        onOpenChange={(open) => {
+          setIsModalEditOpen(open);
+          if (!open) {
+            setPreviewQuote(null);
+          }
+        }}
+        quote={previewQuote}
+      />
 
       <Table columns={columns} data={filteredQuotes} actions={actions} />
+      <ModalDelete
+        isOpen={isModalDeleteOpen}
+        onClose={() => {
+          setIsModalDeleteOpen(false);
+          setPreviewQuote(null);
+        }}
+        itemName={previewQuote?.quote_number || ""}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 };

@@ -4,6 +4,7 @@ import {
   Contact,
   ContactState,
   Message,
+  MessageCreate,
   PaginatedResponse,
 } from "@/types/api";
 
@@ -62,12 +63,12 @@ export const contactsApi = {
       cleanParams(params as QueryParams)
     ),
   getMessage: (id: string) => api.get<Message>(`${BASE}/messages/${id}/`),
-  createMessage: (payload: Partial<Message>) =>
+  createMessage: (payload: MessageCreate) =>
     api.post<Message>(`${BASE}/messages/`, payload),
+
   updateMessage: (id: string, payload: Partial<Message>) =>
     api.put<Message>(`${BASE}/messages/${id}/`, payload),
   patchMessage: (id: string, payload: Partial<Message>) =>
     api.patch<Message>(`${BASE}/messages/${id}/`, payload),
   removeMessage: (id: string) => api.delete<void>(`${BASE}/messages/${id}/`),
 };
-

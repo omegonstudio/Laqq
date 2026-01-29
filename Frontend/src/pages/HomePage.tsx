@@ -21,7 +21,6 @@ const HomePage = () => {
   const productFilter = () => {
     return list.filter((product) => product.is_featured);
   };
-  console.log(productFilter());
   return (
     <>
       <div style={{ position: "relative" }}>

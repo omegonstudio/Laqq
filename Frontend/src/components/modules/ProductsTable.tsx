@@ -38,7 +38,6 @@ const ProductsTable: React.FC = () => {
     loading: loadingProducts,
   } = useAppSelector((state) => state.products);
 
-  const { list: categories } = useAppSelector((state) => state.categories);
   const { list: brands } = useAppSelector((state) => state.brands);
 
   // Local UI state

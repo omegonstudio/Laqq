@@ -56,6 +56,40 @@ const initialState: CategoriesState = {
 
 // ---- THUNKS ----
 
+export const fetchAllCategories = createAsyncThunk(
+  "brands/fetchAllCategories",
+  async (_, { rejectWithValue }) => {
+    try {
+      const allCategories: Category[] = [];
+      let page = 1;
+      const pageSize = 100;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await productsApi.listCategories({
+          page,
+          page_size: pageSize,
+        });
+
+        allCategories.push(...response.results);
+        hasMore = response.next !== null;
+        page++;
+      }
+      console.log(allCategories, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+      return {
+        results: allCategories,
+        count: allCategories.length,
+        next: null,
+        previous: null,
+        page_size: allCategories.length,
+        current_page: 1,
+        total_pages: 1,
+      };
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  }
+);
 export const fetchCategories = createAsyncThunk(
   "categories/fetch",
   async (params?: FetchCategoriesParams) => {
@@ -146,6 +180,11 @@ export const categoriesSlice = createSlice({
         state.selectedError =
           action.error.message || "Error cargando categoría";
       });
+    builder.addCase(fetchAllCategories.fulfilled, (state, action) => {
+      state.loading = false;
+      state.list = action.payload.results;
+      state.count = action.payload.count;
+    });
 
     // CREATE
     builder
