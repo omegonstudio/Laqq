@@ -32,7 +32,7 @@ const LoginPage = () => {
 
     try {
       const result = await dispatch(loginThunk({ username, password }));
-
+      console.log(result, "RESULT LOGIN");
       if (loginThunk.fulfilled.match(result)) {
         // Login exitoso, el useEffect manejará la redirección
         console.log("Login exitoso");

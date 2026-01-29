@@ -76,6 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
         body: JSON.stringify({ username, password }),
       });
+      console.log(response, "RESPONSE LOGIN");
       if (!response.ok) {
         setIsLoading(false);
         return false;
@@ -99,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         username,
         role: "administrator", // Ajusta según lo que devuelva tu API
       };
-
+      console.log(userData, "USER DATA");
       setUser(userData);
       localStorage.setItem("laqq_user", JSON.stringify(userData));
 
