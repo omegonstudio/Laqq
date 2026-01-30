@@ -2,11 +2,22 @@ import { useState } from "react";
 import { FileText, Search } from "lucide-react";
 import Button from "../atoms/Button";
 import TicketForm from "../molecules/TicketForm";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import Modal from "../common/Modal";
+import { set } from "date-fns";
+import { useNavigate } from "react-router-dom";
+import { Input } from "../ui/input";
 
 const SupportCenter = () => {
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
-
+  const [isOpen, setIsOpen] = useState(false);
+  const [contact, setContac] = useState("");
+  const navigate = useNavigate();
   return (
     <section className="py-16">
       <div className="container mx-auto px-4">
@@ -40,7 +51,7 @@ const SupportCenter = () => {
               <p className="text-muted-foreground mb-4">
                 Revisa el estado de tus tickets existentes
               </p>
-              <Button variant="outline">
+              <Button variant="outline" onClick={() => setIsOpen(true)}>
                 Ver Mis Tickets
               </Button>
             </div>
@@ -50,16 +61,26 @@ const SupportCenter = () => {
             <h2 className="text-2xl font-bold mb-4">Guía Rápida</h2>
             <div className="space-y-4 text-muted-foreground">
               <p>
-                <strong className="text-foreground">1. Crea un ticket:</strong> Describe el problema con el mayor detalle posible e incluye el modelo del equipo.
+                <strong className="text-foreground">1. Crea un ticket:</strong>{" "}
+                Describe el problema con el mayor detalle posible e incluye el
+                modelo del equipo.
               </p>
               <p>
-                <strong className="text-foreground">2. Adjunta evidencia:</strong> Si es posible, incluye fotos o documentos relevantes.
+                <strong className="text-foreground">
+                  2. Adjunta evidencia:
+                </strong>{" "}
+                Si es posible, incluye fotos o documentos relevantes.
               </p>
               <p>
-                <strong className="text-foreground">3. Recibe respuesta:</strong> Nuestro equipo técnico revisará tu solicitud y te contactará en breve.
+                <strong className="text-foreground">
+                  3. Recibe respuesta:
+                </strong>{" "}
+                Nuestro equipo técnico revisará tu solicitud y te contactará en
+                breve.
               </p>
               <p>
-                <strong className="text-foreground">4. Seguimiento:</strong> Podrás consultar el estado de tu ticket en cualquier momento.
+                <strong className="text-foreground">4. Seguimiento:</strong>{" "}
+                Podrás consultar el estado de tu ticket en cualquier momento.
               </p>
             </div>
           </div>
@@ -74,6 +95,33 @@ const SupportCenter = () => {
           <TicketForm onClose={() => setIsTicketModalOpen(false)} />
         </DialogContent>
       </Dialog>
+      <Modal
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        title="Eliminar"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-xl text-gray-600 dark:text-gray-400">
+            Ingresá tu email para ver tus tickets de servicios
+          </p>
+          <Input
+            value={contact}
+            onChange={(e) => setContac(e.target.value)}
+          ></Input>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => navigate(`/products?brand=${contact}`)}
+            >
+              Confirmar
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </section>
   );
 };
