@@ -11,6 +11,7 @@ import fixedSpecsReducer from "./fixedSpecsSlice";
 import quotesReducer from "./quotesSlice";
 import contacts from "./contacts";
 import users from "./usersSlice";
+import ticketsService from "./ticketsSlice";
 
 const persistConfig = {
   key: "auth",
@@ -31,6 +32,7 @@ export const store = configureStore({
     quotes: quotesReducer,
     contacts: contacts,
     users: users,
+    ticketsService: ticketsService,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

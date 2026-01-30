@@ -11,15 +11,22 @@ import {
   MessageListParams,
   ContactListParams,
 } from "@/lib/api/contacts";
+import { PaginationInfo } from "@/types/types";
 
 /* ---------- STATE ---------- */
-
+interface FetchContactsParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  state?: string;
+}
 interface ContactsState {
   /* CONTACTS */
   list: Contact[];
   count: number;
   loading: boolean;
   error: string | null;
+  pagination: PaginationInfo;
 
   selected: Contact | null;
   selectedLoading: boolean;
@@ -36,12 +43,20 @@ interface ContactsState {
   messagesLoading: boolean;
   messagesError: string | null;
 }
-
+const initialPagination: PaginationInfo = {
+  count: 0,
+  next: null,
+  previous: null,
+  page_size: 20,
+  current_page: 1,
+  total_pages: 1,
+};
 const initialState: ContactsState = {
   list: [],
   count: 0,
   loading: false,
   error: null,
+  pagination: initialPagination,
 
   selected: null,
   selectedLoading: false,
@@ -60,13 +75,19 @@ const initialState: ContactsState = {
 /* ---------- THUNKS ---------- */
 
 /* CONTACTS */
-export const fetchContacts = createAsyncThunk<
-  PaginatedResponse<Contact>,
-  ContactListParams | undefined
->("contacts/fetch", async (params) => {
-  return contactsApi.list(params);
-});
+// export const fetchContacts = createAsyncThunk<
+//   PaginatedResponse<Contact>,
+//   ContactListParams | undefined
+// >("contacts/fetch", async (params) => {
+//   return contactsApi.list(params);
+// });
 
+export const fetchContacts = createAsyncThunk(
+  "contacts/fetch",
+  async (params?: FetchContactsParams) => {
+    return contactsApi.list(params);
+  }
+);
 export const fetchContact = createAsyncThunk<Contact, string>(
   "contacts/fetchOne",
   async (id) => {
@@ -132,14 +153,26 @@ export const contactsSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(
-        fetchContacts.fulfilled,
-        (state, action: PayloadAction<PaginatedResponse<Contact>>) => {
-          state.loading = false;
-          state.list = action.payload.results;
-          state.count = action.payload.count;
-        }
-      )
+      // .addCase(
+      //   fetchContacts.fulfilled,
+      //   (state, action: PayloadAction<PaginatedResponse<Contact>>) => {
+      //     state.loading = false;
+      //     state.list = action.payload.results;
+      //     state.count = action.payload.count;
+      //   }
+      // )
+      .addCase(fetchContacts.fulfilled, (state, action) => {
+        state.loading = false;
+        state.list = action.payload.results;
+        state.pagination = {
+          count: action.payload.count,
+          next: action.payload.next,
+          previous: action.payload.previous,
+          page_size: action.payload.page_size,
+          current_page: action.payload.current_page,
+          total_pages: action.payload.total_pages,
+        };
+      })
       .addCase(fetchContacts.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || "Error cargando contactos";

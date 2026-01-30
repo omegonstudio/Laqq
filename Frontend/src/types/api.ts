@@ -319,7 +319,7 @@ export interface QuoteType {
 export interface ServiceTicket {
   id: string;
   ticket_number: string;
-  contact: string;
+  contact: Contact;
   product: string | null;
   product_name: string;
   description: string;

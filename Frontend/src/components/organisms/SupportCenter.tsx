@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FileText, Search } from "lucide-react";
 import Button from "../atoms/Button";
 import TicketForm from "../molecules/TicketForm";
@@ -9,7 +9,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import Modal from "../common/Modal";
-import { set } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { Input } from "../ui/input";
 
@@ -18,6 +17,14 @@ const SupportCenter = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [contact, setContac] = useState("");
   const navigate = useNavigate();
+
+  const handleConsultarTickets = () => {
+    if (contact.trim()) {
+      navigate(`/tickets?email=${encodeURIComponent(contact)}`);
+      setIsOpen(false);
+    }
+  };
+
   return (
     <section className="py-16">
       <div className="container mx-auto px-4">
@@ -95,10 +102,11 @@ const SupportCenter = () => {
           <TicketForm onClose={() => setIsTicketModalOpen(false)} />
         </DialogContent>
       </Dialog>
+
       <Modal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
-        title="Eliminar"
+        title="Consultar Tickets"
         size="sm"
       >
         <div className="space-y-4">
@@ -106,16 +114,19 @@ const SupportCenter = () => {
             Ingresá tu email para ver tus tickets de servicios
           </p>
           <Input
+            type="email"
+            placeholder="ejemplo@mail.com"
             value={contact}
             onChange={(e) => setContac(e.target.value)}
-          ></Input>
+          />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIsOpen(false)}>
               Cancelar
             </Button>
             <Button
               variant="primary"
-              onClick={() => navigate(`/products?brand=${contact}`)}
+              onClick={handleConsultarTickets}
+              disabled={!contact.trim()}
             >
               Confirmar
             </Button>

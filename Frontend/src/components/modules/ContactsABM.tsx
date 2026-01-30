@@ -1,26 +1,72 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Edit2, Trash2, Eye } from "lucide-react";
 import Table from "@/components/common/Table";
 import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
-import { mockContacts, Contact } from "@/utils/mockData/contacts";
+import { Contact } from "@/utils/mockData/contacts";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { RootState } from "@/store";
+import { fetchContacts, fetchContactStates } from "@/store/contacts";
 
+type stateEnum = "CLOSED" | "IN_PROGRESS" | "NEW" | "RESPONDED";
+
+const convertState = (state: stateEnum): string => {
+  switch (state) {
+    case "CLOSED":
+      return "cerrado";
+    case "IN_PROGRESS":
+      return "En progreso";
+    case "NEW":
+      return "Nuevo";
+    case "RESPONDED":
+      return "Respondido";
+    default:
+      return "Desconocido";
+  }
+};
 const ContactsABM = () => {
-  const [contacts] = useState<Contact[]>(mockContacts);
-  const [searchTerm, setSearchTerm] = useState("");
+  // const [contacts] = useState<Contact[]>(mockContacts);
   const [statusFilter, setStatusFilter] = useState("todos");
+  const { list: contacts, pagination } = useAppSelector(
+    (state: RootState) => state.contacts
+  );
 
-  const filteredContacts = contacts.filter(contact => {
-    const matchesSearch = 
-      contact.empresa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === "todos" || contact.estado === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  const { states } = useAppSelector((state: RootState) => state.contacts);
+  const dispatch = useAppDispatch();
+  useEffect(() => {
+    dispatch(fetchContactStates({}));
+  }, [dispatch]);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+  console.log(pagination, "AAAAAAAAAAAA PAGINATION");
+  useEffect(() => {
+    const params: {
+      page: number;
+      page_size: number;
+      search?: string;
+      state?: string;
+    } = {
+      page: 1,
+      page_size: 10,
+    };
+    if (statusFilter !== "todos") {
+      params.state = statusFilter;
+    }
+
+    if (debouncedSearch.trim()) {
+      params.search = debouncedSearch.trim();
+    }
+
+    dispatch(fetchContacts(params));
+  }, [dispatch, debouncedSearch, statusFilter]);
 
   const handleView = (contact: Contact) => {
     console.log("Ver contacto:", contact);
@@ -35,28 +81,55 @@ const ContactsABM = () => {
   };
 
   const columns = [
-    { key: "empresa", label: "Empresa", sortable: true },
-    { key: "nombre", label: "Nombre", sortable: true },
-    { key: "apellido", label: "Apellido", sortable: true },
+    {
+      key: "company_name",
+      label: "Empresa",
+      sortable: true,
+    },
+    { key: "first_name", label: "Nombre", sortable: true },
+    { key: "last_name", label: "Apellido", sortable: true },
     { key: "email", label: "Email", sortable: true },
-    { key: "telefono", label: "Teléfono", sortable: false },
-    { key: "pais", label: "País", sortable: true },
+    { key: "phone", label: "Teléfono", sortable: false },
+    { key: "country", label: "País", sortable: true },
     { key: "fecha", label: "Fecha", sortable: true },
-    { key: "estado", label: "Estado", sortable: true },
+    {
+      key: "state",
+      label: "Estado",
+      sortable: true,
+      render: (value: stateEnum) => convertState(value),
+    },
   ];
 
   const actions = [
     { icon: <Eye size={16} />, onClick: handleView, label: "Ver" },
     { icon: <Edit2 size={16} />, onClick: handleEdit, label: "Editar" },
-    { icon: <Trash2 size={16} />, onClick: handleDelete, color: "red", label: "Eliminar" },
+    {
+      icon: <Trash2 size={16} />,
+      onClick: handleDelete,
+      color: "red",
+      label: "Eliminar",
+    },
   ];
+  const handlePageChange = (newPage: number) => {
+    const params: {
+      page: number;
+      page_size: number;
+      search?: string;
+      state?: string;
+    } = {
+      page: newPage,
+      page_size: pagination.page_size,
+    };
 
-  const statusOptions = [
-    { value: "todos", label: "Todos los estados" },
-    { value: "Nuevo", label: "Nuevo" },
-    { value: "En proceso", label: "En proceso" },
-    { value: "Respondido", label: "Respondido" }
-  ];
+    if (debouncedSearch.trim()) {
+      params.search = debouncedSearch.trim();
+    }
+    if (statusFilter !== "todos") {
+      params.state = statusFilter;
+    }
+
+    dispatch(fetchContacts(params));
+  };
 
   return (
     <div className="space-y-4">
@@ -68,14 +141,31 @@ const ContactsABM = () => {
           className="max-w-md"
         />
         <Select
-          options={statusOptions}
+          options={[
+            { value: "all", label: "Todos los estados" },
+            ...states.map((item) => ({
+              value: item.id,
+              label: convertState(item.name as stateEnum),
+            })),
+          ]}
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="w-48"
         />
       </div>
 
-      <Table columns={columns} data={filteredContacts} actions={actions} />
+      <Table
+        columns={columns}
+        data={contacts}
+        actions={actions}
+        serverPagination={{
+          currentPage: pagination.current_page,
+          totalPages: pagination.total_pages,
+          totalItems: pagination.count,
+          pageSize: pagination.page_size,
+          onPageChange: handlePageChange,
+        }}
+      />
     </div>
   );
 };
