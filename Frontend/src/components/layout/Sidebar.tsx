@@ -1,42 +1,80 @@
 import { Link, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Package, 
-  FileText, 
-  Mail, 
-  Newspaper, 
+import {
+  LayoutDashboard,
+  Users,
+  Package,
+  FileText,
+  Mail,
+  Newspaper,
   FolderTree,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   Settings,
   Tag,
-  Phone
+  Phone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 const menuItems = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/backoffice" },
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    path: "/backoffice",
+  },
   { id: "users", label: "Usuarios", icon: Users, path: "/backoffice/users" },
-  { id: "products", label: "Productos", icon: Package, path: "/backoffice/products" },
-  { id: "quotes", label: "Cotizaciones", icon: FileText, path: "/backoffice/quotes" },
-  { id: "messages", label: "Mensajes", icon: Mail, path: "/backoffice/messages" },
-  { id: "notes", label: "Notas / Novedades", icon: Newspaper, path: "/backoffice/notes" },
+  {
+    id: "products",
+    label: "Productos",
+    icon: Package,
+    path: "/backoffice/products",
+  },
+  {
+    id: "quotes",
+    label: "Cotizaciones",
+    icon: FileText,
+    path: "/backoffice/quotes",
+  },
+  {
+    id: "messages",
+    label: "Mensajes",
+    icon: Mail,
+    path: "/backoffice/messages",
+  },
+  // { id: "notes", label: "Notas / Novedades", icon: Newspaper, path: "/backoffice/notes" },
   { id: "brands", label: "Marcas", icon: Tag, path: "/backoffice/brands" },
-  { id: "categories", label: "Categorías", icon: FolderTree, path: "/backoffice/categories" },
-  { id: "contacts", label: "Contactos", icon: Phone, path: "/backoffice/contacts" },
+  {
+    id: "categories",
+    label: "Categorías",
+    icon: FolderTree,
+    path: "/backoffice/categories",
+  },
+  {
+    id: "contacts",
+    label: "Contactos",
+    icon: Phone,
+    path: "/backoffice/contacts",
+  },
 ];
 
-const complementaryItems = [
-  { id: "complementary-categories", label: "Rubros y Categorías", path: "/backoffice/categories" },
-  { id: "states", label: "Estados", path: "/backoffice/complementary/states" },
-  { id: "types", label: "Tipos", path: "/backoffice/complementary/types" },
-  { id: "levels", label: "Niveles", path: "/backoffice/complementary/levels" },
-  { id: "rrhh", label: "RRHH", path: "/backoffice/complementary/rrhh" },
-  { id: "accessories", label: "Accesorios", path: "/backoffice/complementary/accessories" },
-];
+// const complementaryItems = [
+//   {
+//     id: "complementary-categories",
+//     label: "Rubros y Categorías",
+//     path: "/backoffice/categories",
+//   },
+//   { id: "states", label: "Estados", path: "/backoffice/complementary/states" },
+//   { id: "types", label: "Tipos", path: "/backoffice/complementary/types" },
+//   { id: "levels", label: "Niveles", path: "/backoffice/complementary/levels" },
+//   { id: "rrhh", label: "RRHH", path: "/backoffice/complementary/rrhh" },
+//   {
+//     id: "accessories",
+//     label: "Accesorios",
+//     path: "/backoffice/complementary/accessories",
+//   },
+// ];
 
 const Sidebar = () => {
   const location = useLocation();
@@ -44,14 +82,14 @@ const Sidebar = () => {
   const [complementaryOpen, setComplementaryOpen] = useState(false);
 
   return (
-    <aside className={cn(
-      "bg-secondary text-white transition-all duration-300 flex flex-col",
-      collapsed ? "w-20" : "w-64"
-    )}>
+    <aside
+      className={cn(
+        "bg-secondary text-white transition-all duration-300 flex flex-col",
+        collapsed ? "w-20" : "w-64"
+      )}
+    >
       <div className="p-4 border-b border-white/10 flex items-center justify-between">
-        {!collapsed && (
-          <h1 className="text-lg font-bold">LaQQ BackOffice</h1>
-        )}
+        {!collapsed && <h1 className="text-lg font-bold">LaQQ BackOffice</h1>}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -64,7 +102,7 @@ const Sidebar = () => {
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
-          
+
           return (
             <Link
               key={item.id}
@@ -83,7 +121,7 @@ const Sidebar = () => {
         })}
 
         {/* Complementaria Dropdown */}
-        <div className="space-y-1">
+        {/* <div className="space-y-1">
           <button
             onClick={() => setComplementaryOpen(!complementaryOpen)}
             className={cn(
@@ -97,8 +135,8 @@ const Sidebar = () => {
             {!collapsed && (
               <>
                 <span className="flex-1 text-left">Complementaria</span>
-                <ChevronDown 
-                  size={16} 
+                <ChevronDown
+                  size={16}
                   className={cn(
                     "transition-transform",
                     complementaryOpen && "rotate-180"
@@ -112,7 +150,7 @@ const Sidebar = () => {
             <div className="ml-4 space-y-1 border-l-2 border-white/10 pl-2">
               {complementaryItems.map((item) => {
                 const isActive = location.pathname === item.path;
-                
+
                 return (
                   <Link
                     key={item.id}
@@ -120,7 +158,8 @@ const Sidebar = () => {
                     className={cn(
                       "block px-4 py-2 rounded-lg transition-colors text-sm",
                       "hover:bg-white/10",
-                      isActive && "bg-primary text-primary-foreground font-medium"
+                      isActive &&
+                        "bg-primary text-primary-foreground font-medium"
                     )}
                   >
                     {item.label}
@@ -129,7 +168,7 @@ const Sidebar = () => {
               })}
             </div>
           )}
-        </div>
+        </div> */}
       </nav>
     </aside>
   );
