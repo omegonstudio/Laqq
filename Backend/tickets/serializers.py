@@ -7,6 +7,8 @@ from .emails import send_ticket_created_email
 from users.models import User, UserType, UserState
 from attachments.models import Attachment
 from attachments.serializers import AttachmentSerializer
+from contacts.models import Contact
+from contacts.serializers import ContactSerializer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -24,6 +26,14 @@ class TicketPrioritySerializer(serializers.ModelSerializer):
 class ServiceTicketSerializer(serializers.ModelSerializer):
     # Lista de todos los attachments asociados al ticket (read-only)
     attachments = serializers.SerializerMethodField(read_only=True)
+
+    # Contact como objeto en las respuestas (GET), pero acepta ID en las escrituras (POST/PUT/PATCH)
+    contact = ContactSerializer(read_only=True)
+    contact_id = serializers.PrimaryKeyRelatedField(
+        queryset=Contact.objects.all(),
+        source='contact',
+        write_only=True
+    )
 
     class Meta:
         model = ServiceTicket
