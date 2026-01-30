@@ -9,6 +9,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils.html import strip_tags
+from config.resend_mail import send_email_message
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +121,7 @@ def send_quote_to_business(quote):
         safe_print("="*80 + "\n")
 
         # Send email (may fail if SMTP not configured, but quote will still be created)
-        email.send(fail_silently=False)
+        email.send(send_email_message(email))
         logger.info(f"Quote #{quote.quote_number} email sent to business: {settings.BUSINESS_EMAIL}")
 
         return True
@@ -197,7 +198,7 @@ def send_quote_to_customer(quote):
         safe_print("="*80 + "\n")
 
         # Send email (may fail if SMTP not configured, but quote will still be created)
-        email.send(fail_silently=False)
+        email.send(send_email_message(email))
         logger.info(f"Quote #{quote.quote_number} confirmation sent to customer: {quote.contact.email}")
 
         return True
@@ -298,7 +299,7 @@ def send_quote_updated_to_business(quote):
         safe_print("="*80 + "\n")
 
         # Send email
-        email.send(fail_silently=False)
+        email.send(send_email_message(email))
         logger.info(f"Quote #{quote.quote_number} update email sent to business: {settings.BUSINESS_EMAIL}")
 
         return True
@@ -374,7 +375,7 @@ def send_quote_updated_to_customer(quote):
         safe_print("="*80 + "\n")
 
         # Send email
-        email.send(fail_silently=False)
+        email.send(send_email_message(email))
         logger.info(f"Quote #{quote.quote_number} update notification sent to customer: {quote.contact.email}")
 
         return True

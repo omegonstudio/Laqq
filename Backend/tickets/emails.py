@@ -9,6 +9,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils.html import strip_tags
+from config.resend_mail import send_email_message
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +120,7 @@ def send_ticket_to_business(ticket):
         safe_print("="*80 + "\n")
 
         # Send email
-        email.send(fail_silently=False)
+        email.send(send_email_message(email))
         logger.info(f"Ticket #{ticket.ticket_number} email sent to business: {settings.BUSINESS_EMAIL}")
 
         return True
@@ -201,7 +202,7 @@ def send_ticket_to_customer(ticket, username, password):
         safe_print("="*80 + "\n")
 
         # Send email
-        email.send(fail_silently=False)
+        email.send(send_email_message(email))
         logger.info(f"Ticket #{ticket.ticket_number} confirmation with credentials sent to customer: {ticket.contact.email}")
 
         return True
