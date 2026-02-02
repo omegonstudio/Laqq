@@ -22,6 +22,7 @@ from .permissions import (
     CanAttachFiles,
     CanCreateTicketOrStaff
 )
+from .filters import ServiceTicketFilter
 
 from attachments.models import Attachment
 from .emails import send_ticket_created_email
@@ -72,15 +73,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
     permission_classes = [CanCreateTicketOrStaff]
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-
-    filterset_fields = [
-        'contact',
-        'contact__email',
-        'product',
-        'state',
-        'priority',
-        'assigned_user'
-    ]
+    filterset_class = ServiceTicketFilter
 
     search_fields = [
         'ticket_number',
@@ -143,7 +136,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
         # Usuario autenticado
         if user.is_authenticated:
             # Admin/backoffice → todos los tickets
-            if user.is_superuser or user.user_type_id in ['ADMIN', 'BACKOFFICE', 'admin', 'back']:
+            if user.is_superuser or (user.user_type_id and user.user_type_id.upper() in ['ADMIN', 'BACKOFFICE', 'BACK']):
                 return queryset
 
             # Usuario normal → solo sus propios tickets
