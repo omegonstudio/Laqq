@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Moon, Sun, User, ShoppingCart } from "lucide-react";
+import { Moon, Sun, User, ShoppingCart, X, Menu } from "lucide-react";
 import NavDropdown from "../molecules/NavDropdown";
 import { useTheme } from "next-themes";
 import { useCart } from "@/contexts/CartContext";
@@ -22,6 +22,7 @@ const Header = () => {
 
   const [cartOpen, setCartOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const { totalItems } = useCart();
   const { list: brands, loading } = useAppSelector((state) => state.brands);
@@ -70,18 +71,18 @@ const Header = () => {
               : "bg-white border-gray-200"
           }`}
         >
-          <div className="container mx-auto flex items-center justify-between py-3 px-6">
+          <div className="container mx-auto flex items-center justify-between py-3 px-4 md:px-6">
             {/* Logo */}
             <Link to="/" className="flex items-center">
               <img
-                src={logoLight}
+                src={logoLight || "/placeholder.svg"}
                 alt="La Química Quirúrgica"
-                className="h-10"
+                className="h-8 md:h-10"
               />
             </Link>
 
-            {/* Search Section */}
-            <div className="flex-1 flex items-center justify-center gap-3">
+            {/* Search Section - Hidden on mobile */}
+            <div className="hidden lg:flex flex-1 items-center justify-center gap-3">
               <div
                 className={`flex items-start rounded-full px-4 py-2 w-full max-w-lg
                 }`}
@@ -120,8 +121,8 @@ const Header = () => {
               </Select>
             </div>
 
-            {/* Icons - 20% larger (w-6 h-6 instead of w-5 h-5) */}
-            <div className="flex items-center gap-4">
+            {/* Desktop Icons */}
+            <div className="hidden md:flex items-center gap-4">
               <button
                 onClick={() => setCartOpen(true)}
                 className="relative p-2 hover:bg-muted rounded-lg transition-colors"
@@ -162,6 +163,46 @@ const Header = () => {
                 <User className="w-6 h-6" />
               </Link>
             </div>
+
+            {/* Mobile Icons */}
+            <div className="flex md:hidden items-center gap-2">
+              <button
+                onClick={() => setCartOpen(true)}
+                className="relative p-2 hover:bg-muted rounded-lg transition-colors"
+                aria-label="Carrito de compras"
+              >
+                <ShoppingCart
+                  className={`w-5 h-5 ${
+                    theme === "dark" ? "text-gray-200" : "text-gray-700"
+                  }`}
+                />
+                {totalItems > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold text-[10px]">
+                    {totalItems}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2 hover:bg-muted rounded-lg transition-colors"
+                aria-label="Menú"
+              >
+                {mobileMenuOpen ? (
+                  <X
+                    className={`w-5 h-5 ${
+                      theme === "dark" ? "text-gray-200" : "text-gray-700"
+                    }`}
+                  />
+                ) : (
+                  <Menu
+                    className={`w-5 h-5 ${
+                      theme === "dark" ? "text-gray-200" : "text-gray-700"
+                    }`}
+                  />
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -175,20 +216,21 @@ const Header = () => {
               : "border-gray-200 bg-white"
           }`}
         >
-          <div className="container mx-auto flex items-center justify-between py-2 px-6">
+          <div className="container mx-auto flex items-center justify-between py-2 px-4 md:px-6">
             {/* Logo in sticky mode */}
             {scrolled && (
-              <Link to="/" className="flex items-center mr-6">
+              <Link to="/" className="flex items-center mr-4 md:mr-6">
                 <img
-                  src={logoLight}
+                  src={logoLight || "/placeholder.svg"}
                   alt="La Química Quirúrgica"
-                  className="h-8"
+                  className="h-6 md:h-8"
                 />
               </Link>
             )}
 
+            {/* Desktop Navigation */}
             <div
-              className={`flex items-center gap-2 text-sm font-medium ${
+              className={`hidden md:flex items-center gap-2 text-sm font-medium ${
                 scrolled ? "" : "justify-center w-full"
               }`}
             >
@@ -215,50 +257,213 @@ const Header = () => {
               </Link>
             </div>
 
+            {/* Mobile Navigation Toggle */}
+            <div
+              className={`flex md:hidden items-center ${
+                scrolled ? "" : "justify-center w-full"
+              }`}
+            >
+              <NavDropdown />
+            </div>
+
             {/* Icons in sticky mode */}
             {scrolled && (
-              <div className="flex items-center gap-3 ml-6">
-                <button
-                  onClick={() => setCartOpen(true)}
-                  className="relative p-2 hover:bg-muted rounded-lg transition-colors"
-                  aria-label="Carrito de compras"
-                >
-                  <ShoppingCart
-                    className={`w-6 h-6 ${
-                      theme === "dark" ? "text-gray-200" : "text-gray-700"
+              <>
+                {/* Desktop icons */}
+                <div className="hidden md:flex items-center gap-3 ml-6">
+                  <button
+                    onClick={() => setCartOpen(true)}
+                    className="relative p-2 hover:bg-muted rounded-lg transition-colors"
+                    aria-label="Carrito de compras"
+                  >
+                    <ShoppingCart
+                      className={`w-6 h-6 ${
+                        theme === "dark" ? "text-gray-200" : "text-gray-700"
+                      }`}
+                    />
+                    {totalItems > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                        {totalItems}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() =>
+                      setTheme(theme === "dark" ? "light" : "dark")
+                    }
+                    className="p-2 rounded-lg hover:bg-muted transition-colors"
+                    aria-label="Toggle theme"
+                  >
+                    {theme === "dark" ? (
+                      <Sun className="w-6 h-6 text-gray-200" />
+                    ) : (
+                      <Moon className="w-6 h-6 text-gray-700" />
+                    )}
+                  </button>
+                  <Link
+                    to="/login"
+                    className={`p-2 rounded-lg hover:bg-muted transition-colors ${
+                      theme === "dark"
+                        ? "text-gray-300 hover:text-primary"
+                        : "text-gray-600 hover:text-primary"
                     }`}
-                  />
-                  {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                      {totalItems}
-                    </span>
-                  )}
-                </button>
-                <button
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="p-2 rounded-lg hover:bg-muted transition-colors"
-                  aria-label="Toggle theme"
-                >
-                  {theme === "dark" ? (
-                    <Sun className="w-6 h-6 text-gray-200" />
-                  ) : (
-                    <Moon className="w-6 h-6 text-gray-700" />
-                  )}
-                </button>
-                <Link
-                  to="/login"
-                  className={`p-2 rounded-lg hover:bg-muted transition-colors ${
-                    theme === "dark"
-                      ? "text-gray-300 hover:text-primary"
-                      : "text-gray-600 hover:text-primary"
-                  }`}
-                >
-                  <User className="w-6 h-6" />
-                </Link>
-              </div>
+                  >
+                    <User className="w-6 h-6" />
+                  </Link>
+                </div>
+
+                {/* Mobile icons in sticky */}
+                <div className="flex md:hidden items-center gap-2 ml-auto">
+                  <button
+                    onClick={() => setCartOpen(true)}
+                    className="relative p-2 hover:bg-muted rounded-lg transition-colors"
+                    aria-label="Carrito de compras"
+                  >
+                    <ShoppingCart
+                      className={`w-5 h-5 ${
+                        theme === "dark" ? "text-gray-200" : "text-gray-700"
+                      }`}
+                    />
+                    {totalItems > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold text-[10px]">
+                        {totalItems}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                    className="p-2 hover:bg-muted rounded-lg transition-colors"
+                    aria-label="Menú"
+                  >
+                    {mobileMenuOpen ? (
+                      <X
+                        className={`w-5 h-5 ${
+                          theme === "dark" ? "text-gray-200" : "text-gray-700"
+                        }`}
+                      />
+                    ) : (
+                      <Menu
+                        className={`w-5 h-5 ${
+                          theme === "dark" ? "text-gray-200" : "text-gray-700"
+                        }`}
+                      />
+                    )}
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </nav>
+
+        {/* Mobile Menu */}
+        <div
+          className={`md:hidden border-b transition-all duration-300 overflow-hidden ${
+            mobileMenuOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+          } ${
+            theme === "dark"
+              ? "border-gray-800 bg-[#0a0a0a]"
+              : "border-gray-200 bg-white"
+          }`}
+        >
+          <div className="container mx-auto px-4 py-4 space-y-4">
+            {/* Search on mobile */}
+            <div className="w-full">
+              <SearchBar
+                debounceMs={300}
+                maxResults={10}
+                radius
+                onViewAllResults={handleViewAllResults}
+                value={searchParams.get("search") ?? ""}
+              />
+            </div>
+
+            {/* Brand selector on mobile */}
+            <Select
+              defaultValue="all"
+              onValueChange={(value) => setFilter("brand", value)}
+            >
+              <SelectTrigger
+                className={`w-full text-sm rounded-2xl px-4 py-2 border transition-colors ${
+                  theme === "dark"
+                    ? "bg-[#0a0a0a] border-gray-700 text-gray-200"
+                    : "bg-white border-gray-300 text-gray-700"
+                }`}
+              >
+                <SelectValue>{getSelectedBrandName()}</SelectValue>
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl">
+                <SelectItem value="all" className="rounded-xl">
+                  Todas las marcas
+                </SelectItem>
+                {brands.map((b) => (
+                  <SelectItem key={b.id} value={b.id} className="rounded-xl">
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Navigation links on mobile */}
+            <div className="flex flex-col gap-2">
+              <Link
+                to="/quote"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`px-4 py-3 rounded-md text-sm font-medium border text-center transition-colors ${
+                  theme === "dark"
+                    ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
+                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
+                }`}
+              >
+                Solicitud de cotización
+              </Link>
+              <Link
+                to="/support"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`px-4 py-3 rounded-md text-sm font-medium border text-center transition-colors ${
+                  theme === "dark"
+                    ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
+                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
+                }`}
+              >
+                Servicio técnico
+              </Link>
+            </div>
+
+            {/* User actions on mobile */}
+            <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
+              <Link
+                to="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors ${
+                  theme === "dark"
+                    ? "text-gray-300 hover:text-primary"
+                    : "text-gray-600 hover:text-primary"
+                }`}
+              >
+                <User className="w-5 h-5" />
+                <span className="text-sm">Iniciar sesión</span>
+              </Link>
+
+              <button
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors"
+                aria-label="Toggle theme"
+              >
+                {theme === "dark" ? (
+                  <>
+                    <Sun className="w-5 h-5 text-gray-200" />
+                    <span className="text-sm text-gray-200">Modo claro</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-5 h-5 text-gray-700" />
+                    <span className="text-sm text-gray-700">Modo oscuro</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       </header>
       <CartModal isOpen={cartOpen} onClose={() => setCartOpen(false)} />
     </>

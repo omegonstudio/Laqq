@@ -36,6 +36,7 @@ import { useAppDispatch } from "./store/hooks";
 import { useEffect } from "react";
 import { fetchAllCategories } from "./store/categoriesSlice";
 import { fetchAllBrands } from "./store/brandSlice";
+import PageTicket from "./pages/backofficeClients";
 
 const queryClient = new QueryClient();
 const App = () => {
@@ -56,6 +57,7 @@ const App = () => {
           <CartProvider>
             <BrowserRouter>
               <Routes>
+                <Route path="/backofficeClient" element={<PageTicket />} />
                 {/* Public routes */}
                 <Route path="/" element={<Index />} />
                 <Route

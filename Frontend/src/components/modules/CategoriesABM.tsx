@@ -5,9 +5,10 @@ import Button from "@/components/atoms/Button";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { Category } from "@/types/types";
 import ModalCategory from "../molecules/Modals/EditCategory";
-import { deleteCategory } from "@/store/categoriesSlice";
+import { deleteCategory, fetchCategories } from "@/store/categoriesSlice";
 import { toast } from "sonner";
 import ModalDelete from "../molecules/Modals/ModalDelete";
+import InputField from "../atoms/InputField";
 
 const CategoriesABM = () => {
   const { list: categories, loading: loadingCategories } = useAppSelector(
@@ -19,21 +20,8 @@ const CategoriesABM = () => {
     null
   );
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
-
-  const categoryData = useMemo(() => {
-    // Creamos un mapa id -> name
-    const idToNameMap = new Map<string, string>();
-
-    categories.forEach((category) => {
-      idToNameMap.set(category.id, category.name);
-    });
-
-    // Recorremos y reemplazamos parent con el nombre
-    return categories.map((category) => ({
-      ...category,
-      parent: category.parent ? idToNameMap.get(category.parent) ?? null : null,
-    }));
-  }, [categories]); // Se recalcula cada vez que categories cambia
+  const [searchCategories, setSearchCategories] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const handleEdit = (category: Category) => {
     setSelectedCategory(category);
@@ -61,7 +49,6 @@ const CategoriesABM = () => {
       }
     }
   };
-  console.log(selectedCategory, "SELECTED CATEGORY");
   const handleNewCategory = () => {
     setSelectedCategory(null);
     setIsModalOpen(true);
@@ -77,6 +64,31 @@ const CategoriesABM = () => {
       parentName: getCategoryName(cat.parent), // ← Agrega solo el nombre para visualización
     }));
   }, [categories]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchCategories);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [searchCategories]);
+
+  useEffect(() => {
+    const params: {
+      page: number;
+      page_size: number;
+      search?: string;
+    } = {
+      page: 1,
+      page_size: 10,
+    };
+
+    if (debouncedSearch.trim()) {
+      params.search = debouncedSearch.trim();
+    }
+
+    dispatch(fetchCategories(params));
+  }, [dispatch, debouncedSearch]);
 
   const columns = [
     { key: "name", label: "Nombre", sortable: true },
@@ -96,7 +108,15 @@ const CategoriesABM = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex gap-4 flex-1">
+          <InputField
+            placeholder="Buscar por nombre..."
+            value={searchCategories}
+            onChange={(e) => setSearchCategories(e.target.value)}
+            className="max-w-md"
+          />
+        </div>
         <Button
           variant="primary"
           className="flex items-center gap-2"
@@ -106,7 +126,6 @@ const CategoriesABM = () => {
           Nueva Categoría
         </Button>
       </div>
-
       <Table columns={columns} data={tableData} actions={actions} />
 
       <ModalCategory
