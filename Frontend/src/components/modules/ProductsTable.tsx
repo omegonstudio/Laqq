@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Edit2, Trash2, Plus } from "lucide-react";
 import Table from "@/components/common/Table";
 import InputField from "@/components/atoms/InputField";
@@ -11,6 +11,8 @@ import { fixedSpecInitialData } from "@/utils/productSaveFlow";
 import { toast } from "sonner";
 import ModalProduct from "../molecules/Modals/EditProduct";
 import ModalDelete from "../molecules/Modals/ModalDelete";
+import CargaMasivaProducts from "../molecules/CargaMasiva";
+
 const currentInitialData: Product = {
   id: "",
   name: "",
@@ -203,6 +205,7 @@ const ProductsTable: React.FC = () => {
           <Plus size={18} />
           Nuevo Producto
         </Button>
+        <CargaMasivaProducts />
       </div>
 
       <Table
