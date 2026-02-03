@@ -164,12 +164,18 @@ def seed_brands():
 def seed_categories():
     print("Seeding Categories...")
 
-    cat = Category.objects.get_or_create(
-        name="General",
-        defaults={"id": uuid.uuid4()}
-    )[0]
+    categories = []
 
-    return [cat]
+    # Categorías de nivel 0 (raíz) - obligatorias para carga masiva
+    for name in ["Insumos", "Procesos", "Equipos", "Mobiliario"]:
+        cat, _ = Category.objects.get_or_create(
+            name=name,
+            parent=None,
+            defaults={"id": uuid.uuid4(), "level": 0}
+        )
+        categories.append(cat)
+
+    return categories
 
 
 def seed_products(brands, categories):

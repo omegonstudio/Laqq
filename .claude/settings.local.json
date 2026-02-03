@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -c \"from tickets.filters import ServiceTicketFilter; print(''Filter imported successfully'')\")"
+      "Bash(python -c \"from tickets.filters import ServiceTicketFilter; print(''Filter imported successfully'')\")",
+      "Bash(python -c:*)"
     ],
     "deny": [],
     "ask": []
