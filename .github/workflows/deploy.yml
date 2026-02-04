@@ -153,11 +153,15 @@ jobs:
             echo "-> Esperando backend listo"
             sleep 5
 
-            echo "-> Ejecutando migrations"
-            docker compose -f "$COMPOSE" exec backend python manage.py migrate --noinput
+            echo "-> Migrations"
+            docker compose -f "$COMPOSE" exec backend python manage.py migrate --noinput || {
+              echo "⚠️ migrate falló"; docker compose logs backend --tail=200; exit 1;
+            }
 
             echo "-> Collectstatic"
-            docker compose -f "$COMPOSE" exec backend python manage.py collectstatic --noinput
+            docker compose -f "$COMPOSE" exec backend python manage.py collectstatic --noinput || {
+              echo "⚠️ collectstatic falló"; docker compose logs backend --tail=200; exit 1;
+            }
 
             echo "-> Levantando frontend"
             docker compose -f "$COMPOSE" up -d frontend
