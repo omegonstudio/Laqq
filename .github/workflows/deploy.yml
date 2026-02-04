@@ -1,3 +1,72 @@
+name: Deploy LAQQ (PROD)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: laqq-prod
+  cancel-in-progress: true
+
+jobs:
+  # ========================
+  # CI
+  # ========================
+  ci:
+    name: CI (frontend build)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ---------- Backend: pytest ----------
+      # - name: Setup Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: "3.11"
+      #     cache: "pip"
+      #     cache-dependency-path: Backend/requirements.txt
+
+      # - name: Install backend deps
+      #   working-directory: Backend
+      #   run: |
+      #     python -m pip install --upgrade pip
+      #     pip install -r requirements.txt
+
+      # - name: Run backend tests (pytest)
+      #   working-directory: Backend
+      #   env:
+      #     DJANGO_SETTINGS_MODULE: config.settings
+      #     DJANGO_ENV: test
+      #     DEBUG: "False"
+      #     SECRET_KEY: "ci-secret-key"
+      #     DB_NAME: laqq_test
+      #     DB_USER: postgres
+      #     DB_PASSWORD: postgres
+      #     DB_HOST: 127.0.0.1
+      #     DB_PORT: "5432"
+      #     ALLOWED_HOSTS: "localhost,127.0.0.1"
+      #   run: |
+      #     pytest -q
+
+      # ---------- Frontend: build ----------
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: Frontend
+        run: npm ci
+
+      - name: Frontend build
+        working-directory: Frontend
+        run: npm run build
+
   # ========================
   # DEPLOY
   # ========================
@@ -69,13 +138,13 @@
               fi
             done
 
-            echo "-> Build imágenes (backend + frontend)"
+            echo "-> Build backend + frontend"
             docker compose -f "$COMPOSE" build backend frontend
 
             echo "-> Levantando stack completo"
             docker compose -f "$COMPOSE" up -d
 
-            echo "-> Esperando backend listo"
+            echo "-> Esperando backend"
             for i in {1..20}; do
               if docker compose -f "$COMPOSE" ps backend | grep -q "Up"; then
                 echo "   Backend arriba"
