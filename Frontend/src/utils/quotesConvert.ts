@@ -69,3 +69,19 @@ export const revertQuotesTypes = (
       return "SUPPLIES";
   }
 };
+export type stateEnum = "CLOSED" | "IN_PROGRESS" | "NEW" | "RESPONDED";
+
+export const convertStateContact = (state: stateEnum): string => {
+  switch (state) {
+    case "CLOSED":
+      return "cerrado";
+    case "IN_PROGRESS":
+      return "En progreso";
+    case "NEW":
+      return "Nuevo";
+    case "RESPONDED":
+      return "Respondido";
+    default:
+      return "Desconocido";
+  }
+};

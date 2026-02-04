@@ -19,6 +19,7 @@ export interface TicketListParams {
   state?: string;
   priority?: string;
   assigned_user?: string;
+  email?: string; // Agregar este campo
 }
 
 export interface TicketStatistics {
@@ -77,7 +78,8 @@ export const ticketsApi = {
       `${BASE}/priorities/`,
       cleanParams(params as QueryParams)
     ),
-  getPriority: (id: string) => api.get<TicketPriority>(`${BASE}/priorities/${id}/`),
+  getPriority: (id: string) =>
+    api.get<TicketPriority>(`${BASE}/priorities/${id}/`),
   createPriority: (payload: Partial<TicketPriority>) =>
     api.post<TicketPriority>(`${BASE}/priorities/`, payload),
   updatePriority: (id: string, payload: Partial<TicketPriority>) =>
@@ -98,4 +100,3 @@ export const ticketsApi = {
 
   statistics: () => api.get<TicketStatistics>(`${BASE}/statistics/`),
 };
-

@@ -6,7 +6,13 @@ import {
 } from "@/lib/api/products";
 
 import { NormalizedApiError } from "@/lib/api/client";
-import { Brand, Category, Product, ProductSpec } from "@/types/types";
+import {
+  Brand,
+  BulkUploadResponse,
+  Category,
+  Product,
+  ProductSpec,
+} from "@/types/types";
 import { PaginatedResponse } from "@/types/api";
 
 const listKey = (params?: ProductListParams) => ["products", "list", params];
@@ -312,7 +318,7 @@ export const useDeleteProductSpec = () => {
 export const useBulkUploadProducts = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Record<string, unknown>, NormalizedApiError, FormData>({
+  return useMutation<BulkUploadResponse, NormalizedApiError, FormData>({
     mutationFn: (formData) => productsApi.bulkUploadProducts(formData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });

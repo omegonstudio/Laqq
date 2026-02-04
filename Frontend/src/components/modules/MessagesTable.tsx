@@ -5,10 +5,13 @@ import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
 import Badge from "@/components/atoms/Badge";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchMessages } from "@/store/contacts";
+import { deleteMessage, fetchMessages } from "@/store/contacts";
 import { Message } from "@/types/api";
 import { MessageDetailModal } from "../molecules/Modals/EditMessage";
-
+import { convertStateContact, stateEnum } from "@/utils/quotesConvert";
+import ModalDelete from "../molecules/Modals/ModalDelete";
+import { set } from "date-fns";
+import { toast } from "@/hooks/use-toast";
 const MessagesTable = () => {
   const dispatch = useAppDispatch();
   useEffect(() => {
@@ -20,6 +23,7 @@ const MessagesTable = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
   const filteredMessages = messages.filter((message) => {
     const matchesSearch =
       message.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -49,9 +53,30 @@ const MessagesTable = () => {
   };
 
   const handleDelete = (message: Message) => {
-    console.log("Eliminar mensaje:", message);
+    setSelectedMessage(message);
+    setIsModalDeleteOpen(true);
   };
-
+  const handleConfirmDelete = async () => {
+    if (!selectedMessage) return;
+    try {
+      await dispatch(deleteMessage(selectedMessage.id)).unwrap();
+      toast({ title: "Mensaje eliminado exitosamente", variant: "default" });
+      setIsModalDeleteOpen(false);
+    } catch (error: unknown) {
+      console.error("Error eliminando:", error);
+      if (error instanceof Error) {
+        toast({
+          title: error.message || "Error al eliminar el mensaje",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error al eliminar el mensaje",
+          variant: "destructive",
+        });
+      }
+    }
+  };
   const columns = [
     { key: "company_name", label: "Empresa", sortable: true },
     { key: "last_name", label: "Apellido", sortable: true },
@@ -59,7 +84,12 @@ const MessagesTable = () => {
     { key: "country", label: "País", sortable: true },
     { key: "created_at", label: "Fecha", sortable: true },
     { key: "message", label: "Mensaje", sortable: false },
-    { key: "state", label: "Estado", sortable: true },
+    {
+      key: "state",
+      label: "Estado",
+      sortable: true,
+      render: (value: stateEnum) => convertStateContact(value),
+    },
   ];
 
   const actions = [
@@ -99,6 +129,15 @@ const MessagesTable = () => {
         message={selectedMessage}
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
+      />
+      <ModalDelete
+        isOpen={isModalDeleteOpen}
+        onClose={() => {
+          setIsModalDeleteOpen(false);
+          setSelectedMessage(null);
+        }}
+        itemName={selectedMessage?.message || ""}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );
