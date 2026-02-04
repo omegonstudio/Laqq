@@ -10,30 +10,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ========================
+  # CI
+  # ========================
   ci:
-    name: CI (tests + lint + build)
+    name: CI (frontend build)
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_DB: laqq_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres -d laqq_test"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      # ---------- Backend: pytest ----------
+     # ---------- Backend: pytest ----------
       # - name: Setup Python
       #   uses: actions/setup-python@v5
       #   with:
@@ -76,14 +63,13 @@ jobs:
         working-directory: Frontend
         run: npm ci
 
-      # - name: Frontend lint
-      #   working-directory: Frontend
-      #   run: npm run lint
-
       - name: Frontend build
         working-directory: Frontend
         run: npm run build
 
+  # ========================
+  # DEPLOY
+  # ========================
   deploy:
     name: Deploy (prod)
     needs: [ci]
@@ -102,22 +88,6 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
-
-      # (OPCIONAL) Si querés que GitHub Actions "toque" el .env:
-      # Guardás el contenido del .env en un secret (por ejemplo ENV_FILE_B64) en base64
-      # y lo escribís antes del deploy. Si NO querés tocarlo, borrá este step.
-      #
-      # - name: Update .env on droplet (optional)
-      #   if: ${{ secrets.ENV_FILE_B64 != '' }}
-      #   run: |
-      #     ssh deploy@${{ secrets.DROPLET_HOST }} "bash -s" <<'REMOTE'
-      #       set -euo pipefail
-      #       DIR="/opt/apps/Laqq"
-      #       mkdir -p "$DIR"
-      #       echo "${ENV_FILE_B64}" | base64 -d > "$DIR/.env"
-      #     REMOTE
-      #   env:
-      #     ENV_FILE_B64: ${{ secrets.ENV_FILE_B64 }}
 
       - name: Deploy en Droplet
         run: |
@@ -139,14 +109,19 @@ jobs:
               git clone "$REPO" .
             fi
 
+            echo "-> Guardando commit previo"
+            git rev-parse --short HEAD > .last_deploy_commit || true
+
             echo "-> Fetch + reset"
             git fetch origin
             git reset --hard "origin/$BRANCH"
 
-            echo "-> Validando compose"
+            echo "-> Validando docker-compose"
             docker compose -f "$COMPOSE" config -q
 
-            # 1) Asegurar DB arriba (NO bajamos todo el stack)
+            # ------------------------
+            # DB (se mantiene viva)
+            # ------------------------
             echo "-> Levantando DB (si hace falta)"
             docker compose -f "$COMPOSE" up -d db
 
@@ -164,24 +139,33 @@ jobs:
               fi
             done
 
-            # 2) Build de imágenes nuevas
+            # ------------------------
+            # RECREATE backend + frontend
+            # ------------------------
+            echo "-> Bajando backend y frontend (DB intacta)"
+            docker compose -f "$COMPOSE" stop backend frontend || true
+            docker compose -f "$COMPOSE" rm -f backend frontend || true
+
             echo "-> Build backend + frontend"
             docker compose -f "$COMPOSE" build backend frontend
 
-            # 3) Migrations ANTES de subir servicios 
             echo "-> Ejecutando migrations"
             docker compose -f "$COMPOSE" run --rm backend python manage.py migrate --noinput
 
-            # 4) Collectstatic (recomendado con tu volumen backend_static)
             echo "-> Collectstatic"
             docker compose -f "$COMPOSE" run --rm backend python manage.py collectstatic --noinput
 
-            # 5) Up backend+frontend con imágenes nuevas
-            echo "-> Up backend + frontend"
+            echo "-> Levantando backend + frontend"
             docker compose -f "$COMPOSE" up -d --remove-orphans backend frontend
 
-            echo "-> Estado"
+            echo "-> Estado final"
             docker compose -f "$COMPOSE" ps
+
+            echo "-> Logs backend (últimas 120 líneas)"
+            docker logs laqq-backend --tail=120 || true
+
+            echo "-> Logs frontend (últimas 120 líneas)"
+            docker logs laqq-frontend --tail=120 || true
 
             echo "=== DEPLOY COMPLETADO ==="
           REMOTE

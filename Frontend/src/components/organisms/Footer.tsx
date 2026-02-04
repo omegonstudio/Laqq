@@ -133,7 +133,7 @@ const Footer = () => {
               © 2025 La Química Quirúrgica. Todos los derechos reservados.
             </p>
 
-            <div className="flex gap-4">
+           {/*  <div className="flex gap-4">
               <a
                 href="#"
                 className="opacity-80 hover:opacity-100 transition-opacity"
@@ -158,7 +158,7 @@ const Footer = () => {
               >
                 <Instagram className="w-5 h-5" />
               </a>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
