@@ -9,10 +9,10 @@ concurrency:
   group: laqq-prod
   cancel-in-progress: true
 
+# ======================================================
+# CI
+# ======================================================
 jobs:
-  # ========================
-  # CI
-  # ========================
   ci:
     name: CI (frontend build)
     runs-on: ubuntu-latest
@@ -20,38 +20,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-     # ---------- Backend: pytest ----------
-      # - name: Setup Python
-      #   uses: actions/setup-python@v5
-      #   with:
-      #     python-version: "3.11"
-      #     cache: "pip"
-      #     cache-dependency-path: Backend/requirements.txt
 
-      # - name: Install backend deps
-      #   working-directory: Backend
-      #   run: |
-      #     python -m pip install --upgrade pip
-      #     pip install -r requirements.txt
-
-      # - name: Run backend tests (pytest)
-      #   working-directory: Backend
-      #   env:
-      #     # Ajustá estos nombres si tu settings usa otros env vars
-      #     DJANGO_SETTINGS_MODULE: config.settings
-      #     DJANGO_ENV: test
-      #     DEBUG: "False"
-      #     SECRET_KEY: "ci-secret-key"
-      #     DB_NAME: laqq_test
-      #     DB_USER: postgres
-      #     DB_PASSWORD: postgres
-      #     DB_HOST: 127.0.0.1
-      #     DB_PORT: "5432"
-      #     ALLOWED_HOSTS: "localhost,127.0.0.1"
-      #   run: |
-      #     pytest -q
-
-      # ---------- Frontend: eslint + build ----------
+      # ---------- Frontend build ----------
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -67,11 +37,12 @@ jobs:
         working-directory: Frontend
         run: npm run build
 
-  # ========================
-  # DEPLOY
-  # ========================
+# ======================================================
+# DEPLOY
+# ======================================================
   deploy:
     name: Deploy (prod)
+    needs: [ci]
     runs-on: ubuntu-latest
 
     steps:
@@ -120,7 +91,10 @@ jobs:
             echo "-> Validando docker-compose"
             docker compose -f "$COMPOSE" config -q
 
-            echo "-> Asegurando DB arriba (NO se baja)"
+            # ----------------------------
+            # DB (NO se baja nunca)
+            # ----------------------------
+            echo "-> Asegurando DB arriba"
             docker compose -f "$COMPOSE" up -d db
 
             echo "-> Esperando DB healthy"
@@ -137,34 +111,37 @@ jobs:
               fi
             done
 
-            echo "-> Bajando backend y frontend (DB intacta)"
+            # ----------------------------
+            # App: bajar sin tocar DB
+            # ----------------------------
+            echo "-> Bajando app (backend + frontend)"
             docker compose -f "$COMPOSE" stop backend frontend || true
             docker compose -f "$COMPOSE" rm -f backend frontend || true
 
-            echo "-> Limpiando cache del builder (evita snapshots corruptos)"
+            echo "-> Limpieza de builder cache"
             docker builder prune -f || true
 
-            echo "-> Build backend + frontend"
-            docker compose -f "$COMPOSE" build backend frontend
+            # ----------------------------
+            # Build imágenes
+            # ----------------------------
+            echo "-> Build imágenes"
+            docker compose -f "$COMPOSE" build
 
-            echo "-> Levantando backend"
-            docker compose -f "$COMPOSE" up -d backend
-
-            echo "-> Esperando backend listo"
-            sleep 5
-
-            echo "-> Migrations"
-            docker compose -f "$COMPOSE" exec backend python manage.py migrate --noinput || {
-              echo "⚠️ migrate falló"; docker compose logs backend --tail=200; exit 1;
-            }
+            # ----------------------------
+            # Migraciones y static
+            # (NO dependen de contenedores vivos)
+            # ----------------------------
+            echo "-> Migraciones"
+            docker compose -f "$COMPOSE" run --rm backend python manage.py migrate --noinput
 
             echo "-> Collectstatic"
-            docker compose -f "$COMPOSE" exec backend python manage.py collectstatic --noinput || {
-              echo "⚠️ collectstatic falló"; docker compose logs backend --tail=200; exit 1;
-            }
+            docker compose -f "$COMPOSE" run --rm backend python manage.py collectstatic --noinput
 
-            echo "-> Levantando frontend"
-            docker compose -f "$COMPOSE" up -d frontend
+            # ----------------------------
+            # UP FINAL (ATÓMICO)
+            # ----------------------------
+            echo "-> Levantando stack completo"
+            docker compose -f "$COMPOSE" up -d
 
             echo "-> Estado final"
             docker compose -f "$COMPOSE" ps
