@@ -3,7 +3,9 @@
     "allow": [
       "Bash(python -c \"from tickets.filters import ServiceTicketFilter; print(''Filter imported successfully'')\")",
       "Bash(python -c:*)",
-      "Bash(python manage.py test:*)"
+      "Bash(python manage.py test:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
