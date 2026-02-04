@@ -1,85 +1,104 @@
-name: Deploy LAQQ Production
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
+  # ========================
+  # DEPLOY
+  # ========================
   deploy:
-    name: Deploy to Production
+    name: Deploy (prod)
     runs-on: ubuntu-latest
+    needs: ci   # 🔒 CI obligatorio antes de deploy
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Setup SSH
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add droplet to known_hosts
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy via SSH
+      - name: Deploy en Droplet
         run: |
-          ssh deploy@${{ secrets.SSH_HOST }} "bash -s" <<'REMOTE'
-          set -euo pipefail
+          ssh deploy@${{ secrets.DROPLET_HOST }} "bash -s" <<'REMOTE'
+            set -euo pipefail
 
-          echo "========================================"
-          echo "   DEPLOY LAQQ PROD"
-          echo "========================================"
+            echo "========================================"
+            echo "   DEPLOY LAQQ PROD"
+            echo "========================================"
 
-          APP_DIR="/opt/apps/Laqq"
-          COMPOSE_FILE="docker-compose.prod.yml"
+            REPO="https://github.com/omegonstudio/Laqq.git"
+            DIR="/opt/apps/Laqq"
+            BRANCH="main"
+            COMPOSE="docker-compose.prod.yml"
 
-          cd "$APP_DIR"
+            mkdir -p "$DIR"
+            cd "$DIR"
 
-          echo "-> Guardando commit previo"
-          PREV_COMMIT=$(git rev-parse HEAD)
-
-          echo "-> Fetch + reset hard"
-          git fetch origin
-          git reset --hard origin/main
-
-          echo "-> Validando docker-compose"
-          docker compose -f "$COMPOSE_FILE" config >/dev/null
-
-          echo "-> Asegurando DB arriba"
-          docker compose -f "$COMPOSE_FILE" up -d db
-
-          echo "-> Esperando DB healthy"
-          for i in {1..30}; do
-            STATUS=$(docker inspect --format='{{.State.Health.Status}}' laqq-db 2>/dev/null || echo "starting")
-            if [ "$STATUS" = "healthy" ]; then
-              echo "   DB healthy"
-              break
+            if [ ! -d ".git" ]; then
+              echo "-> Clonando repositorio"
+              git clone "$REPO" .
             fi
-            sleep 2
-          done
 
-          if [ "$STATUS" != "healthy" ]; then
-            echo "❌ DB no llegó a healthy"
-            exit 1
-          fi
+            echo "-> Guardando commit previo"
+            git rev-parse --short HEAD > .last_deploy_commit || true
 
-          echo "-> Bajando app (frontend + backend)"
-          docker compose -f "$COMPOSE_FILE" stop frontend backend
-          docker compose -f "$COMPOSE_FILE" rm -f frontend backend
+            echo "-> Fetch + reset"
+            git fetch origin
+            git reset --hard "origin/$BRANCH"
 
-          echo "-> Limpieza de builder cache"
-          docker builder prune -f
+            echo "-> Validando docker-compose"
+            docker compose -f "$COMPOSE" config -q
 
-          echo "-> Build imágenes"
-          docker compose -f "$COMPOSE_FILE" build --pull
+            echo "-> Levantando DB"
+            docker compose -f "$COMPOSE" up -d db
 
-          echo "-> Levantando servicios"
-          docker compose -f "$COMPOSE_FILE" up -d frontend backend
+            echo "-> Esperando DB healthy"
+            for i in {1..30}; do
+              if docker inspect -f '{{.State.Health.Status}}' laqq-db 2>/dev/null | grep -q healthy; then
+                echo "   DB healthy"
+                break
+              fi
+              sleep 2
+              if [ "$i" -eq 30 ]; then
+                echo "❌ DB no llegó a healthy"
+                docker compose -f "$COMPOSE" logs db --tail=200 || true
+                exit 1
+              fi
+            done
 
-          echo "-> Estado final"
-          docker compose -f "$COMPOSE_FILE" ps
+            echo "-> Build imágenes (backend + frontend)"
+            docker compose -f "$COMPOSE" build backend frontend
 
-          echo "✅ Deploy finalizado correctamente"
+            echo "-> Levantando stack completo"
+            docker compose -f "$COMPOSE" up -d
+
+            echo "-> Esperando backend listo"
+            for i in {1..20}; do
+              if docker compose -f "$COMPOSE" ps backend | grep -q "Up"; then
+                echo "   Backend arriba"
+                break
+              fi
+              sleep 2
+              if [ "$i" -eq 20 ]; then
+                echo "❌ Backend no levantó"
+                docker compose -f "$COMPOSE" logs backend --tail=200 || true
+                exit 1
+              fi
+            done
+
+            echo "-> Migrations"
+            docker compose -f "$COMPOSE" exec backend python manage.py migrate --noinput
+
+            echo "-> Collectstatic"
+            docker compose -f "$COMPOSE" exec backend python manage.py collectstatic --noinput
+
+            echo "-> Estado final"
+            docker compose -f "$COMPOSE" ps
+
+            echo "========================================"
+            echo "   DEPLOY LAQQ COMPLETADO OK"
+            echo "========================================"
           REMOTE
