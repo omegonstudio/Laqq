@@ -29,6 +29,9 @@ from .emails import send_ticket_created_email
 
 import secrets
 import string
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # -------------------------
@@ -38,13 +41,17 @@ import string
 class TicketStateViewSet(viewsets.ModelViewSet):
     queryset = TicketState.objects.all()
     serializer_class = TicketStateSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrBackOffice]
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['name', 'is_final']
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'created_at']
     ordering = ['name']
+
+    def get_permissions(self):
+        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return [AllowAny()]
+        return [IsAuthenticated(), IsAdminOrBackOffice()]
 
 
 # -------------------------
@@ -54,13 +61,17 @@ class TicketStateViewSet(viewsets.ModelViewSet):
 class TicketPriorityViewSet(viewsets.ModelViewSet):
     queryset = TicketPriority.objects.all()
     serializer_class = TicketPrioritySerializer
-    permission_classes = [IsAuthenticated, IsAdminOrBackOffice]
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['name', 'level']
     search_fields = ['name', 'description']
     ordering_fields = ['level', 'name', 'created_at']
     ordering = ['-level']
+
+    def get_permissions(self):
+        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return [AllowAny()]
+        return [IsAuthenticated(), IsAdminOrBackOffice()]
 
 
 # -------------------------
@@ -161,7 +172,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
         try:
             send_ticket_created_email(ticket, username, password)
         except Exception as e:
-            print(f"❌ Error enviando email para ticket {ticket.ticket_number}: {e}")
+            logger.error("Error enviando email para ticket %s: %s", ticket.ticket_number, e)
 
     # -------------------------
     # Attach single file
@@ -242,7 +253,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
         ticket = self.get_object()
         serializer = self.get_serializer(
             ticket,
-            data={'assigned_user': request.data.get('assigned_user')},
+            data={'assigned_user_id': request.data.get('assigned_user')},
             partial=True
         )
         serializer.is_valid(raise_exception=True)

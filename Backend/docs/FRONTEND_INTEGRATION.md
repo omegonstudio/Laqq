@@ -138,8 +138,11 @@ LAQQ tiene 6 módulos principales que el frontend debe integrar:
 - `GET /products/categories/` - Ver categorías
 - `GET /attachments/` - Ver archivos adjuntos (imágenes, documentos)
 - `GET /notes/list/` - Ver notas/blog
+- `GET /tickets/states/` - Estados de tickets (para dropdowns/badges)
+- `GET /tickets/priorities/` - Prioridades de tickets (para dropdowns/badges)
 
 #### POST (Creación)
+- `POST /contacts/messages/` - **Enviar mensaje de contacto** (sin login)
 - `POST /quotes/list/` - **Crear cotización anónima** (sin login)
 - `POST /quotes/items/` - **Agregar items a cotización** (sin login)
 - `POST /users/token/` - Login (obtener token)
@@ -632,9 +635,27 @@ Authorization: Bearer {access_token}
         "id": 5,
         "username": "tecnico1",
         "first_name": "Juan",
-        "last_name": "Técnico"
+        "last_name": "Técnico",
+        "email": "tecnico1@laqq.com"
       },
-      "attachment": null,
+      "attachment": {
+        "id": "def456-uuid...",
+        "file_name": "foto_problema.jpg",
+        "url": "http://localhost:8000/media/attachments/ServiceTicket/.../foto_problema.jpg",
+        "role": "image",
+        "size_bytes": 125648,
+        "created_at": "2025-12-23T10:35:00Z"
+      },
+      "attachments": [
+        {
+          "id": "def456-uuid...",
+          "file_name": "foto_problema.jpg",
+          "url": "http://localhost:8000/media/attachments/ServiceTicket/.../foto_problema.jpg",
+          "role": "image",
+          "size_bytes": 125648,
+          "created_at": "2025-12-23T10:35:00Z"
+        }
+      ],
       "created_at": "2025-12-23T10:30:00Z",
       "updated_at": "2025-12-23T14:20:00Z",
       "assigned_at": "2025-12-23T11:00:00Z",
@@ -1527,5 +1548,5 @@ Si tenés dudas o problemas con la integración:
 ---
 
 **Autor:** Claude Code
-**Última actualización:** 2025-12-23
+**Última actualización:** 2026-02-04
 **Estado:** ✅ Backend listo para integración

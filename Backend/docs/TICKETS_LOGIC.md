@@ -164,17 +164,23 @@ El sistema actualiza automáticamente las fechas de seguimiento según los cambi
 **Ejemplo:**
 
 ```json
-// Request: Asignar ticket
+// Request: Asignar ticket (se envía el ID)
 PATCH /tickets/{id}/
 {
-  "assigned_user": 5
+  "assigned_user_id": 5
 }
 
-// Response: Estado cambia automáticamente
+// Response: Estado cambia automáticamente, assigned_user viene como objeto
 {
   "id": "...",
   "state": "open",           // ← Cambió de 'new' a 'open'
-  "assigned_user": 5,
+  "assigned_user": {
+    "id": 5,
+    "username": "tecnico1",
+    "first_name": "Juan",
+    "last_name": "Técnico",
+    "email": "tecnico1@laqq.com"
+  },
   "assigned_at": "2025-11-25T10:30:00Z"  // ← Fecha automática
 }
 ```
@@ -207,8 +213,8 @@ Si se proporciona un `product` (FK), el `product_name` se sincroniza automática
 | `GET /tickets/{id}/` | Obtener ticket específico |
 | `PATCH /tickets/{id}/` | Actualizar ticket |
 | `DELETE /tickets/{id}/` | Eliminar ticket |
-| `GET /tickets/states/` | Listar estados disponibles |
-| `GET /tickets/priorities/` | Listar prioridades disponibles |
+| `GET /tickets/states/` | Listar estados disponibles (público, sin auth) |
+| `GET /tickets/priorities/` | Listar prioridades disponibles (público, sin auth) |
 
 ---
 
@@ -359,10 +365,11 @@ Content-Type: application/json
   "product": "uuid-del-producto-en-catalogo",
   "product_name": "Pipeta Automática 100ml",  // ← Auto-sincronizado
   "description": "La pipeta automática no dispensa...",
-  "attachment": "uuid-del-adjunto",
+  "attachment": null,                          // ← Null hasta que se agregue un archivo
+  "attachments": [],                           // ← Lista de todos los attachments
   "state": "new",                             // ← Default
   "priority": "medium",                        // ← Default
-  "assigned_user": null,
+  "assigned_user": null,                       // ← Objeto cuando se asigne
   "created_at": "2025-11-25T10:00:00Z",
   "assigned_at": null,
   "started_at": null,
@@ -390,7 +397,13 @@ POST /tickets/abc123.../assign/
   "ticket_number": "T-2025-00123",
   "state": "open",                             // ← Cambió de 'new' a 'open'
   "priority": "medium",
-  "assigned_user": 5,
+  "assigned_user": {                           // ← Objeto con datos del técnico
+    "id": 5,
+    "username": "tecnico1",
+    "first_name": "Juan",
+    "last_name": "Técnico",
+    "email": "tecnico1@laqq.com"
+  },
   "assigned_at": "2025-11-25T11:00:00Z",       // ← Fecha automática
   ...
 }
@@ -631,5 +644,5 @@ OK - 21 tests pasaron correctamente
 ---
 
 **Autor:** Claude Code
-**Última actualización:** 2025-11-25
-**Tests:** 21/21 pasando ✅
+**Última actualización:** 2026-02-04
+**Tests:** 12/12 pasando ✅

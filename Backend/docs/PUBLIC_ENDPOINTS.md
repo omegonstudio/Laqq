@@ -160,9 +160,85 @@ curl http://localhost:8000/notes/list/
 
 ---
 
+#### 6. Tickets - Estados
+**Endpoint:** `GET /tickets/states/`
+
+**Descripción:** Listar todos los estados disponibles de tickets (para poblar dropdowns/badges)
+
+**Autenticación:** No requiere
+
+**Response:**
+```json
+[
+  { "id": "new", "name": "Nuevo", "color": "#3498db", "is_final": false },
+  { "id": "open", "name": "Abierto", "color": "#f39c12", "is_final": false },
+  { "id": "in_progress", "name": "En progreso", "color": "#9b59b6", "is_final": false },
+  { "id": "resolved", "name": "Resuelto", "color": "#1abc9c", "is_final": false },
+  { "id": "closed", "name": "Cerrado", "color": "#27ae60", "is_final": true }
+]
+```
+
+---
+
+#### 7. Tickets - Prioridades
+**Endpoint:** `GET /tickets/priorities/`
+
+**Descripción:** Listar todas las prioridades disponibles de tickets (para poblar dropdowns/badges)
+
+**Autenticación:** No requiere
+
+**Response:**
+```json
+[
+  { "id": "low", "name": "Baja", "level": 1, "color": "#95a5a6" },
+  { "id": "medium", "name": "Media", "level": 2, "color": "#3498db" },
+  { "id": "high", "name": "Alta", "level": 3, "color": "#f39c12" },
+  { "id": "urgent", "name": "Urgente", "level": 4, "color": "#e74c3c" }
+]
+```
+
+---
+
 ### POST Endpoints (Creación)
 
-#### 6. Quotes - Crear Cotización
+#### 8. Contacts - Enviar Mensaje
+**Endpoint:** `POST /contacts/messages/`
+
+**Descripción:** Enviar un mensaje desde el formulario de contacto del sitio web
+
+**Autenticación:** No requiere (público)
+
+**Flujo:**
+1. Visitante llena el formulario de contacto en el sitio
+2. Se crea un registro en `Message`
+3. Se envía email al negocio con los datos del mensaje
+
+**Request:**
+```json
+{
+  "first_name": "María",
+  "last_name": "González",
+  "email": "compras@distmed.com.ar",
+  "phone": "+54 11 5555-6666",
+  "message": "Estoy interesado en productos químicos para laboratorio"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": "uuid...",
+  "first_name": "María",
+  "last_name": "González",
+  "email": "compras@distmed.com.ar",
+  "message": "Estoy interesado en productos químicos para laboratorio",
+  "created_at": "2026-02-04T10:00:00Z"
+}
+```
+
+---
+
+#### 9. Quotes - Crear Cotización
 **Endpoint:** `POST /quotes/list/`
 
 **Descripción:** Crear una cotización anónima desde el formulario web
@@ -222,7 +298,7 @@ curl -X POST http://localhost:8000/quotes/list/ \
 
 ---
 
-#### 7. Quote Items - Agregar Items a Cotización
+#### 10. Quote Items - Agregar Items a Cotización
 **Endpoint:** `POST /quotes/items/`
 
 **Descripción:** Agregar productos a una cotización (carrito)
@@ -267,7 +343,7 @@ curl -X POST http://localhost:8000/quotes/items/ \
 
 ---
 
-#### 8. Users - Obtener Token (Login)
+#### 11. Users - Obtener Token (Login)
 **Endpoint:** `POST /users/token/`
 
 **Descripción:** Autenticarse para obtener JWT token
@@ -348,6 +424,16 @@ Los siguientes endpoints **NO son públicos** y requieren un token JWT válido e
 - 🔒 **PUT/PATCH/DELETE** `/quotes/` - Admin
 - 🔒 **GET** `/quotes/items/` - Admin/Backoffice
 
+### Tickets
+- ✅ **GET** `/tickets/states/` - Público (estados disponibles)
+- ✅ **GET** `/tickets/priorities/` - Público (prioridades disponibles)
+- 🔒 **GET/POST/PATCH/DELETE** `/tickets/` - Admin/Backoffice/Cliente (según rol)
+
+### Contactos (Contacts)
+- ✅ **POST** `/contacts/messages/` - Público (formulario de contacto)
+- 🔒 **GET** `/contacts/messages/` - Admin/Backoffice
+- 🔒 **ALL** `/contacts/` - Admin/Backoffice
+
 ### Autenticación (Users)
 - ✅ **POST** `/users/token/` - Público (login)
 - ✅ **POST** `/users/token/refresh/` - Público (refresh token)
@@ -422,7 +508,18 @@ CORS_ALLOWED_ORIGINS = [
 
 ---
 
-### Caso 3: Backoffice - Gestionar Cotizaciones
+### Caso 3: Usuario Web (Anónimo) - Enviar Mensaje de Contacto
+
+**Flujo:**
+1. Visita el sitio → formulario de contacto
+2. Llena datos → `POST /contacts/messages/`
+3. Recibe confirmación, backoffice recibe email
+
+**Sin necesidad de login.**
+
+---
+
+### Caso 4: Backoffice - Gestionar Cotizaciones
 
 **Flujo:**
 1. Login → `POST /users/token/`
@@ -449,4 +546,4 @@ Si necesitás agregar nuevos endpoints públicos o modificar permisos, contactá
 ---
 
 **Autor:** Claude Code
-**Última actualización:** 2026-01-20
+**Última actualización:** 2026-02-04
