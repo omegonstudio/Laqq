@@ -22,7 +22,11 @@ import {
 } from "@/components/ui/select";
 import { Category, CategoryUI } from "@/types/types";
 
-import { createCategory, updateCategory } from "@/store/categoriesSlice";
+import {
+  createCategory,
+  fetchAllCategories,
+  updateCategory,
+} from "@/store/categoriesSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { buildCategories } from "@/utils/data/categories";
 
@@ -201,7 +205,11 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
       toast.error(errorMessage);
     }
   };
-  console.log(flatCategories, localState, "AA");
+
+  useEffect(() => {
+    dispatch(fetchAllCategories());
+  }, [dispatch]);
+
   const isDisabled = (cat: FlatCategory) => {
     // nunca permitir auto-referencia
     if (cat.id === localState.id) return true;

@@ -57,7 +57,7 @@ const App = () => {
           <CartProvider>
             <BrowserRouter>
               <Routes>
-                <Route path="/backofficeClient" element={<PageTicket />} />
+                <Route path="/tickets" element={<PageTicket />} />
                 {/* Public routes */}
                 <Route path="/" element={<Index />} />
                 <Route

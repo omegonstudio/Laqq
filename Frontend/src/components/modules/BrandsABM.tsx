@@ -73,14 +73,14 @@ const BrandsABM = () => {
     try {
       await dispatch(deleteBrand(currentBrand.id)).unwrap();
 
-      toast.success("Brando eliminado exitosamente");
+      toast.success("Marca eliminada exitosamente");
       setIsModalDeleteOpen(false);
     } catch (error: unknown) {
       console.error("Error eliminando:", error);
       if (error instanceof Error) {
-        toast.error(error.message || "Error al eliminar el Brand");
+        toast.error(error.message || "Error al eliminar la marca");
       } else {
-        toast.error("Error al eliminar el Brand");
+        toast.error("Error al eliminar la marca");
       }
     }
   };

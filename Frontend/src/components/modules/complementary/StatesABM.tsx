@@ -9,24 +9,41 @@ import { states as initialStates } from "@/utils/mockData/states";
 const StatesABM = () => {
   const [statesData, setStatesData] = useState(initialStates);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentState, setCurrentState] = useState({ id: "", name: "", description: "" });
+  const [currentState, setCurrentState] = useState({
+    id: "",
+    name: "",
+    description: "",
+  });
 
-  const handleEdit = (state: any) => {
+  const handleEdit = (state: {
+    id: string;
+    name: string;
+    description: string;
+  }) => {
     setCurrentState(state);
     setIsModalOpen(true);
   };
 
-  const handleDelete = (state: any) => {
+  const handleDelete = (state: {
+    id: string;
+    name: string;
+    description: string;
+  }) => {
     if (confirm(`¿Eliminar estado "${state.name}"?`)) {
-      setStatesData(statesData.filter(s => s.id !== state.id));
+      setStatesData(statesData.filter((s) => s.id !== state.id));
     }
   };
 
   const handleSave = () => {
     if (currentState.id) {
-      setStatesData(statesData.map(s => s.id === currentState.id ? currentState : s));
+      setStatesData(
+        statesData.map((s) => (s.id === currentState.id ? currentState : s))
+      );
     } else {
-      setStatesData([...statesData, { ...currentState, id: Date.now().toString() }]);
+      setStatesData([
+        ...statesData,
+        { ...currentState, id: Date.now().toString() },
+      ]);
     }
     setIsModalOpen(false);
     setCurrentState({ id: "", name: "", description: "" });
@@ -39,14 +56,19 @@ const StatesABM = () => {
 
   const actions = [
     { icon: <Edit2 size={16} />, onClick: handleEdit, label: "Editar" },
-    { icon: <Trash2 size={16} />, onClick: handleDelete, color: "red", label: "Eliminar" },
+    {
+      icon: <Trash2 size={16} />,
+      onClick: handleDelete,
+      color: "red",
+      label: "Eliminar",
+    },
   ];
 
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button 
-          variant="primary" 
+        <Button
+          variant="primary"
           className="flex items-center gap-2"
           onClick={() => {
             setCurrentState({ id: "", name: "", description: "" });
@@ -69,12 +91,16 @@ const StatesABM = () => {
           <InputField
             label="Nombre"
             value={currentState.name}
-            onChange={(e) => setCurrentState({ ...currentState, name: e.target.value })}
+            onChange={(e) =>
+              setCurrentState({ ...currentState, name: e.target.value })
+            }
           />
           <InputField
             label="Descripción"
             value={currentState.description}
-            onChange={(e) => setCurrentState({ ...currentState, description: e.target.value })}
+            onChange={(e) =>
+              setCurrentState({ ...currentState, description: e.target.value })
+            }
           />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>

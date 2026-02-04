@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import Button from "../atoms/Button";
 import SearchBar from "../molecules/SearchBar";
-import { useNavigate } from "react-router-dom";
 import heroImage from "@/assets/hero-lab.jpg";
 import { useProductFilters } from "@/hooks/useFilters";
 

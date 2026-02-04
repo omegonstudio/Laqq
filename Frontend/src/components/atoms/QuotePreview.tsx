@@ -6,12 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import {
-  fetchQuoteStates,
-  fetchQuoteTypes,
-  updateQuote,
-  updateQuoteItem,
-} from "@/store/quotesSlice";
+import { updateQuote, updateQuoteItem } from "@/store/quotesSlice";
 import {
   QuoteRender,
   QuoteItemRender,
@@ -142,6 +137,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
     try {
       const quotePayload: QuoteUpdatePayload = {
         contact: {
+          id: contact.id,
           company_name: contact.company_name,
           first_name: contact.first_name,
           last_name: contact.last_name,
@@ -152,6 +148,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
           state: contact.state,
           assigned_user: contact.assigned_user,
         },
+        contact_id: contact.id,
         message: quote.message,
         total_amount: calculateTotal().toFixed(2),
         user: formState.user.id,

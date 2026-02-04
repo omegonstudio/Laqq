@@ -1,187 +1,85 @@
-name: Deploy LAQQ (PROD)
+name: Deploy LAQQ Production
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
-
-concurrency:
-  group: laqq-prod
-  cancel-in-progress: true
+    branches:
+      - main
 
 jobs:
-  ci:
-    name: CI (tests + lint + build)
-    runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_DB: laqq_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres -d laqq_test"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # ---------- Backend: pytest ----------
-      # - name: Setup Python
-      #   uses: actions/setup-python@v5
-      #   with:
-      #     python-version: "3.11"
-      #     cache: "pip"
-      #     cache-dependency-path: Backend/requirements.txt
-
-      # - name: Install backend deps
-      #   working-directory: Backend
-      #   run: |
-      #     python -m pip install --upgrade pip
-      #     pip install -r requirements.txt
-
-      # - name: Run backend tests (pytest)
-      #   working-directory: Backend
-      #   env:
-      #     # Ajustá estos nombres si tu settings usa otros env vars
-      #     DJANGO_SETTINGS_MODULE: config.settings
-      #     DJANGO_ENV: test
-      #     DEBUG: "False"
-      #     SECRET_KEY: "ci-secret-key"
-      #     DB_NAME: laqq_test
-      #     DB_USER: postgres
-      #     DB_PASSWORD: postgres
-      #     DB_HOST: 127.0.0.1
-      #     DB_PORT: "5432"
-      #     ALLOWED_HOSTS: "localhost,127.0.0.1"
-      #   run: |
-      #     pytest -q
-
-      # ---------- Frontend: eslint + build ----------
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: Frontend/package-lock.json
-
-      - name: Install frontend deps
-        working-directory: Frontend
-        run: npm ci
-
-      # - name: Frontend lint
-      #   working-directory: Frontend
-      #   run: npm run lint
-
-      - name: Frontend build
-        working-directory: Frontend
-        run: npm run build
-
   deploy:
-    name: Deploy (prod)
-    needs: [ci]
+    name: Deploy to Production
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Setup SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          fetch-depth: 0
 
-      - name: Add droplet to known_hosts
+      - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      # (OPCIONAL) Si querés que GitHub Actions "toque" el .env:
-      # Guardás el contenido del .env en un secret (por ejemplo ENV_FILE_B64) en base64
-      # y lo escribís antes del deploy. Si NO querés tocarlo, borrá este step.
-      #
-      # - name: Update .env on droplet (optional)
-      #   if: ${{ secrets.ENV_FILE_B64 != '' }}
-      #   run: |
-      #     ssh deploy@${{ secrets.DROPLET_HOST }} "bash -s" <<'REMOTE'
-      #       set -euo pipefail
-      #       DIR="/opt/apps/Laqq"
-      #       mkdir -p "$DIR"
-      #       echo "${ENV_FILE_B64}" | base64 -d > "$DIR/.env"
-      #     REMOTE
-      #   env:
-      #     ENV_FILE_B64: ${{ secrets.ENV_FILE_B64 }}
-
-      - name: Deploy en Droplet
+      - name: Deploy via SSH
         run: |
-          ssh deploy@${{ secrets.DROPLET_HOST }} "bash -s" <<'REMOTE'
-            set -euo pipefail
+          ssh deploy@${{ secrets.SSH_HOST }} "bash -s" <<'REMOTE'
+          set -euo pipefail
 
-            echo "=== DEPLOY LAQQ PROD ==="
+          echo "========================================"
+          echo "   DEPLOY LAQQ PROD"
+          echo "========================================"
 
-            REPO="https://github.com/omegonstudio/Laqq.git"
-            DIR="/opt/apps/Laqq"
-            BRANCH="main"
-            COMPOSE="docker-compose.prod.yml"
+          APP_DIR="/opt/apps/Laqq"
+          COMPOSE_FILE="docker-compose.prod.yml"
 
-            mkdir -p "$DIR"
-            cd "$DIR"
+          cd "$APP_DIR"
 
-            if [ ! -d ".git" ]; then
-              echo "-> Clonando repositorio"
-              git clone "$REPO" .
+          echo "-> Guardando commit previo"
+          PREV_COMMIT=$(git rev-parse HEAD)
+
+          echo "-> Fetch + reset hard"
+          git fetch origin
+          git reset --hard origin/main
+
+          echo "-> Validando docker-compose"
+          docker compose -f "$COMPOSE_FILE" config >/dev/null
+
+          echo "-> Asegurando DB arriba"
+          docker compose -f "$COMPOSE_FILE" up -d db
+
+          echo "-> Esperando DB healthy"
+          for i in {1..30}; do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' laqq-db 2>/dev/null || echo "starting")
+            if [ "$STATUS" = "healthy" ]; then
+              echo "   DB healthy"
+              break
             fi
+            sleep 2
+          done
 
-            echo "-> Fetch + reset"
-            git fetch origin
-            git reset --hard "origin/$BRANCH"
+          if [ "$STATUS" != "healthy" ]; then
+            echo "❌ DB no llegó a healthy"
+            exit 1
+          fi
 
-            echo "-> Validando compose"
-            docker compose -f "$COMPOSE" config -q
+          echo "-> Bajando app (frontend + backend)"
+          docker compose -f "$COMPOSE_FILE" stop frontend backend
+          docker compose -f "$COMPOSE_FILE" rm -f frontend backend
 
-            # 1) Asegurar DB arriba (NO bajamos todo el stack)
-            echo "-> Levantando DB (si hace falta)"
-            docker compose -f "$COMPOSE" up -d db
+          echo "-> Limpieza de builder cache"
+          docker builder prune -f
 
-            echo "-> Esperando DB healthy"
-            for i in {1..30}; do
-              if docker inspect -f '{{json .State.Health.Status}}' laqq-db 2>/dev/null | grep -q healthy; then
-                echo "   DB healthy"
-                break
-              fi
-              sleep 2
-              if [ "$i" -eq 30 ]; then
-                echo "   DB no llegó a healthy"
-                docker compose -f "$COMPOSE" logs --tail=200 db || true
-                exit 1
-              fi
-            done
+          echo "-> Build imágenes"
+          docker compose -f "$COMPOSE_FILE" build --pull
 
-            # 2) Build de imágenes nuevas
-            echo "-> Build backend + frontend"
-            docker compose -f "$COMPOSE" build backend frontend
+          echo "-> Levantando servicios"
+          docker compose -f "$COMPOSE_FILE" up -d frontend backend
 
-            # 3) Migrations ANTES de subir servicios 
-            echo "-> Ejecutando migrations"
-            docker compose -f "$COMPOSE" run --rm backend python manage.py migrate --noinput
+          echo "-> Estado final"
+          docker compose -f "$COMPOSE_FILE" ps
 
-            # 4) Collectstatic (recomendado con tu volumen backend_static)
-            echo "-> Collectstatic"
-            docker compose -f "$COMPOSE" run --rm backend python manage.py collectstatic --noinput
-
-            # 5) Up backend+frontend con imágenes nuevas
-            echo "-> Up backend + frontend"
-            docker compose -f "$COMPOSE" up -d --remove-orphans backend frontend
-
-            echo "-> Estado"
-            docker compose -f "$COMPOSE" ps
-
-            echo "=== DEPLOY COMPLETADO ==="
+          echo "✅ Deploy finalizado correctamente"
           REMOTE

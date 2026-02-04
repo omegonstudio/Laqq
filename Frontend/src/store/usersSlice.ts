@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { Category, PaginatedResponse } from "@/types/types";
 import { usersApi } from "@/lib/api/users";
-import { User, UserCreate } from "@/types/api";
+import { UserData, UserCreate } from "@/types/api";
 
 // Params (paginación)
 interface FetchuserParams {
@@ -9,22 +9,22 @@ interface FetchuserParams {
   page_size?: number;
 }
 interface userState {
-  list: User[];
+  list: UserData[];
   count: number;
   loading: boolean;
   error: string | null;
 
-  selected: User | null;
+  selected: UserData | null;
   selectedLoading: boolean;
   selectedError: string | null;
 
   creating: boolean;
   createError: string | null;
-  createdItem: User | null;
+  createdItem: UserData | null;
 
   updating: boolean;
   updateError: string | null;
-  updatedItem: User | null;
+  updatedItem: UserData | null;
 
   deleting: boolean;
   deleteError: string | null;

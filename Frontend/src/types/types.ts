@@ -22,6 +22,20 @@ export interface ProductSpec {
   display_order?: number;
   is_visible?: boolean;
 }
+export interface BulkUploadResponse {
+  created_brands: number;
+  created_categories: number;
+  created_attachments: number;
+  created_products: number;
+  updated_products: number;
+  created_specs: number;
+  updated_specs: number;
+  created_relations: number;
+  errors: {
+    image_url: string;
+    error: string;
+  }[];
+}
 
 export interface ProductFixedSpec {
   id?: string;

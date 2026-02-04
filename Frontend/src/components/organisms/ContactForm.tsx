@@ -16,15 +16,28 @@ const ContactForm = () => {
     country: "",
     message: "",
     state: "NEW",
+    email: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch(createMessage(formData));
-    toast({
-      title: "Mensaje Enviado",
-      description: "Te responderemos a la brevedad posible.",
-    });
+    try {
+      await dispatch(createMessage(formData)).unwrap();
+      toast({
+        title: "Mensaje Enviado",
+        description: "Te responderemos a la brevedad posible.",
+        variant: "default",
+      });
+      // Opcional: limpiar el formulario después del éxito
+      // setFormData({ contact: '', content: '', ... });
+    } catch (error) {
+      console.error("Error al enviar el mensaje:", error);
+      toast({
+        title: "Error al enviar mensaje",
+        description: "Por favor, intenta de nuevo más tarde.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -114,15 +127,15 @@ const ContactForm = () => {
                   }
                   required
                 />
-                {/* <InputField
+                <InputField
                   label="Email"
                   type="email"
                   value={formData.email}
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  required
-                /> */}
+                  // required
+                />
 
                 {/* <InputField
                   label="Asunto"
