@@ -148,6 +148,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
           state: contact.state,
           assigned_user: contact.assigned_user,
         },
+        contact_id: contact.id,
         message: quote.message,
         total_amount: calculateTotal().toFixed(2),
         user: formState.user.id,

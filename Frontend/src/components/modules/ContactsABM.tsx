@@ -3,39 +3,43 @@ import { Edit2, Trash2, Eye } from "lucide-react";
 import Table from "@/components/common/Table";
 import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
-import { Contact } from "@/utils/mockData/contacts";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { RootState } from "@/store";
-import { fetchContacts, fetchContactStates } from "@/store/contacts";
+import {
+  deleteContact,
+  fetchContacts,
+  fetchContactStates,
+} from "@/store/contacts";
+import { convertStateContact, stateEnum } from "@/utils/quotesConvert";
+import { Contact } from "@/types/api";
+import { ViewContactModal } from "../molecules/Modals/viewContact";
+import { EditContactModal } from "../molecules/Modals/editContact";
+import { formatDate } from "@/utils/formatDate";
+import { fetchUsers } from "@/store/usersSlice";
+import ModalDelete from "../molecules/Modals/ModalDelete";
+import { toast } from "@/hooks/use-toast";
 
-type stateEnum = "CLOSED" | "IN_PROGRESS" | "NEW" | "RESPONDED";
-
-const convertState = (state: stateEnum): string => {
-  switch (state) {
-    case "CLOSED":
-      return "cerrado";
-    case "IN_PROGRESS":
-      return "En progreso";
-    case "NEW":
-      return "Nuevo";
-    case "RESPONDED":
-      return "Respondido";
-    default:
-      return "Desconocido";
-  }
-};
 const ContactsABM = () => {
   // const [contacts] = useState<Contact[]>(mockContacts);
-  const [statusFilter, setStatusFilter] = useState("todos");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
+
   const { list: contacts, pagination } = useAppSelector(
     (state: RootState) => state.contacts
   );
+  const { list: users } = useAppSelector((state: RootState) => state.users);
 
   const { states } = useAppSelector((state: RootState) => state.contacts);
   const dispatch = useAppDispatch();
+
   useEffect(() => {
     dispatch(fetchContactStates({}));
+    dispatch(fetchUsers({ page: 1, page_size: 1000 }));
   }, [dispatch]);
+
   const [searchTerm, setSearchTerm] = useState("");
 
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -46,7 +50,6 @@ const ContactsABM = () => {
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
-  console.log(pagination, "AAAAAAAAAAAA PAGINATION");
   useEffect(() => {
     const params: {
       page: number;
@@ -57,7 +60,7 @@ const ContactsABM = () => {
       page: 1,
       page_size: 10,
     };
-    if (statusFilter !== "todos") {
+    if (statusFilter !== "all") {
       params.state = statusFilter;
     }
 
@@ -67,17 +70,41 @@ const ContactsABM = () => {
 
     dispatch(fetchContacts(params));
   }, [dispatch, debouncedSearch, statusFilter]);
-
+  console.log(contacts, "AAAA");
   const handleView = (contact: Contact) => {
-    console.log("Ver contacto:", contact);
+    setSelectedContact(contact);
+    setViewModalOpen(true);
   };
 
   const handleEdit = (contact: Contact) => {
-    console.log("Editar contacto:", contact);
+    setSelectedContact(contact);
+    setEditModalOpen(true);
   };
+  const handleOpenDeleteModal = (product: Contact) => {
+    setSelectedContact(product);
+    setIsModalDeleteOpen(true);
+  };
+  const handleDelete = async () => {
+    if (!selectedContact) return;
 
-  const handleDelete = (contact: Contact) => {
-    console.log("Eliminar contacto:", contact);
+    try {
+      await dispatch(deleteContact(selectedContact.id)).unwrap();
+      toast({ title: "Contacto eliminado exitosamente", variant: "default" });
+      setIsModalDeleteOpen(false);
+    } catch (error: unknown) {
+      console.error("Error eliminando categoría:", error);
+      if (error instanceof Error) {
+        toast({
+          title: "Error al eliminar el contacto",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error al eliminar el contacto",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   const columns = [
@@ -91,12 +118,17 @@ const ContactsABM = () => {
     { key: "email", label: "Email", sortable: true },
     { key: "phone", label: "Teléfono", sortable: false },
     { key: "country", label: "País", sortable: true },
-    { key: "fecha", label: "Fecha", sortable: true },
+    {
+      key: "created_at",
+      label: "Fecha",
+      sortable: true,
+      render: (value: string) => formatDate(value),
+    },
     {
       key: "state",
       label: "Estado",
       sortable: true,
-      render: (value: stateEnum) => convertState(value),
+      render: (value: stateEnum) => convertStateContact(value),
     },
   ];
 
@@ -105,7 +137,7 @@ const ContactsABM = () => {
     { icon: <Edit2 size={16} />, onClick: handleEdit, label: "Editar" },
     {
       icon: <Trash2 size={16} />,
-      onClick: handleDelete,
+      onClick: handleOpenDeleteModal,
       color: "red",
       label: "Eliminar",
     },
@@ -124,8 +156,8 @@ const ContactsABM = () => {
     if (debouncedSearch.trim()) {
       params.search = debouncedSearch.trim();
     }
-    if (statusFilter !== "todos") {
-      params.state = statusFilter;
+    if (statusFilter !== "all") {
+      params.state = null;
     }
 
     dispatch(fetchContacts(params));
@@ -145,7 +177,7 @@ const ContactsABM = () => {
             { value: "all", label: "Todos los estados" },
             ...states.map((item) => ({
               value: item.id,
-              label: convertState(item.name as stateEnum),
+              label: convertStateContact(item.name as stateEnum),
             })),
           ]}
           value={statusFilter}
@@ -153,7 +185,6 @@ const ContactsABM = () => {
           className="w-48"
         />
       </div>
-
       <Table
         columns={columns}
         data={contacts}
@@ -165,6 +196,33 @@ const ContactsABM = () => {
           pageSize: pagination.page_size,
           onPageChange: handlePageChange,
         }}
+      />
+
+      <ViewContactModal
+        contact={selectedContact}
+        open={viewModalOpen}
+        onOpenChange={setViewModalOpen}
+        users={users}
+      />
+
+      <EditContactModal
+        contact={selectedContact}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        states={states}
+        users={users}
+        // users={users} // Pasá la lista de usuarios si la tenés disponible
+      />
+      <ModalDelete
+        isOpen={isModalDeleteOpen}
+        onClose={() => {
+          setIsModalDeleteOpen(false);
+          setSelectedContact(null);
+        }}
+        itemName={`${selectedContact?.first_name || ""} ${
+          selectedContact?.last_name || ""
+        } Empresa: ${selectedContact?.company_name || ""}`}
+        onConfirm={handleDelete}
       />
     </div>
   );

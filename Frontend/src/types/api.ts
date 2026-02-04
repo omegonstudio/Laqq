@@ -23,7 +23,7 @@ export interface ProductAccessory {
 
 export interface ContactState {
   id: string;
-  name: string;
+  name: "CLOSED" | "IN_PROGRESS" | "NEW" | "RESPONDED";
   color: string | null;
   description: string | null;
   created_at: string;
@@ -63,6 +63,7 @@ export interface MessageCreate {
   country: string | null;
   message: string;
   state: string;
+  email: string;
 }
 
 export interface NoteType {
@@ -369,7 +370,7 @@ export interface UserState {
   created_at: string;
 }
 
-export interface User {
+export interface UserData {
   id: string;
   username: string;
   email: string;
@@ -389,7 +390,7 @@ export interface User {
 
 export interface UserCreate
   extends Omit<
-    User,
+    UserData,
     | "id"
     | "user_type"
     | "state"

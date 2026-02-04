@@ -8,7 +8,6 @@ import { ChevronDown } from "lucide-react";
 const NavDropdown = () => {
   const { setFilter } = useProductFilters();
   const { list: categories } = useAppSelector((state) => state.categories);
-
   const menuItems = buildCategories(categories);
 
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});

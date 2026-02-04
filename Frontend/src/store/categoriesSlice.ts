@@ -75,7 +75,6 @@ export const fetchAllCategories = createAsyncThunk(
         hasMore = response.next !== null;
         page++;
       }
-      console.log(allCategories, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
       return {
         results: allCategories,
         count: allCategories.length,

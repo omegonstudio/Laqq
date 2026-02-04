@@ -42,6 +42,10 @@ interface ContactsState {
   messagesCount: number;
   messagesLoading: boolean;
   messagesError: string | null;
+
+  deleting: boolean;
+  deleteError: string | null;
+  deleteSuccess: boolean;
 }
 const initialPagination: PaginationInfo = {
   count: 0,
@@ -70,6 +74,10 @@ const initialState: ContactsState = {
   messagesCount: 0,
   messagesLoading: false,
   messagesError: null,
+
+  deleting: false,
+  deleteError: null,
+  deleteSuccess: false,
 };
 
 /* ---------- THUNKS ---------- */
@@ -140,6 +148,14 @@ export const createMessage = createAsyncThunk<
   return contactsApi.createMessage(data);
 });
 
+export const deleteMessage = createAsyncThunk<string, string>(
+  "contacts/deleteMessage",
+  async (id) => {
+    await contactsApi.removeMessage(id);
+    return id; // Retornar el id después de eliminarlo
+  }
+);
+
 /* ---------- SLICE ---------- */
 
 export const contactsSlice = createSlice({
@@ -192,6 +208,61 @@ export const contactsSlice = createSlice({
         state.selectedLoading = false;
         state.selectedError = action.error.message || "Error cargando contacto";
       });
+    builder
+      .addCase(updateContact.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateContact.fulfilled, (state, action) => {
+        state.loading = false;
+
+        const updated = action.payload;
+
+        // 1️⃣ Actualizar en la lista
+        const index = state.list.findIndex(
+          (contact) => contact.id === updated.id
+        );
+
+        if (index !== -1) {
+          state.list[index] = updated;
+        }
+
+        // 2️⃣ Actualizar seleccionado si corresponde
+        if (state.selected?.id === updated.id) {
+          state.selected = updated;
+        }
+      })
+      .addCase(updateContact.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || "Error actualizando contacto";
+      });
+    builder
+      .addCase(deleteContact.pending, (state) => {
+        state.deleting = true;
+        state.deleteError = null;
+        state.deleteSuccess = false;
+      })
+      .addCase(deleteContact.fulfilled, (state, action) => {
+        state.deleting = false;
+        state.deleteSuccess = true;
+
+        const deletedId = action.payload;
+
+        // 1️⃣ Eliminar de la lista
+        state.list = state.list.filter((contact) => contact.id !== deletedId);
+
+        // 2️⃣ Actualizar contador total
+        state.count = Math.max(0, state.count - 1);
+
+        // 3️⃣ Limpiar seleccionado si era el eliminado
+        if (state.selected?.id === deletedId) {
+          state.selected = null;
+        }
+      })
+      .addCase(deleteContact.rejected, (state, action) => {
+        state.deleting = false;
+        state.deleteError = action.error.message || "Error eliminando contacto";
+      });
 
     /* STATES */
     builder
@@ -223,7 +294,23 @@ export const contactsSlice = createSlice({
         state.messagesLoading = false;
         state.messagesError = action.error.message || "Error cargando mensajes";
       });
-
+    builder
+      .addCase(deleteMessage.pending, (state) => {
+        state.deleting = true;
+        state.deleteError = null;
+        state.deleteSuccess = false;
+      })
+      .addCase(deleteMessage.fulfilled, (state, action) => {
+        state.deleting = false;
+        state.deleteSuccess = true;
+        // Eliminar el mensaje de la lista
+        state.messages = state.messages.filter((m) => m.id !== action.payload);
+        state.messagesCount = Math.max(0, state.messagesCount - 1);
+      })
+      .addCase(deleteMessage.rejected, (state, action) => {
+        state.deleting = false;
+        state.deleteError = action.error.message || "Error eliminando mensaje";
+      });
     builder.addCase(createMessage.fulfilled, (state, action) => {
       state.messages.unshift(action.payload);
     });

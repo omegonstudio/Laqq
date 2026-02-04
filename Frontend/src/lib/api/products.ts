@@ -1,6 +1,7 @@
 import {
   Brand,
   BrandFormState,
+  BulkUploadResponse,
   Category,
   PaginatedResponse,
   Product,
@@ -129,5 +130,5 @@ export const productsApi = {
 
   // Bulk upload (multipart)
   bulkUploadProducts: (formData: FormData) =>
-    api.post<Record<string, unknown>>(`${BASE}/bulk-upload/`, formData),
+    api.post<BulkUploadResponse>(`${BASE}/bulk-upload/`, formData),
 };
