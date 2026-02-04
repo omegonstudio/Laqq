@@ -75,28 +75,80 @@ def _get_or_create_brand(name, brand_cache, summary):
         summary['created_brands'] += 1
     return obj
 
-def _get_or_create_category_by_path(path, category_cache, summary):
-    if not path:
+VALID_LEVEL_0_CATEGORIES = {'insumos', 'procesos', 'equipos', 'mobiliario'}
+
+def _get_or_create_category_by_levels(level_0, level_1, level_2, category_cache, summary):
+    """
+    Resuelve la categoría a partir de 3 niveles.
+    - level_0: obligatorio, solo acepta: insumos, procesos, equipos, mobiliario (case-insensitive).
+               Debe pre-existir en la base de datos.
+    - level_1: opcional, se crea si no existe (case-insensitive).
+    - level_2: opcional, se crea si no existe (case-insensitive). Requiere level_1.
+    Todas las búsquedas son case-insensitive para evitar duplicados.
+    """
+    level_0 = (level_0 or '').strip()
+    level_1 = (level_1 or '').strip()
+    level_2 = (level_2 or '').strip()
+
+    if not level_0:
         return None
-    path = path.strip()
-    if path in category_cache:
-        return category_cache[path]
-    parts = [p.strip() for p in path.split('>') if p.strip()]
-    parent = None
-    cur_path = []
-    for part in parts:
-        cur_path.append(part)
-        key = '>'.join(cur_path)
-        if key in category_cache:
-            parent = category_cache[key]
-            continue
-        obj, created = Category.objects.get_or_create(name=part, parent=parent, defaults={'description': '', 'display_order': 0})
-        category_cache[key] = obj
-        parent = obj
-        if created:
+
+    if level_0.lower() not in VALID_LEVEL_0_CATEGORIES:
+        raise ValueError(
+            f"Categoría nivel 0 inválida: '{level_0}'. "
+            f"Valores permitidos: {', '.join(sorted(VALID_LEVEL_0_CATEGORIES))}"
+        )
+
+    # Cache key normalizado en lower para evitar duplicados
+    cache_key = level_0.lower()
+    if level_1:
+        cache_key += f'>{level_1.lower()}'
+    if level_2:
+        cache_key += f'>{level_2.lower()}'
+
+    if cache_key in category_cache:
+        return category_cache[cache_key]
+
+    # Level 0: debe pre-existir, búsqueda case-insensitive
+    key_0 = level_0.lower()
+    if key_0 in category_cache:
+        parent = category_cache[key_0]
+    else:
+        parent = Category.objects.filter(name__iexact=level_0, parent=None).first()
+        if not parent:
+            raise ValueError(
+                f"Categoría nivel 0 '{level_0}' no encontrada en la base de datos. "
+                f"Las categorías de nivel 0 deben pre-existir."
+            )
+        category_cache[key_0] = parent
+
+    if not level_1:
+        category_cache[cache_key] = parent
+        return parent
+
+    # Level 1: buscar case-insensitive, crear si no existe
+    key_1 = f'{level_0.lower()}>{level_1.lower()}'
+    if key_1 in category_cache:
+        parent = category_cache[key_1]
+    else:
+        obj = Category.objects.filter(name__iexact=level_1, parent=parent).first()
+        if not obj:
+            obj = Category.objects.create(name=level_1, parent=parent, description='', display_order=0)
             summary['created_categories'] += 1
-    category_cache[path] = parent
-    return parent
+        category_cache[key_1] = obj
+        parent = obj
+
+    if not level_2:
+        category_cache[cache_key] = parent
+        return parent
+
+    # Level 2: buscar case-insensitive, crear si no existe
+    obj = Category.objects.filter(name__iexact=level_2, parent=parent).first()
+    if not obj:
+        obj = Category.objects.create(name=level_2, parent=parent, description='', display_order=0)
+        summary['created_categories'] += 1
+    category_cache[cache_key] = obj
+    return obj
 
 def _read_excel_to_dicts(file_bytes):
     """
@@ -116,19 +168,19 @@ def _read_excel_to_dicts(file_bytes):
     # Normalizar headers a strings
     headers = [str(h).strip() if h is not None else '' for h in headers]
     for row in iterator:
-        # row puede contener tipos diversos; convertir a str o dejar None
+        # Ignorar filas completamente vacías
+        if all(val is None for val in row):
+            continue
         d = {}
         for idx, h in enumerate(headers):
             if not h:
                 continue
             val = row[idx] if idx < len(row) else None
-            # normalizar valores simples: dejar como string si no es None, para que el resto del código funcione igual
             if val is None:
                 d[h] = ''
             elif isinstance(val, str):
                 d[h] = val
             else:
-                # para fechas/números convertimos a string
                 d[h] = str(val)
         rows.append(d)
     return rows
@@ -139,7 +191,11 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
     fileobj: objeto tipo UploadedFile o file-like. Se detecta la extensión por fileobj.name si está disponible.
     Retorna un dict resumen con contadores y errores.
     CSV/Excel debe contener columnas (recomendadas):
-      product_code, name, brand, category_path (o category), description, image_url, is_active, related_product_codes, spec_code, volume, dimensions, cap, outlet, accuracy, precision, additional_specs
+      product_code, name, brand, category_level_0, category_level_1, category_level_2, description, image_url, is_active, related_product_codes, spec_code, volume, dimensions, cap, outlet, accuracy, precision, additional_specs
+    Categorías:
+      - category_level_0: obligatorio si hay categoría. Solo acepta: insumos, procesos, equipos, mobiliario
+      - category_level_1: opcional, se crea si no existe
+      - category_level_2: opcional, se crea si no existe (requiere level_1)
     """
     # Intentar detectar tipo (xlsx vs csv) por nombre de archivo si está presente
     filename = getattr(fileobj, 'name', '') or ''
@@ -214,11 +270,11 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                 if brand_name and not brand and not create_missing:
                     raise ValueError(f"Brand '{brand_name}' not found and create_missing=False")
 
-                # category
-                cat_path = (first_row.get('category_path') or first_row.get('category') or '').strip()
-                category = _get_or_create_category_by_path(cat_path, category_cache, summary) if (cat_path or create_missing) else None
-                if cat_path and not category and not create_missing:
-                    raise ValueError(f"Category '{cat_path}' not found and create_missing=False")
+                # category (3 niveles)
+                cat_level_0 = (first_row.get('category_level_0') or '').strip()
+                cat_level_1 = (first_row.get('category_level_1') or '').strip()
+                cat_level_2 = (first_row.get('category_level_2') or '').strip()
+                category = _get_or_create_category_by_levels(cat_level_0, cat_level_1, cat_level_2, category_cache, summary)
 
                 # image attachment
                 image_url = (first_row.get('image_url') or '').strip()
