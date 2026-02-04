@@ -165,6 +165,10 @@ jobs:
             done
 
             # 2) Build de imágenes nuevas
+            echo "-> Limpiando cache del builder (evita errores de snapshot corrupto)"
+            docker builder prune -f
+            echo "-> Limpiando cache del builder (evita errores de snapshot corrupto)"
+            docker builder prune -f
             echo "-> Build backend + frontend"
             docker compose -f "$COMPOSE" build backend frontend
 
