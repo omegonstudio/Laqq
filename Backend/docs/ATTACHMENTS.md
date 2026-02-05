@@ -486,7 +486,14 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
   "id": "abc123...",
   "ticket_number": "T-2026-00001",
   "description": "...",
-  "attachment": "def456...",  // Attachment principal (FK)
+  "attachment": {  // Attachment principal (objeto con URL)
+    "id": "def456...",
+    "file_name": "foto1.jpg",
+    "url": "http://localhost:8000/media/attachments/ServiceTicket/.../foto1.jpg",
+    "role": "image",
+    "size_bytes": 125648,
+    "created_at": "2026-01-07T10:30:00Z"
+  },
   "attachments": [  // TODOS los attachments
     {
       "id": "def456...",
@@ -525,7 +532,7 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
 En `config/settings.py`:
 
 ```python
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'mediafiles'
 ```
 
@@ -627,5 +634,5 @@ if not ticket.attachment:
 ---
 
 **Autor:** Claude Code
-**Última actualización:** 2026-01-07
+**Última actualización:** 2026-02-04
 **Estado:** ✅ Implementado y funcionando

@@ -134,7 +134,7 @@ class ServiceTicketAPITestCase(APITestCase):
     def test_create_ticket_auto_number(self):
         """Crear ticket con número automático (T-YYYY-XXXXX)"""
         data = {
-            'contact': self.contact.id,
+            'contact_id': self.contact.id,
             'product_name': 'New Product',
             'description': 'This is a new ticket description with enough characters to pass validation.'
         }
@@ -172,7 +172,7 @@ class ServiceTicketAPITestCase(APITestCase):
     def test_create_ticket_with_product_link(self):
         """Crear ticket vinculado a un producto del catálogo"""
         data = {
-            'contact': self.contact.id,
+            'contact_id': self.contact.id,
             'product': self.product.id,
             'product_name': 'Nombre manual',  # Se debería sobrescribir
             'description': 'La pipeta no dispensa el volumen correcto según especificación.'
@@ -336,7 +336,7 @@ class ClientPortalAPITestCase(APITestCase):
 
         # Crear ticket
         data = {
-            'contact': self.client_contact.id,
+            'contact_id': self.client_contact.id,
             'product_name': 'Test Product',
             'description': 'This is a test ticket description with enough characters for validation.'
         }

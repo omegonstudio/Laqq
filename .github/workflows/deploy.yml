@@ -10,61 +10,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ========================
+  # CI
+  # ========================
   ci:
-    name: CI (tests + lint + build)
+    name: CI (tests + frontend build)
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_DB: laqq_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres -d laqq_test"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ---------- Backend: pytest ----------
-      # - name: Setup Python
-      #   uses: actions/setup-python@v5
-      #   with:
-      #     python-version: "3.11"
-      #     cache: "pip"
-      #     cache-dependency-path: Backend/requirements.txt
+      # ---------- Backend: tests ----------
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
 
-      # - name: Install backend deps
-      #   working-directory: Backend
-      #   run: |
-      #     python -m pip install --upgrade pip
-      #     pip install -r requirements.txt
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y libpq-dev
 
-      # - name: Run backend tests (pytest)
-      #   working-directory: Backend
-      #   env:
-      #     # Ajustá estos nombres si tu settings usa otros env vars
-      #     DJANGO_SETTINGS_MODULE: config.settings
-      #     DJANGO_ENV: test
-      #     DEBUG: "False"
-      #     SECRET_KEY: "ci-secret-key"
-      #     DB_NAME: laqq_test
-      #     DB_USER: postgres
-      #     DB_PASSWORD: postgres
-      #     DB_HOST: 127.0.0.1
-      #     DB_PORT: "5432"
-      #     ALLOWED_HOSTS: "localhost,127.0.0.1"
-      #   run: |
-      #     pytest -q
+      - name: Install backend deps
+        working-directory: Backend
+        run: pip install -r requirements.txt
 
-      # ---------- Frontend: eslint + build ----------
+      - name: Run backend tests
+        working-directory: Backend
+        run: python manage.py test tickets contacts
+
+      # ---------- Frontend: build ----------
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -76,18 +50,17 @@ jobs:
         working-directory: Frontend
         run: npm ci
 
-      # - name: Frontend lint
-      #   working-directory: Frontend
-      #   run: npm run lint
-
       - name: Frontend build
         working-directory: Frontend
         run: npm run build
 
+  # ========================
+  # DEPLOY
+  # ========================
   deploy:
     name: Deploy (prod)
-    needs: [ci]
     runs-on: ubuntu-latest
+    needs: ci
 
     steps:
       - name: Checkout
@@ -103,28 +76,14 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
 
-      # (OPCIONAL) Si querés que GitHub Actions "toque" el .env:
-      # Guardás el contenido del .env en un secret (por ejemplo ENV_FILE_B64) en base64
-      # y lo escribís antes del deploy. Si NO querés tocarlo, borrá este step.
-      #
-      # - name: Update .env on droplet (optional)
-      #   if: ${{ secrets.ENV_FILE_B64 != '' }}
-      #   run: |
-      #     ssh deploy@${{ secrets.DROPLET_HOST }} "bash -s" <<'REMOTE'
-      #       set -euo pipefail
-      #       DIR="/opt/apps/Laqq"
-      #       mkdir -p "$DIR"
-      #       echo "${ENV_FILE_B64}" | base64 -d > "$DIR/.env"
-      #     REMOTE
-      #   env:
-      #     ENV_FILE_B64: ${{ secrets.ENV_FILE_B64 }}
-
       - name: Deploy en Droplet
         run: |
           ssh deploy@${{ secrets.DROPLET_HOST }} "bash -s" <<'REMOTE'
             set -euo pipefail
 
-            echo "=== DEPLOY LAQQ PROD ==="
+            echo "========================================"
+            echo "   DEPLOY LAQQ PROD"
+            echo "========================================"
 
             REPO="https://github.com/omegonstudio/Laqq.git"
             DIR="/opt/apps/Laqq"
@@ -139,49 +98,63 @@ jobs:
               git clone "$REPO" .
             fi
 
+            echo "-> Guardando commit previo"
+            git rev-parse --short HEAD > .last_deploy_commit || true
+
             echo "-> Fetch + reset"
             git fetch origin
             git reset --hard "origin/$BRANCH"
 
-            echo "-> Validando compose"
+            echo "-> Validando docker-compose"
             docker compose -f "$COMPOSE" config -q
 
-            # 1) Asegurar DB arriba (NO bajamos todo el stack)
-            echo "-> Levantando DB (si hace falta)"
+            echo "-> Levantando DB"
             docker compose -f "$COMPOSE" up -d db
 
             echo "-> Esperando DB healthy"
             for i in {1..30}; do
-              if docker inspect -f '{{json .State.Health.Status}}' laqq-db 2>/dev/null | grep -q healthy; then
+              if docker inspect -f '{{.State.Health.Status}}' laqq-db 2>/dev/null | grep -q healthy; then
                 echo "   DB healthy"
                 break
               fi
               sleep 2
               if [ "$i" -eq 30 ]; then
-                echo "   DB no llegó a healthy"
-                docker compose -f "$COMPOSE" logs --tail=200 db || true
+                echo "DB no llegó a healthy"
+                docker compose -f "$COMPOSE" logs db --tail=200 || true
                 exit 1
               fi
             done
 
-            # 2) Build de imágenes nuevas
             echo "-> Build backend + frontend"
             docker compose -f "$COMPOSE" build backend frontend
 
-            # 3) Migrations ANTES de subir servicios 
-            echo "-> Ejecutando migrations"
-            docker compose -f "$COMPOSE" run --rm backend python manage.py migrate --noinput
+            echo "-> Levantando stack completo"
+            docker compose -f "$COMPOSE" up -d
 
-            # 4) Collectstatic (recomendado con tu volumen backend_static)
+            echo "-> Esperando backend"
+            for i in {1..20}; do
+              if docker compose -f "$COMPOSE" ps backend | grep -q "Up"; then
+                echo "   Backend arriba"
+                break
+              fi
+              sleep 2
+              if [ "$i" -eq 20 ]; then
+                echo "Backend no levantó"
+                docker compose -f "$COMPOSE" logs backend --tail=200 || true
+                exit 1
+              fi
+            done
+
+            echo "-> Migrations"
+            docker compose -f "$COMPOSE" exec backend python manage.py migrate --noinput
+
             echo "-> Collectstatic"
-            docker compose -f "$COMPOSE" run --rm backend python manage.py collectstatic --noinput
+            docker compose -f "$COMPOSE" exec backend python manage.py collectstatic --noinput
 
-            # 5) Up backend+frontend con imágenes nuevas
-            echo "-> Up backend + frontend"
-            docker compose -f "$COMPOSE" up -d --remove-orphans backend frontend
-
-            echo "-> Estado"
+            echo "-> Estado final"
             docker compose -f "$COMPOSE" ps
 
-            echo "=== DEPLOY COMPLETADO ==="
+            echo "========================================"
+            echo "   DEPLOY LAQQ COMPLETADO OK"
+            echo "========================================"
           REMOTE

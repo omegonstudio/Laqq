@@ -17,26 +17,9 @@ class AttachmentInline(GenericTabularInline):
     verbose_name = "Archivo Adjunto"
     verbose_name_plural = "Archivos Adjuntos"
 
-    # Configurar campos de la relación genérica (usa los nuevos campos)
     ct_field = 'content_type'
     ct_fk_field = 'object_id'
-
-    # Excluir campos que se setean automáticamente
     exclude = ['created_by', 'content_type_str', 'attachable_type', 'attachable_id']
-
-    def save_formset(self, request, form, formset, change):
-        """Setear created_by y campos legacy automáticamente al guardar"""
-        instances = formset.save(commit=False)
-        for instance in instances:
-            if not instance.created_by:
-                instance.created_by = request.user if request.user.is_authenticated else None
-            # Poblar campos legacy para compatibilidad con serializers
-            if not instance.attachable_type:
-                instance.attachable_type = 'ServiceTicket'
-            if not instance.attachable_id and instance.object_id:
-                instance.attachable_id = instance.object_id
-            instance.save()
-        formset.save_m2m()
 
 @admin.register(TicketState)
 class TicketStateAdmin(admin.ModelAdmin):
@@ -102,3 +85,27 @@ class ServiceTicketAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    def save_formset(self, request, form, formset, change):
+        instances = formset.save(commit=False)
+        for instance in instances:
+            if isinstance(instance, Attachment):
+                if not instance.created_by:
+                    instance.created_by = request.user if request.user.is_authenticated else None
+                instance.attachable_type = 'ServiceTicket'
+                instance.attachable_id = formset.instance.pk
+            instance.save()
+        for obj in formset.deleted_objects:
+            obj.delete()
+        formset.save_m2m()
+
+        # Auto-set ticket.attachment si es el primer attachment
+        ticket = formset.instance
+        if not ticket.attachment_id:
+            first_att = Attachment.objects.filter(
+                attachable_type='ServiceTicket',
+                attachable_id=ticket.pk
+            ).order_by('created_at').first()
+            if first_att:
+                ticket.attachment = first_att
+                ticket.save()

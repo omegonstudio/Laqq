@@ -170,7 +170,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'mediafiles'
 
 # Default primary key field type
@@ -284,6 +284,7 @@ DEFAULT_FROM_NAME = config('DEFAULT_FROM_NAME', default='LAQQ System')
 
 # Business Email Settings
 BUSINESS_EMAIL = config('BUSINESS_EMAIL', default='matias.desimone00@gmail.com')
+RESEND_API_KEY = config('RESEND_API_KEY', default='')
 BUSINESS_NAME = config('BUSINESS_NAME', default='LAQQ') 
 BUSINESS_PHONE = config('BUSINESS_PHONE', default='')
 BUSINESS_ADDRESS = config('BUSINESS_ADDRESS', default='')

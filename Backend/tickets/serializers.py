@@ -13,6 +13,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class AssignedUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'first_name', 'last_name', 'email']
+        read_only_fields = fields
+
 class TicketStateSerializer(serializers.ModelSerializer):
     class Meta:
         model = TicketState
@@ -27,12 +33,25 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
     # Lista de todos los attachments asociados al ticket (read-only)
     attachments = serializers.SerializerMethodField(read_only=True)
 
+    # Attachment principal como objeto con URL (read-only, se setea internamente)
+    attachment = AttachmentSerializer(read_only=True)
+
     # Contact como objeto en las respuestas (GET), pero acepta ID en las escrituras (POST/PUT/PATCH)
     contact = ContactSerializer(read_only=True)
     contact_id = serializers.PrimaryKeyRelatedField(
         queryset=Contact.objects.all(),
         source='contact',
         write_only=True
+    )
+
+    # assigned_user como objeto en las respuestas, acepta ID en escrituras
+    assigned_user = AssignedUserSerializer(read_only=True)
+    assigned_user_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        source='assigned_user',
+        write_only=True,
+        required=False,
+        allow_null=True
     )
 
     class Meta:

@@ -29,40 +29,40 @@ def send_quote_notification(sender, instance, created, **kwargs):
             # Nueva cotización
             try:
                 results = send_quote_created_email(instance)
-                
+
                 if results['business']:
-                    print(f"✅ Email enviado al negocio para cotización #{instance.quote_number}")
+                    logger.info("Email enviado al negocio para cotizacion #%s", instance.quote_number)
                 else:
-                    print(f"⚠️ No se pudo enviar email al negocio para cotización #{instance.quote_number}")
-                    
+                    logger.warning("No se pudo enviar email al negocio para cotizacion #%s", instance.quote_number)
+
                 if results['customer']:
-                    print(f"✅ Email enviado al cliente para cotización #{instance.quote_number}")
+                    logger.info("Email enviado al cliente para cotizacion #%s", instance.quote_number)
                 else:
-                    print(f"⚠️ No se pudo enviar email al cliente para cotización #{instance.quote_number}")
-                    
+                    logger.warning("No se pudo enviar email al cliente para cotizacion #%s", instance.quote_number)
+
                 if results['errors']:
                     for error in results['errors']:
-                        print(f"❌ Error: {error}")
-                        
+                        logger.error("Error en email de cotizacion: %s", error)
+
             except Exception as e:
-                print(f"❌ Error al enviar emails para cotización #{instance.quote_number}: {e}")
+                logger.error("Error al enviar emails para cotizacion #%s: %s", instance.quote_number, e)
         else:
             # Cotización actualizada
             try:
                 results = send_quote_updated_email(instance)
-                
+
                 if results['business']:
-                    print(f"✅ Email de actualización enviado al negocio para cotización #{instance.quote_number}")
-                    
+                    logger.info("Email de actualizacion enviado al negocio para cotizacion #%s", instance.quote_number)
+
                 if results['customer']:
-                    print(f"✅ Email de actualización enviado al cliente para cotización #{instance.quote_number}")
-                    
+                    logger.info("Email de actualizacion enviado al cliente para cotizacion #%s", instance.quote_number)
+
                 if results['errors']:
                     for error in results['errors']:
-                        print(f"❌ Error: {error}")
-                        
+                        logger.error("Error en email de actualizacion: %s", error)
+
             except Exception as e:
-                print(f"❌ Error al enviar emails de actualización para cotización #{instance.quote_number}: {e}")
+                logger.error("Error al enviar emails de actualizacion para cotizacion #%s: %s", instance.quote_number, e)
                 
     finally:
         # Reconectar el signal

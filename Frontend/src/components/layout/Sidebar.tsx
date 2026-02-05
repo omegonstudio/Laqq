@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import Logo from "../atoms/Logo";
 
 const menuItems = [
   {
@@ -96,7 +97,7 @@ const Sidebar = () => {
       )}
     >
       <div className="p-4 border-b border-white/10 flex items-center justify-between">
-        {!collapsed && <h1 className="text-lg font-bold">LaQQ BackOffice</h1>}
+        {!collapsed && <Logo />}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="p-2 hover:bg-white/10 rounded-lg transition-colors"

@@ -1,4 +1,5 @@
 from rest_framework import viewsets
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import ContactState, Contact, Message
@@ -30,3 +31,8 @@ class MessageViewSet(viewsets.ModelViewSet):
     search_fields = ['company_name', 'first_name', 'last_name', 'email', 'message']
     ordering_fields = ['created_at', 'updated_at']
     ordering = ['-created_at']
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [AllowAny()]
+        return [IsAuthenticated()]

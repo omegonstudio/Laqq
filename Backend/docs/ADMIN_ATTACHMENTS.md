@@ -118,17 +118,28 @@ Misma estructura que Productos:
 | **Size bytes** | Tamaño (auto) | ❌ No |
 | **Created at** | Fecha (auto) | ❌ No |
 
+### Comportamiento automático al guardar
+
+Cuando guardás un ticket con attachments desde el admin:
+
+1. Cada archivo se asocia al ticket mediante `attachable_type='ServiceTicket'` y `attachable_id`
+2. Si el ticket **no tiene attachment principal**, se setea automáticamente al primer archivo (por fecha de creación)
+3. El campo `attachment` (singular) es el que aparece como objeto con URL en la API (`GET /tickets/{id}/`)
+4. El campo `attachments` (plural) contiene **todos** los archivos asociados
+
 ### Diferencias con Versión Anterior
 
 **Antes:**
 - Campo `attachment` (ForeignKey) en el formulario
 - Solo 1 archivo por ticket
 - Sobrescribía al subir nuevo
+- `save_formset` estaba en el Inline (código muerto, nunca se ejecutaba)
 
 **Ahora:**
 - Inline table "ARCHIVOS ADJUNTOS"
 - Múltiples archivos ilimitados
-- Campo `attachment` oculto (legacy, opcional)
+- Campo `attachment` se setea automáticamente al primero
+- `save_formset` en `ServiceTicketAdmin` (se ejecuta correctamente al guardar)
 
 ---
 
@@ -549,7 +560,7 @@ A: Sí, 100%. Son el mismo modelo, misma tabla, mismos registros.
 ---
 
 **Autor:** Claude Code
-**Última actualización:** 2026-01-07
+**Última actualización:** 2026-02-04
 **Estado:** ✅ Implementado y funcionando
 
 ---

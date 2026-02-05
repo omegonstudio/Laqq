@@ -28,21 +28,21 @@ def send_contact_notification(sender, instance, created, **kwargs):
                 results = send_contact_created_email(instance)
                 
                 if results['business']:
-                    print(f"✅ Email enviado al negocio para contacto: {instance.email}")
+                    logger.info("Email enviado al negocio para contacto: %s", instance.email)
                 else:
-                    print(f"⚠️ No se pudo enviar email al negocio para contacto: {instance.email}")
-                    
+                    logger.warning("No se pudo enviar email al negocio para contacto: %s", instance.email)
+
                 if results['customer']:
-                    print(f"✅ Email de bienvenida enviado al contacto: {instance.email}")
+                    logger.info("Email de bienvenida enviado al contacto: %s", instance.email)
                 else:
-                    print(f"⚠️ No se pudo enviar email de bienvenida al contacto: {instance.email}")
-                    
+                    logger.warning("No se pudo enviar email de bienvenida al contacto: %s", instance.email)
+
                 if results['errors']:
                     for error in results['errors']:
-                        print(f"❌ Error: {error}")
-                        
+                        logger.error("Error en email de contacto: %s", error)
+
             except Exception as e:
-                print(f"❌ Error al enviar emails para contacto {instance.email}: {e}")
+                logger.error("Error al enviar emails para contacto %s: %s", instance.email, e)
                 
         finally:
             # Reconectar el signal
@@ -69,17 +69,17 @@ def send_message_notification(sender, instance, created, **kwargs):
                 results = send_message_created_email(instance)
                 
                 if results['business']:
-                    sender_name = f"{instance.first_name or ''} {instance.last_name or ''}".strip() or "Anónimo"
-                    print(f"✅ Email de mensaje enviado al negocio de: {sender_name}")
+                    sender_name = f"{instance.first_name or ''} {instance.last_name or ''}".strip() or "Anonimo"
+                    logger.info("Email de mensaje enviado al negocio de: %s", sender_name)
                 else:
-                    print(f"⚠️ No se pudo enviar email de mensaje al negocio")
-                    
+                    logger.warning("No se pudo enviar email de mensaje al negocio")
+
                 if results['errors']:
                     for error in results['errors']:
-                        print(f"❌ Error: {error}")
-                        
+                        logger.error("Error en email de mensaje: %s", error)
+
             except Exception as e:
-                print(f"❌ Error al enviar emails para mensaje: {e}")
+                logger.error("Error al enviar emails para mensaje: %s", e)
                 
         finally:
             # Reconectar el signal
