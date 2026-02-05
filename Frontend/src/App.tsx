@@ -37,6 +37,7 @@ import { useEffect } from "react";
 import { fetchAllCategories } from "./store/categoriesSlice";
 import { fetchAllBrands } from "./store/brandSlice";
 import PageTicket from "./pages/backofficeClients";
+import TicketsPage from "./pages/TicketsPage";
 
 const queryClient = new QueryClient();
 const App = () => {
@@ -131,6 +132,7 @@ const App = () => {
                 >
                   <Route index element={<BackofficeHome />} />
                   <Route path="users" element={<UsersPage />} />
+                  <Route path="tickets" element={<TicketsPage />} />
                   <Route path="products" element={<ProductsBackoffice />} />
                   <Route path="quotes" element={<QuotesBackoffice />} />
                   <Route path="messages" element={<MessagesPage />} />

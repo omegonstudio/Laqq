@@ -336,7 +336,50 @@ export interface ServiceTicket {
   updated_at: string;
   resolution_notes: string | null;
 }
+export interface CreateTicketPayload {
+  contact: {
+    email: string;
+  };
 
+  product?: string;
+  product_name?: string;
+  description?: string;
+
+  attachment?: string | null;
+}
+export interface TicketFormData {
+  email: string;
+  product?: string;
+  product_name?: string;
+  description?: string;
+  file?: File;
+  attachment?: string | null;
+}
+export interface UpdateTicketPayload {
+  contact_id: string;
+
+  product?: string;
+  description?: string;
+  attachment?: string | null;
+
+  state?: string;
+  priority?: string;
+  assigned_user?: string | null;
+  resolution_notes?: string | null;
+}
+export interface TicketFormDataUpdate {
+  product: string;
+  description: string;
+  file?: File;
+  attachment: string | null;
+
+  state: string;
+  priority: string;
+  assigned_user: string | null;
+  resolution_notes: string | null;
+
+  contact_id: string;
+}
 export interface TicketPriority {
   id: string;
   name: string;
