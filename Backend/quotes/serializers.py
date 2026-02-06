@@ -307,7 +307,7 @@ class QuotePackageSerializer(serializers.Serializer):
         """Validar datos de la cotización"""
         required_fields = ['quote_type', 'state']
         for field in required_fields:
-            if field not in value:
+            if field not in value or value[field] is None:
                 raise serializers.ValidationError(
                     f"Field '{field}' is required in quote data"
                 )
