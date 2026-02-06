@@ -1,9 +1,8 @@
 import React from "react";
 
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Calendar, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -13,10 +12,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-
 import {
-  Contact,
-  ContactState,
   ServiceTicket,
   TicketState,
   UpdateTicketPayload,
@@ -30,10 +26,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { convertStateContact } from "@/utils/quotesConvert";
 import { useAppDispatch } from "@/store/hooks";
 import { updateTicket } from "@/store/ticketsSlice";
-import { Textarea } from "@/components/ui/textarea";
+import { formatDate, formatDateForInput } from "@/utils/formatDate";
+import { Input } from "@/components/ui/input";
 
 interface EditContactModalProps {
   ticket: ServiceTicket | null;
@@ -54,6 +50,12 @@ export function EditTicketsService({
 }: EditContactModalProps) {
   const [formData, setFormData] = useState<UpdateTicketPayload>({
     contact_id: "",
+    product_name: "",
+    assigned_at: "",
+    started_at: "",
+    resolved_at: "",
+    closed_at: "",
+    created_at: "",
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -68,8 +70,14 @@ export function EditTicketsService({
         attachment: ticket.attachment,
         state: ticket.state,
         priority: ticket.priority,
-        assigned_user: ticket.assigned_user,
+        assigned_user: ticket.assigned_user.id,
         resolution_notes: ticket.resolution_notes,
+        product_name: ticket.product_name,
+        created_at: formatDateForInput(ticket.created_at),
+        assigned_at: formatDateForInput(ticket.assigned_at),
+        started_at: formatDateForInput(ticket.started_at),
+        resolved_at: formatDateForInput(ticket.resolved_at),
+        closed_at: formatDateForInput(ticket.closed_at),
       });
     }
   }, [ticket, open]);
@@ -82,6 +90,15 @@ export function EditTicketsService({
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+  console.log(ticket, "ticket");
+  if (!ticket) return null;
+
+  const timelineItems = [
+    { key: "assigned_at", label: "Asignado", value: ticket.assigned_at },
+    { key: "started_at", label: "Iniciado", value: ticket.started_at },
+    { key: "resolved_at", label: "Resuelto", value: ticket.resolved_at },
+    { key: "closed_at", label: "Cerrado", value: ticket.closed_at },
+  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +118,6 @@ export function EditTicketsService({
       setIsLoading(false);
     }
   };
-  if (!ticket) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -209,6 +225,47 @@ export function EditTicketsService({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Calendar className="size-4" />
+                Historial{" "}
+              </h4>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Creación</span>
+                  <span className="font-mono text-xs">
+                    {formatDate(ticket.updated_at)}
+                  </span>
+                </div>
+                {timelineItems.map((item) => (
+                  <div
+                    key={item.key}
+                    className="grid gap-4 sm:grid-cols-2 items-center text-sm"
+                  >
+                    <span className="text-muted-foreground">{item.label}</span>
+                    <Input
+                      type="date"
+                      name={item.key}
+                      value={formData[item.key] ?? ""}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          [item.key]: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                ))}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Ultima actualizacion
+                  </span>
+                  <span className="font-mono text-xs">
+                    {formatDate(ticket.updated_at)}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2 sm:col-span-2">

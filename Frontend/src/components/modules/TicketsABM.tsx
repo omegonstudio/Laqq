@@ -6,8 +6,7 @@ import Select from "@/components/atoms/Select";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { RootState } from "@/store";
 import { convertStateContact, stateEnum } from "@/utils/quotesConvert";
-import { Contact, ServiceTicket } from "@/types/api";
-import { ViewContactModal } from "../molecules/Modals/viewContact";
+import { ServiceTicket } from "@/types/api";
 import { EditTicketsService } from "../molecules/Modals/editTicket";
 import { formatDate } from "@/utils/formatDate";
 import ModalDelete from "../molecules/Modals/ModalDelete";
@@ -19,7 +18,6 @@ import {
   fetchTicketStates,
 } from "@/store/ticketsSlice";
 import { fetchContacts } from "@/store/contacts";
-import { TicketFormDataUpdate } from "@/types/types";
 import { fetchUsers } from "@/store/usersSlice";
 import { ViewTicketModal } from "../molecules/Modals/ViewTicketService";
 
@@ -47,7 +45,6 @@ const TicketsABM = () => {
 
   const dispatch = useAppDispatch();
 
-  console.log(states, "AAAAA ESTADOS");
   useEffect(() => {
     dispatch(fetchTickets({ page: 1, page_size: 1000 }));
     dispatch(fetchTicketStates({}));
@@ -65,6 +62,7 @@ const TicketsABM = () => {
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
   useEffect(() => {
     const params: {
       page: number;

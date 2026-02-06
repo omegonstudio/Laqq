@@ -226,7 +226,7 @@ export interface ContactInfo {
   country: string;
   phone: string;
   message: string;
-  state: string;
+  state?: string;
   assigned_user: string | null;
   id: string;
 }
@@ -290,7 +290,7 @@ export interface QuoteFormState {
   quote: {
     quote_type: QuoteTypeEnum;
     message: string;
-    state: QuoteStateType;
+    state?: QuoteStateType;
     user?: string | null;
   };
   items: Array<{
@@ -327,8 +327,8 @@ export interface ServiceTicket {
   attachment: string | null;
   state: string;
   priority: string;
-  assigned_user: string | null;
-  created_at: string;
+  assigned_user: UserData | null;
+  created_at: string | null;
   assigned_at: string | null;
   started_at: string | null;
   resolved_at: string | null;
@@ -336,6 +336,7 @@ export interface ServiceTicket {
   updated_at: string;
   resolution_notes: string | null;
 }
+
 export interface CreateTicketPayload {
   contact: {
     email: string;
@@ -357,11 +358,15 @@ export interface TicketFormData {
 }
 export interface UpdateTicketPayload {
   contact_id: string;
-
+  product_name: string;
   product?: string;
   description?: string;
   attachment?: string | null;
-
+  assigned_at: string | null;
+  started_at: string | null;
+  resolved_at: string | null;
+  created_at: string | null;
+  closed_at: string | null;
   state?: string;
   priority?: string;
   assigned_user?: string | null;
@@ -372,7 +377,11 @@ export interface TicketFormDataUpdate {
   description: string;
   file?: File;
   attachment: string | null;
-
+  assigned_at: string | null;
+  started_at: string | null;
+  resolved_at: string | null;
+  created_at: string | null;
+  closed_at: string | null;
   state: string;
   priority: string;
   assigned_user: string | null;

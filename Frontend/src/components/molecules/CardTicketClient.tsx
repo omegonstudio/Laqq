@@ -1,72 +1,26 @@
-import {
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  Loader2,
-  User,
-  XCircle,
-} from "lucide-react";
+import { AlertCircle, Clock, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ServiceTicket, TicketPriority } from "@/types/api";
-
-export const stateConfig: Record<
-  string,
-  {
-    label: string;
-    variant: "default" | "secondary" | "destructive" | "outline";
-    icon: React.ElementType;
-  }
-> = {
-  open: { label: "Abierto", variant: "outline", icon: AlertCircle },
-  in_progress: { label: "En Progreso", variant: "default", icon: Loader2 },
-  resolved: { label: "Resuelto", variant: "secondary", icon: CheckCircle2 },
-  closed: { label: "Cerrado", variant: "secondary", icon: XCircle },
-};
-
-const getLevelColorClass = (level: number): string => {
-  if (level <= 1) {
-    return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-  } else if (level === 2) {
-    return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
-  } else if (level === 3) {
-    return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
-  } else {
-    return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
-  }
-};
-export const getPriorityConfig = (priority: TicketPriority | undefined) => {
-  if (!priority) {
-    return {
-      label: "Sin prioridad",
-      className:
-        "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
-      color: null,
-    };
-  }
-
-  return {
-    label: priority.name,
-    className: getLevelColorClass(priority.level),
-    color: priority.color,
-  };
-};
+import { ServiceTicket, TicketPriority, TicketState } from "@/types/api";
 
 export function TicketCard({
   ticket,
   onClick,
   priorities,
+  states,
 }: {
   ticket: ServiceTicket;
   onClick: () => void;
   priorities: TicketPriority[];
+  states: TicketState[];
 }) {
   // Buscar la prioridad del ticket en las prioridades de Redux
   const ticketPriority = priorities.find((p) => p.id === ticket.priority);
-  const priority = getPriorityConfig(ticketPriority);
-  const state = stateConfig[ticket.state] || stateConfig.open;
-  const StateIcon = state.icon;
-
+  const ticketState = states?.find((s) => s.id === ticket.state);
+  console.log(ticketState, "ticketState");
+  if (!ticketState) {
+    return null;
+  }
   return (
     <Card
       className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
@@ -80,27 +34,26 @@ export function TicketCard({
                 {ticket.ticket_number}
               </Badge>
               <Badge
-                className={priority.className}
                 style={
-                  priority.color
+                  ticketPriority.color
                     ? {
-                        backgroundColor: `${priority.color}15`,
-                        color: priority.color,
-                        borderColor: priority.color,
+                        backgroundColor: `${ticketPriority.color}15`,
+                        color: ticketPriority.color,
+                        borderColor: ticketPriority.color,
                       }
                     : undefined
                 }
               >
-                {priority.label}
+                {ticketPriority.name}
               </Badge>
             </div>
             <CardTitle className="text-base leading-tight truncate">
               {ticket.product_name}
             </CardTitle>
           </div>
-          <Badge variant={state.variant}>
-            <StateIcon className="w-3 h-3 mr-1" />
-            {state.label}
+          <Badge variant="outline" className="font-mono text-xs">
+            <AlertCircle className="w-3 h-3 mr-1" />
+            {ticketState.name}
           </Badge>
         </div>
       </CardHeader>

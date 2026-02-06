@@ -3,7 +3,7 @@ import {
   ServiceTicket,
   TicketPriority,
   TicketState,
-  PaginatedResponse,
+  UpdateTicketPayload,
 } from "@/types/api";
 import {
   ticketsApi,
@@ -102,7 +102,7 @@ export const createTicket = createAsyncThunk(
 
 export const updateTicket = createAsyncThunk(
   "tickets/updateTicket",
-  async ({ id, data }: { id: string; data: Partial<ServiceTicket> }) => {
+  async ({ id, data }: { id: string; data: Partial<UpdateTicketPayload> }) => {
     return ticketsApi.update(id, data);
   }
 );

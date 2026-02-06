@@ -9,7 +9,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { ServiceTicket } from "@/types/api";
 import { formatDate } from "@/utils/formatDate";
-import { convertStateContact } from "@/utils/quotesConvert";
 import { Copy } from "lucide-react";
 
 interface ViewTicketModalProps {
@@ -112,43 +111,49 @@ export function ViewTicketModal({
           )}
 
           {/* Contacto */}
-          <section className="space-y-2">
-            <h4 className="font-semibold">Contacto</h4>
+          {contact ? (
+            <section className="space-y-2">
+              <h4 className="font-semibold">Contacto</h4>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Empresa</Label>
-                <p>{contact?.company_name || "-"}</p>
-              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Empresa</Label>
+                  <p>{contact?.company_name || "-"}</p>
+                </div>
 
-              <div className="flex items-center gap-2">
-                <Label>Email</Label>
-                <p>{contact?.email || "-"}</p>
-                <CopyButton value={contact?.email} />
-              </div>
+                <div className="flex items-center gap-2">
+                  <Label>Email</Label>
+                  <p>{contact?.email || "-"}</p>
+                  <CopyButton value={contact?.email} />
+                </div>
 
-              <div>
-                <Label>Nombre</Label>
-                <p>
-                  {contact?.first_name || "-"} {contact?.last_name || ""}
-                </p>
-              </div>
+                <div>
+                  <Label>Nombre</Label>
+                  <p>
+                    {contact?.first_name || "-"} {contact?.last_name || ""}
+                  </p>
+                </div>
 
-              <div className="flex items-center gap-2">
-                <Label>Teléfono</Label>
-                <p>{contact?.phone || "-"}</p>
-                <CopyButton value={contact?.phone} />
+                <div className="flex items-center gap-2">
+                  <Label>Teléfono</Label>
+                  <p>{contact?.phone || "-"}</p>
+                  <CopyButton value={contact?.phone} />
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          ) : (
+            <p>Sin contacto</p>
+          )}
 
           {/* Asignación */}
           <section className="space-y-2">
-            <h4 className="font-semibold">Asignación</h4>
-
             <div>
               <Label>Usuario asignado</Label>
-              <p>{ticket.assigned_user || "Sin asignar"}</p>
+              <p>
+                {ticket.assigned_user
+                  ? `${ticket.assigned_user.first_name} ${ticket.assigned_user.last_name} (${ticket.assigned_user.email})`
+                  : "Sin asignar"}
+              </p>
             </div>
           </section>
         </div>

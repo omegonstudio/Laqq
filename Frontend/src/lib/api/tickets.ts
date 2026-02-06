@@ -5,6 +5,7 @@ import {
   ServiceTicket,
   TicketPriority,
   TicketState,
+  UpdateTicketPayload,
 } from "@/types/api";
 
 const BASE = "/tickets";
@@ -53,7 +54,7 @@ export const ticketsApi = {
   get: (id: string) => api.get<ServiceTicket>(`${BASE}/${id}/`),
   create: (payload: Partial<ServiceTicket>) =>
     api.post<ServiceTicket>(`${BASE}/`, payload),
-  update: (id: string, payload: Partial<ServiceTicket>) =>
+  update: (id: string, payload: Partial<UpdateTicketPayload>) =>
     api.put<ServiceTicket>(`${BASE}/${id}/`, payload),
   patch: (id: string, payload: Partial<ServiceTicket>) =>
     api.patch<ServiceTicket>(`${BASE}/${id}/`, payload),

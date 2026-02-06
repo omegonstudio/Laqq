@@ -41,6 +41,7 @@ const TicketForm = ({ onClose }: TicketFormProps) => {
   const { list: products, loading: loadingProducts } = useAppSelector(
     (state) => state.products
   );
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     dispatch(fetchAllProducts());
@@ -83,7 +84,14 @@ const TicketForm = ({ onClose }: TicketFormProps) => {
     setSelectedProduct(product);
     setFormData({ ...formData, product: product?.id || "" });
   };
-
+  const handleRemoveImage = () => {
+    setFormData({
+      ...formData,
+      // image_file: null,
+      // image_attachment_id: null,
+    });
+    setImagePreview(null);
+  };
   const activeProducts = products.filter((p) => p.is_active);
 
   return (
@@ -107,27 +115,6 @@ const TicketForm = ({ onClose }: TicketFormProps) => {
           placeholder="Buscar producto por nombre o código"
         />
       </div>
-
-      <div>
-        <label className="block text-sm font-medium mb-2">Prioridad</label>
-        <Select
-          value={formData.priority}
-          onValueChange={(value) =>
-            setFormData({ ...formData, priority: value })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Selecciona la prioridad" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="low">Baja</SelectItem>
-            <SelectItem value="medium">Media</SelectItem>
-            <SelectItem value="high">Alta</SelectItem>
-            <SelectItem value="critical">Crítica</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       <div>
         <label className="block text-sm font-medium mb-2">
           Descripción del Problema <span className="text-destructive">*</span>
@@ -144,7 +131,23 @@ const TicketForm = ({ onClose }: TicketFormProps) => {
       </div>
 
       <UploadFile onFileChange={handleFile} />
-
+      {imagePreview && (
+        <div className="relative inline-block mt-2">
+          <img
+            src={imagePreview}
+            alt="Preview"
+            className="w-32 h-32 object-cover rounded-lg border-2 border-gray-100"
+          />
+          <button
+            type="button"
+            onClick={handleRemoveImage}
+            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
+            title="Eliminar imagen"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <div className="flex gap-3">
         {onClose && (
           <Button

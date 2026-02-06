@@ -118,6 +118,11 @@ const SupportCenter = () => {
             placeholder="ejemplo@mail.com"
             value={contact}
             onChange={(e) => setContac(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && contact.trim()) {
+                handleConsultarTickets();
+              }
+            }}
           />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIsOpen(false)}>
@@ -130,6 +135,17 @@ const SupportCenter = () => {
             >
               Confirmar
             </Button>
+            {/* <Input
+              type="email"
+              placeholder="ejemplo@mail.com"
+              value={contact}
+              onChange={(e) => setContac(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && contact.trim()) {
+                  handleConsultarTickets();
+                }
+              }}
+            /> */}
           </div>
         </div>
       </Modal>
