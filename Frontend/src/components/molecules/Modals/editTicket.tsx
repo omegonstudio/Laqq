@@ -30,6 +30,7 @@ import { useAppDispatch } from "@/store/hooks";
 import { updateTicket } from "@/store/ticketsSlice";
 import { formatDate, formatDateForInput } from "@/utils/formatDate";
 import { Input } from "@/components/ui/input";
+import { CopyButton } from "@/components/atoms/CopyButton";
 
 interface EditContactModalProps {
   ticket: ServiceTicket | null;
@@ -99,6 +100,25 @@ export function EditTicketsService({
     { key: "resolved_at", label: "Resuelto", value: ticket.resolved_at },
     { key: "closed_at", label: "Cerrado", value: ticket.closed_at },
   ];
+  const RenderText = ({
+    title,
+    value,
+  }: {
+    title: string;
+    value: string | null;
+  }) => {
+    return (
+      <div className="space-y-2 sm:col-span-2">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <span className="text-muted-foreground">{title}:</span>
+          <div className="space-y-2 sm:col-span-2 flex justify-between items-center">
+            <span className="font-mono ">{value ?? "-"}</span>
+            {value && <CopyButton value={value} />}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +141,7 @@ export function EditTicketsService({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Ticket</DialogTitle>
           <DialogDescription>
@@ -131,24 +151,13 @@ export function EditTicketsService({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="description">
-                Descripción <span className="text-destructive">*</span>
-              </Label>
-              <textarea
-                id="description"
-                name="description"
-                rows={4}
-                value={formData.description || ""}
-                onChange={handleChange}
-                className="flex w-full rounded-md border px-3 py-2 text-sm"
-                aria-invalid={!!errors.description}
-              />
-              {errors.description && (
-                <p className="text-xs text-destructive">{errors.description}</p>
-              )}
-            </div>
-
+            <RenderText
+              title="Cliente"
+              value={`${ticket.contact.first_name} ${ticket.contact.last_name}`}
+            />
+            <RenderText title="Email" value={ticket.contact.email} />
+            <RenderText title="Teléfono" value={ticket.contact.phone} />
+            <RenderText title="Descripción" value={ticket.description} />
             <div className="space-y-2">
               <Label htmlFor="state">
                 Estado <span className="text-destructive">*</span>

@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/atoms/CopyButton";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { ServiceTicket } from "@/types/api";
 import { formatDate } from "@/utils/formatDate";
-import { Copy } from "lucide-react";
 
 interface ViewTicketModalProps {
   ticket: ServiceTicket | null;
@@ -25,30 +24,7 @@ export function ViewTicketModal({
   if (!ticket) return null;
 
   const { contact } = ticket;
-  const copyToClipboard = async (value?: string | null) => {
-    if (!value) return;
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch (e) {
-      console.error("No se pudo copiar al portapapeles", e);
-    }
-  };
-  const CopyButton = ({ value }: { value?: string | null }) => {
-    if (!value) return null;
 
-    return (
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6"
-        onClick={() => copyToClipboard(value)}
-        title="Copiar"
-      >
-        <Copy size={14} />
-      </Button>
-    );
-  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
