@@ -64,14 +64,14 @@ class QuoteViewSet(viewsets.ModelViewSet):
         - contact.email: Email del contacto (debe ser válido)
         - contact.first_name: Nombre del contacto
         - contact.last_name: Apellido del contacto
-        - quote.quote_type: ID del tipo de cotización (ej: "standard", "express")
-        - quote.state: ID del estado de cotización (ej: "pending", "approved")
 
         CAMPOS OPCIONALES:
         - contact.company_name: Nombre de la empresa
         - contact.phone: Teléfono
         - contact.country: País
         - contact.message: Mensaje del contacto
+        - quote.quote_type: ID del tipo de cotización (default: "standard")
+        - quote.state: ID del estado de cotización (default: "pending")
         - quote.user: UUID del usuario asignado a la cotización
         - quote.message: Mensaje/notas de la cotización
         - items: Array de items (puede omitirse para cotización sin items)
@@ -79,7 +79,17 @@ class QuoteViewSet(viewsets.ModelViewSet):
         - items[].quantity: Cantidad (obligatorio si hay items)
         - items[].unit_price: Precio unitario (opcional, usa precio del producto si no se especifica)
 
-        EJEMPLO MÍNIMO (cotización sin items):
+        EJEMPLO MÍNIMO (cotización sin items, usando defaults):
+        {
+            "contact": {
+                "email": "cliente@example.com",
+                "first_name": "Juan",
+                "last_name": "Pérez"
+            },
+            "quote": {}
+        }
+
+        EJEMPLO CON TIPO Y ESTADO EXPLÍCITO:
         {
             "contact": {
                 "email": "cliente@example.com",
@@ -87,8 +97,8 @@ class QuoteViewSet(viewsets.ModelViewSet):
                 "last_name": "Pérez"
             },
             "quote": {
-                "quote_type": "standard",
-                "state": "pending"
+                "quote_type": "express",
+                "state": "approved"
             }
         }
 

@@ -224,32 +224,29 @@ class QuotePackageSerializer(serializers.Serializer):
     - contact.email: Email del contacto (debe ser válido)
     - contact.first_name: Nombre del contacto
     - contact.last_name: Apellido del contacto
-    - quote.quote_type: ID del tipo de cotización
-    - quote.state: ID del estado de la cotización
-    - items[].product: UUID del producto
-    - items[].quantity: Cantidad (debe ser > 0)
+    - items[].product: UUID del producto (si hay items)
+    - items[].quantity: Cantidad (debe ser > 0, si hay items)
 
     CAMPOS OPCIONALES:
     - contact.company_name: Nombre de la empresa
     - contact.phone: Teléfono del contacto
     - contact.country: País del contacto
     - contact.message: Mensaje del contacto
+    - quote.quote_type: ID del tipo de cotización (default: "standard")
+    - quote.state: ID del estado de la cotización (default: "pending")
     - quote.user: UUID del usuario asignado
     - quote.message: Mensaje de la cotización
     - items[].unit_price: Precio unitario (si no se proporciona, usa el precio del producto)
     - items: Array de items (puede estar vacío o no incluirse)
 
-    EJEMPLO DE PAYLOAD MÍNIMO:
+    EJEMPLO DE PAYLOAD MÍNIMO (con defaults):
     {
         "contact": {
             "email": "cliente@example.com",
             "first_name": "Juan",
             "last_name": "Pérez"
         },
-        "quote": {
-            "quote_type": "standard",
-            "state": "pending"
-        }
+        "quote": {}
     }
 
     EJEMPLO DE PAYLOAD COMPLETO:
@@ -304,25 +301,25 @@ class QuotePackageSerializer(serializers.Serializer):
         return value
 
     def validate_quote(self, value):
-        """Validar datos de la cotización"""
-        required_fields = ['quote_type', 'state']
-        for field in required_fields:
-            if field not in value or value[field] is None:
+        """Validar datos de la cotización
+
+        quote_type y state son opcionales - si se omiten, usan defaults del modelo:
+        - quote_type: 'standard'
+        - state: 'pending'
+        """
+        # Validar quote_type si está presente
+        if 'quote_type' in value and value['quote_type'] is not None:
+            if not QuoteType.objects.filter(id=value['quote_type']).exists():
                 raise serializers.ValidationError(
-                    f"Field '{field}' is required in quote data"
+                    f"QuoteType with id '{value['quote_type']}' does not exist"
                 )
 
-        # Validar que quote_type existe
-        if not QuoteType.objects.filter(id=value['quote_type']).exists():
-            raise serializers.ValidationError(
-                f"QuoteType with id '{value['quote_type']}' does not exist"
-            )
-
-        # Validar que state existe
-        if not QuoteState.objects.filter(id=value['state']).exists():
-            raise serializers.ValidationError(
-                f"QuoteState with id '{value['state']}' does not exist"
-            )
+        # Validar state si está presente
+        if 'state' in value and value['state'] is not None:
+            if not QuoteState.objects.filter(id=value['state']).exists():
+                raise serializers.ValidationError(
+                    f"QuoteState with id '{value['state']}' does not exist"
+                )
 
         return value
 
@@ -401,16 +398,20 @@ class QuotePackageSerializer(serializers.Serializer):
             logger.info(f"New contact created with email {email}: {contact.id}")
 
         # 2. Crear la cotización
-        quote_type = QuoteType.objects.get(id=quote_data['quote_type'])
-        quote_state = QuoteState.objects.get(id=quote_data['state'])
+        quote_create_data = {
+            'contact': contact,
+            'user_id': quote_data.get('user'),
+            'message': quote_data.get('message', '')
+        }
 
-        quote = Quote.objects.create(
-            contact=contact,
-            quote_type=quote_type,
-            state=quote_state,
-            user_id=quote_data.get('user'),
-            message=quote_data.get('message', '')
-        )
+        # Solo agregar quote_type y state si están presentes (sino usan defaults)
+        if 'quote_type' in quote_data and quote_data['quote_type']:
+            quote_create_data['quote_type'] = QuoteType.objects.get(id=quote_data['quote_type'])
+
+        if 'state' in quote_data and quote_data['state']:
+            quote_create_data['state'] = QuoteState.objects.get(id=quote_data['state'])
+
+        quote = Quote.objects.create(**quote_create_data)
         logger.info(f"Quote created: {quote.quote_number} (ID: {quote.id})")
 
         # 3. Crear los items de la cotización
