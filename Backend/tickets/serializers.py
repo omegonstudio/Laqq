@@ -115,14 +115,14 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
 
             validated_data['ticket_number'] = f'T-{year}-{new_number:05d}'
 
-        # Si no se especifica estado, usar 'new' (o el primer estado no-final si 'new' no existe)
+        # Si no se especifica estado, usar 'new', si no existe usar 'open'
         if 'state' not in validated_data:
-            try:
-                validated_data['state'] = TicketState.objects.get(id='new')
-            except TicketState.DoesNotExist:
-                default_state = TicketState.objects.filter(is_final=False).first()
-                if default_state:
-                    validated_data['state'] = default_state
+            for state_id in ('new', 'open'):
+                try:
+                    validated_data['state'] = TicketState.objects.get(id=state_id)
+                    break
+                except TicketState.DoesNotExist:
+                    continue
 
         # Si no se especifica prioridad, usar 'medium'
         if 'priority' not in validated_data:
@@ -363,13 +363,13 @@ class TicketPackageSerializer(serializers.Serializer):
             if default_priority:
                 ticket_create_data['priority'] = default_priority
 
-        # Estado inicial 'new' (o el primer estado no-final si 'new' no existe)
-        try:
-            ticket_create_data['state'] = TicketState.objects.get(id='new')
-        except TicketState.DoesNotExist:
-            default_state = TicketState.objects.filter(is_final=False).first()
-            if default_state:
-                ticket_create_data['state'] = default_state
+        # Estado inicial 'new', si no existe usar 'open'
+        for state_id in ('new', 'open'):
+            try:
+                ticket_create_data['state'] = TicketState.objects.get(id=state_id)
+                break
+            except TicketState.DoesNotExist:
+                continue
 
         # 3. Crear el ticket (auto-genera ticket_number en save())
         ticket = ServiceTicket.objects.create(**ticket_create_data)
