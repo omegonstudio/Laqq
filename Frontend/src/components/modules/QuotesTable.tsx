@@ -11,11 +11,11 @@ import {
   fetchQuoteTypes,
 } from "@/store/quotesSlice";
 import { QuoteRender, QuoteStateType, QuoteTypeEnum } from "@/types/api";
-import { toast } from "sonner";
 import { generateQuotePdf } from "@/utils/useQuotePDF";
 import QuotePreviewDialog from "../atoms/QuotePreview";
 import { convertQuotesState, convertQuotesTypes } from "@/utils/quotesConvert";
 import ModalDelete from "../molecules/Modals/ModalDelete";
+import { toast } from "@/hooks/use-toast";
 
 const QuotesTable = () => {
   const dispatch = useAppDispatch();
@@ -106,7 +106,7 @@ const QuotesTable = () => {
       label: "PDF",
       onClick: (quote: QuoteRender) => {
         generateQuotePdf(quote);
-        toast.success("PDF generado");
+        toast({ title: "PDF generado" });
       },
     },
     {
@@ -122,7 +122,7 @@ const QuotesTable = () => {
 
     try {
       await dispatch(deleteQuote(previewQuote.id)).unwrap();
-      toast.success("Cotización eliminada exitosamente");
+      toast({ title: "Cotización eliminada exitosamente" });
       setIsModalDeleteOpen(false);
 
       // Recargar con los filtros actuales
@@ -140,9 +140,15 @@ const QuotesTable = () => {
     } catch (error: unknown) {
       console.error("Error eliminando cotización:", error);
       if (error instanceof Error) {
-        toast.error(error.message || "Error al eliminar la cotización");
+        toast({
+          title: error.message || "Error al eliminar la cotización",
+          variant: "destructive",
+        });
       } else {
-        toast.error("Error al eliminar la cotización");
+        toast({
+          title: "Error al eliminar la cotización",
+          variant: "destructive",
+        });
       }
     }
   };

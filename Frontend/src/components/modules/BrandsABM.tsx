@@ -5,10 +5,10 @@ import Button from "@/components/atoms/Button";
 import InputField from "@/components/atoms/InputField";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { Brand } from "@/types/types";
-import { deleteBrand, fetchBrand, fetchBrands } from "@/store/brandSlice";
-import { toast } from "sonner";
+import { deleteBrand, fetchBrands } from "@/store/brandSlice";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import ModalBrands from "../molecules/Modals/editBrand";
+import { toast } from "@/hooks/use-toast";
 
 const BrandsABM = () => {
   const dispatch = useAppDispatch();
@@ -73,14 +73,20 @@ const BrandsABM = () => {
     try {
       await dispatch(deleteBrand(currentBrand.id)).unwrap();
 
-      toast.success("Marca eliminada exitosamente");
+      toast({ title: "Marca eliminada exitosamente", variant: "default" });
       setIsModalDeleteOpen(false);
     } catch (error: unknown) {
       console.error("Error eliminando:", error);
       if (error instanceof Error) {
-        toast.error(error.message || "Error al eliminar la marca");
+        toast({
+          title: error.message || "Error al eliminar la marca",
+          variant: "destructive",
+        });
       } else {
-        toast.error("Error al eliminar la marca");
+        toast({
+          title: "Error al eliminar la marca",
+          variant: "destructive",
+        });
       }
     }
   };

@@ -10,8 +10,9 @@ import { Message } from "@/types/api";
 import { MessageDetailModal } from "../molecules/Modals/EditMessage";
 import { convertStateContact, stateEnum } from "@/utils/quotesConvert";
 import ModalDelete from "../molecules/Modals/ModalDelete";
-import { set } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { formatDate } from "@/utils/formatDate";
+
 const MessagesTable = () => {
   const dispatch = useAppDispatch();
   useEffect(() => {
@@ -82,7 +83,12 @@ const MessagesTable = () => {
     { key: "last_name", label: "Apellido", sortable: true },
     { key: "first_name", label: "Nombre", sortable: true },
     { key: "country", label: "País", sortable: true },
-    { key: "created_at", label: "Fecha", sortable: true },
+    {
+      key: "created_at",
+      label: "Fecha",
+      sortable: true,
+      render: (value) => formatDate(value),
+    },
     { key: "message", label: "Mensaje", sortable: false },
     {
       key: "state",

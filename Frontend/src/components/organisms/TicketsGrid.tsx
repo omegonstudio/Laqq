@@ -225,15 +225,11 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
           ))}
         </div>
       )}
-      <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Crear Ticket de Soporte</DialogTitle>
-          </DialogHeader>
-          <TicketForm onClose={() => setCreateModalOpen(false)} />
-        </DialogContent>
-      </Dialog>
-
+      <TicketForm
+        onClose={() => setCreateModalOpen(false)}
+        isTicketModalOpen={createModalOpen}
+        setIsTicketModalOpen={setCreateModalOpen}
+      />
       <TicketDetailModal
         ticket={selectedTicket}
         states={states}

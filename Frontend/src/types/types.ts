@@ -187,17 +187,7 @@ export interface ServiceTicket {
   created_at: string;
   updated_at: string;
 }
-export interface CreateTicketPayload {
-  contact: {
-    email: string;
-  };
 
-  product?: string;
-  product_name?: string;
-  description?: string;
-
-  attachment?: string | null;
-}
 export interface TicketFormData {
   email: string;
   product?: string;

@@ -5,14 +5,10 @@ import Button from "@/components/atoms/Button";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { Category } from "@/types/types";
 import ModalCategory from "../molecules/Modals/EditCategory";
-import {
-  deleteCategory,
-  fetchAllCategories,
-  fetchCategories,
-} from "@/store/categoriesSlice";
-import { toast } from "sonner";
+import { deleteCategory, fetchAllCategories } from "@/store/categoriesSlice";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import InputField from "../atoms/InputField";
+import { toast } from "@/hooks/use-toast";
 const CategoriesABM = () => {
   const { list: categories, loading: loadingCategories } = useAppSelector(
     (state) => state.categories
@@ -45,14 +41,20 @@ const CategoriesABM = () => {
 
     try {
       await dispatch(deleteCategory(selectedCategory.id)).unwrap();
-      toast.success("Categoría eliminado exitosamente");
+      toast({ title: "Categoría eliminado exitosamente" });
       setIsModalDeleteOpen(false);
     } catch (error: unknown) {
       console.error("Error eliminando categoría:", error);
       if (error instanceof Error) {
-        toast.error(error.message || "Error al eliminar el categoría");
+        toast({
+          title: error.message || "Error al eliminar el categoría",
+          variant: "destructive",
+        });
       } else {
-        toast.error("Error al eliminar el categoría");
+        toast({
+          title: "Error al eliminar el categoría",
+          variant: "destructive",
+        });
       }
     }
   };

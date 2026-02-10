@@ -4,14 +4,13 @@ import Button from "../atoms/Button";
 import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { Plus, X } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { QuoteFormState } from "@/types/api";
 import { useCart } from "@/contexts/CartContext";
-import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { createQuoteFromForm } from "@/store/quotesSlice";
 import { ProductSearchCombobox } from "./ProductSearch";
 import { fetchAllProducts } from "@/store/productSlice";
+import { toast } from "@/hooks/use-toast";
 
 const initialState: QuoteFormState = {
   contact: {
@@ -111,19 +110,25 @@ function QuoteForm() {
 
     // Validaciones
     if (formState.items.length === 0) {
-      toast.error("Debes agregar al menos un producto");
+      toast({
+        title: "Debes agregar al menos un producto",
+        variant: "destructive",
+      });
       return;
     }
 
     if (formState.items.some((item) => !item.product)) {
-      toast.error("Todos los items deben tener un producto seleccionado");
+      toast({
+        title: "Todos los items deben tener un producto seleccionado",
+        variant: "destructive",
+      });
       return;
     }
 
     try {
       const result = await dispatch(createQuoteFromForm(formState)).unwrap();
 
-      toast.success("Cotización creada exitosamente");
+      toast({ title: "Cotización creada exitosamente" });
 
       // Limpiar formulario y carrito
       setFormState(initialState);
@@ -135,7 +140,10 @@ function QuoteForm() {
       console.log("Cotización creada:", result);
     } catch (err) {
       console.error("Error al crear cotización:", err);
-      toast.error(err.message || "Error al crear la cotización");
+      toast({
+        title: err.message || "Error al crear la cotización",
+        variant: "destructive",
+      });
     }
   };
 

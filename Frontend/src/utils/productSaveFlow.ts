@@ -1,15 +1,9 @@
 import {
-  formStateToCreateRequest,
   formStateToUpdateRequest,
   hasProductChanges,
   sanitizeSpecs,
 } from "@/utils/productConverters";
-import {
-  createProduct,
-  fetchProducts,
-  refreshProductEverywhere,
-  updateProduct,
-} from "@/store/productSlice";
+import { createProduct, updateProduct } from "@/store/productSlice";
 import { createSpec, updateSpec, deleteSpec } from "@/store/specsSlice";
 import { AppDispatch } from "@/store";
 import {
@@ -281,7 +275,6 @@ export const syncProductSpecifications = async ({
   for (const specId of toDelete) {
     await dispatch(deleteSpec(specId)).unwrap();
   }
-  dispatch(fetchProducts({ page: 1, page_size: 10 })); // Refrescar el producto después de las operaciones
   return {
     created: toCreate.length,
     updated: toUpdate.length,

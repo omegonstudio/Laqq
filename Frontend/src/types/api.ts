@@ -338,15 +338,14 @@ export interface ServiceTicket {
 }
 
 export interface CreateTicketPayload {
-  contact: {
-    email: string;
-  };
-
+  contact: Contact;
+  contact_id?: string;
   product?: string;
-  product_name?: string;
+  product_name: string;
   description?: string;
-
+  resolution_notes?: string | null;
   attachment?: string | null;
+  attachments?: string[] | null;
 }
 export interface TicketFormData {
   email: string;

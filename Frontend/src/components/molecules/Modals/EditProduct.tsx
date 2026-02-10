@@ -19,7 +19,6 @@ import {
   haveSpecsChanged,
   haveFixedSpecsChanged,
 } from "@/utils/productConverters";
-import { toast } from "sonner";
 import {
   cleanFixedSpecsForSync,
   cleanSpecsForSync,
@@ -33,6 +32,7 @@ import { deleteFixedSpec } from "@/store/fixedSpecsSlice";
 import { attachmentsApi } from "@/lib/api/attachments";
 import { Toggle } from "@/components/ui/toggle";
 import { refreshProductEverywhere } from "@/store/productSlice";
+import { toast } from "@/hooks/use-toast";
 
 interface ModalProductProps {
   isOpen: boolean;
@@ -160,7 +160,10 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       // VALIDACIÓN: Campos obligatorios
       // ============================================
       if (!validation.isValid) {
-        toast.error(validation.errorMessage || "Formulario inválido");
+        toast({
+          title: validation.errorMessage || "Formulario inválido",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -175,8 +178,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       );
 
       if (isNew) {
-        console.log(currentImage, "currentImage");
-
         // ========== CREAR PRODUCTO EXISTENTE ==========
         let attachmentId: string | null = localState.image_attachment_id;
         if (currentImage) {
@@ -188,7 +189,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
 
           attachmentId = attachment.id;
         }
-        console.log(localState, "aaaa");
 
         const product = await saveProductEntity({
           dispatch,
@@ -197,7 +197,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           attachmentId: attachmentId,
           isNew,
         });
-        console.log(product, "aaaa 2");
 
         await syncProductSpecifications({
           dispatch,
@@ -206,6 +205,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           initialSpecs: initialData.specs || [],
         });
         //dispatch(refreshProductEverywhere(product.id));
+        await dispatch(refreshProductEverywhere(product.id)).unwrap();
 
         if (localState.fixed_specs.length === 0) {
           dispatch(deleteFixedSpec(product.fixed_specs[0].id!));
@@ -218,10 +218,13 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           });
         }
 
-        toast.success("Producto creado exitosamente");
+        toast({ title: "Producto creado exitosamente" });
       } else {
         if (!initialData) {
-          toast.error("No se encontraron datos del producto a editar");
+          toast({
+            title: "No se encontraron datos del producto a editar",
+            variant: "destructive",
+          });
           return;
         }
         // ========== EDITAR PRODUCTO ==========
@@ -245,8 +248,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           });
           attachmentId = attachment.id;
         }
-        console.log(localState, "AAAAAAAAA");
-
         const product = await saveProductEntity({
           dispatch,
           formState: { ...localState, specs: cleanedSpecs },
@@ -254,7 +255,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           attachmentId: attachmentId,
           isNew,
         });
-        console.log(product, "AAAAAAAAA");
         await syncProductSpecifications({
           dispatch,
           productId: product.id,
@@ -267,9 +267,8 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           nextSpecs: cleanedFixedSpecs,
           initialSpecs: initialData.fixed_specs,
         });
-        console.log("DISPATCH REFRESH", initialData.id);
         dispatch(refreshProductEverywhere(initialData.id));
-        toast.success("Producto actualizado exitosamente");
+        toast({ title: "Producto actualizado exitosamente" });
       }
 
       onClose();
@@ -277,7 +276,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       // Mensaje de error más específico
       const errorMessage =
         error instanceof Error ? error.message : "Error al guardar el producto";
-      toast.error(errorMessage);
+      toast({ title: errorMessage, variant: "destructive" });
     }
   };
 

@@ -2,7 +2,6 @@
 
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +28,7 @@ import {
 } from "@/store/categoriesSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { buildCategories } from "@/utils/data/categories";
+import { toast } from "@/hooks/use-toast";
 
 interface CategoryFormState {
   id?: string;
@@ -171,7 +171,10 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
   const handleSave = async () => {
     try {
       if (!validation.isValid) {
-        toast.error(validation.errorMessage || "Formulario inválido");
+        toast({
+          title: validation.errorMessage || "Formulario inválido",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -189,10 +192,10 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
         const result = await dispatch(
           updateCategory({ id: localState.id, data: updatePayload })
         ).unwrap();
-        toast.success("Categoría actualizada exitosamente");
+        toast({ title: "Categoría actualizada exitosamente" });
       } else {
         const result = await dispatch(createCategory(localState)).unwrap();
-        toast.success("Categoría creada exitosamente");
+        toast({ title: "Categoría creada exitosamente" });
       }
 
       onClose();
@@ -202,7 +205,7 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
         error instanceof Error
           ? error.message
           : "Error al guardar la categoría";
-      toast.error(errorMessage);
+      toast({ title: errorMessage, variant: "destructive" });
     }
   };
 
