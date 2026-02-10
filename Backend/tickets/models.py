@@ -104,7 +104,7 @@ class ServiceTicket(models.Model):
         if self.pk:
             try:
                 old_ticket = ServiceTicket.objects.get(pk=self.pk)
-                old_state = old_ticket.state.id if old_ticket.state else None
+                old_state = old_ticket.state_id
                 old_assigned_user = old_ticket.assigned_user
             except ServiceTicket.DoesNotExist:
                 old_state = None
@@ -113,7 +113,7 @@ class ServiceTicket(models.Model):
             old_state = None
             old_assigned_user = None
 
-        new_state = self.state.id if self.state else None
+        new_state = self.state_id
         now = timezone.now()
 
         # Asignación: Si se asigna un usuario por primera vez
