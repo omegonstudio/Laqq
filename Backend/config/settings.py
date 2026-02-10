@@ -31,13 +31,17 @@ ALLOWED_HOSTS = [
     h.strip()
     for h in config(
         'ALLOWED_HOSTS',
-        "laqq.omegon.com.ar",
-        default='localhost,127.0.0.1,0.0.0.0,backend'
+        default='localhost,127.0.0.1,0.0.0.0,backend,laqq.omegon.com.ar'
     ).split(',')
     if h.strip()
 ]
 
 AUTH_USER_MODEL = 'users.User'
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://laqq.omegon.com.ar",
+    "https://laqq.omegon.com.ar",
+]
 
 # Application definition
 
