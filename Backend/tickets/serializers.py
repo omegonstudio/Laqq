@@ -115,14 +115,12 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
 
             validated_data['ticket_number'] = f'T-{year}-{new_number:05d}'
 
-        # Si no se especifica estado, usar 'new', si no existe usar 'open'
+        # Estado inicial: open
         if 'state' not in validated_data:
-            for state_id in ('new', 'open'):
-                try:
-                    validated_data['state'] = TicketState.objects.get(id=state_id)
-                    break
-                except TicketState.DoesNotExist:
-                    continue
+            try:
+                validated_data['state'] = TicketState.objects.get(id='open')
+            except TicketState.DoesNotExist:
+                pass
 
         # Si no se especifica prioridad, usar 'medium'
         if 'priority' not in validated_data:
@@ -363,13 +361,11 @@ class TicketPackageSerializer(serializers.Serializer):
             if default_priority:
                 ticket_create_data['priority'] = default_priority
 
-        # Estado inicial 'new', si no existe usar 'open'
-        for state_id in ('new', 'open'):
-            try:
-                ticket_create_data['state'] = TicketState.objects.get(id=state_id)
-                break
-            except TicketState.DoesNotExist:
-                continue
+        # Estado inicial: open
+        try:
+            ticket_create_data['state'] = TicketState.objects.get(id='open')
+        except TicketState.DoesNotExist:
+            pass
 
         # 3. Crear el ticket (auto-genera ticket_number en save())
         ticket = ServiceTicket.objects.create(**ticket_create_data)
