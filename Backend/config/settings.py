@@ -31,6 +31,7 @@ ALLOWED_HOSTS = [
     h.strip()
     for h in config(
         'ALLOWED_HOSTS',
+        "laqq.omegon.com.ar",
         default='localhost,127.0.0.1,0.0.0.0,backend'
     ).split(',')
     if h.strip()
@@ -231,6 +232,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8080",
     "http://localhost:8081",
     "http://127.0.0.1:8081",
+    "http://laqq.omegon.com.ar",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
