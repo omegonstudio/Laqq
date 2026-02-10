@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import { Upload } from "lucide-react";
 import InputField from "../atoms/InputField";
 import Button from "../atoms/Button";
 import { toast } from "@/hooks/use-toast";
 import UploadFile from "../atoms/UploadFile";
 import { Product } from "@/types/types";
+import { RootState } from "@/store";
+import { useSelector } from "react-redux";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchAllProducts } from "@/store/productSlice";
 import { ProductSearchCombobox } from "./ProductSearch";
@@ -69,7 +72,6 @@ const TicketForm = ({
   useEffect(() => {
     dispatch(fetchAllProducts());
   }, [dispatch]);
-
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
