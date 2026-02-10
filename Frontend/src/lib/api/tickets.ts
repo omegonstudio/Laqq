@@ -5,6 +5,8 @@ import {
   ServiceTicket,
   TicketPriority,
   TicketState,
+  CreateTicketPayload,
+  CreateTicketResponse,
 } from "@/types/api";
 
 const BASE = "/tickets";
@@ -99,4 +101,7 @@ export const ticketsApi = {
   close: (id: string) => api.post<ServiceTicket>(`${BASE}/${id}/close/`),
 
   statistics: () => api.get<TicketStatistics>(`${BASE}/statistics/`),
+
+  createFromPackage: (payload: CreateTicketPayload) =>
+    api.post<CreateTicketResponse>(`${BASE}/from-package/`, payload),
 };

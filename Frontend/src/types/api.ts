@@ -317,6 +317,32 @@ export interface QuoteType {
   created_at: string;
 }
 
+// =================== TICKET PAYLOAD TYPES ===================
+
+export interface TicketContactPayload {
+  email: string;
+  first_name: string;
+  last_name: string;
+  company_name?: string;
+  phone?: string;
+  country?: string;
+}
+
+export interface CreateTicketPayload {
+  contact: TicketContactPayload;
+  ticket: {
+    description: string;
+    product?: string | null;
+    product_name?: string;
+    priority?: string;
+  };
+}
+
+export interface CreateTicketResponse {
+  contact: Contact;
+  ticket: ServiceTicket;
+}
+
 export interface ServiceTicket {
   id: string;
   ticket_number: string;
