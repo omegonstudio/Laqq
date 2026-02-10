@@ -46,7 +46,7 @@ const TicketsABM = () => {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    dispatch(fetchTickets({ page: 1, page_size: 1000 }));
+    dispatch(fetchTickets({ page: 1, page_size: 10 }));
     dispatch(fetchTicketStates({}));
     dispatch(fetchTicketPriorities({}));
     dispatch(fetchUsers({}));
@@ -118,7 +118,7 @@ const TicketsABM = () => {
       }
     }
   };
-  const filteredQuotes = tickets.map((ticket) => ({
+  const filteredTickets = tickets.map((ticket) => ({
     ...ticket,
     company_name: ticket.contact?.company_name || "-",
     first_name: ticket.contact?.first_name || "-",
@@ -150,7 +150,7 @@ const TicketsABM = () => {
       sortable: true,
     },
   ];
-
+  console.log(filteredTickets, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
   const actions = [
     { icon: <Eye size={16} />, onClick: handleView, label: "Ver" },
     { icon: <Edit2 size={16} />, onClick: handleEdit, label: "Editar" },
@@ -179,7 +179,7 @@ const TicketsABM = () => {
       params.state = null;
     }
 
-    dispatch(fetchContacts(params));
+    dispatch(fetchTickets(params));
   };
 
   return (
@@ -206,7 +206,7 @@ const TicketsABM = () => {
       </div>
       <Table
         columns={columns}
-        data={filteredQuotes}
+        data={filteredTickets}
         actions={actions}
         serverPagination={{
           currentPage: pagination.current_page,

@@ -31,6 +31,9 @@ import { updateTicket } from "@/store/ticketsSlice";
 import { formatDate, formatDateForInput } from "@/utils/formatDate";
 import { Input } from "@/components/ui/input";
 import { CopyButton } from "@/components/atoms/CopyButton";
+import { ticketsApi } from "@/lib/api/tickets";
+import { Tooltip } from "@radix-ui/react-tooltip";
+import { Toggle } from "@/components/ui/toggle";
 
 interface EditContactModalProps {
   ticket: ServiceTicket | null;
@@ -50,6 +53,7 @@ export function EditTicketsService({
   priorities,
 }: EditContactModalProps) {
   const [formData, setFormData] = useState<UpdateTicketPayload>({
+    id: "",
     contact_id: "",
     product_name: "",
     assigned_at: "",
@@ -60,18 +64,21 @@ export function EditTicketsService({
   });
 
   const [isLoading, setIsLoading] = useState(false);
+
+  const [closed, setIsClosed] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const dispatch = useAppDispatch();
   useEffect(() => {
     if (ticket && open) {
       setFormData({
+        id: ticket.id,
         contact_id: ticket.contact.id,
         product: ticket.product,
         description: ticket.description,
         attachment: ticket.attachment,
         state: ticket.state,
         priority: ticket.priority,
-        assigned_user: ticket.assigned_user.id,
+        assigned_user: ticket.assigned_user?.id ?? null,
         resolution_notes: ticket.resolution_notes,
         product_name: ticket.product_name,
         created_at: formatDateForInput(ticket.created_at),
@@ -91,14 +98,20 @@ export function EditTicketsService({
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
-  console.log(ticket, "ticket");
+  console.log(closed, "ticket");
   if (!ticket) return null;
 
   const timelineItems = [
-    { key: "assigned_at", label: "Asignado", value: ticket.assigned_at },
+    { key: "created_at", label: "Creación", value: ticket.created_at },
     { key: "started_at", label: "Iniciado", value: ticket.started_at },
+    { key: "assigned_at", label: "Asignado", value: ticket.assigned_at },
     { key: "resolved_at", label: "Resuelto", value: ticket.resolved_at },
     { key: "closed_at", label: "Cerrado", value: ticket.closed_at },
+    {
+      key: "updated_at",
+      label: "Última actualización",
+      value: ticket.updated_at,
+    },
   ];
   const RenderText = ({
     title,
@@ -111,21 +124,72 @@ export function EditTicketsService({
       <div className="space-y-2 sm:col-span-2">
         <div className="grid gap-4 sm:grid-cols-3">
           <span className="text-muted-foreground">{title}:</span>
-          <div className="space-y-2 sm:col-span-2 flex justify-between items-center">
-            <span className="font-mono ">{value ?? "-"}</span>
+
+          <div className="sm:col-span-2 flex gap-2 min-w-0">
+            <span
+              className="
+                font-mono
+                w-full
+                min-w-0
+                break-words
+                whitespace-pre-wrap
+              "
+            >
+              {value ?? "-"}
+            </span>
+
             {value && <CopyButton value={value} />}
           </div>
         </div>
       </div>
     );
   };
-
+  console.log(formData.assigned_user, "USERRRRRRRRRRRRRRRRR");
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("entra", ticket);
     if (!ticket) return;
 
     setIsLoading(true);
+
     try {
+      const previousAssignedUserId = ticket.assigned_user?.id ?? null;
+      const newAssignedUserId = formData.assigned_user ?? null;
+
+      // 2. Asignar siempre que cambie
+      if (newAssignedUserId) {
+        await ticketsApi.assign(ticket.id, {
+          assigned_user: newAssignedUserId,
+        });
+
+        // 3. Primera asignación → iniciar ticket
+        if (!previousAssignedUserId) {
+          await ticketsApi.start(ticket.id);
+        }
+      }
+
+      const newResolutionNotes = formData.resolution_notes ?? null;
+
+      // 2. Cambió y ahora hay contenido → resolver
+      if (newResolutionNotes && newResolutionNotes.trim() !== "") {
+        await ticketsApi.resolve(ticket.id, {
+          resolution_notes: newResolutionNotes,
+        });
+      }
+      if (closed) {
+        await ticketsApi.close(ticket.id);
+      } else {
+        await ticketsApi.start(ticket.id);
+      }
+      // if (formData.state === "open") {
+      //   await ticketsApi.start(ticket.id);
+      // } else if (formData.state === "in_progress") {
+      //   await ticketsApi.resolve(ticket.id, {
+      //     resolution_notes: formData.resolution_notes,
+      //   });
+      // } else if (formData.state === "closed") {
+      //   await ticketsApi.close(ticket.id);
+      // }
       await dispatch(
         updateTicket({
           id: ticket.id,
@@ -153,12 +217,41 @@ export function EditTicketsService({
           <div className="grid gap-4 sm:grid-cols-2">
             <RenderText
               title="Cliente"
-              value={`${ticket.contact.first_name} ${ticket.contact.last_name}`}
+              value={
+                ticket.contact
+                  ? `${ticket.contact.first_name} ${ticket.contact.last_name}`
+                  : "-"
+              }
             />
             <RenderText title="Email" value={ticket.contact.email} />
             <RenderText title="Teléfono" value={ticket.contact.phone} />
             <RenderText title="Descripción" value={ticket.description} />
-            <div className="space-y-2">
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="assigned_user">Usuario asignado</Label>
+              <Select
+                value={formData.assigned_user || ""}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    assigned_user: value || null,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin asignar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin asignar</SelectItem>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.first_name} {user.last_name} ({user.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* <div className="space-y-2">
               <Label htmlFor="state">
                 Estado <span className="text-destructive">*</span>
               </Label>
@@ -182,7 +275,7 @@ export function EditTicketsService({
               {errors.state && (
                 <p className="text-xs text-destructive">{errors.state}</p>
               )}
-            </div>
+            </div> */}
 
             <div className="space-y-2">
               <Label htmlFor="priority">
@@ -210,30 +303,13 @@ export function EditTicketsService({
                 <p className="text-xs text-destructive">{errors.priority}</p>
               )}
             </div>
-
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="assigned_user">Usuario asignado</Label>
-              <Select
-                value={formData.assigned_user || ""}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    assigned_user: value || null,
-                  }))
-                }
+            <div className="space-y-2 flex items-end">
+              <Toggle
+                pressed={closed}
+                onPressedChange={(pressed) => setIsClosed(pressed)}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sin asignar" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin asignar</SelectItem>
-                  {users.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.first_name} {user.last_name} ({user.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {!closed ? "Cerrar ticket" : "Abrir ticket"}
+              </Toggle>
             </div>
             <div className="space-y-2 sm:col-span-2">
               <h4 className="text-sm font-medium flex items-center gap-2">
@@ -241,39 +317,17 @@ export function EditTicketsService({
                 Historial{" "}
               </h4>
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Creación</span>
-                  <span className="font-mono text-xs">
-                    {formatDate(ticket.updated_at)}
-                  </span>
-                </div>
                 {timelineItems.map((item) => (
                   <div
                     key={item.key}
-                    className="grid gap-4 sm:grid-cols-2 items-center text-sm"
+                    className="flex items-center justify-between text-sm"
                   >
                     <span className="text-muted-foreground">{item.label}</span>
-                    <Input
-                      type="date"
-                      name={item.key}
-                      value={formData[item.key] ?? ""}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          [item.key]: e.target.value,
-                        }))
-                      }
-                    />
+                    <span className="font-mono text-xs">
+                      {formatDate(item.value) ?? "-"}
+                    </span>
                   </div>
                 ))}
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    Ultima actualizacion
-                  </span>
-                  <span className="font-mono text-xs">
-                    {formatDate(ticket.updated_at)}
-                  </span>
-                </div>
               </div>
             </div>
 

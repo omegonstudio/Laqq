@@ -1,6 +1,7 @@
 import { api } from "./client";
 import { cleanParams, QueryParams } from "./utils";
 import {
+  CreateTicketPayload,
   PaginatedResponse,
   ServiceTicket,
   TicketPriority,
@@ -38,11 +39,18 @@ export interface AssignTicketPayload {
 export interface ResolveTicketPayload {
   resolution_notes?: string;
 }
+export interface AttachTicketFileMultipart {
+  file: File;
+  role?: string;
+  detail: string;
+}
 
-export interface AttachTicketFilePayload {
+export interface AttachTicketFileBase64 {
   file_name: string;
-  content_type?: string | null;
-  data: string | ArrayBuffer;
+  data: string;
+  detail: string;
+  content_type?: string;
+  role?: string;
 }
 
 export const ticketsApi = {
@@ -52,8 +60,8 @@ export const ticketsApi = {
       cleanParams(params as QueryParams)
     ),
   get: (id: string) => api.get<ServiceTicket>(`${BASE}/${id}/`),
-  create: (payload: Partial<ServiceTicket>) =>
-    api.post<ServiceTicket>(`${BASE}/`, payload),
+  create: (payload: Partial<CreateTicketPayload>) =>
+    api.post<ServiceTicket>(`${BASE}/from-package/`, payload),
   update: (id: string, payload: Partial<UpdateTicketPayload>) =>
     api.put<ServiceTicket>(`${BASE}/${id}/`, payload),
   patch: (id: string, payload: Partial<ServiceTicket>) =>
@@ -90,8 +98,19 @@ export const ticketsApi = {
   removePriority: (id: string) => api.delete<void>(`${BASE}/priorities/${id}/`),
 
   // Acciones
-  attachFile: (id: string, payload: AttachTicketFilePayload) =>
-    api.post<ServiceTicket>(`${BASE}/${id}/attach_file/`, payload),
+  attachFile: (id: string, payload: FormData | AttachTicketFileBase64) =>
+    api.post(`${BASE}/${id}/attach_file/`, payload),
+  attachFileMultipart: (id: string, payload: AttachTicketFileMultipart) => {
+    const formData = new FormData();
+    formData.append("file", payload.file);
+
+    if (payload.role) {
+      formData.append("role", payload.role);
+    }
+
+    return api.post(`${BASE}/${id}/attach_file/`, formData);
+  },
+
   assign: (id: string, payload: AssignTicketPayload) =>
     api.post<ServiceTicket>(`${BASE}/${id}/assign/`, payload),
   start: (id: string) => api.post<ServiceTicket>(`${BASE}/${id}/start/`),

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
+  CreateTicketPayload,
   ServiceTicket,
   TicketPriority,
   TicketState,
@@ -95,7 +96,7 @@ export const fetchTicket = createAsyncThunk(
 
 export const createTicket = createAsyncThunk(
   "tickets/createTicket",
-  async (data: Partial<ServiceTicket>) => {
+  async (data: Partial<CreateTicketPayload>) => {
     return ticketsApi.create(data);
   }
 );

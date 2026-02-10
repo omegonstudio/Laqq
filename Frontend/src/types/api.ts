@@ -30,7 +30,7 @@ export interface ContactState {
 }
 
 export interface Contact {
-  id: string;
+  id?: string;
   company_name: string;
   first_name: string;
   last_name: string;
@@ -328,16 +328,6 @@ export interface TicketContactPayload {
   country?: string;
 }
 
-export interface CreateTicketPayload {
-  contact: TicketContactPayload;
-  ticket: {
-    description: string;
-    product?: string | null;
-    product_name?: string;
-    priority?: string;
-  };
-}
-
 export interface CreateTicketResponse {
   contact: Contact;
   ticket: ServiceTicket;
@@ -353,7 +343,13 @@ export interface ServiceTicket {
   attachment: string | null;
   state: string;
   priority: string;
-  assigned_user: UserData | null;
+  assigned_user: {
+    id: string;
+    userName: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
   created_at: string | null;
   assigned_at: string | null;
   started_at: string | null;
@@ -364,14 +360,23 @@ export interface ServiceTicket {
 }
 
 export interface CreateTicketPayload {
-  contact: Contact;
-  contact_id?: string;
-  product?: string;
-  product_name: string;
-  description?: string;
-  resolution_notes?: string | null;
-  attachment?: string | null;
-  attachments?: string[] | null;
+  contact: {
+    email: string;
+    first_name: string;
+    last_name: string;
+    company_name?: string;
+    phone?: string;
+    country?: string;
+  };
+  ticket: {
+    state: string;
+    product?: string;
+    product_name: string;
+    description?: string;
+    resolution_notes?: string | null;
+    attachment?: string | null;
+    attachments?: string[] | null;
+  };
 }
 export interface TicketFormData {
   email: string;
@@ -382,6 +387,7 @@ export interface TicketFormData {
   attachment?: string | null;
 }
 export interface UpdateTicketPayload {
+  id: string;
   contact_id: string;
   product_name: string;
   product?: string;

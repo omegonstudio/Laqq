@@ -17,10 +17,22 @@ import { CreateTicketPayload } from "@/types/api";
 import { createTicket } from "@/store/ticketsSlice";
 import { FileText, File as FileIcon } from "lucide-react";
 import { attachmentsApi } from "@/lib/api/attachments";
+import { ticketsApi } from "@/lib/api/tickets";
 interface TicketFormProps {
   onClose?: () => void;
   isTicketModalOpen: boolean;
   setIsTicketModalOpen: (open: boolean) => void;
+}
+export interface AttachTicketFileMultipart {
+  file: File;
+  role?: string;
+}
+
+export interface AttachTicketFileBase64 {
+  file_name: string;
+  data: string;
+  content_type?: string;
+  role?: string;
 }
 
 const TicketForm = ({
@@ -29,24 +41,21 @@ const TicketForm = ({
   setIsTicketModalOpen,
 }: TicketFormProps) => {
   const [formData, setFormData] = useState<CreateTicketPayload>({
-    product: "",
-    description: "",
-    contact_id: "facaf501-1e37-4681-9c4d-e5f276c12817",
-    product_name: "",
-    attachment: null,
+    ticket: {
+      state: "open",
+      product: "",
+      description: "",
+      product_name: "",
+      attachment: null,
+      attachments: [],
+    },
     contact: {
-      id: "",
-      state: "new",
-      created_at: null,
-      updated_at: null,
       first_name: "",
       last_name: "",
       email: "",
       company_name: "",
       phone: "",
       country: null,
-      message: "",
-      assigned_user: null,
     },
   });
 
@@ -66,51 +75,33 @@ const TicketForm = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.product) {
-      toast({
-        title: "Error",
-        description: "Debes seleccionar un producto",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       setIsUploading(true);
 
-      // 1. Si hay archivo, primero subirlo y obtener el ID
-      let attachmentId = null;
+      // 1. Crear ticket SIN archivo
+      const ticket = await dispatch(createTicket(formData)).unwrap();
+
+      // 2. Si hay archivo, adjuntarlo al ticket
       if (selectedFile) {
-        const attachmentResponse = await attachmentsApi.create({
+        await ticketsApi.attachFileMultipart(ticket.id, {
           file: selectedFile,
+          role: "customer",
+          detail: "Archivo adjunto desde formulario de soporte",
         });
-        attachmentId = attachmentResponse.id; // o el campo que retorne tu API
       }
-
-      // 2. Crear el ticket con el ID del attachment
-      const ticketPayload = {
-        ...formData,
-        attachment: attachmentId,
-      };
-
-      await dispatch(createTicket(ticketPayload)).unwrap();
-
       toast({
-        title: "Ticket Creado",
-        description:
-          "Tu solicitud ha sido registrada. Te contactaremos pronto.",
+        title: "Ticket creado",
+        description: "Tu solicitud fue registrada.",
       });
 
-      // Limpiar el formulario
       resetForm();
       onClose?.();
-    } catch (error) {
+    } catch (err) {
       toast({
         title: "Error",
-        description: "Hubo un problema al crear el ticket. Intentá de nuevo.",
+        description: "No se pudo crear el ticket.",
         variant: "destructive",
       });
-      console.error("Error creating ticket:", error);
     } finally {
       setIsUploading(false);
     }
@@ -136,8 +127,11 @@ const TicketForm = ({
     setSelectedProduct(product);
     setFormData({
       ...formData,
-      product: product?.id || "",
-      product_name: product?.name || "",
+      ticket: {
+        ...formData.ticket,
+        product: product?.id || "",
+        product_name: product?.name || "",
+      },
     });
   };
 
@@ -148,23 +142,20 @@ const TicketForm = ({
 
   const resetForm = () => {
     setFormData({
-      product: "",
-      description: "",
-      product_name: "",
-      attachment: null,
+      ticket: {
+        state: "open",
+        product: "",
+        description: "",
+        product_name: "",
+        attachment: null,
+      },
       contact: {
-        id: "",
-        state: "new",
-        created_at: null,
-        updated_at: null,
         first_name: "",
         last_name: "",
         email: "",
         company_name: "",
         phone: "",
         country: null,
-        message: "",
-        assigned_user: null,
       },
     });
     setSelectedFile(null);
@@ -335,9 +326,12 @@ const TicketForm = ({
               <span className="text-destructive">*</span>
             </label>
             <textarea
-              value={formData.description}
+              value={formData.ticket.description}
               onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
+                setFormData({
+                  ...formData,
+                  ticket: { ...formData.ticket, description: e.target.value },
+                })
               }
               className="w-full px-4 py-2.5 rounded-xl border border-input bg-background min-h-[120px] focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Describe el problema o solicitud con el mayor detalle posible"
