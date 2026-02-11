@@ -40,12 +40,24 @@ class UserSerializer(serializers.ModelSerializer):
 
 class UserCreateSerializer(UserSerializer):
     password = serializers.CharField(write_only=True, required=True)
+    username = serializers.CharField(required=False, allow_blank=True, default='')
 
     class Meta(UserSerializer.Meta):
         fields = UserSerializer.Meta.fields + ['password']
 
     def create(self, validated_data):
         password = validated_data.pop('password')
+
+        # Auto-generar username desde email si no se proporciona
+        if not validated_data.get('username'):
+            base = validated_data.get('email', '').split('@')[0]
+            username = base
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base}{counter}"
+                counter += 1
+            validated_data['username'] = username
+
         user = User(**validated_data)
         user.set_password(password)
         user.save()
