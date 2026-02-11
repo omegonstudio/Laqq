@@ -15,7 +15,7 @@ const ContactForm = () => {
     last_name: "",
     country: "",
     message: "",
-    state: "NEW",
+    state: "new",
     email: "",
   });
 
