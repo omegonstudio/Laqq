@@ -7,11 +7,12 @@ import Badge from "@/components/atoms/Badge";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { deleteMessage, fetchMessages } from "@/store/contacts";
 import { Message } from "@/types/api";
-import { MessageDetailModal } from "../molecules/Modals/EditMessage";
+import { MessageDetailModal } from "../molecules/Modals/viewMessage";
 import { convertStateContact, stateEnum } from "@/utils/quotesConvert";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import { toast } from "@/hooks/use-toast";
 import { formatDate } from "@/utils/formatDate";
+import { EditMessage } from "../molecules/Modals/EditMessage";
 
 const MessagesTable = () => {
   const dispatch = useAppDispatch();
@@ -25,6 +26,8 @@ const MessagesTable = () => {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
+  const [isModalOpenEdit, setIsModalOpenEdit] = useState(false);
+
   const filteredMessages = messages.filter((message) => {
     const matchesSearch =
       message.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -49,8 +52,10 @@ const MessagesTable = () => {
     setSelectedMessage(message);
     setIsModalOpen(true);
   };
+
   const handleReply = (message: Message) => {
-    console.log("Responder mensaje:", message);
+    setSelectedMessage(message);
+    setIsModalOpenEdit(true);
   };
 
   const handleDelete = (message: Message) => {
@@ -144,6 +149,11 @@ const MessagesTable = () => {
         }}
         itemName={selectedMessage?.message || ""}
         onConfirm={handleConfirmDelete}
+      />
+      <EditMessage
+        message={selectedMessage}
+        open={isModalOpenEdit}
+        onOpenChange={setIsModalOpenEdit}
       />
     </div>
   );

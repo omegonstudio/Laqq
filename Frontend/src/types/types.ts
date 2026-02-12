@@ -251,6 +251,7 @@ export interface Attachment {
   role: "image" | "manual" | "datasheet" | "other" | null;
   attachable_type: string | null;
   attachable_id: string | null;
+  created_at: string;
 }
 export interface AttachmentCreatePayload {
   file: File;

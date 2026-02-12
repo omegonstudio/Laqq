@@ -9,6 +9,7 @@ import { deleteCategory, fetchAllCategories } from "@/store/categoriesSlice";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import InputField from "../atoms/InputField";
 import { toast } from "@/hooks/use-toast";
+
 const CategoriesABM = () => {
   const { list: categories, loading: loadingCategories } = useAppSelector(
     (state) => state.categories

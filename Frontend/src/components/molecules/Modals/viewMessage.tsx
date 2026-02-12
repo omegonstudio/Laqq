@@ -8,26 +8,20 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import {
-  Building2,
-  User,
-  Globe,
-  Calendar,
-  MessageSquare,
-  MessageCircle,
-} from "lucide-react";
+import { Building2, User, Globe, Calendar, MessageSquare } from "lucide-react";
 import { Message } from "@/types/api";
-import { Textarea } from "@/components/ui/textarea";
-import Button from "@/components/atoms/Button";
-import { CopyButton } from "@/components/atoms/CopyButton";
 
-interface MessageEdit {
+interface MessageDetailModalProps {
   message: Message | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function EditMessage({ message, open, onOpenChange }: MessageEdit) {
+export function MessageDetailModal({
+  message,
+  open,
+  onOpenChange,
+}: MessageDetailModalProps) {
   if (!message) return null;
 
   const formatDate = (dateString: string) => {
@@ -77,24 +71,13 @@ export function EditMessage({ message, open, onOpenChange }: MessageEdit) {
 
           {/* Full Name */}
           {fullName && (
-            <div className=" items-start gap-3">
-              <div className="grid gap-1 grid-cols-2 w-full">
-                <div className="flex items-center gap-1">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Nombre completo
-                  </p>
-                </div>
-                <p className="text-foreground">{fullName}</p>
-              </div>
-
-              <div className="grid gap-1 grid-cols-2 w-full">
+            <div className="flex items-start gap-3">
+              <User className="mt-0.5 size-5 text-muted-foreground" />
+              <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Email{" "}
+                  Nombre completo
                 </p>
-                <div className="flex">
-                  <p className="text-foreground">{message.email}</p>
-                  <CopyButton value={message.email} />
-                </div>
+                <p className="text-foreground">{fullName}</p>
               </div>
             </div>
           )}
@@ -122,10 +105,6 @@ export function EditMessage({ message, open, onOpenChange }: MessageEdit) {
               <p className="whitespace-pre-wrap text-foreground">
                 {message.message}
               </p>
-              <p className="text-sm font-medium text-muted-foreground my-5">
-                Respuesta
-              </p>
-              <Textarea value={message.message} readOnly={true} />
             </div>
           </div>
 
@@ -160,9 +139,6 @@ export function EditMessage({ message, open, onOpenChange }: MessageEdit) {
                 </p>
               </div>
             </div>
-          </div>
-          <div className="flex justify-end">
-            <Button>Enviar</Button>
           </div>
         </div>
       </DialogContent>

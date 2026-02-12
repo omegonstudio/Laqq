@@ -55,6 +55,7 @@ export interface Message {
   assigned_user: string | null;
   created_at: string;
   updated_at: string;
+  email: string;
 }
 export interface MessageCreate {
   company_name: string | null;

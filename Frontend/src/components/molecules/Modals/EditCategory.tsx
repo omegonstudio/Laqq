@@ -1,13 +1,11 @@
-"use client";
-
-import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,16 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
 import { Category, CategoryUI } from "@/types/types";
-
+import { buildCategories } from "@/utils/data/categories";
 import {
   createCategory,
   fetchAllCategories,
   updateCategory,
 } from "@/store/categoriesSlice";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { buildCategories } from "@/utils/data/categories";
-import { toast } from "@/hooks/use-toast";
 
 interface CategoryFormState {
   id?: string;
@@ -47,6 +43,18 @@ interface ModalCategoryProps {
   categories?: Category[];
 }
 
+interface FlatCategory {
+  id: string;
+  name: string;
+  level: number;
+}
+
+interface FormErrors {
+  name?: string;
+  parent?: string;
+  display_order?: string;
+}
+
 const getEmptyCategoryFormState = (): CategoryFormState => ({
   name: "",
   parent: undefined,
@@ -61,13 +69,9 @@ const categoryToFormState = (category: Category): CategoryFormState => ({
   parent: category.parent,
   display_order: category.display_order,
   description: category.description,
-  level: category.level, // ← IMPORTANTE
+  level: category.level,
 });
-interface FlatCategory {
-  id: string;
-  name: string;
-  level: number;
-}
+
 const flattenCategories = (
   categories: CategoryUI[],
   level = 0,
@@ -88,22 +92,23 @@ const flattenCategories = (
   return acc;
 };
 
-const validateCategoryForm = (formState: CategoryFormState) => {
+const validateCategoryForm = (formState: CategoryFormState): FormErrors => {
+  const errors: FormErrors = {};
+
   if (!formState.name.trim()) {
-    return {
-      isValid: false,
-      errorMessage: "El nombre de la categoría es obligatorio",
-    };
+    errors.name = "El nombre de la categoría es obligatorio";
+  }
+
+  if (formState.parent === undefined || formState.parent === null) {
+    errors.parent = "Es obligatorio seleccionar una categoría padre";
   }
 
   if (formState.display_order < 0) {
-    return {
-      isValid: false,
-      errorMessage: "El orden de visualización debe ser un número positivo",
-    };
+    errors.display_order =
+      "El orden de visualización debe ser un número positivo";
   }
 
-  return { isValid: true, errorMessage: null };
+  return errors;
 };
 
 const hasCategoryChanges = (
@@ -113,7 +118,8 @@ const hasCategoryChanges = (
   return (
     formState.name !== initialData.name ||
     formState.parent !== initialData.parent ||
-    formState.display_order !== initialData.display_order
+    formState.display_order !== initialData.display_order ||
+    formState.description !== initialData.description
   );
 };
 
@@ -130,13 +136,15 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
   const [initialParentId, setInitialParentId] = useState<string | undefined>(
     undefined
   );
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<Set<string>>(new Set());
+
   const menuItems = buildCategories(categories);
   const flatCategories = flattenCategories(menuItems);
 
   const dispatch = useAppDispatch();
   const { creating, updating } = useAppSelector((state) => state.categories);
 
-  // Elimina los dos useEffect actuales y reemplázalos por este único:
   useEffect(() => {
     if (isOpen) {
       if (!isNew && initialData) {
@@ -147,54 +155,72 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
         setLocalState(getEmptyCategoryFormState());
         setInitialParentId(undefined);
       }
+      // Resetear errores y campos tocados al abrir
+      setErrors({});
+      setTouched(new Set());
     }
   }, [isOpen, initialData, isNew]);
 
-  const validation = useMemo(
-    () => validateCategoryForm(localState),
-    [localState]
-  );
+  // Validar en tiempo real
+  useEffect(() => {
+    const validationErrors = validateCategoryForm(localState);
+    setErrors(validationErrors);
+  }, [localState]);
 
   const hasChanges = useMemo(() => {
     if (!initialData) return true;
     return hasCategoryChanges(localState, initialData);
   }, [localState, initialData]);
 
+  const isFormValid = useMemo(() => {
+    return Object.keys(errors).length === 0;
+  }, [errors]);
+
   const isSaveEnabled = useMemo(() => {
-    return validation.isValid && (!initialData || hasChanges);
-  }, [validation.isValid, initialData, hasChanges]);
+    return isFormValid && (!initialData || hasChanges);
+  }, [isFormValid, initialData, hasChanges]);
 
   const handleCancel = () => {
     onClose();
   };
 
-  const handleSave = async () => {
-    try {
-      if (!validation.isValid) {
-        toast({
-          title: validation.errorMessage || "Formulario inválido",
-          variant: "destructive",
-        });
-        return;
-      }
+  const handleBlur = (field: string) => {
+    setTouched((prev) => new Set(prev).add(field));
+  };
 
+  const handleSave = async () => {
+    // Marcar todos los campos como tocados al intentar guardar
+    setTouched(new Set(["name", "parent", "display_order"]));
+
+    if (!isFormValid) {
+      const firstError = Object.values(errors)[0];
+      toast({
+        title: "Formulario incompleto",
+        description: firstError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
       if (localState.id) {
         const parentChanged = localState.parent !== initialParentId;
         const updatePayload: Partial<CategoryFormState> = {
           name: localState.name,
           display_order: localState.display_order,
+          description: localState.description,
         };
 
         if (parentChanged) {
           updatePayload.parent = localState.parent;
         }
 
-        const result = await dispatch(
+        await dispatch(
           updateCategory({ id: localState.id, data: updatePayload })
         ).unwrap();
         toast({ title: "Categoría actualizada exitosamente" });
       } else {
-        const result = await dispatch(createCategory(localState)).unwrap();
+        await dispatch(createCategory(localState)).unwrap();
         toast({ title: "Categoría creada exitosamente" });
       }
 
@@ -214,14 +240,13 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
   }, [dispatch]);
 
   const isDisabled = (cat: FlatCategory) => {
-    // nunca permitir auto-referencia
     if (cat.id === localState.id) return true;
-
-    // permitir mostrar el padre actual aunque sea inválido hoy
     if (cat.id === localState.parent) return false;
-
-    // regla normal
     return cat.level >= localState.level;
+  };
+
+  const showError = (field: string) => {
+    return touched.has(field) && errors[field as keyof FormErrors];
   };
 
   return (
@@ -234,20 +259,34 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Campo Nombre */}
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre</Label>
+            <Label htmlFor="name" className={errors.name ? "text-red-600" : ""}>
+              Nombre {errors.name && <span className="text-red-600">*</span>}
+            </Label>
             <Input
               id="name"
               value={localState.name}
               onChange={(e) =>
                 setLocalState({ ...localState, name: e.target.value })
               }
+              onBlur={() => handleBlur("name")}
+              className={
+                showError("name")
+                  ? "border-red-500 focus-visible:ring-red-500"
+                  : ""
+              }
             />
+            {showError("name") && (
+              <p className="text-sm text-red-600">{errors.name}</p>
+            )}
           </div>
+
+          {/* Campo Descripción */}
           <div className="space-y-2">
-            <Label htmlFor="name">Descripción</Label>
+            <Label htmlFor="description">Descripción</Label>
             <Input
-              id="name"
+              id="description"
               value={localState.description}
               onChange={(e) =>
                 setLocalState({ ...localState, description: e.target.value })
@@ -255,19 +294,34 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
             />
           </div>
 
+          {/* Campo Categoría Padre */}
           {localState.level > 0 && (
             <div className="space-y-2">
-              <Label htmlFor="parent">Categoría padre (opcional)</Label>
+              <Label
+                htmlFor="parent"
+                className={errors.parent ? "text-red-600" : ""}
+              >
+                Categoría padre{" "}
+                {errors.parent && <span className="text-red-600">*</span>}
+              </Label>
               <Select
                 value={localState.parent || "none"}
-                onValueChange={(value) =>
+                onValueChange={(value) => {
                   setLocalState({
                     ...localState,
                     parent: value === "none" ? undefined : value,
-                  })
-                }
+                  });
+                  handleBlur("parent");
+                }}
               >
-                <SelectTrigger id="parent">
+                <SelectTrigger
+                  id="parent"
+                  className={
+                    showError("parent")
+                      ? "border-red-500 focus:ring-red-500"
+                      : ""
+                  }
+                >
                   <SelectValue placeholder="Sin categoría padre (raíz)" />
                 </SelectTrigger>
                 <SelectContent>
@@ -286,20 +340,20 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
                       >
                         <span
                           className={`
-                              block
-                              ${disabled ? "opacity-50" : ""}
-                              ${
-                                cat.level === 0
-                                  ? "uppercase text-sm font-bold"
-                                  : ""
-                              }
-                              ${
-                                cat.level === 1
-                                  ? "text-sm pl-3 font-semibold"
-                                  : ""
-                              }
-                              ${cat.level === 2 ? "text-xs pl-6" : ""}
-                            `}
+                            block
+                            ${disabled ? "opacity-50" : ""}
+                            ${
+                              cat.level === 0
+                                ? "uppercase text-sm font-bold"
+                                : ""
+                            }
+                            ${
+                              cat.level === 1
+                                ? "text-sm pl-3 font-semibold"
+                                : ""
+                            }
+                            ${cat.level === 2 ? "text-xs pl-6" : ""}
+                          `}
                         >
                           {cat.name}
                         </span>
@@ -308,11 +362,20 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
                   })}
                 </SelectContent>
               </Select>
+              {showError("parent") && (
+                <p className="text-sm text-red-600">{errors.parent}</p>
+              )}
             </div>
           )}
 
+          {/* Campo Orden */}
           <div className="space-y-2">
-            <Label htmlFor="display_order">Orden de visualización</Label>
+            <Label
+              htmlFor="display_order"
+              className={errors.display_order ? "text-red-600" : ""}
+            >
+              Orden de visualización
+            </Label>
             <Input
               id="display_order"
               type="number"
@@ -323,9 +386,18 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
                   display_order: Number.parseInt(e.target.value) || 0,
                 })
               }
+              onBlur={() => handleBlur("display_order")}
               placeholder="0"
               min="0"
+              className={
+                showError("display_order")
+                  ? "border-red-500 focus-visible:ring-red-500"
+                  : ""
+              }
             />
+            {showError("display_order") && (
+              <p className="text-sm text-red-600">{errors.display_order}</p>
+            )}
           </div>
         </div>
 
