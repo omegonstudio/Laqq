@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from drf_yasg.utils import swagger_serializer_method
+from django.contrib.contenttypes.models import ContentType
 from .models import Brand, Category, Product, ProductSpec, ProductRelation, ProductSpecification
 from attachments.models import Attachment
 from attachments.serializers import AttachmentSerializer
@@ -124,12 +125,28 @@ class ProductSerializer(serializers.ModelSerializer):
     # Nuevo: lista de attachments asociados al producto (read-only)
     attachments = serializers.SerializerMethodField(read_only=True)
 
+    # ✨ NUEVOS: Para manejar múltiples attachments en PUT/POST
+    attachments_files = serializers.ListField(
+        child=serializers.FileField(),
+        write_only=True,
+        required=False,
+        help_text='Lista de archivos a subir: [file1, file2, ...]'
+    )
+    
+    attachments_existing = serializers.ListField(
+        child=serializers.UUIDField(),
+        write_only=True,
+        required=False,
+        help_text='IDs de attachments a MANTENER. Los no mencionados se eliminarán.'
+    )
+
     class Meta:
         model = Product
         fields = [
             'id', 'product_code', 'name', 'brand', 'brand_id', 'category', 'category_id', 'description',
             'image_attachment', 'image_url', 'attachments', 'is_active', 'is_featured', 'created_at', 'updated_at',
-            'fixed_specs', 'specifications', 'specs', 'specs_data', 'related_product_ids', 'related_product_codes', 'related_products', 'related'
+            'fixed_specs', 'specifications', 'specs', 'specs_data', 'related_product_ids', 'related_product_codes', 
+            'related_products', 'related', 'attachments_files', 'attachments_existing'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'related_products', 'fixed_specs', 'specifications', 'specs', 'related', 'image_url', 'attachments']
         extra_kwargs = {
@@ -184,12 +201,78 @@ class ProductSerializer(serializers.ModelSerializer):
             if target:
                 ProductRelation.objects.get_or_create(from_product=from_product, to_product=target)
 
+    def _process_attachments_files(self, product, files):
+        """✨ Crea attachments a partir de archivos subidos"""
+        if not files:
+            return
+        
+        product_ct = ContentType.objects.get_for_model(Product)
+        first_image = True
+
+        for file_obj in files:
+            if not file_obj:
+                continue
+                
+            role = 'image' if file_obj.content_type and file_obj.content_type.startswith('image/') else 'other'
+            
+            attachment = Attachment.objects.create(
+                file=file_obj,
+                role=role,
+                content_type_str=file_obj.content_type or 'application/octet-stream',
+                content_type=product_ct,
+                object_id=product.id,
+                attachable_type='product',
+                attachable_id=product.id,
+                created_by=self.context.get('request').user if self.context.get('request') and self.context.get('request').user.is_authenticated else None
+            )
+            
+            # Solo la primera imagen se asigna como principal si no hay
+            if role == 'image' and first_image and not product.image_attachment:
+                product.image_attachment = attachment
+                product.save()
+                first_image = False
+
+    def _sync_attachments(self, product, files_to_add, ids_to_keep):
+        """
+        ✨ Sincroniza attachments:
+        - Si ids_to_keep viene, elimina los NO mencionados
+        - Si files_to_add viene, crea nuevos
+        """
+        # Eliminar attachments que NO están en la lista de "mantener"
+        if ids_to_keep is not None:
+            ids_to_keep_set = set(str(id) for id in ids_to_keep)
+            current_attachments = Attachment.objects.filter(
+                attachable_type='product',
+                attachable_id=product.id
+            )
+            for att in current_attachments:
+                if str(att.id) not in ids_to_keep_set:
+                    # Si era la imagen principal, quitarla
+                    if product.image_attachment and product.image_attachment.id == att.id:
+                        product.image_attachment = None
+                        product.save()
+                    # Eliminar archivo físico
+                    if att.file:
+                        try:
+                            att.file.delete()
+                        except Exception:
+                            pass
+                    att.delete()
+        
+        # Agregar nuevos archivos
+        if files_to_add:
+            self._process_attachments_files(product, files_to_add)
+
     def create(self, validated_data):
         # handle both related_products (instances via PK) and related_product_codes
         related_codes = validated_data.pop('related_product_codes', None)
         related_instances = validated_data.pop('related_products', None)  # source -> related_products
         # specs_data viene del campo write_only 'specs_data' del serializer
         specs_data = validated_data.pop('specs_data', None)
+        
+        # ✨ NUEVO: Manejar attachments al crear
+        attachments_files = validated_data.pop('attachments_files', None)
+        attachments_existing = validated_data.pop('attachments_existing', None)
 
         product = super().create(validated_data)
 
@@ -216,6 +299,9 @@ class ProductSerializer(serializers.ModelSerializer):
                     **spec
                 )
 
+        # ✨ NUEVO: Procesar archivos al crear
+        if attachments_files or attachments_existing is not None:
+            self._sync_attachments(product, attachments_files, attachments_existing)
 
         return product
 
@@ -224,6 +310,10 @@ class ProductSerializer(serializers.ModelSerializer):
         related_instances = validated_data.pop('related_products', None)
         # specs_data viene del campo write_only 'specs_data' del serializer
         specs_data = validated_data.pop('specs_data', None)
+        
+        # ✨ NUEVO: Manejar attachments al actualizar
+        attachments_files = validated_data.pop('attachments_files', None)
+        attachments_to_keep = validated_data.pop('attachments_existing', None)
 
         product = super().update(instance, validated_data)
 
@@ -268,5 +358,9 @@ class ProductSerializer(serializers.ModelSerializer):
 
             # eliminar las que no vinieron en payload (permite borrar)
             ProductSpecification.objects.filter(product=instance).exclude(id__in=kept_ids).delete()
+
+        # ✨ NUEVO: Sincronizar attachments solo si vienen en el request
+        if attachments_files is not None or attachments_to_keep is not None:
+            self._sync_attachments(instance, attachments_files, attachments_to_keep)
 
         return product
