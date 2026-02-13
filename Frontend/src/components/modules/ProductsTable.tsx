@@ -30,6 +30,7 @@ const currentInitialData: Product = {
   fixed_specs: [fixedSpecInitialData],
   image_url: null,
   is_featured: false,
+  attachments: [],
 };
 
 const ProductsTable: React.FC = () => {
@@ -212,7 +213,6 @@ const ProductsTable: React.FC = () => {
         </Button>
         <CargaMasivaProducts />
       </div>
-
       <Table
         columns={columns}
         data={products}

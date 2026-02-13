@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Button from "@/components/atoms/Button";
 import InputField from "@/components/atoms/InputField";
 import {
+  Attachment,
   Product,
   ProductFixedSpec,
   ProductFormState,
@@ -27,6 +28,7 @@ import {
   syncProductSpecifications,
   validateProductForm,
   fixedSpecInitialData,
+  CreateProduct,
 } from "@/utils/productSaveFlow";
 import { deleteFixedSpec } from "@/store/fixedSpecsSlice";
 import { attachmentsApi } from "@/lib/api/attachments";
@@ -56,23 +58,36 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     getEmptyProductFormState()
   );
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [carrouselPreview, setCarrouselPreview] = useState<string[] | null>(
+    null
+  );
+
   const [selectedRelated, setSelectedRelated] = useState<string>("");
 
   // ============================================
   // EFFECTS
   // ============================================
-
   useEffect(() => {
     if (!isNew) {
       // Convertir Product a ProductFormState
       const formState = productToFormState(initialData);
-      setLocalState(formState);
+      setLocalState({
+        ...formState,
+        attachments_existing: (initialData.attachments ?? []).map((att) => ({
+          ...att,
+          role: att.role as Attachment["role"],
+        })),
 
+        attachments_files: [],
+      });
       // Si hay imagen, cargar preview (asumiendo que es UUID)
       if (initialData.image_url) {
         // Aquí podrías cargar la imagen desde el backend si es necesario
         // Por ahora, si es un UUID no tenemos la imagen para preview
         setImagePreview(initialData.image_url);
+        setCarrouselPreview(
+          initialData.attachments?.map((att) => att.url) || []
+        );
       }
     } else {
       setLocalState({
@@ -120,6 +135,30 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     () => validateProductForm(localState),
     [localState]
   );
+  // useEffect(() => {
+  //   console.log("INITIAL DATA", initialData, "LOCAL STATE", localState);
+  // }, [initialData, localState]);
+
+  const haveAttachmentsChanged = (
+    existing: Attachment[] = [],
+    initial: Attachment[] = [],
+    newFiles: File[] = []
+  ): boolean => {
+    // 1. IDs iniciales
+    const initialIds = initial.map((a) => a.id).sort();
+
+    // 2. IDs actuales (solo existentes)
+    const currentIds = existing.map((a) => a.id).sort();
+
+    // 3. Se eliminaron attachments
+    const removed = JSON.stringify(initialIds) !== JSON.stringify(currentIds);
+
+    // 4. Se agregaron archivos nuevos
+    const added = newFiles.length > 0;
+
+    return removed || added;
+  };
+
   const hasChanges = useMemo(() => {
     if (!initialData) return true;
 
@@ -140,11 +179,24 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       localState.fixed_specs,
       initialData.fixed_specs
     );
+    console.log(fixedSpecsChanged, "fixedSpecsChanged");
     const imageChanged =
       localState.image_file !== null ||
       localState.image_attachment_id !== initialData.image_attachment;
 
-    return productChanged || specsChanged || fixedSpecsChanged || imageChanged;
+    const attachmentsChanged = haveAttachmentsChanged(
+      localState.attachments_existing ?? [],
+      initialData.attachments ?? [],
+      localState.attachments_files ?? []
+    );
+
+    return (
+      productChanged ||
+      specsChanged ||
+      fixedSpecsChanged ||
+      imageChanged ||
+      attachmentsChanged
+    );
   }, [localState, initialData]);
 
   // ✅ Botón habilitado solo si: formulario válido Y (es nuevo O tiene cambios)
@@ -190,12 +242,11 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           attachmentId = attachment.id;
         }
 
-        const product = await saveProductEntity({
+        const product = await CreateProduct({
           dispatch,
           formState: { ...localState, specs: cleanedSpecs },
           initialData: null,
           attachmentId: attachmentId,
-          isNew,
         });
 
         await syncProductSpecifications({
@@ -205,7 +256,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           initialSpecs: initialData.specs || [],
         });
         //dispatch(refreshProductEverywhere(product.id));
-        await dispatch(refreshProductEverywhere(product.id)).unwrap();
 
         if (localState.fixed_specs.length === 0) {
           dispatch(deleteFixedSpec(product.fixed_specs[0].id!));
@@ -253,7 +303,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           formState: { ...localState, specs: cleanedSpecs },
           initialData: initialData,
           attachmentId: attachmentId,
-          isNew,
         });
         await syncProductSpecifications({
           dispatch,
@@ -286,14 +335,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
 
       reader.onloadend = () => {
         const base64String = reader.result as string;
-
-        // Crear el objeto en el formato que espera tu base de datos
-        // const fileData: AttachmentCreatePayload = {
-        //   file: selectedFile,
-        //   role: "image",
-        //   attachable_type: "product",
-        // };
-
         setLocalState({ ...localState, image_file: selectedFile });
 
         // Usar la misma base64 para el preview
@@ -306,6 +347,25 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       setImagePreview(null);
     }
   };
+  const handleCarouselFile = (file: File | null) => {
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+
+      setLocalState((prev) => ({
+        ...prev,
+        attachments_files: [...(prev.attachments_files || []), file],
+      }));
+
+      setCarrouselPreview((prev) => (prev ? [...prev, base64] : [base64]));
+    };
+
+    reader.readAsDataURL(file);
+  };
+  console.log(localState.attachments_files);
   const handleRemoveImage = () => {
     setLocalState({
       ...localState,
@@ -313,6 +373,18 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       image_attachment_id: null,
     });
     setImagePreview(null);
+  };
+  const handleRemoveCarouselItem = (index: number) => {
+    setLocalState((prev) => ({
+      ...prev,
+      attachments_files: prev.attachments_files
+        ? prev.attachments_files.filter((_, i) => i !== index)
+        : [],
+    }));
+
+    setCarrouselPreview((prev) =>
+      prev ? prev.filter((_, i) => i !== index) : null
+    );
   };
 
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -666,28 +738,58 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             Agregar especificación
           </Button>
         </div>
+        <br></br>
         {/* ✅ Upload de imagen con preview */}
-        <div className="space-y-2">
-          <UploadFile onFileChange={handleFile} />
-
-          {/* Preview de la imagen */}
-          {imagePreview && (
-            <div className="relative inline-block mt-2">
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="w-32 h-32 object-cover rounded-lg border-2 border-gray-100"
-              />
-              <button
-                type="button"
-                onClick={handleRemoveImage}
-                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
-                title="Eliminar imagen"
-              >
-                ×
-              </button>
+        <div className="grid grid-cols-2 gap-20">
+          <div>
+            <span className="mb-2 block text-lg font-medium">
+              Imágen de portada
+            </span>
+            <UploadFile onFileChange={handleFile} />
+            {imagePreview && (
+              <div className="relative inline-block mt-2 w-32 h-32">
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="w-32 h-32 object-cover rounded-lg border-2 border-gray-100"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
+                  title="Eliminar imagen"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+          </div>
+          <div>
+            <span className="mb-2 block text-lg font-medium">
+              Carrousel de archivos
+            </span>
+            <UploadFile onFileChange={handleCarouselFile} />
+            <div className="grid grid-cols-3 gap-2">
+              {carrouselPreview?.map((preview, index) => (
+                <div className="relative inline-block mt-2 w-32 h-32">
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    className="w-32 h-32 object-cover rounded-lg border-2 border-gray-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveCarouselItem(index)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
+                    title="Eliminar imagen"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
+          {/* Preview de la imagen */}
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={handleCancel}>

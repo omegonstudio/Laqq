@@ -5,8 +5,10 @@ import {
   Category,
   PaginatedResponse,
   Product,
+  ProductCreateRequest,
   ProductFixedSpec,
   ProductSpec,
+  ProductUpdateRequest,
 } from "@/types/types";
 import { api } from "./client";
 import { cleanParams, QueryParams } from "./utils";
@@ -34,7 +36,7 @@ export const productsApi = {
     ),
   get: (id: string) => api.get<Product>(`${BASE}/list/${id}/`),
   create: (data: Partial<Product>) => api.post<Product>(`${BASE}/list/`, data),
-  update: (id: string, data: Partial<Product>) =>
+  update: (id: string, data: Partial<ProductUpdateRequest>) =>
     api.put<Product>(`${BASE}/list/${id}/`, data),
   patch: (id: string, data: Partial<Product>) =>
     api.patch<Product>(`${BASE}/list/${id}/`, data),
@@ -54,7 +56,27 @@ export const productsApi = {
   updateProduct: (id: string, data: Partial<Product>) =>
     api.put<Product>(`${BASE}/list/${id}/`, data),
   deleteProduct: (id: string) => api.delete<void>(`${BASE}/list/${id}/`),
+  buildProductUploadFormData: (data: ProductUpdateRequest): FormData => {
+    const formData = new FormData();
 
+    Object.entries(data).forEach(([key, value]) => {
+      if (value == null) return;
+
+      if (key === "files" && Array.isArray(value)) {
+        value.forEach((file) => {
+          formData.append("files", file);
+        });
+      } else if (Array.isArray(value)) {
+        value.forEach((v) => formData.append(key, String(v)));
+      } else {
+        formData.append(key, String(value));
+      }
+    });
+
+    return formData;
+  },
+  uploadAttachments: (id: string, formData: FormData) =>
+    api.post<Product>(`${BASE}/list/${id}/upload_attachments/`, formData),
   // Brands
   listBrands: (params?: PaginationParams) =>
     api.get<PaginatedResponse<Brand>>(

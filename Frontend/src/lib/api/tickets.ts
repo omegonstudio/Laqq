@@ -2,6 +2,7 @@ import { api } from "./client";
 import { cleanParams, QueryParams } from "./utils";
 import {
   CreateTicketPayload,
+  CreateTicketResponse,
   PaginatedResponse,
   ServiceTicket,
   TicketPriority,
@@ -61,7 +62,7 @@ export const ticketsApi = {
     ),
   get: (id: string) => api.get<ServiceTicket>(`${BASE}/${id}/`),
   create: (payload: Partial<CreateTicketPayload>) =>
-    api.post<ServiceTicket>(`${BASE}/from-package/`, payload),
+    api.post<CreateTicketResponse>(`${BASE}/from-package/`, payload),
   update: (id: string, payload: Partial<UpdateTicketPayload>) =>
     api.put<ServiceTicket>(`${BASE}/${id}/`, payload),
   patch: (id: string, payload: Partial<ServiceTicket>) =>
@@ -101,6 +102,7 @@ export const ticketsApi = {
   attachFile: (id: string, payload: FormData | AttachTicketFileBase64) =>
     api.post(`${BASE}/${id}/attach_file/`, payload),
   attachFileMultipart: (id: string, payload: AttachTicketFileMultipart) => {
+    console.log("Attaching file with payload:", id);
     const formData = new FormData();
     formData.append("file", payload.file);
 

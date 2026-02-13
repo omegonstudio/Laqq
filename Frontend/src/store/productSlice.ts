@@ -87,8 +87,16 @@ export const createProduct = createAsyncThunk(
 
 export const updateProduct = createAsyncThunk(
   "products/updateProduct",
-  async ({ id, data }: { id: string; data: ProductUpdateRequest }) => {
+  async ({ id, data }: { id: string; data: Partial<ProductUpdateRequest> }) => {
     return productsApi.update(id, data);
+  }
+);
+export const updateProductWithFiles = createAsyncThunk(
+  "products/updateProductWithFiles",
+  async ({ id, data }: { id: string; data: ProductUpdateRequest }) => {
+    const formData = productsApi.buildProductUploadFormData(data);
+
+    return productsApi.uploadAttachments(id, formData);
   }
 );
 

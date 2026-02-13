@@ -62,6 +62,8 @@ export const sanitizeFixedSpecs = (
  */
 export const productToFormState = (product: Product): ProductFormState => {
   return {
+    attachments_files: null,
+    attachments_existing: null,
     id: product.id,
     name: product.name,
     brand: product.brand_id || product.brand || "",
@@ -99,6 +101,7 @@ export const formStateToCreateRequest = (
     related_product_ids: formState.related?.map((rel) => rel.id) || [],
   };
 };
+
 export const formStateToUpdateRequest = (
   formState: ProductFormState,
   initialData: Product,
@@ -117,6 +120,10 @@ export const formStateToUpdateRequest = (
     updateRequest.brand_id = formState.brand;
     hasRealChanges = true;
   }
+  if (formState.attachments_files && formState.attachments_files.length > 0) {
+    updateRequest.files = formState.attachments_files;
+    hasRealChanges = true;
+  }
 
   const initialCategory = initialData.category_id || initialData.category;
   if (formState.category !== initialCategory) {
@@ -128,7 +135,6 @@ export const formStateToUpdateRequest = (
     updateRequest.description = formState.description;
     hasRealChanges = true;
   }
-
   if (formState.product_code !== initialData.product_code) {
     updateRequest.product_code = formState.product_code;
     hasRealChanges = true;
@@ -157,9 +163,10 @@ export const formStateToUpdateRequest = (
     updateRequest.related_product_ids = currentRelatedIds;
     hasRealChanges = true;
   }
+  updateRequest.name = formState.name;
 
   // ✅ SIEMPRE incluir name (requerido por backend)
-  updateRequest.name = formState.name;
+  // updateRequest.name = formState.name;
 
   // ✅ Si no hubo cambios reales, retornar objeto vacío para que hasProductChanges sea false
   if (!hasRealChanges) {
@@ -187,28 +194,33 @@ export const haveFixedSpecsChanged = (
 ): boolean => {
   const normalizedCurrent = normalizeFixedSpecs(current);
   const normalizedInitial = normalizeFixedSpecs(initial);
+  const areEqual =
+    JSON.stringify(normalizedCurrent) !== JSON.stringify(normalizedInitial);
+  const codeValid = current[0]?.code?.length > 0 ? true : false;
+  if (areEqual) {
+    return codeValid;
+  }
 
-  return (
-    JSON.stringify(normalizedCurrent) !== JSON.stringify(normalizedInitial)
-  );
+  // console.log(initial, current, areEqual, "AAAAAAAAAAAA");
+  // return areEqual;
 };
 
 export const hasProductChanges = (updateRequest: ProductUpdateRequest) =>
   Object.keys(updateRequest).length > 0;
 
-export const getEmptyProductFormState = (): ProductFormState => {
-  return {
-    name: "",
-    brand: "",
-    category: "",
-    description: "",
-    product_code: "",
-    image_attachment_id: "",
-    image_file: null,
-    is_active: true,
-    specs: [],
-    related: [],
-    fixed_specs: [fixedSpecInitialData],
-    is_featured: false,
-  };
-};
+export const getEmptyProductFormState = (): ProductFormState => ({
+  name: "",
+  brand: "",
+  category: "",
+  description: "",
+  product_code: "",
+  image_attachment_id: "",
+  image_file: null,
+  is_active: true,
+  specs: [],
+  related: [],
+  fixed_specs: [fixedSpecInitialData],
+  is_featured: false,
+  attachments_existing: [],
+  attachments_files: [],
+});

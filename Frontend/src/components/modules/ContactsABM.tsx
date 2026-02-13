@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Edit2, Trash2, Eye } from "lucide-react";
+import { Edit2, Trash2, Eye, Plus } from "lucide-react";
 import Table from "@/components/common/Table";
 import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
@@ -18,14 +18,33 @@ import { formatDate } from "@/utils/formatDate";
 import { fetchUsers } from "@/store/usersSlice";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import { toast } from "@/hooks/use-toast";
+import Button from "../atoms/Button";
+
+const contactInitialData: Contact = {
+  id: "",
+  company_name: "",
+  first_name: "",
+  last_name: "",
+  email: "",
+  phone: "",
+  country: "",
+  state: "NEW",
+  assigned_user: "",
+  created_at: "",
+  message: "",
+  updated_at: "",
+};
 
 const ContactsABM = () => {
   // const [contacts] = useState<Contact[]>(mockContacts);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(
+    contactInitialData
+  );
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
+  const [isNew, setIsNew] = useState(false);
 
   const { list: contacts, pagination } = useAppSelector(
     (state: RootState) => state.contacts
@@ -50,6 +69,7 @@ const ContactsABM = () => {
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
   useEffect(() => {
     const params: {
       page: number;
@@ -70,12 +90,16 @@ const ContactsABM = () => {
 
     dispatch(fetchContacts(params));
   }, [dispatch, debouncedSearch, statusFilter]);
-  console.log(contacts, "AAAA");
+
   const handleView = (contact: Contact) => {
     setSelectedContact(contact);
     setViewModalOpen(true);
   };
-
+  const handleCreate = () => {
+    setIsNew(true);
+    setSelectedContact(contactInitialData);
+    setEditModalOpen(true);
+  };
   const handleEdit = (contact: Contact) => {
     setSelectedContact(contact);
     setEditModalOpen(true);
@@ -166,24 +190,34 @@ const ContactsABM = () => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
-        <InputField
-          placeholder="Buscar por empresa, nombre, apellido o email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-md"
-        />
-        <Select
-          options={[
-            { value: "all", label: "Todos los estados" },
-            ...states.map((item) => ({
-              value: item.id,
-              label: convertStateContact(item.name as stateEnum),
-            })),
-          ]}
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-48"
-        />
+        <div className="flex gap-4 flex-1">
+          <InputField
+            placeholder="Buscar por empresa, nombre, apellido o email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-md"
+          />
+          <Select
+            options={[
+              { value: "all", label: "Todos los estados" },
+              ...states.map((item) => ({
+                value: item.id,
+                label: convertStateContact(item.name as stateEnum),
+              })),
+            ]}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="max-w-xs"
+          />
+        </div>
+        <Button
+          className="flex items-center gap-2"
+          variant="primary"
+          onClick={handleCreate}
+        >
+          <Plus size={18} />
+          Crear contacto
+        </Button>
       </div>
       <Table
         columns={columns}
@@ -206,6 +240,7 @@ const ContactsABM = () => {
       />
 
       <EditContactModal
+        isNew={isNew}
         contact={selectedContact}
         open={editModalOpen}
         onOpenChange={setEditModalOpen}

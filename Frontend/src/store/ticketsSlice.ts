@@ -12,7 +12,6 @@ import {
   TicketStatistics,
   AssignTicketPayload,
   ResolveTicketPayload,
-  AttachTicketFilePayload,
 } from "@/lib/api/tickets";
 import { PaginationInfo } from "@/types/types";
 
@@ -140,12 +139,12 @@ export const fetchTicketPriorities = createAsyncThunk(
 );
 
 /* ACTIONS */
-export const attachTicketFile = createAsyncThunk(
-  "tickets/attachTicketFile",
-  async ({ id, payload }: { id: string; payload: AttachTicketFilePayload }) => {
-    return ticketsApi.attachFile(id, payload);
-  }
-);
+// export const attachTicketFile = createAsyncThunk(
+//   "tickets/attachTicketFile",
+//   async ({ id, payload }: { id: string; payload: AttachTicketFilePayload }) => {
+//     return ticketsApi.attachFile(id, payload);
+//   }
+// );
 
 export const assignTicket = createAsyncThunk(
   "tickets/assignTicket",
@@ -230,7 +229,7 @@ export const ticketsSlice = createSlice({
 
     /* CREATE TICKET */
     builder.addCase(createTicket.fulfilled, (state, action) => {
-      state.list.unshift(action.payload);
+      state.list.unshift(action.payload.ticket);
       state.pagination.count += 1;
     });
 
@@ -273,15 +272,15 @@ export const ticketsSlice = createSlice({
 
     /* ACTIONS */
     builder
-      .addCase(attachTicketFile.fulfilled, (state, action) => {
-        if (state.selected?.id === action.payload.id) {
-          state.selected = action.payload;
-        }
-        const index = state.list.findIndex((t) => t.id === action.payload.id);
-        if (index !== -1) {
-          state.list[index] = action.payload;
-        }
-      })
+      // .addCase(attachTicketFile.fulfilled, (state, action) => {
+      //   if (state.selected?.id === action.payload.id) {
+      //     state.selected = action.payload;
+      //   }
+      //   const index = state.list.findIndex((t) => t.id === action.payload.id);
+      //   if (index !== -1) {
+      //     state.list[index] = action.payload;
+      //   }
+      // })
       .addCase(assignTicket.fulfilled, (state, action) => {
         if (state.selected?.id === action.payload.id) {
           state.selected = action.payload;

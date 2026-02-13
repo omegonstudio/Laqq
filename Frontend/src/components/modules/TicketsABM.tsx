@@ -17,7 +17,6 @@ import {
   fetchTickets,
   fetchTicketStates,
 } from "@/store/ticketsSlice";
-import { fetchContacts } from "@/store/contacts";
 import { fetchUsers } from "@/store/usersSlice";
 import { ViewTicketModal } from "../molecules/Modals/ViewTicketService";
 

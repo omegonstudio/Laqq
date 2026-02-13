@@ -83,6 +83,19 @@ export interface Product {
   related?: RelatedProduct[]; // Alias de productos relacionados
   image_url: string | null; // URL de la imagen
   related_products?: RelatedProduct[]; // Campo original del backend
+  attachments: {
+    id: string;
+    file_name: string;
+    content_type_str: string;
+    size_bytes: number;
+    file: string;
+    url: string;
+    role: "image" | "manual" | "datasheet" | "other" | null;
+    attachable_type: string;
+    attachable_id: string;
+    created_by: string;
+    created_at: string;
+  }[];
 }
 
 // ============================================
@@ -102,7 +115,8 @@ export interface ProductCreateRequest {
 }
 
 export interface ProductUpdateRequest extends Partial<ProductCreateRequest> {
-  // Hereda todo de ProductCreateRequest pero hace todos los campos opcionales
+  files?: File[];
+  attachments?: string[]; // ← IDs que permanecen
 }
 
 // ============================================
@@ -116,6 +130,8 @@ export interface ProductFormState {
   category: string; // UUID
   description: string;
   product_code: string;
+  attachments_existing: Attachment[]; // lo que vino del backend
+  attachments_files: File[];
   image_file: File | null;
   /** Attachment actual asociado (UUID) */
   image_attachment_id: string | null;

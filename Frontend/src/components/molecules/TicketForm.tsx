@@ -1,12 +1,9 @@
 import { useEffect, useState } from "react";
-import { Upload } from "lucide-react";
 import InputField from "../atoms/InputField";
 import Button from "../atoms/Button";
 import { toast } from "@/hooks/use-toast";
 import UploadFile from "../atoms/UploadFile";
 import { Product } from "@/types/types";
-import { RootState } from "@/store";
-import { useSelector } from "react-redux";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchAllProducts } from "@/store/productSlice";
 import { ProductSearchCombobox } from "./ProductSearch";
@@ -19,7 +16,6 @@ import {
 import { CreateTicketPayload } from "@/types/api";
 import { createTicket } from "@/store/ticketsSlice";
 import { FileText, File as FileIcon } from "lucide-react";
-import { attachmentsApi } from "@/lib/api/attachments";
 import { ticketsApi } from "@/lib/api/tickets";
 interface TicketFormProps {
   onClose?: () => void;
@@ -82,10 +78,11 @@ const TicketForm = ({
 
       // 1. Crear ticket SIN archivo
       const ticket = await dispatch(createTicket(formData)).unwrap();
+      console.log("Ticket creado:", ticket.ticket.id);
 
       // 2. Si hay archivo, adjuntarlo al ticket
       if (selectedFile) {
-        await ticketsApi.attachFileMultipart(ticket.id, {
+        await ticketsApi.attachFileMultipart(ticket.ticket.id, {
           file: selectedFile,
           role: "customer",
           detail: "Archivo adjunto desde formulario de soporte",
