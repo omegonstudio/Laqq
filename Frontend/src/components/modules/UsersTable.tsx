@@ -15,7 +15,7 @@ import {
   useUserTypes,
 } from "@/hooks/useUsers";
 import type { NormalizedApiError } from "@/lib/api/client";
-import type { UserData } from "@/types/api";
+import type { UserCreate, UserData } from "@/types/api";
 import { toast } from "@/hooks/use-toast";
 
 type UserRow = {
@@ -177,44 +177,55 @@ const UsersTable = () => {
 
   const handleSubmitUpsert = async () => {
     setFormErrors({});
-
-    const payloadBase = {
-      username: form.username.trim(),
-      email: form.email.trim(),
-      first_name: form.first_name.trim(),
-      last_name: form.last_name.trim(),
-      user_type_id: form.user_type_id || null,
-      state_id: form.state_id || null,
-      is_active: form.is_active === "true",
-    };
-
+  
     try {
       if (upsertMode === "create") {
-        await createUserMutation.mutateAsync({
-          ...payloadBase,
+        const createPayload: UserCreate = {
+          email: form.email.trim(),
+          first_name: form.first_name.trim(),
+          last_name: form.last_name.trim(),
+          username: form.username.trim(),
           password: form.password,
-        });
+          user_type_id: form.user_type_id || null,
+          state_id: form.state_id || null,
+          is_active: form.is_active === "true",
+        };
+  
+        await createUserMutation.mutateAsync(createPayload);
+  
         toast({ title: "Usuario creado exitosamente" });
         setIsUpsertOpen(false);
         return;
       }
-
+  
       if (!selectedUser?.id) return;
-      const patchPayload: Record<string, unknown> = { ...payloadBase };
+  
+      const patchPayload: Partial<UserCreate> = {
+        email: form.email.trim(),
+        first_name: form.first_name.trim(),
+        last_name: form.last_name.trim(),
+        username: form.username.trim(),
+        user_type_id: form.user_type_id || null,
+        state_id: form.state_id || null,
+        is_active: form.is_active === "true",
+      };
+  
       if (form.password.trim()) {
         patchPayload.password = form.password;
       }
-
+  
       await patchUserMutation.mutateAsync({
         id: selectedUser.id,
         payload: patchPayload,
       });
+  
       toast({ title: "Usuario actualizado exitosamente" });
       setIsUpsertOpen(false);
     } catch (err) {
       normalizeMutationError(err);
     }
   };
+  
 
   const handleEdit = (row: UserRow) => openEditModal(row.raw);
   const handleDelete = (row: UserRow) => openDeleteModal(row.raw);

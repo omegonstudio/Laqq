@@ -456,7 +456,7 @@ export interface UserState {
 
 export interface UserData {
   id: string;
-  username: string;
+  username?: string;
   email: string;
   first_name: string;
   last_name: string;
