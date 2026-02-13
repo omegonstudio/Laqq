@@ -22,7 +22,7 @@ const initialState: QuoteFormState = {
     country: "Argentina",
     message: "",
     company_name: "",
-    // state: "PENDING", // Agregado según ContactInfo
+    state: null, // Agregado según ContactInfo
     assigned_user: null, // Agregado según ContactInfo
   },
   quote: {

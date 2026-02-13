@@ -75,7 +75,6 @@ export function EditTicketsService({
         contact_id: ticket.contact.id,
         product: ticket.product,
         description: ticket.description,
-        attachment: ticket.attachment,
         state: ticket.state,
         priority: ticket.priority,
         assigned_user: ticket.assigned_user?.id ?? null,
@@ -144,16 +143,14 @@ export function EditTicketsService({
       </div>
     );
   };
-  console.log(formData.assigned_user, "USERRRRRRRRRRRRRRRRR");
+  console.log(formData.started_at, "USERRRRRRRRRRRRRRRRR");
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("entra", ticket);
-    if (!ticket) return;
+    if (!formData) return;
 
     setIsLoading(true);
 
     try {
-      const previousAssignedUserId = ticket.assigned_user?.id ?? null;
       const newAssignedUserId = formData.assigned_user ?? null;
 
       // 2. Asignar siempre que cambie
@@ -161,9 +158,8 @@ export function EditTicketsService({
         await ticketsApi.assign(ticket.id, {
           assigned_user: newAssignedUserId,
         });
-
         // 3. Primera asignación → iniciar ticket
-        if (!previousAssignedUserId) {
+        if (formData.started_at === null) {
           await ticketsApi.start(ticket.id);
         }
       }
@@ -178,18 +174,8 @@ export function EditTicketsService({
       }
       if (closed) {
         await ticketsApi.close(ticket.id);
-      } else {
-        await ticketsApi.start(ticket.id);
       }
-      // if (formData.state === "open") {
-      //   await ticketsApi.start(ticket.id);
-      // } else if (formData.state === "in_progress") {
-      //   await ticketsApi.resolve(ticket.id, {
-      //     resolution_notes: formData.resolution_notes,
-      //   });
-      // } else if (formData.state === "closed") {
-      //   await ticketsApi.close(ticket.id);
-      // }
+
       await dispatch(
         updateTicket({
           id: ticket.id,

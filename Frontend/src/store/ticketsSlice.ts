@@ -103,6 +103,7 @@ export const createTicket = createAsyncThunk(
 export const updateTicket = createAsyncThunk(
   "tickets/updateTicket",
   async ({ id, data }: { id: string; data: Partial<UpdateTicketPayload> }) => {
+    console.log(data, "AA");
     return ticketsApi.update(id, data);
   }
 );
@@ -211,7 +212,18 @@ export const ticketsSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || "Error cargando tickets";
       });
-
+    /* UPDATE TICKET */
+    builder.addCase(updateTicket.fulfilled, (state, action) => {
+      // Actualizar el ticket seleccionado si coincide
+      if (state.selected?.id === action.payload.id) {
+        state.selected = action.payload;
+      }
+      // Actualizar el ticket en la lista
+      const index = state.list.findIndex((t) => t.id === action.payload.id);
+      if (index !== -1) {
+        state.list[index] = action.payload;
+      }
+    });
     /* TICKET GET ONE */
     builder
       .addCase(fetchTicket.pending, (state) => {

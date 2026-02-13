@@ -55,6 +55,7 @@ const TicketForm = ({
       company_name: "",
       phone: "",
       country: null,
+      state: "new",
     },
   });
 
@@ -155,6 +156,7 @@ const TicketForm = ({
         company_name: "",
         phone: "",
         country: null,
+        state: "new",
       },
     });
     setSelectedFile(null);

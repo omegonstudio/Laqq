@@ -266,6 +266,7 @@ export const saveProductEntity = async ({
     return initialData;
   }
   const hasFiles = updateRequest.files && updateRequest.files.length > 0;
+  console.log("UPDATE REQUESTttttt", updateRequest);
 
   if (hasFiles) {
     return dispatch(

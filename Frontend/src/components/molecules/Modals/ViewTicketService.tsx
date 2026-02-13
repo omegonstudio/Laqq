@@ -9,6 +9,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { ServiceTicket } from "@/types/api";
 import { formatDate } from "@/utils/formatDate";
+import { File } from "lucide-react";
 
 interface ViewTicketModalProps {
   ticket: ServiceTicket | null;
@@ -129,6 +130,29 @@ export function ViewTicketModal({
                 {ticket.assigned_user
                   ? `${ticket.assigned_user.first_name} ${ticket.assigned_user.last_name} (${ticket.assigned_user.email})`
                   : "Sin asignar"}
+              </p>
+            </div>
+          </section>
+          <section className="space-y-2">
+            <div>
+              <Label>
+                <File className="inline-block mr-1" size={16} />
+                Archivos
+              </Label>
+              <p>
+                {ticket.attachments && ticket.attachments.length > 0
+                  ? ticket.attachments.map((file) => (
+                      <a
+                        key={file.id}
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-blue-600 hover:underline"
+                      >
+                        {file.file_name}
+                      </a>
+                    ))
+                  : "Sin archivos"}
               </p>
             </div>
           </section>

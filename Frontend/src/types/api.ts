@@ -1,4 +1,7 @@
-import { PaginatedResponse as BasePaginatedResponse } from "./types";
+import {
+  Attachment,
+  PaginatedResponse as BasePaginatedResponse,
+} from "./types";
 
 export type PaginatedResponse<T> = BasePaginatedResponse<T>;
 
@@ -291,7 +294,7 @@ export interface QuoteFormState {
   quote: {
     quote_type: QuoteTypeEnum;
     message: string;
-    state?: QuoteStateType;
+    state: QuoteStateType;
     user?: string | null;
   };
   items: Array<{
@@ -341,7 +344,6 @@ export interface ServiceTicket {
   product: string | null;
   product_name: string;
   description: string;
-  attachment: string | null;
   state: string;
   priority: string;
   assigned_user: {
@@ -358,6 +360,7 @@ export interface ServiceTicket {
   closed_at: string | null;
   updated_at: string;
   resolution_notes: string | null;
+  attachments: Attachment[] | null;
 }
 
 export interface CreateTicketPayload {
@@ -368,6 +371,7 @@ export interface CreateTicketPayload {
     company_name?: string;
     phone?: string;
     country?: string;
+    state: string;
   };
   ticket: {
     state: string;
