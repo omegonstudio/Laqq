@@ -36,7 +36,7 @@ jobs:
 
       - name: Run backend tests
         working-directory: Backend
-        run: python manage.py test tickets contacts
+        run: python manage.py test tickets contacts attachments quotes
 
       # ---------- Frontend: build ----------
       - name: Setup Node
@@ -128,28 +128,32 @@ jobs:
             echo "-> Build backend + frontend"
             docker compose -f "$COMPOSE" build backend frontend
 
-            echo "-> Levantando stack completo"
-            docker compose -f "$COMPOSE" up -d
+            echo "-> Levantando backend"
+            docker compose -f "$COMPOSE" up -d backend
 
-            echo "-> Esperando backend"
-            for i in {1..20}; do
-              if docker compose -f "$COMPOSE" ps backend | grep -q "Up"; then
-                echo "   Backend arriba"
+            echo "-> Esperando backend healthy (entrypoint corre migrations + collectstatic)"
+            for i in {1..60}; do
+              STATUS=$(docker inspect -f '{{.State.Health.Status}}' laqq-backend 2>/dev/null || echo "unknown")
+              if [ "$STATUS" = "healthy" ]; then
+                echo "   Backend healthy"
                 break
               fi
-              sleep 2
-              if [ "$i" -eq 20 ]; then
-                echo "Backend no levantó"
-                docker compose -f "$COMPOSE" logs backend --tail=200 || true
+              if [ "$STATUS" = "unhealthy" ]; then
+                echo "Backend unhealthy - logs:"
+                docker compose -f "$COMPOSE" logs backend --tail=100 || true
+                exit 1
+              fi
+              echo "   Esperando... ($i/60) status=$STATUS"
+              sleep 5
+              if [ "$i" -eq 60 ]; then
+                echo "Timeout esperando backend healthy"
+                docker compose -f "$COMPOSE" logs backend --tail=100 || true
                 exit 1
               fi
             done
 
-            echo "-> Migrations"
-            docker compose -f "$COMPOSE" exec backend python manage.py migrate --noinput
-
-            echo "-> Collectstatic"
-            docker compose -f "$COMPOSE" exec backend python manage.py collectstatic --noinput
+            echo "-> Levantando frontend"
+            docker compose -f "$COMPOSE" up -d frontend
 
             echo "-> Estado final"
             docker compose -f "$COMPOSE" ps

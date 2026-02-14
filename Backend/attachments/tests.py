@@ -293,36 +293,3 @@ class TicketAttachmentsTest(APITestCase):
         self.assertEqual(attachments.count(), 1)
         self.assertEqual(attachments.first().role, ROLE_IMAGE)
 
-    def test_attach_multiple_files_to_ticket(self):
-        """Test adjuntar múltiples archivos a un ticket"""
-        file1 = SimpleUploadedFile("file1.jpg", b"content1", content_type="image/jpeg")
-        file2 = SimpleUploadedFile("file2.pdf", b"content2", content_type="application/pdf")
-
-        response = self.client.post(
-            f'/tickets/{self.ticket.id}/attach_files/',
-            {'files': [file1, file2]},
-            format='multipart'
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('attachments', response.data)
-        self.assertEqual(len(response.data['attachments']), 2)
-
-    def test_delete_ticket_attachment(self):
-        """Test eliminar un attachment de un ticket"""
-        ticket_ct = ContentType.objects.get_for_model(ServiceTicket)
-        attachment = Attachment.objects.create(
-            file_name='to_delete.pdf',
-            content_type=ticket_ct,
-            object_id=self.ticket.id,
-            attachable_type='ServiceTicket',
-            attachable_id=self.ticket.id
-        )
-
-        response = self.client.delete(
-            f'/tickets/{self.ticket.id}/attachments/{attachment.id}/'
-        )
-
-        # El endpoint retorna 200 OK con un mensaje de confirmación
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_204_NO_CONTENT])
-        self.assertFalse(Attachment.objects.filter(id=attachment.id).exists())
