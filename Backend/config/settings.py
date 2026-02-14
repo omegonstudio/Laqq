@@ -327,6 +327,11 @@ LOGGING = {
             'level': 'ERROR',
             'propagate': False,
         },
+        'quotes': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
     },
 }
 
