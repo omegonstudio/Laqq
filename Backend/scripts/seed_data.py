@@ -128,13 +128,15 @@ def seed_contacts():
 
     for i in range(3):
         Contact.objects.get_or_create(
-            id=uuid.uuid4(),
-            company_name=f"Empresa {i}",
-            first_name=f"Juan{i}",
-            last_name=f"Pérez{i}",
             email=f"cliente{i}@mail.com",
-            state=state,
-            assigned_user=assigned,
+            defaults={
+                "id": uuid.uuid4(),
+                "company_name": f"Empresa {i}",
+                "first_name": f"Juan{i}",
+                "last_name": f"Pérez{i}",
+                "state": state,
+                "assigned_user": assigned,
+            }
         )
 
     print("✔ Contacts created")
@@ -299,25 +301,27 @@ def seed_quotes(products):
     qtype = QuoteType.objects.first()
     qstate = QuoteState.objects.first()
 
-    q = Quote.objects.create(
-        id=uuid.uuid4(),
-        quote_number=f"Q-{uuid.uuid4().hex[:6]}",
-        contact=contact,
-        user=user,
-        quote_type=qtype,
-        state=qstate,
-        total_amount=Decimal("5000.00"),
+    q, created = Quote.objects.get_or_create(
+        quote_number="Q-SEED01",
+        defaults={
+            "id": uuid.uuid4(),
+            "contact": contact,
+            "user": user,
+            "quote_type": qtype,
+            "state": qstate,
+            "total_amount": Decimal("5000.00"),
+        }
     )
 
-    # One item
-    QuoteItem.objects.create(
-        id=uuid.uuid4(),
-        quote=q,
-        product=products[0],
-        quantity=2,
-        unit_price=Decimal("2500.00"),
-        subtotal=Decimal("5000.00"),
-    )
+    if created:
+        QuoteItem.objects.create(
+            id=uuid.uuid4(),
+            quote=q,
+            product=products[0],
+            quantity=2,
+            unit_price=Decimal("2500.00"),
+            subtotal=Decimal("5000.00"),
+        )
 
 
 # ============================================================
@@ -357,14 +361,16 @@ def seed_notes():
     ntype = NoteType.objects.first()
     nstate = NoteState.objects.first()
 
-    Note.objects.create(
-        id=uuid.uuid4(),
+    Note.objects.get_or_create(
         title="Nota de ejemplo",
-        summary="Resumen",
-        content="Contenido de prueba",
         author=user,
-        note_type=ntype,
-        state=nstate,
+        defaults={
+            "id": uuid.uuid4(),
+            "summary": "Resumen",
+            "content": "Contenido de prueba",
+            "note_type": ntype,
+            "state": nstate,
+        }
     )
 
 
