@@ -190,10 +190,10 @@ def seed_products(brands, categories):
     for name in product_names:
         obj, created = Product.objects.get_or_create(
             name=name,
-            brand=random.choice(brands),
-            category=random.choice(categories),
             defaults={
                 "id": uuid.uuid4(),
+                "brand": random.choice(brands),
+                "category": random.choice(categories),
                 "description": f"Descripción de {name}",
                 "is_active": True,
             }
