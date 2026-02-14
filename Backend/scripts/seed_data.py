@@ -127,17 +127,17 @@ def seed_contacts():
     assigned = User.objects.filter(user_type__id="BACKOFFICE").first()
 
     for i in range(3):
-        Contact.objects.get_or_create(
-            email=f"cliente{i}@mail.com",
-            defaults={
-                "id": uuid.uuid4(),
-                "company_name": f"Empresa {i}",
-                "first_name": f"Juan{i}",
-                "last_name": f"Pérez{i}",
-                "state": state,
-                "assigned_user": assigned,
-            }
-        )
+        email = f"cliente{i}@mail.com"
+        if not Contact.objects.filter(email=email).exists():
+            Contact.objects.create(
+                id=uuid.uuid4(),
+                company_name=f"Empresa {i}",
+                first_name=f"Juan{i}",
+                last_name=f"Pérez{i}",
+                email=email,
+                state=state,
+                assigned_user=assigned,
+            )
 
     print("✔ Contacts created")
 
@@ -301,19 +301,16 @@ def seed_quotes(products):
     qtype = QuoteType.objects.first()
     qstate = QuoteState.objects.first()
 
-    q, created = Quote.objects.get_or_create(
-        quote_number="Q-SEED01",
-        defaults={
-            "id": uuid.uuid4(),
-            "contact": contact,
-            "user": user,
-            "quote_type": qtype,
-            "state": qstate,
-            "total_amount": Decimal("5000.00"),
-        }
-    )
-
-    if created:
+    if not Quote.objects.filter(quote_number="Q-SEED01").exists():
+        q = Quote.objects.create(
+            id=uuid.uuid4(),
+            quote_number="Q-SEED01",
+            contact=contact,
+            user=user,
+            quote_type=qtype,
+            state=qstate,
+            total_amount=Decimal("5000.00"),
+        )
         QuoteItem.objects.create(
             id=uuid.uuid4(),
             quote=q,
@@ -361,17 +358,16 @@ def seed_notes():
     ntype = NoteType.objects.first()
     nstate = NoteState.objects.first()
 
-    Note.objects.get_or_create(
-        title="Nota de ejemplo",
-        author=user,
-        defaults={
-            "id": uuid.uuid4(),
-            "summary": "Resumen",
-            "content": "Contenido de prueba",
-            "note_type": ntype,
-            "state": nstate,
-        }
-    )
+    if not Note.objects.filter(title="Nota de ejemplo", author=user).exists():
+        Note.objects.create(
+            id=uuid.uuid4(),
+            title="Nota de ejemplo",
+            summary="Resumen",
+            content="Contenido de prueba",
+            author=user,
+            note_type=ntype,
+            state=nstate,
+        )
 
 
 # ============================================================
