@@ -145,6 +145,7 @@ def send_email_message(email: EmailMultiAlternatives) -> bool:
     # During tests use Django's standard email backend (populates mail.outbox)
     email_backend = getattr(settings, "EMAIL_BACKEND", "")
     if "locmem" in email_backend or getattr(settings, "TESTING", False):
+        email.send()
         return True
 
     api_key = getattr(settings, "RESEND_API_KEY", None)
