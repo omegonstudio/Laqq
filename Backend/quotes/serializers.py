@@ -404,12 +404,41 @@ class QuotePackageSerializer(serializers.Serializer):
             'message': quote_data.get('message', '')
         }
 
-        # Solo agregar quote_type y state si están presentes (sino usan defaults)
+        # Resolver quote_type
         if 'quote_type' in quote_data and quote_data['quote_type']:
-            quote_create_data['quote_type'] = QuoteType.objects.get(id=quote_data['quote_type'])
+            quote_type = QuoteType.objects.filter(id=quote_data['quote_type']).first()
+            if not quote_type:
+                raise serializers.ValidationError(
+                    f"QuoteType '{quote_data['quote_type']}' does not exist."
+                )
+            quote_create_data['quote_type'] = quote_type
+        else:
+            # Usar el primero disponible como fallback
+            default_quote_type = QuoteType.objects.first()
+            if not default_quote_type:
+                raise serializers.ValidationError(
+                    "No QuoteType available. Please create at least one QuoteType."
+                )
+            quote_create_data['quote_type'] = default_quote_type
+            logger.warning("No quote_type provided, using default: %s", default_quote_type.id)
 
+        # Resolver state
         if 'state' in quote_data and quote_data['state']:
-            quote_create_data['state'] = QuoteState.objects.get(id=quote_data['state'])
+            quote_state = QuoteState.objects.filter(id=quote_data['state']).first()
+            if not quote_state:
+                raise serializers.ValidationError(
+                    f"QuoteState '{quote_data['state']}' does not exist."
+                )
+            quote_create_data['state'] = quote_state
+        else:
+            # Usar el primero disponible como fallback
+            default_quote_state = QuoteState.objects.first()
+            if not default_quote_state:
+                raise serializers.ValidationError(
+                    "No QuoteState available. Please create at least one QuoteState."
+                )
+            quote_create_data['state'] = default_quote_state
+            logger.warning("No state provided, using default: %s", default_quote_state.id)
 
         quote = Quote.objects.create(**quote_create_data)
         logger.info(f"Quote created: {quote.quote_number} (ID: {quote.id})")
