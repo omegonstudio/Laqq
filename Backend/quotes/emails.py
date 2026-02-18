@@ -121,7 +121,7 @@ def send_quote_to_business(quote):
         safe_print("="*80 + "\n")
 
         # Send email (may fail if SMTP not configured, but quote will still be created)
-        email.send(send_email_message(email))
+        send_email_message(email)
         logger.info(f"Quote #{quote.quote_number} email sent to business: {settings.BUSINESS_EMAIL}")
 
         return True
@@ -198,7 +198,7 @@ def send_quote_to_customer(quote):
         safe_print("="*80 + "\n")
 
         # Send email (may fail if SMTP not configured, but quote will still be created)
-        email.send(send_email_message(email))
+        send_email_message(email)
         logger.info(f"Quote #{quote.quote_number} confirmation sent to customer: {quote.contact.email}")
 
         return True
@@ -299,7 +299,7 @@ def send_quote_updated_to_business(quote):
         safe_print("="*80 + "\n")
 
         # Send email
-        email.send(send_email_message(email))
+        send_email_message(email)
         logger.info(f"Quote #{quote.quote_number} update email sent to business: {settings.BUSINESS_EMAIL}")
 
         return True
@@ -375,7 +375,7 @@ def send_quote_updated_to_customer(quote):
         safe_print("="*80 + "\n")
 
         # Send email
-        email.send(send_email_message(email))
+        send_email_message(email)
         logger.info(f"Quote #{quote.quote_number} update notification sent to customer: {quote.contact.email}")
 
         return True

@@ -189,8 +189,15 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
         import base64
 
         ticket = self.get_object()
-        role = request.data.get('role', 'other')
         file_obj = request.FILES.get('file')
+
+        explicit_role = request.data.get('role')
+        if explicit_role:
+            role = explicit_role
+        elif file_obj and file_obj.content_type and file_obj.content_type.startswith('image/'):
+            role = 'image'
+        else:
+            role = 'other'
 
         ticket_ct = ContentType.objects.get_for_model(ServiceTicket)
 

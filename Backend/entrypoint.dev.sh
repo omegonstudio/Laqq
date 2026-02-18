@@ -24,6 +24,14 @@ echo ""
 echo "Running migrations..."
 python manage.py migrate --noinput
 
+# Load reference data (always, idempotent)
+echo ""
+echo "Loading initial reference data (idempotent)..."
+python manage.py populate_user_data
+python manage.py populate_ticket_data
+python manage.py populate_contact_data
+python manage.py populate_quote_data
+
 # Always load seed data in development
 echo ""
 echo "Loading seed data..."

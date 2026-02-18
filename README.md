@@ -114,5 +114,26 @@ git push -u origin main
 - Dependencias frontend: si hay problemas con cache, borra el volumen `laqq-frontend-dev` (`docker volume ls | grep frontend && docker volume rm <volumen>`).
 - Migraciones: usa `docker compose -f docker-compose.dev.yml exec backend python manage.py migrate`.
 - Permisos de archivos en host Linux: monta con tu usuario si necesitás (`user: "${UID}:${GID}"` en el servicio backend/front).
+- `DoesNotExist` en tickets `start/`, `resolve/`, `close/` o en creación de cotizaciones: los datos de referencia no están cargados. Corré los populate commands (ver abajo).
+
+## Datos de referencia (estados, tipos, prioridades)
+
+El entrypoint los carga automáticamente al levantar. Si usás una DB existente sin estos datos, correlos a mano:
+
+```bash
+docker compose -f docker-compose.dev.yml exec backend python manage.py populate_user_data
+docker compose -f docker-compose.dev.yml exec backend python manage.py populate_ticket_data
+docker compose -f docker-compose.dev.yml exec backend python manage.py populate_contact_data
+docker compose -f docker-compose.dev.yml exec backend python manage.py populate_quote_data
+```
+
+Todos son idempotentes (seguros de correr múltiples veces). Crean:
+
+| Comando | Datos |
+|---------|-------|
+| `populate_user_data` | UserType: `admin`, `back`, `client` · UserState: `active`, `inactive`, `suspended` |
+| `populate_ticket_data` | TicketState: `new`, `open`, `in_progress`, `waiting_parts`, `resolved`, `closed` · TicketPriority: `low`, `medium`, `high`, `urgent` |
+| `populate_contact_data` | ContactState: `new`, `in_progress`, `responded`, `closed` |
+| `populate_quote_data` | QuoteType: `standard`, `express` · QuoteState: `pending`, `sent`, `confirmed`, `rejected`, `expired` |
 
 Más detalles en `docs/DEV_SETUP.md`.
