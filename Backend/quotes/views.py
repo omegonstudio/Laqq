@@ -204,7 +204,15 @@ class QuoteViewSet(viewsets.ModelViewSet):
         """
         serializer = QuotePackageSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        result = serializer.save()
+
+        try:
+            result = serializer.save()
+        except Exception as exc:
+            logger.exception(
+                "Error creating quote from package. Data: %s",
+                request.data
+            )
+            raise
 
         logger.info(
             f"Quote package created: Quote {result['quote'].quote_number}, "

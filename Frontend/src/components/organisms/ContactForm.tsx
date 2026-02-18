@@ -13,7 +13,7 @@ const ContactForm = () => {
     company_name: "",
     first_name: "",
     last_name: "",
-    country: "",
+    country: "Argentina",
     message: "",
     state: "new",
     email: "",
@@ -75,8 +75,8 @@ const ContactForm = () => {
                   </div>
                   <div>
                     <h3 className="font-bold mb-1">Teléfono</h3>
-                    <p className="text-muted-foreground">+52 (55) 1234 5678</p>
-                    <p className="text-muted-foreground">+52 (55) 8765 4321</p>
+                    <p className="text-muted-foreground">+54 (11) 5277-7200</p>
+                    {/* <p className="text-muted-foreground">+52 (55) 8765 4321</p> */}
                   </div>
                 </div>
 
@@ -87,11 +87,11 @@ const ContactForm = () => {
                   <div>
                     <h3 className="font-bold mb-1">Dirección</h3>
                     <p className="text-muted-foreground">
-                      Av. Insurgentes Sur 1234
+                      Saavedra 247
                       <br />
-                      Col. Del Valle, Ciudad de México
+                      C1083ACE
                       <br />
-                      C.P. 03100, México
+                      Buenos Aires | Argentina
                     </p>
                   </div>
                 </div>
@@ -111,22 +111,42 @@ const ContactForm = () => {
               <h2 className="text-2xl font-bold mb-6">Envíanos un Mensaje</h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                <InputField
-                  label="Nombre"
-                  value={formData.first_name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, first_name: e.target.value })
-                  }
-                  required
-                />
-                <InputField
-                  label="Apellido"
-                  value={formData.last_name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, last_name: e.target.value })
-                  }
-                  required
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField
+                    label="Nombre"
+                    value={formData.first_name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, first_name: e.target.value })
+                    }
+                    required
+                  />
+                  <InputField
+                    label="Apellido"
+                    value={formData.last_name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, last_name: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField
+                    label="Empresa"
+                    value={formData.company_name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, company_name: e.target.value })
+                    }
+                    required
+                  />
+                  <InputField
+                    label="País"
+                    value={formData.country}
+                    onChange={(e) =>
+                      setFormData({ ...formData, country: e.target.value })
+                    }
+                    required
+                  />
+                </div>
                 <InputField
                   label="Email"
                   type="email"
@@ -136,7 +156,6 @@ const ContactForm = () => {
                   }
                   // required
                 />
-
                 {/* <InputField
                   label="Asunto"
                   value={formData.subject}

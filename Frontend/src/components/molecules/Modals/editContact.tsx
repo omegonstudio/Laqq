@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { convertStateContact } from "@/utils/quotesConvert";
 import { useAppDispatch } from "@/store/hooks";
-import { updateContact } from "@/store/contacts";
+import { createContact, updateContact } from "@/store/contacts";
 
 interface EditContactModalProps {
   contact: Contact | null;
@@ -31,6 +31,7 @@ interface EditContactModalProps {
   onOpenChange: (open: boolean) => void;
   states: ContactState[];
   users: UserData[];
+  isNew: boolean;
 }
 
 export function EditContactModal({
@@ -39,6 +40,7 @@ export function EditContactModal({
   onOpenChange,
   states,
   users = [],
+  isNew,
 }: EditContactModalProps) {
   const [formData, setFormData] = useState<Partial<Contact>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -103,7 +105,6 @@ export function EditContactModal({
     return Object.keys(newErrors).length === 0;
   };
 
-  console.log(formData.phone, "TELEFONO");
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -119,13 +120,19 @@ export function EditContactModal({
         message: formData.message || null,
         assigned_user: formData.assigned_user || null,
       } as Contact;
-
-      dispatch(
-        updateContact({ data: updatedContact, id: contact.id })
-      ).unwrap();
-      setFormData({});
-      setErrors({});
-      onOpenChange(false);
+      if (!isNew) {
+        dispatch(
+          updateContact({ data: updatedContact, id: contact.id })
+        ).unwrap();
+        setFormData({});
+        setErrors({});
+        onOpenChange(false);
+      } else {
+        dispatch(createContact(updatedContact)).unwrap();
+        setFormData({});
+        setErrors({});
+        onOpenChange(false);
+      }
     } catch (error) {
       console.error("Error al guardar:", error);
     } finally {

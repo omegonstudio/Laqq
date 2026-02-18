@@ -1,16 +1,35 @@
+import { toast } from "@/hooks/use-toast";
 import { Upload } from "lucide-react";
 import { ChangeEvent, useRef, useState } from "react";
-import { toast } from "sonner";
 
 interface UploadFileProps {
   onFileChange: (file: File | null) => void;
+  allowedTypes?: string[];
+  label?: string;
+  helpText?: string;
 }
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png"];
 
-const UploadFile: React.FC<UploadFileProps> = ({ onFileChange }) => {
+const UploadFile: React.FC<UploadFileProps> = ({
+  onFileChange,
+  allowedTypes = ["image/jpeg", "image/png"],
+  label = "Adjuntar Archivo (opcional)",
+  helpText,
+}) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [dragActive, setDragActive] = useState(false);
+
+  const getErrorMessage = () => {
+    const types = allowedTypes
+      .map((type) => {
+        const [category, format] = type.split("/");
+        return format.toUpperCase();
+      })
+      .join(", ");
+
+    return `Solo se permiten archivos: ${types}`;
+  };
 
   const handleClick = () => {
     inputRef.current?.click();
@@ -32,8 +51,11 @@ const UploadFile: React.FC<UploadFileProps> = ({ onFileChange }) => {
     const file = e.dataTransfer.files?.[0] ?? null;
     if (!file) return;
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error("Solo se permiten imágenes JPG o PNG");
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: getErrorMessage(),
+        variant: "destructive",
+      });
       return;
     }
 
@@ -48,8 +70,11 @@ const UploadFile: React.FC<UploadFileProps> = ({ onFileChange }) => {
       return;
     }
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error("Solo se permiten imágenes JPG o PNG");
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: getErrorMessage(),
+        variant: "destructive",
+      });
       e.target.value = "";
       return;
     }
@@ -59,9 +84,7 @@ const UploadFile: React.FC<UploadFileProps> = ({ onFileChange }) => {
 
   return (
     <div>
-      <label className="block text-sm font-medium mb-2">
-        Adjuntar Archivo (opcional)
-      </label>
+      <label className="block text-sm font-medium mb-2">{label}</label>
 
       <div
         onClick={handleClick}
@@ -86,14 +109,14 @@ const UploadFile: React.FC<UploadFileProps> = ({ onFileChange }) => {
 
         <p className="text-sm text-muted-foreground">
           {dragActive
-            ? "Soltá la imagen para cargarla"
-            : "Click para cargar o arrastra el archivo aquí"}
+            ? "Soltá el archivo para cargarlo"
+            : helpText || "Click para cargar o arrastra el archivo aquí"}
         </p>
 
         <input
           ref={inputRef}
           type="file"
-          accept="image/jpeg,image/png"
+          accept={allowedTypes.join(",")}
           className="hidden"
           onChange={handleFileChange}
         />

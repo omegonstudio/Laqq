@@ -13,12 +13,11 @@ import {
   QuoteUpdatePayload,
   QuoteStateType,
   QuoteTypeEnum,
-  User,
+  UserData,
 } from "@/types/api";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { CopyIcon, PencilIcon } from "lucide-react";
-import { toast } from "sonner";
 import Button from "./Button";
 import { Input } from "../ui/input";
 import {
@@ -35,6 +34,7 @@ import {
   revertQuotesTypes,
 } from "@/utils/quotesConvert";
 import { fetchUsers } from "@/store/usersSlice";
+import { toast } from "@/hooks/use-toast";
 
 interface Props {
   open: boolean;
@@ -46,7 +46,7 @@ interface EditableData {
   state: QuoteStateType; // Valor REAL (no convertido)
   quote_type: QuoteTypeEnum; // Valor REAL (no convertido)
   items: QuoteItemRender[];
-  user: User;
+  user: UserData;
 }
 
 const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
@@ -73,7 +73,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
         state: revertQuotesState(quote.state), // Convertir de vuelta a valor real
         quote_type: revertQuotesTypes(quote.quote_type), // Convertir de vuelta a valor real
         items: quote.items ? [...quote.items] : [],
-        user: users.find((item) => item.id === quote.user) as User,
+        user: users.find((item) => item.id === quote.user) as UserData,
       });
     }
   }, [quote]);
@@ -124,7 +124,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
       state: quote.state,
       quote_type: quote.quote_type,
       items: quote.items ? [...quote.items] : [],
-      user: users.find((item) => item.id === quote.user) as User,
+      user: users.find((item) => item.id === quote.user) as UserData,
     });
     setEdit(false);
   };
@@ -186,11 +186,14 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
         )
       );
 
-      toast.success("Cotización actualizada correctamente");
+      toast({ title: "Cotización actualizada correctamente" });
       setEdit(false);
     } catch (error) {
       console.error("Error al actualizar cotización:", error);
-      toast.error("Error al actualizar la cotización");
+      toast({
+        title: "Error al actualizar la cotización",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -216,7 +219,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
                   size={18}
                   onClick={() => {
                     navigator.clipboard.writeText(contact.email);
-                    toast.success("Correo copiado");
+                    toast({ title: "Correo copiado" });
                   }}
                 />
               )}
@@ -232,7 +235,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
                   size={18}
                   onClick={() => {
                     navigator.clipboard.writeText(contact.phone);
-                    toast.success("Teléfono copiado");
+                    toast({ title: "Teléfono copiado" });
                   }}
                 />
               )}

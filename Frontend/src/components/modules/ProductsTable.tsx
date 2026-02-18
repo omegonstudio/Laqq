@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Edit2, Trash2, Plus } from "lucide-react";
 import Table from "@/components/common/Table";
 import InputField from "@/components/atoms/InputField";
@@ -8,10 +8,10 @@ import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { deleteProduct, fetchProducts } from "@/store/productSlice";
 import { fixedSpecInitialData } from "@/utils/productSaveFlow";
-import { toast } from "sonner";
 import ModalProduct from "../molecules/Modals/EditProduct";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import CargaMasivaProducts from "../molecules/CargaMasiva";
+import { toast } from "@/hooks/use-toast";
 
 const currentInitialData: Product = {
   id: "",
@@ -30,6 +30,7 @@ const currentInitialData: Product = {
   fixed_specs: [fixedSpecInitialData],
   image_url: null,
   is_featured: false,
+  attachments: [],
 };
 
 const ProductsTable: React.FC = () => {
@@ -53,6 +54,7 @@ const ProductsTable: React.FC = () => {
   const [currentProduct, setCurrentProduct] = useState<Product | null>(
     currentInitialData
   );
+  const [currentPageState, setCurrentPageState] = useState(1);
 
   // Debounce para el search
   useEffect(() => {
@@ -71,7 +73,7 @@ const ProductsTable: React.FC = () => {
       search?: string;
       brand?: string;
     } = {
-      page: 1,
+      page: currentPageState,
       page_size: 10,
     };
 
@@ -84,7 +86,7 @@ const ProductsTable: React.FC = () => {
     }
 
     dispatch(fetchProducts(params));
-  }, [dispatch, debouncedSearch, brandFilter]);
+  }, [debouncedSearch, brandFilter, currentPageState, dispatch]);
 
   const handleEdit = (product: Product) => {
     setCurrentProduct(product);
@@ -102,17 +104,20 @@ const ProductsTable: React.FC = () => {
 
     try {
       await dispatch(deleteProduct(currentProduct.id)).unwrap();
-      toast.success("Producto eliminado exitosamente");
+      toast({ title: "Producto eliminado exitosamente" });
       setIsModalDeleteOpen(false);
-
+      if (products.length === 1 && currentPageState > 1) {
+        setCurrentPageState((p) => p - 1);
+      }
       // Recargar con los filtros actuales
       const params: {
         page: number;
         page_size: number;
         search?: string;
         brand?: string;
+        is_active?: boolean;
       } = {
-        page: pagination.current_page,
+        page: currentPageState,
         page_size: pagination.page_size,
       };
 
@@ -123,14 +128,18 @@ const ProductsTable: React.FC = () => {
       if (brandFilter !== "all") {
         params.brand = brandFilter;
       }
-
-      dispatch(fetchProducts(params));
     } catch (error: unknown) {
       console.error("Error eliminando producto:", error);
       if (error instanceof Error) {
-        toast.error(error.message || "Error al eliminar el producto");
+        toast({
+          title: error.message || "Error al eliminar el producto",
+          variant: "destructive",
+        });
       } else {
-        toast.error("Error al eliminar el producto");
+        toast({
+          title: "Error al eliminar el producto",
+          variant: "destructive",
+        });
       }
     }
   };
@@ -143,32 +152,30 @@ const ProductsTable: React.FC = () => {
 
   // Handler para cambio de página (mantiene los filtros)
   const handlePageChange = (newPage: number) => {
-    const params: {
-      page: number;
-      page_size: number;
-      search?: string;
-      brand?: string;
-    } = {
-      page: newPage,
-      page_size: pagination.page_size,
-    };
-
-    if (debouncedSearch.trim()) {
-      params.search = debouncedSearch.trim();
-    }
-
-    if (brandFilter !== "all") {
-      params.brand = brandFilter;
-    }
-
-    dispatch(fetchProducts(params));
+    setCurrentPageState(newPage); // Guardar localmente
   };
+  useEffect(() => {
+    setCurrentPageState(1);
+  }, [debouncedSearch, brandFilter]);
 
+  const renderActive = (is_active: boolean) => {
+    if (is_active) {
+      return "Activo";
+    } else {
+      return "Inactivo";
+    }
+  };
   const columns = [
     { key: "product_code", label: "Codigo", sortable: false },
     { key: "name", label: "Nombre", sortable: false },
     { key: "brand", label: "Marca", sortable: false },
     { key: "category", label: "Categoria", sortable: false },
+    {
+      key: "is_active",
+      label: "Activo",
+      sortable: false,
+      render: (value: boolean) => renderActive(value),
+    },
   ];
 
   const brandOptions = [
@@ -178,7 +185,6 @@ const ProductsTable: React.FC = () => {
       label: brand.name,
     })),
   ];
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
@@ -207,7 +213,6 @@ const ProductsTable: React.FC = () => {
         </Button>
         <CargaMasivaProducts />
       </div>
-
       <Table
         columns={columns}
         data={products}
@@ -220,7 +225,7 @@ const ProductsTable: React.FC = () => {
           },
         ]}
         serverPagination={{
-          currentPage: pagination.current_page,
+          currentPage: currentPageState,
           totalPages: pagination.total_pages,
           totalItems: pagination.count,
           pageSize: pagination.page_size,

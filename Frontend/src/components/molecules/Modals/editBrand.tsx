@@ -1,4 +1,3 @@
-import { toast } from "sonner";
 import { createBrand, updateBrand } from "@/store/brandSlice";
 import { useState, useEffect } from "react";
 import { useAppDispatch } from "@/store/hooks";
@@ -8,6 +7,7 @@ import InputField from "@/components/atoms/InputField";
 import UploadFile from "@/components/atoms/UploadFile";
 import Button from "@/components/atoms/Button";
 import { attachmentsApi } from "@/lib/api/attachments";
+import { toast } from "@/hooks/use-toast";
 
 interface ModalBrandsProps {
   isOpen: boolean;
@@ -81,12 +81,18 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
       // VALIDACIÓN: Campos obligatorios
       // ============================================
       if (!localState.name.trim()) {
-        toast.error("El nombre de la marca es obligatorio");
+        toast({
+          title: "El nombre de la marca es obligatorio",
+          variant: "destructive",
+        });
         return;
       }
 
       if (!localState.description.trim()) {
-        toast.error("La descripción de la marca es obligatoria");
+        toast({
+          title: "La descripción de la marca es obligatoria",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -111,7 +117,10 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
             attachmentId = attachment.id; // Asumiendo que createAttachment devuelve { id, url }
             console.log("✅ Imagen subida:", attachmentId);
           } catch (error) {
-            toast.error("Error al subir la imagen");
+            toast({
+              title: "Error al subir la imagen",
+              variant: "destructive",
+            });
             throw error;
           }
         } else if (initialImage && !currentImage) {
@@ -148,7 +157,7 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
         ).unwrap();
 
         console.log("✅ Marca actualizada:", updatedBrand);
-        toast.success("Marca actualizada exitosamente");
+        toast({ title: "Marca actualizada exitosamente" });
       } else {
         // ========== CREAR NUEVA MARCA ==========
         if (imageFile) {
@@ -163,7 +172,10 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
             attachmentId = attachment.id; // Asumiendo que createAttachment devuelve { id, url }
             console.log("✅ Imagen subida:", attachmentId);
           } catch (error) {
-            toast.error("Error al subir la imagen");
+            toast({
+              title: "Error al subir la imagen",
+              variant: "destructive",
+            });
             throw error;
           }
         }
@@ -176,7 +188,7 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
         const createdBrand = await dispatch(createBrand(createData)).unwrap();
 
         console.log("✅ Marca creada:", createdBrand);
-        toast.success("Marca creada exitosamente");
+        toast({ title: "Marca creada exitosamente" });
       }
 
       onClose();
@@ -185,7 +197,7 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
 
       const errorMessage =
         error instanceof Error ? error.message : "Error al guardar la marca";
-      toast.error(errorMessage);
+      toast({ title: errorMessage, variant: "destructive" });
     }
   };
 

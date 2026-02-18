@@ -5,14 +5,12 @@ import Button from "@/components/atoms/Button";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { Category } from "@/types/types";
 import ModalCategory from "../molecules/Modals/EditCategory";
-import {
-  deleteCategory,
-  fetchAllCategories,
-  fetchCategories,
-} from "@/store/categoriesSlice";
-import { toast } from "sonner";
+import { deleteCategory, fetchAllCategories } from "@/store/categoriesSlice";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import InputField from "../atoms/InputField";
+import { toast } from "@/hooks/use-toast";
+import Modal from "../common/Modal";
+
 const CategoriesABM = () => {
   const { list: categories, loading: loadingCategories } = useAppSelector(
     (state) => state.categories
@@ -22,6 +20,7 @@ const CategoriesABM = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(
     null
   );
+  console.log(selectedCategory, "AAAAAAAAAA");
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
   const [searchCategories, setSearchCategories] = useState("");
 
@@ -45,14 +44,20 @@ const CategoriesABM = () => {
 
     try {
       await dispatch(deleteCategory(selectedCategory.id)).unwrap();
-      toast.success("Categoría eliminado exitosamente");
+      toast({ title: "Categoría eliminado exitosamente" });
       setIsModalDeleteOpen(false);
     } catch (error: unknown) {
       console.error("Error eliminando categoría:", error);
       if (error instanceof Error) {
-        toast.error(error.message || "Error al eliminar el categoría");
+        toast({
+          title: error.message || "Error al eliminar el categoría",
+          variant: "destructive",
+        });
       } else {
-        toast.error("Error al eliminar el categoría");
+        toast({
+          title: "Error al eliminar el categoría",
+          variant: "destructive",
+        });
       }
     }
   };
@@ -153,16 +158,34 @@ const CategoriesABM = () => {
         isNew={!selectedCategory}
         categories={categories} // ← Siempre todas las categorías sin filtrar
       />
-
-      <ModalDelete
-        isOpen={isModalDeleteOpen}
-        onClose={() => {
-          setIsModalDeleteOpen(false);
-          setSelectedCategory(null);
-        }}
-        itemName={selectedCategory?.name || ""}
-        onConfirm={handleDelete}
-      />
+      {isModalDeleteOpen &&
+        (selectedCategory?.parent !== null ? (
+          <ModalDelete
+            isOpen={isModalDeleteOpen}
+            onClose={() => {
+              setIsModalDeleteOpen(false);
+              setSelectedCategory(null);
+            }}
+            itemName={selectedCategory?.name || ""}
+            onConfirm={handleDelete}
+          />
+        ) : (
+          <Modal
+            isOpen={isModalDeleteOpen}
+            onClose={() => setIsModalDeleteOpen(false)}
+            title="No se pueden eliminar categorías padre"
+            size="sm"
+          >
+            <div className="space-y-4 flex flex-col items-center justify-center">
+              <Button
+                variant="outline"
+                onClick={() => setIsModalDeleteOpen(false)}
+              >
+                Aceptar
+              </Button>
+            </div>
+          </Modal>
+        ))}
     </div>
   );
 };

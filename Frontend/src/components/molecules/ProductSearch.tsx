@@ -45,21 +45,24 @@ export function ProductSearchCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between rounded-xl border-input px-4 py-2.5 h-auto font-normal hover:bg-accent"
+          className="w-full max-w-full justify-between rounded-xl border-input px-4 py-2.5 h-auto font-normal hover:bg-accent bg-transparent"
         >
-          {selectedProduct ? (
-            <span className="truncate">
-              {selectedProduct.name} ({selectedProduct.product_code})
-            </span>
-          ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
-          )}
+          <span className="truncate block flex-1 min-w-0 text-left">
+            {selectedProduct ? (
+              `${selectedProduct.name} (${selectedProduct.product_code})`
+            ) : (
+              <span className="text-muted-foreground">{placeholder}</span>
+            )}
+          </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[--radix-popover-trigger-width] p-0"
         align="start"
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+        onWheel={(e) => {
+          e.stopPropagation();
+        }}
       >
         <Command shouldFilter={false}>
           <CommandInput
@@ -67,7 +70,7 @@ export function ProductSearchCombobox({
             value={searchValue}
             onValueChange={setSearchValue}
           />
-          <CommandList>
+          <CommandList className="max-h-[200px] overflow-y-auto">
             <CommandEmpty>No se encontraron productos.</CommandEmpty>
             <CommandGroup>
               {filteredProducts.map((product) => (

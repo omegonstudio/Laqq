@@ -31,12 +31,17 @@ ALLOWED_HOSTS = [
     h.strip()
     for h in config(
         'ALLOWED_HOSTS',
-        default='localhost,127.0.0.1,0.0.0.0,backend'
+        default='localhost,127.0.0.1,0.0.0.0,backend,laqq.omegon.com.ar'
     ).split(',')
     if h.strip()
 ]
 
 AUTH_USER_MODEL = 'users.User'
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://laqq.omegon.com.ar",
+    "https://laqq.omegon.com.ar",
+]
 
 # Application definition
 
@@ -231,6 +236,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8080",
     "http://localhost:8081",
     "http://127.0.0.1:8081",
+    "http://laqq.omegon.com.ar",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -269,8 +275,8 @@ TEST_RUNNER = 'config.test_runner.DetailedReportTestRunner'
 # Email Configuration
 EMAIL_BACKEND = config('EMAIL_BACKEND', default=None)
 if not EMAIL_BACKEND:
-    if DEBUG and not TESTING:
-        EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    if TESTING:
+        EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
     else:
         EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
@@ -289,6 +295,45 @@ BUSINESS_NAME = config('BUSINESS_NAME', default='LAQQ')
 BUSINESS_PHONE = config('BUSINESS_PHONE', default='')
 BUSINESS_ADDRESS = config('BUSINESS_ADDRESS', default='')
 QUOTE_RESPONSE_TIME = config('QUOTE_RESPONSE_TIME', default='24-48 horas')
+
+# Logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {name} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'quotes': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}
 
 # Integraciones / descargas externas
 INTEGRATION_HTTP_TIMEOUT = config('INTEGRATION_HTTP_TIMEOUT', default=15, cast=int)

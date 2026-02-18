@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 // types/product.types.ts
 
+import { Contact } from "./api";
+
 // ============================================
 // TIPOS BASE (lo que viene del backend)
 // ============================================
@@ -81,6 +83,19 @@ export interface Product {
   related?: RelatedProduct[]; // Alias de productos relacionados
   image_url: string | null; // URL de la imagen
   related_products?: RelatedProduct[]; // Campo original del backend
+  attachments: {
+    id: string;
+    file_name: string;
+    content_type_str: string;
+    size_bytes: number;
+    file: string;
+    url: string;
+    role: "image" | "manual" | "datasheet" | "other" | null;
+    attachable_type: string;
+    attachable_id: string;
+    created_by: string;
+    created_at: string;
+  }[];
 }
 
 // ============================================
@@ -100,7 +115,8 @@ export interface ProductCreateRequest {
 }
 
 export interface ProductUpdateRequest extends Partial<ProductCreateRequest> {
-  // Hereda todo de ProductCreateRequest pero hace todos los campos opcionales
+  files?: File[];
+  attachments?: string[]; // ← IDs que permanecen
 }
 
 // ============================================
@@ -114,6 +130,8 @@ export interface ProductFormState {
   category: string; // UUID
   description: string;
   product_code: string;
+  attachments_existing: Attachment[]; // lo que vino del backend
+  attachments_files: File[];
   image_file: File | null;
   /** Attachment actual asociado (UUID) */
   image_attachment_id: string | null;
@@ -169,14 +187,57 @@ export interface QuoteItem {
   unit_price: number;
   subtotal: number;
 }
+export interface ServiceTicket {
+  id: string;
+  contact: Contact;
+  product: string;
+  product_name: string;
+  description: string;
+  attachment: string | null;
+
+  state: string;
+  priority: string;
+  assigned_user: string | null;
+  resolution_notes: string | null;
+
+  created_at: string;
+  updated_at: string;
+}
 
 export interface TicketFormData {
-  name: string;
   email: string;
+  product?: string;
+  product_name?: string;
+  description?: string;
+  file?: File;
+  attachment?: string | null;
+}
+export interface UpdateTicketPayload {
+  contact_id: string;
+
+  product?: string;
+  description?: string;
+  attachment?: string | null;
+
+  state?: string;
+  priority?: string;
+  assigned_user?: string | null;
+  resolution_notes?: string | null;
+}
+export interface TicketFormDataUpdate {
   product: string;
   description: string;
   file?: File;
+  attachment: string | null;
+
+  state: string;
+  priority: string;
+  assigned_user: string | null;
+  resolution_notes: string | null;
+
+  contact_id: string;
 }
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
@@ -206,6 +267,7 @@ export interface Attachment {
   role: "image" | "manual" | "datasheet" | "other" | null;
   attachable_type: string | null;
   attachable_id: string | null;
+  created_at: string;
 }
 export interface AttachmentCreatePayload {
   file: File;

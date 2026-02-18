@@ -37,7 +37,7 @@ import { Button } from "@/components/ui/button";
 import TicketForm from "../molecules/TicketForm";
 import { ServiceTicket, TicketPriority } from "@/types/api";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchTicketPriorities } from "@/store/ticketsSlice";
+import { fetchTicketPriorities, fetchTicketStates } from "@/store/ticketsSlice";
 import { RootState } from "@/store";
 import { TicketCard } from "../molecules/CardTicketClient";
 import { TicketDetailModal } from "../molecules/Modals/CardTicketDetailClient";
@@ -73,10 +73,9 @@ function CreateTicketCard({ onClick }: { onClick: () => void }) {
 
 export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
   const dispatch = useAppDispatch();
-  const { priorities } = useAppSelector(
+  const { priorities, states } = useAppSelector(
     (state: RootState) => state.ticketsService
   );
-  console.log("TicketsGrid priorities:", priorities);
   const [selectedTicket, setSelectedTicket] = useState<ServiceTicket | null>(
     null
   );
@@ -89,6 +88,7 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
   // Cargar prioridades una sola vez al montar el componente
   useEffect(() => {
     dispatch(fetchTicketPriorities({}));
+    dispatch(fetchTicketStates({}));
   }, [dispatch]);
 
   const filteredTickets = tickets.filter((ticket) => {
@@ -100,7 +100,8 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
         ticket.contact.first_name.toLowerCase().includes(query) ||
         ticket.product_name.toLowerCase().includes(query) ||
         ticket.description.toLowerCase().includes(query) ||
-        (ticket.assigned_user?.toLowerCase().includes(query) ?? false);
+        (ticket.assigned_user?.first_name.toLowerCase().includes(query) ??
+          false);
       if (!matchesSearch) return false;
     }
 
@@ -164,10 +165,11 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los estados</SelectItem>
-                <SelectItem value="open">Abierto</SelectItem>
-                <SelectItem value="in_progress">En Progreso</SelectItem>
-                <SelectItem value="resolved">Resuelto</SelectItem>
-                <SelectItem value="closed">Cerrado</SelectItem>
+                {states.map((priority) => (
+                  <SelectItem key={priority.id} value={priority.id}>
+                    {priority.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={priorityFilter} onValueChange={setPriorityFilter}>
@@ -218,21 +220,19 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
               ticket={ticket}
               onClick={() => handleTicketClick(ticket)}
               priorities={priorities}
+              states={states}
             />
           ))}
         </div>
       )}
-      <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Crear Ticket de Soporte</DialogTitle>
-          </DialogHeader>
-          <TicketForm onClose={() => setCreateModalOpen(false)} />
-        </DialogContent>
-      </Dialog>
-
+      <TicketForm
+        onClose={() => setCreateModalOpen(false)}
+        isTicketModalOpen={createModalOpen}
+        setIsTicketModalOpen={setCreateModalOpen}
+      />
       <TicketDetailModal
         ticket={selectedTicket}
+        states={states}
         open={modalOpen}
         onOpenChange={setModalOpen}
         priorities={priorities}

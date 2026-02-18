@@ -13,6 +13,8 @@ import {
   Settings,
   Tag,
   Phone,
+  Ticket,
+  Image,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -57,6 +59,18 @@ const menuItems = [
     label: "Contactos",
     icon: Phone,
     path: "/backoffice/contacts",
+  },
+  {
+    id: "ticketsService",
+    label: "Tickets de servicio",
+    icon: Ticket,
+    path: "/backoffice/tickets",
+  },
+  {
+    id: "libreria",
+    label: "Librería",
+    icon: Image,
+    path: "/backoffice/libreria",
   },
 ];
 

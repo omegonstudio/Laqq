@@ -1,29 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import InputField from "../atoms/InputField";
 import Button from "../atoms/Button";
 import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Check, ChevronsUpDown, Plus, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Plus, X } from "lucide-react";
 import { QuoteFormState } from "@/types/api";
 import { useCart } from "@/contexts/CartContext";
-import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { createQuoteFromForm } from "@/store/quotesSlice";
 import { ProductSearchCombobox } from "./ProductSearch";
+import { fetchAllProducts } from "@/store/productSlice";
+import { toast } from "@/hooks/use-toast";
 
 const initialState: QuoteFormState = {
   contact: {
@@ -35,13 +22,13 @@ const initialState: QuoteFormState = {
     country: "Argentina",
     message: "",
     company_name: "",
-    state: "PENDING", // Agregado según ContactInfo
+    // state: "PENDING", // Agregado según ContactInfo
     assigned_user: null, // Agregado según ContactInfo
   },
   quote: {
-    quote_type: "EQUIPMENT",
+    quote_type: null,
     message: "",
-    state: "PENDING",
+    state: null,
     user: null,
   },
   items: [],
@@ -51,10 +38,13 @@ function QuoteForm() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { items: itemsCart, clearCart } = useCart();
-
+  useEffect(() => {
+    dispatch(fetchAllProducts());
+  }, []);
   const { list: products, loading: loadingProducts } = useAppSelector(
     (state) => state.products
   );
+
   const { creating } = useAppSelector((state) => state.quotes);
 
   const [formState, setFormState] = useState<QuoteFormState>(initialState);
@@ -120,19 +110,25 @@ function QuoteForm() {
 
     // Validaciones
     if (formState.items.length === 0) {
-      toast.error("Debes agregar al menos un producto");
+      toast({
+        title: "Debes agregar al menos un producto",
+        variant: "destructive",
+      });
       return;
     }
 
     if (formState.items.some((item) => !item.product)) {
-      toast.error("Todos los items deben tener un producto seleccionado");
+      toast({
+        title: "Todos los items deben tener un producto seleccionado",
+        variant: "destructive",
+      });
       return;
     }
 
     try {
       const result = await dispatch(createQuoteFromForm(formState)).unwrap();
 
-      toast.success("Cotización creada exitosamente");
+      toast({ title: "Cotización creada exitosamente" });
 
       // Limpiar formulario y carrito
       setFormState(initialState);
@@ -144,7 +140,10 @@ function QuoteForm() {
       console.log("Cotización creada:", result);
     } catch (err) {
       console.error("Error al crear cotización:", err);
-      toast.error(err.message || "Error al crear la cotización");
+      toast({
+        title: err.message || "Error al crear la cotización",
+        variant: "destructive",
+      });
     }
   };
 

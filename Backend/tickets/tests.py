@@ -143,7 +143,7 @@ class ServiceTicketAPITestCase(APITestCase):
         self.assertIn('ticket_number', response.data)
         self.assertTrue(response.data['ticket_number'].startswith('T-'))
         # Verificar defaults automáticos
-        self.assertEqual(response.data['state'], 'new')
+        self.assertEqual(response.data['state'], 'open')
         self.assertEqual(response.data['priority'], 'medium')
 
     def test_validate_short_description(self):

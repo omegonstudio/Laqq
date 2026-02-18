@@ -30,7 +30,7 @@ export interface ContactState {
 }
 
 export interface Contact {
-  id: string;
+  id?: string;
   company_name: string;
   first_name: string;
   last_name: string;
@@ -55,6 +55,7 @@ export interface Message {
   assigned_user: string | null;
   created_at: string;
   updated_at: string;
+  email: string;
 }
 export interface MessageCreate {
   company_name: string | null;
@@ -226,7 +227,7 @@ export interface ContactInfo {
   country: string;
   phone: string;
   message: string;
-  state: string;
+  state?: string;
   assigned_user: string | null;
   id: string;
 }
@@ -290,7 +291,7 @@ export interface QuoteFormState {
   quote: {
     quote_type: QuoteTypeEnum;
     message: string;
-    state: QuoteStateType;
+    state?: QuoteStateType;
     user?: string | null;
   };
   items: Array<{
@@ -317,6 +318,22 @@ export interface QuoteType {
   created_at: string;
 }
 
+// =================== TICKET PAYLOAD TYPES ===================
+
+export interface TicketContactPayload {
+  email: string;
+  first_name: string;
+  last_name: string;
+  company_name?: string;
+  phone?: string;
+  country?: string;
+}
+
+export interface CreateTicketResponse {
+  contact: Contact;
+  ticket: ServiceTicket;
+}
+
 export interface ServiceTicket {
   id: string;
   ticket_number: string;
@@ -327,8 +344,14 @@ export interface ServiceTicket {
   attachment: string | null;
   state: string;
   priority: string;
-  assigned_user: string | null;
-  created_at: string;
+  assigned_user: {
+    id: string;
+    userName: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  created_at: string | null;
   assigned_at: string | null;
   started_at: string | null;
   resolved_at: string | null;
@@ -337,6 +360,67 @@ export interface ServiceTicket {
   resolution_notes: string | null;
 }
 
+export interface CreateTicketPayload {
+  contact: {
+    email: string;
+    first_name: string;
+    last_name: string;
+    company_name?: string;
+    phone?: string;
+    country?: string;
+  };
+  ticket: {
+    state: string;
+    product?: string;
+    product_name: string;
+    description?: string;
+    resolution_notes?: string | null;
+    attachment?: string | null;
+    attachments?: string[] | null;
+  };
+}
+export interface TicketFormData {
+  email: string;
+  product?: string;
+  product_name?: string;
+  description?: string;
+  file?: File;
+  attachment?: string | null;
+}
+export interface UpdateTicketPayload {
+  id: string;
+  contact_id: string;
+  product_name: string;
+  product?: string;
+  description?: string;
+  attachment?: string | null;
+  assigned_at: string | null;
+  started_at: string | null;
+  resolved_at: string | null;
+  created_at: string | null;
+  closed_at: string | null;
+  state?: string;
+  priority?: string;
+  assigned_user?: string | null;
+  resolution_notes?: string | null;
+}
+export interface TicketFormDataUpdate {
+  product: string;
+  description: string;
+  file?: File;
+  attachment: string | null;
+  assigned_at: string | null;
+  started_at: string | null;
+  resolved_at: string | null;
+  created_at: string | null;
+  closed_at: string | null;
+  state: string;
+  priority: string;
+  assigned_user: string | null;
+  resolution_notes: string | null;
+
+  contact_id: string;
+}
 export interface TicketPriority {
   id: string;
   name: string;
@@ -372,7 +456,7 @@ export interface UserState {
 
 export interface UserData {
   id: string;
-  username: string;
+  username?: string;
   email: string;
   first_name: string;
   last_name: string;

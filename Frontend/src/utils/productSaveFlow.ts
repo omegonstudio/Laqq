@@ -1,22 +1,23 @@
 import {
-  formStateToCreateRequest,
   formStateToUpdateRequest,
   hasProductChanges,
   sanitizeSpecs,
 } from "@/utils/productConverters";
 import {
   createProduct,
-  fetchProducts,
-  refreshProductEverywhere,
   updateProduct,
+  updateProductWithFiles,
 } from "@/store/productSlice";
 import { createSpec, updateSpec, deleteSpec } from "@/store/specsSlice";
 import { AppDispatch } from "@/store";
 import {
+  Attachment,
   Product,
+  ProductCreateRequest,
   ProductFixedSpec,
   ProductFormState,
   ProductSpec,
+  ProductUpdateRequest,
 } from "@/types/types";
 import {
   createFixedSpec,
@@ -190,40 +191,89 @@ export const cleanSpecsForSync = (specs: ProductSpec[] = []) =>
 export const cleanFixedSpecsForSync = (specs: ProductFixedSpec[] = []) =>
   normalizeFixedSpecs(specs);
 
-export const saveProductEntity = async ({
+const haveAttachmentsChanged = (
+  existing: Attachment[] = [],
+  initial: Attachment[] = [],
+  newFiles: File[] = []
+): boolean => {
+  // 1. IDs iniciales
+  const initialIds = initial.map((a) => a.id).sort();
+
+  // 2. IDs actuales (solo existentes)
+  const currentIds = existing.map((a) => a.id).sort();
+
+  // 3. Se eliminaron attachments
+  const removed = JSON.stringify(initialIds) !== JSON.stringify(currentIds);
+
+  // 4. Se agregaron archivos nuevos
+  const added = newFiles.length > 0;
+
+  return removed || added;
+};
+
+export const CreateProduct = async ({
   dispatch,
   formState,
   initialData,
   attachmentId,
-  isNew,
 }: {
   dispatch: AppDispatch;
   formState: ProductFormState;
   initialData?: Product | null;
   attachmentId?: string | null;
-  isNew: boolean;
 }): Promise<Product> => {
   // ===== CREATE =====
-  if (isNew) {
-    return dispatch(
-      createProduct({
-        ...formState,
-        image_attachment: attachmentId,
-        brand_id: formState.brand, // Map brand to brand_id
-        category_id: formState.category, // Map category to category_id
-      })
-    ).unwrap();
-  }
 
+  const product = await dispatch(
+    createProduct({
+      ...formState,
+      image_attachment: attachmentId,
+      brand_id: formState.brand, // Map brand to brand_id
+      category_id: formState.category, // Map category to category_id
+    })
+  ).unwrap();
+
+  return dispatch(
+    updateProductWithFiles({
+      id: product.id,
+      data: {
+        files: formState.attachments_files,
+      },
+    })
+  ).unwrap();
+};
+
+export const saveProductEntity = async ({
+  dispatch,
+  formState,
+  initialData,
+  attachmentId,
+}: {
+  dispatch: AppDispatch;
+  formState: ProductFormState;
+  initialData?: Product | null;
+  attachmentId?: string | null;
+}): Promise<Product> => {
   // ===== UPDATE =====
-  const updateRequest = formStateToUpdateRequest(
+  const updateRequest: ProductUpdateRequest = formStateToUpdateRequest(
     formState,
     initialData,
     attachmentId
   );
+  console.log("UPDATE REQUESTttttt", updateRequest, initialData, "AASAS");
 
   if (!hasProductChanges(updateRequest)) {
     return initialData;
+  }
+  const hasFiles = updateRequest.files && updateRequest.files.length > 0;
+
+  if (hasFiles) {
+    return dispatch(
+      updateProductWithFiles({
+        id: initialData.id,
+        data: updateRequest,
+      })
+    ).unwrap();
   }
 
   return dispatch(
@@ -233,7 +283,29 @@ export const saveProductEntity = async ({
     })
   ).unwrap();
 };
+export const buildProductUploadFormData = (
+  data: Partial<ProductCreateRequest> & { files?: File[] }
+): FormData => {
+  const formData = new FormData();
 
+  Object.entries(data).forEach(([key, value]) => {
+    if (value == null) return;
+
+    if (key === "files" && Array.isArray(value)) {
+      value.forEach((file) => formData.append("files", file));
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((v) => formData.append(key, String(v)));
+      return;
+    }
+
+    formData.append(key, String(value));
+  });
+
+  return formData;
+};
 export const syncProductSpecifications = async ({
   dispatch,
   productId,
@@ -281,7 +353,6 @@ export const syncProductSpecifications = async ({
   for (const specId of toDelete) {
     await dispatch(deleteSpec(specId)).unwrap();
   }
-  dispatch(fetchProducts({ page: 1, page_size: 10 })); // Refrescar el producto después de las operaciones
   return {
     created: toCreate.length,
     updated: toUpdate.length,
@@ -361,13 +432,6 @@ export const validateProductForm = (
     return {
       isValid: false,
       errorMessage: "El nombre del producto es obligatorio",
-    };
-  }
-
-  if (!formState.product_code.trim()) {
-    return {
-      isValid: false,
-      errorMessage: "El código del producto es obligatorio",
     };
   }
 

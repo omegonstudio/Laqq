@@ -7,11 +7,13 @@ import Badge from "@/components/atoms/Badge";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { deleteMessage, fetchMessages } from "@/store/contacts";
 import { Message } from "@/types/api";
-import { MessageDetailModal } from "../molecules/Modals/EditMessage";
+import { MessageDetailModal } from "../molecules/Modals/viewMessage";
 import { convertStateContact, stateEnum } from "@/utils/quotesConvert";
 import ModalDelete from "../molecules/Modals/ModalDelete";
-import { set } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { formatDate } from "@/utils/formatDate";
+import { EditMessage } from "../molecules/Modals/EditMessage";
+
 const MessagesTable = () => {
   const dispatch = useAppDispatch();
   useEffect(() => {
@@ -24,6 +26,8 @@ const MessagesTable = () => {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
+  const [isModalOpenEdit, setIsModalOpenEdit] = useState(false);
+
   const filteredMessages = messages.filter((message) => {
     const matchesSearch =
       message.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -48,8 +52,10 @@ const MessagesTable = () => {
     setSelectedMessage(message);
     setIsModalOpen(true);
   };
+
   const handleReply = (message: Message) => {
-    console.log("Responder mensaje:", message);
+    setSelectedMessage(message);
+    setIsModalOpenEdit(true);
   };
 
   const handleDelete = (message: Message) => {
@@ -82,7 +88,12 @@ const MessagesTable = () => {
     { key: "last_name", label: "Apellido", sortable: true },
     { key: "first_name", label: "Nombre", sortable: true },
     { key: "country", label: "País", sortable: true },
-    { key: "created_at", label: "Fecha", sortable: true },
+    {
+      key: "created_at",
+      label: "Fecha",
+      sortable: true,
+      render: (value) => formatDate(value),
+    },
     { key: "message", label: "Mensaje", sortable: false },
     {
       key: "state",
@@ -138,6 +149,11 @@ const MessagesTable = () => {
         }}
         itemName={selectedMessage?.message || ""}
         onConfirm={handleConfirmDelete}
+      />
+      <EditMessage
+        message={selectedMessage}
+        open={isModalOpenEdit}
+        onOpenChange={setIsModalOpenEdit}
       />
     </div>
   );

@@ -45,7 +45,7 @@ def send_quote_notification(sender, instance, created, **kwargs):
                         logger.error("Error en email de cotizacion: %s", error)
 
             except Exception as e:
-                logger.error("Error al enviar emails para cotizacion #%s: %s", instance.quote_number, e)
+                logger.exception("Error al enviar emails para cotizacion #%s: %s", instance.quote_number, e)
         else:
             # Cotización actualizada
             try:
@@ -62,7 +62,7 @@ def send_quote_notification(sender, instance, created, **kwargs):
                         logger.error("Error en email de actualizacion: %s", error)
 
             except Exception as e:
-                logger.error("Error al enviar emails de actualizacion para cotizacion #%s: %s", instance.quote_number, e)
+                logger.exception("Error al enviar emails de actualizacion para cotizacion #%s: %s", instance.quote_number, e)
                 
     finally:
         # Reconectar el signal

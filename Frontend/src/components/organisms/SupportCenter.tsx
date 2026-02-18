@@ -1,13 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { FileText, Search } from "lucide-react";
 import Button from "../atoms/Button";
 import TicketForm from "../molecules/TicketForm";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import Modal from "../common/Modal";
 import { useNavigate } from "react-router-dom";
 import { Input } from "../ui/input";
@@ -93,16 +87,11 @@ const SupportCenter = () => {
           </div>
         </div>
       </div>
-
-      <Dialog open={isTicketModalOpen} onOpenChange={setIsTicketModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Crear Ticket de Soporte</DialogTitle>
-          </DialogHeader>
-          <TicketForm onClose={() => setIsTicketModalOpen(false)} />
-        </DialogContent>
-      </Dialog>
-
+      <TicketForm
+        onClose={() => setIsTicketModalOpen(false)}
+        isTicketModalOpen={isTicketModalOpen}
+        setIsTicketModalOpen={setIsTicketModalOpen}
+      />
       <Modal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
@@ -118,6 +107,11 @@ const SupportCenter = () => {
             placeholder="ejemplo@mail.com"
             value={contact}
             onChange={(e) => setContac(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && contact.trim()) {
+                handleConsultarTickets();
+              }
+            }}
           />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIsOpen(false)}>

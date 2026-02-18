@@ -13,6 +13,7 @@ interface FetchProductsParams {
   search?: string;
   brand?: string;
   category?: string;
+  is_active?: boolean;
 }
 
 // ============================================
@@ -53,14 +54,15 @@ export const fetchAllProducts = createAsyncThunk(
     }
   }
 );
-export const refreshProductEverywhere = createAsyncThunk(
-  "products/refreshEverywhere",
-  async (productId: string) => {
-    console.log(productId, "AAA");
-    // Siempre traemos el producto actualizado del backend
-    return productsApi.retrieve(productId);
-  }
-);
+export const refreshProductEverywhere = createAsyncThunk<
+  Product, // ← lo que devuelve (payload)
+  string // ← lo que recibe (productId)
+>("products/refreshEverywhere", async (productId: string) => {
+  // GET /products/{id}
+  const product = await productsApi.retrieve(productId);
+  console.log(product, "REFRESHED PRODUCT");
+  return product;
+});
 
 export const fetchProducts = createAsyncThunk(
   "products/fetchAll",
@@ -85,8 +87,16 @@ export const createProduct = createAsyncThunk(
 
 export const updateProduct = createAsyncThunk(
   "products/updateProduct",
-  async ({ id, data }: { id: string; data: ProductUpdateRequest }) => {
+  async ({ id, data }: { id: string; data: Partial<ProductUpdateRequest> }) => {
     return productsApi.update(id, data);
+  }
+);
+export const updateProductWithFiles = createAsyncThunk(
+  "products/updateProductWithFiles",
+  async ({ id, data }: { id: string; data: ProductUpdateRequest }) => {
+    const formData = productsApi.buildProductUploadFormData(data);
+
+    return productsApi.uploadAttachments(id, formData);
   }
 );
 
@@ -178,6 +188,12 @@ export const productsSlice = createSlice({
     resetPagination(state) {
       state.pagination = initialPagination;
     },
+    replaceProduct: (state, action) => {
+      const index = state.list.findIndex((p) => p.id === action.payload.id);
+      if (index !== -1) {
+        state.list[index] = action.payload;
+      }
+    },
   },
   extraReducers: (builder) => {
     // FETCH ALL (recursivo - para search y filtros)
@@ -207,18 +223,20 @@ export const productsSlice = createSlice({
         state.allLoaded = false;
       });
     builder.addCase(refreshProductEverywhere.fulfilled, (state, action) => {
-      const updated = action.payload;
+      const updated = action.payload; // Product actualizado
 
-      // 1️⃣ Reemplazar en la lista principal
-      state.list = state.list.map((p) => (p.id === updated.id ? updated : p));
+      // 1️⃣ Reemplazar el producto en la lista visible (tabla)
+      state.list = state.list.map((product) =>
+        product.id === updated.id ? updated : product
+      );
 
-      // 2️⃣ Reemplazar selected si aplica
+      // 2️⃣ Si estaba seleccionado, actualizarlo también
       if (state.selected?.id === updated.id) {
         state.selected = updated;
       }
 
-      // ⚠️ No tocamos pagination
-      // ⚠️ No tocamos loading
+      // 3️⃣ NO tocamos pagination
+      // 4️⃣ NO tocamos loading
     });
 
     // FETCH LIST

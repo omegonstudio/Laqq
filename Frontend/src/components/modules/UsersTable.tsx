@@ -6,7 +6,6 @@ import Button from "@/components/atoms/Button";
 import Select from "@/components/atoms/Select";
 import Modal from "@/components/common/Modal";
 import ModalDelete from "@/components/molecules/Modals/ModalDelete";
-import { toast } from "sonner";
 import {
   useCreateUser,
   useDeleteUser,
@@ -16,7 +15,8 @@ import {
   useUserTypes,
 } from "@/hooks/useUsers";
 import type { NormalizedApiError } from "@/lib/api/client";
-import type { User } from "@/types/api";
+import type { UserCreate, UserData } from "@/types/api";
+import { toast } from "@/hooks/use-toast";
 
 type UserRow = {
   id: string;
@@ -26,7 +26,7 @@ type UserRow = {
   email: string;
   tipo: string;
   estado: string;
-  raw: User;
+  raw: UserData;
 };
 
 type UserFormState = {
@@ -43,7 +43,11 @@ type UserFormState = {
 const PAGE_SIZE = 200;
 
 const UsersTable = () => {
-  const { data: usersData, isLoading, error } = useUsersList({
+  const {
+    data: usersData,
+    isLoading,
+    error,
+  } = useUsersList({
     page: 1,
     page_size: PAGE_SIZE,
   });
@@ -56,7 +60,7 @@ const UsersTable = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isUpsertOpen, setIsUpsertOpen] = useState(false);
   const [upsertMode, setUpsertMode] = useState<"create" | "edit">("create");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [form, setForm] = useState<UserFormState>({
     first_name: "",
@@ -72,7 +76,7 @@ const UsersTable = () => {
 
   useEffect(() => {
     if (error?.message) {
-      toast.error(error.message);
+      toast({ title: error.message, variant: "destructive" });
     }
   }, [error?.message]);
 
@@ -126,7 +130,10 @@ const UsersTable = () => {
       next[key] = value[0];
     });
     setFormErrors(next);
-    toast.error(e?.message || "Error en la operación");
+    toast({
+      title: e?.message || "Error en la operación",
+      variant: "destructive",
+    });
   };
 
   const openCreateModal = () => {
@@ -146,7 +153,7 @@ const UsersTable = () => {
     setIsUpsertOpen(true);
   };
 
-  const openEditModal = (user: User) => {
+  const openEditModal = (user: UserData) => {
     setUpsertMode("edit");
     setSelectedUser(user);
     setFormErrors({});
@@ -163,51 +170,62 @@ const UsersTable = () => {
     setIsUpsertOpen(true);
   };
 
-  const openDeleteModal = (user: User) => {
+  const openDeleteModal = (user: UserData) => {
     setSelectedUser(user);
     setIsDeleteOpen(true);
   };
 
   const handleSubmitUpsert = async () => {
     setFormErrors({});
-
-    const payloadBase = {
-      username: form.username.trim(),
-      email: form.email.trim(),
-      first_name: form.first_name.trim(),
-      last_name: form.last_name.trim(),
-      user_type_id: form.user_type_id || null,
-      state_id: form.state_id || null,
-      is_active: form.is_active === "true",
-    };
-
+  
     try {
       if (upsertMode === "create") {
-        await createUserMutation.mutateAsync({
-          ...payloadBase,
+        const createPayload: UserCreate = {
+          email: form.email.trim(),
+          first_name: form.first_name.trim(),
+          last_name: form.last_name.trim(),
+          username: form.username.trim(),
           password: form.password,
-        });
-        toast.success("Usuario creado exitosamente");
+          user_type_id: form.user_type_id || null,
+          state_id: form.state_id || null,
+          is_active: form.is_active === "true",
+        };
+  
+        await createUserMutation.mutateAsync(createPayload);
+  
+        toast({ title: "Usuario creado exitosamente" });
         setIsUpsertOpen(false);
         return;
       }
-
+  
       if (!selectedUser?.id) return;
-      const patchPayload: Record<string, unknown> = { ...payloadBase };
+  
+      const patchPayload: Partial<UserCreate> = {
+        email: form.email.trim(),
+        first_name: form.first_name.trim(),
+        last_name: form.last_name.trim(),
+        username: form.username.trim(),
+        user_type_id: form.user_type_id || null,
+        state_id: form.state_id || null,
+        is_active: form.is_active === "true",
+      };
+  
       if (form.password.trim()) {
         patchPayload.password = form.password;
       }
-
+  
       await patchUserMutation.mutateAsync({
         id: selectedUser.id,
         payload: patchPayload,
       });
-      toast.success("Usuario actualizado exitosamente");
+  
+      toast({ title: "Usuario actualizado exitosamente" });
       setIsUpsertOpen(false);
     } catch (err) {
       normalizeMutationError(err);
     }
   };
+  
 
   const handleEdit = (row: UserRow) => openEditModal(row.raw);
   const handleDelete = (row: UserRow) => openDeleteModal(row.raw);
@@ -218,11 +236,14 @@ const UsersTable = () => {
     void deleteUserMutation
       .mutateAsync(selectedUser.id)
       .then(() => {
-        toast.success("Usuario eliminado exitosamente");
+        toast({ title: "Usuario eliminado exitosamente" });
       })
       .catch((err) => {
         const e = err as NormalizedApiError | undefined;
-        toast.error(e?.message || "Error al eliminar el usuario");
+        toast({
+          title: e?.message || "Error al eliminar el usuario",
+          variant: "destructive",
+        });
       });
   };
 
@@ -237,7 +258,12 @@ const UsersTable = () => {
 
   const actions = [
     { icon: <Edit2 size={16} />, onClick: handleEdit, label: "Editar" },
-    { icon: <Trash2 size={16} />, onClick: handleDelete, color: "red", label: "Eliminar" },
+    {
+      icon: <Trash2 size={16} />,
+      onClick: handleDelete,
+      color: "red",
+      label: "Eliminar",
+    },
   ];
 
   return (
@@ -260,7 +286,9 @@ const UsersTable = () => {
       </div>
 
       {isLoading ? (
-        <div className="text-sm text-muted-foreground">Cargando usuarios...</div>
+        <div className="text-sm text-muted-foreground">
+          Cargando usuarios...
+        </div>
       ) : (
         <Table columns={columns} data={filteredUsers} actions={actions} />
       )}
@@ -344,7 +372,9 @@ const UsersTable = () => {
             />
 
             <InputField
-              label={upsertMode === "create" ? "Contraseña" : "Contraseña (opcional)"}
+              label={
+                upsertMode === "create" ? "Contraseña" : "Contraseña (opcional)"
+              }
               type="password"
               value={form.password}
               onChange={(e) =>
@@ -355,7 +385,9 @@ const UsersTable = () => {
           </div>
 
           {formErrors.non_field_errors && (
-            <p className="text-sm text-destructive">{formErrors.non_field_errors}</p>
+            <p className="text-sm text-destructive">
+              {formErrors.non_field_errors}
+            </p>
           )}
 
           <div className="flex justify-end gap-2">
@@ -385,8 +417,9 @@ const UsersTable = () => {
         }}
         itemName={
           selectedUser
-            ? `${selectedUser.first_name || ""} ${selectedUser.last_name || ""}`.trim() ||
-              selectedUser.username
+            ? `${selectedUser.first_name || ""} ${
+                selectedUser.last_name || ""
+              }`.trim() || selectedUser.username
             : ""
         }
         onConfirm={handleConfirmDelete}

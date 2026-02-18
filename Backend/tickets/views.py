@@ -15,7 +15,8 @@ from .models import ServiceTicket, TicketState, TicketPriority
 from .serializers import (
     ServiceTicketSerializer,
     TicketStateSerializer,
-    TicketPrioritySerializer
+    TicketPrioritySerializer,
+    TicketPackageSerializer,
 )
 from .permissions import (
     IsAdminOrBackOffice,
@@ -191,6 +192,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
         ticket = self.get_object()
         file_obj = request.FILES.get('file')
 
+        # Auto-detect role from content_type if not explicitly provided
         explicit_role = request.data.get('role')
         if explicit_role:
             role = explicit_role
@@ -318,3 +320,35 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
             'unassigned': qs.filter(assigned_user__isnull=True).count(),
             'created_last_7_days': qs.filter(created_at__gte=week_ago).count()
         })
+
+    # -------------------------
+    # Public ticket creation
+    # -------------------------
+
+    @action(detail=False, methods=['post'], url_path='from-package', permission_classes=[AllowAny])
+    def create_from_package(self, request):
+        """
+        Crear un ticket con datos de contacto inline.
+        Permite la creación pública sin necesidad de tener un contact_id previo.
+
+        POST /tickets/from-package/
+        {
+            "contact": {
+                "email": "cliente@example.com",
+                "first_name": "Juan",
+                "last_name": "Pérez",
+                "company_name": "Empresa SA",
+                "phone": "+1234567890",
+                "country": "Argentina"
+            },
+            "ticket": {
+                "description": "El equipo no enciende correctamente desde ayer",
+                "product": "uuid-del-producto",
+                "priority": "medium"
+            }
+        }
+        """
+        serializer = TicketPackageSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        return Response(serializer.to_representation(result), status=status.HTTP_201_CREATED)

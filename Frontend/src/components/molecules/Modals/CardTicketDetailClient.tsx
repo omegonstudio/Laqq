@@ -5,6 +5,7 @@ import {
   Paperclip,
   Calendar,
   FileText,
+  AlertCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -17,33 +18,36 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { ServiceTicket, TicketPriority } from "@/types/api";
-import { getPriorityConfig, stateConfig } from "../CardTicketClient";
+import { ServiceTicket, TicketPriority, TicketState } from "@/types/api";
+import { formatDate } from "@/utils/formatDate";
 
 export function TicketDetailModal({
   ticket,
   open,
   onOpenChange,
   priorities,
+  states,
 }: {
   ticket: ServiceTicket | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   priorities: TicketPriority[];
+  states: TicketState[];
 }) {
   if (!ticket) return null;
 
-  const state = stateConfig[ticket.state] || stateConfig.open;
   const ticketPriority = priorities.find((p) => p.id === ticket.priority);
-  const priority = getPriorityConfig(ticketPriority);
-  const StateIcon = state.icon;
+  const ticketState = states?.find((s) => s.id === ticket.state);
 
   const timelineItems = [
-    { label: "Creado", date: ticket.created_at },
-    { label: "Asignado", date: ticket.assigned_at },
-    { label: "Iniciado", date: ticket.started_at },
-    { label: "Resuelto", date: ticket.resolved_at },
-    { label: "Cerrado", date: ticket.closed_at },
+    { label: "Creado", date: formatDate(ticket.created_at) },
+    { label: "Asignado", date: formatDate(ticket.assigned_at) },
+    {
+      label: "Iniciado",
+      date: formatDate(ticket.started_at),
+    },
+    { label: "Resuelto", date: formatDate(ticket.resolved_at) },
+    { label: "Cerrado", date: formatDate(ticket.closed_at) },
   ].filter((item) => item.date);
 
   return (
@@ -60,24 +64,23 @@ export function TicketDetailModal({
               </DialogDescription>
             </div>
             <div className="flex gap-2 shrink-0">
-              <Badge variant={state.variant}>
-                <StateIcon className="size-3" />
-                {state.label}
+              <Badge variant="outline" className="font-mono text-xs">
+                <AlertCircle className="size-3" />
+                {ticketState.name}
               </Badge>
               <Badge
                 variant="outline"
-                className={priority.className}
                 style={
-                  priority.color
+                  ticketPriority.color
                     ? {
-                        backgroundColor: `${priority.color}15`,
-                        color: priority.color,
-                        borderColor: priority.color,
+                        backgroundColor: `${ticketPriority.color}15`,
+                        color: ticketPriority.color,
+                        borderColor: ticketPriority.color,
                       }
                     : undefined
                 }
               >
-                {priority.label}
+                {ticketPriority.name}
               </Badge>
             </div>
           </div>
@@ -127,7 +130,9 @@ export function TicketDetailModal({
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium">Usuario Asignado</h4>
                   <p className="text-sm text-muted-foreground">
-                    {ticket.assigned_user}
+                    {ticket.assigned_user.first_name} {""}
+                    {ticket.assigned_user.last_name}
+                    {""} {""}({ticket.assigned_user.email}){""}
                   </p>
                 </div>
               )}
@@ -157,7 +162,7 @@ export function TicketDetailModal({
             <div className="space-y-3">
               <h4 className="text-sm font-medium flex items-center gap-2">
                 <Calendar className="size-4" />
-                Historial de tiempos
+                Historial{" "}
               </h4>
               <div className="space-y-2">
                 {timelineItems.map((item, index) => (

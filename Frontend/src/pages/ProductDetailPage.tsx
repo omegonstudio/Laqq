@@ -1,5 +1,10 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ShoppingCart } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  ShoppingCart,
+} from "lucide-react";
 import Button from "@/components/atoms/Button";
 import Badge from "@/components/atoms/Badge";
 import { useEffect, useState } from "react";
@@ -8,6 +13,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearSelected, fetchProduct } from "@/store/productSlice";
 import { unifyProductSpecs } from "@/components/atoms/specsTable";
 import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
+import { Attachment } from "@/types/types";
 
 const ProductDetailPage = () => {
   const [activeTab, setActiveTab] = useState<"details" | "related">("details");
@@ -20,6 +26,7 @@ const ProductDetailPage = () => {
   } = useAppSelector((state) => state.products);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     if (id) {
@@ -74,6 +81,50 @@ const ProductDetailPage = () => {
     );
   }
 
+  // Construir array de imágenes con la lógica correcta
+  // AHORA SÍ podemos usar product de forma segura porque ya verificamos que existe
+  const buildImageArray = () => {
+    const imageArray = [];
+
+    // 1. Si existe image_url, agregarlo primero
+    if (product.image_url) {
+      imageArray.push({ url: product.image_url, isMain: true });
+    }
+
+    // 2. Si existen attachments, agregarlos después
+    if (product.attachments && product.attachments.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const attachmentImages = product.attachments.map((att: any) => ({
+        url: att.url || att,
+        isMain: false,
+      }));
+      imageArray.push(...attachmentImages);
+    }
+
+    // 3. Si no hay ninguna imagen, usar placeholder
+    if (imageArray.length === 0) {
+      imageArray.push({ url: placeholderImage, isMain: true });
+    }
+
+    return imageArray;
+  };
+
+  const images = buildImageArray();
+  const totalImages = images.length;
+
+  // Funciones para navegar entre imágenes
+  const goToNext = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % totalImages);
+  };
+
+  const goToPrevious = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + totalImages) % totalImages);
+  };
+
+  const goToImage = (index: number) => {
+    setCurrentImageIndex(index);
+  };
+
   // Calcular especificaciones y productos relacionados
   const unifiedSpecs = unifyProductSpecs(product);
   const relatedList = product.related || product.related_products || [];
@@ -82,7 +133,10 @@ const ProductDetailPage = () => {
 
   // Si no hay ninguna de las dos secciones, no mostrar el contenedor
   const showDetailsSection = hasSpecs || hasRelated;
-
+  const addCuoteButton = (product) => {
+    addToCart(product);
+    navigate("/quote");
+  };
   return (
     <div className="py-16">
       <div className="container mx-auto px-4">
@@ -95,12 +149,69 @@ const ProductDetailPage = () => {
         </Link>
 
         <div className="grid lg:grid-cols-2 gap-12 mb-12">
-          <div className="bg-muted rounded-2xl p-8 flex items-center justify-center">
-            <img
-              src={product.image_url ? product.image_url : placeholderImage}
-              alt={product.image_url}
-              className="max-w-full max-h-96 object-contain"
-            />
+          <div className="bg-muted rounded-2xl p-8">
+            {/* Contenedor de la imagen con altura fija */}
+            <div className="relative h-[500px]">
+              {" "}
+              {/* Altura fija aquí */}
+              <div className="flex items-center justify-center h-full mb-4">
+                <img
+                  src={images[currentImageIndex]?.url || placeholderImage}
+                  alt={`${product.name} - Imagen ${currentImageIndex + 1}`}
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                />
+              </div>
+              {/* Botones de navegación - Solo mostrar si hay más de una imagen */}
+              {totalImages > 1 && (
+                <>
+                  <button
+                    onClick={goToPrevious}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg transition-all z-10"
+                    aria-label="Imagen anterior"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </button>
+
+                  <button
+                    onClick={goToNext}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg transition-all z-10"
+                    aria-label="Imagen siguiente"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Indicadores de puntos / Miniaturas */}
+            {totalImages > 1 && (
+              <div className="flex gap-2 justify-center mt-4">
+                {images.map((image, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToImage(index)}
+                    className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                      index === currentImageIndex
+                        ? "border-primary scale-110"
+                        : "border-transparent hover:border-gray-300"
+                    }`}
+                  >
+                    <img
+                      src={image.url || placeholderImage}
+                      alt={`Miniatura ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Contador de imágenes */}
+            {totalImages > 1 && (
+              <p className="text-center text-sm text-muted-foreground mt-4">
+                {currentImageIndex + 1} / {totalImages}
+              </p>
+            )}
           </div>
 
           <div>
@@ -121,11 +232,18 @@ const ProductDetailPage = () => {
                 <ShoppingCart size={20} />
                 Agregar al Carrito
               </Button>
-              <Link to="/quote">
-                <Button size="lg" variant="outline" className="w-full">
-                  Solicitar Cotización
-                </Button>
-              </Link>
+              {/* <Link to="/quote"> */}
+              <Button
+                size="lg"
+                variant="outline"
+                className="flex items-center justify-center gap-2"
+                onClick={() => {
+                  addCuoteButton(product);
+                }}
+              >
+                Solicitar Cotización
+              </Button>
+              {/* </Link> */}
             </div>
           </div>
         </div>
@@ -178,7 +296,15 @@ const ProductDetailPage = () => {
                         <td className="px-4 py-3 text-sm font-medium">
                           {spec.specification}
                         </td>
-                        <td className="px-4 py-3 text-sm">{spec.value}</td>
+                        <td className="px-4 py-3 text-sm">
+                          {spec.specification === "link" ? (
+                            <a href={spec.value} className="underline">
+                              {spec.value}
+                            </a>
+                          ) : (
+                            <td> {spec.value}</td>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

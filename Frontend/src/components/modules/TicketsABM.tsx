@@ -1,62 +1,54 @@
 import { useEffect, useState } from "react";
-import { Edit2, Trash2, Eye, Plus } from "lucide-react";
+import { Edit2, Trash2, Eye } from "lucide-react";
 import Table from "@/components/common/Table";
 import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { RootState } from "@/store";
-import {
-  deleteContact,
-  fetchContacts,
-  fetchContactStates,
-} from "@/store/contacts";
 import { convertStateContact, stateEnum } from "@/utils/quotesConvert";
-import { Contact } from "@/types/api";
-import { ViewContactModal } from "../molecules/Modals/viewContact";
-import { EditContactModal } from "../molecules/Modals/editContact";
+import { ServiceTicket } from "@/types/api";
+import { EditTicketsService } from "../molecules/Modals/editTicket";
 import { formatDate } from "@/utils/formatDate";
-import { fetchUsers } from "@/store/usersSlice";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import { toast } from "@/hooks/use-toast";
-import Button from "../atoms/Button";
+import {
+  deleteTicket,
+  fetchTicketPriorities,
+  fetchTickets,
+  fetchTicketStates,
+} from "@/store/ticketsSlice";
+import { fetchUsers } from "@/store/usersSlice";
+import { ViewTicketModal } from "../molecules/Modals/ViewTicketService";
 
-const contactInitialData: Contact = {
-  id: "",
-  company_name: "",
-  first_name: "",
-  last_name: "",
-  email: "",
-  phone: "",
-  country: "",
-  state: "NEW",
-  assigned_user: "",
-  created_at: "",
-  message: "",
-  updated_at: "",
-};
-
-const ContactsABM = () => {
+const TicketsABM = () => {
   // const [contacts] = useState<Contact[]>(mockContacts);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(
-    contactInitialData
+  const [selectedTicket, setSelectedTicket] = useState<ServiceTicket | null>(
+    null
   );
+
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
-  const [isNew, setIsNew] = useState(false);
 
-  const { list: contacts, pagination } = useAppSelector(
-    (state: RootState) => state.contacts
-  );
+  // const { list: contacts, pagination } = useAppSelector(
+  //   (state: RootState) => state.contacts
+  // );
+  const {
+    list: tickets,
+    pagination,
+    states,
+    priorities,
+  } = useAppSelector((state: RootState) => state.ticketsService);
   const { list: users } = useAppSelector((state: RootState) => state.users);
 
-  const { states } = useAppSelector((state: RootState) => state.contacts);
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    dispatch(fetchContactStates({}));
-    dispatch(fetchUsers({ page: 1, page_size: 1000 }));
+    dispatch(fetchTickets({ page: 1, page_size: 10 }));
+    dispatch(fetchTicketStates({}));
+    dispatch(fetchTicketPriorities({}));
+    dispatch(fetchUsers({}));
   }, [dispatch]);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -88,31 +80,26 @@ const ContactsABM = () => {
       params.search = debouncedSearch.trim();
     }
 
-    dispatch(fetchContacts(params));
+    dispatch(fetchTickets(params));
   }, [dispatch, debouncedSearch, statusFilter]);
-
-  const handleView = (contact: Contact) => {
-    setSelectedContact(contact);
+  const handleView = (ticket: ServiceTicket) => {
+    setSelectedTicket(ticket);
     setViewModalOpen(true);
   };
-  const handleCreate = () => {
-    setIsNew(true);
-    setSelectedContact(contactInitialData);
+
+  const handleEdit = (ticket: ServiceTicket) => {
+    setSelectedTicket(ticket);
     setEditModalOpen(true);
   };
-  const handleEdit = (contact: Contact) => {
-    setSelectedContact(contact);
-    setEditModalOpen(true);
-  };
-  const handleOpenDeleteModal = (product: Contact) => {
-    setSelectedContact(product);
+  const handleOpenDeleteModal = (ticket: ServiceTicket) => {
+    setSelectedTicket(ticket);
     setIsModalDeleteOpen(true);
   };
   const handleDelete = async () => {
-    if (!selectedContact) return;
+    if (!selectedTicket) return;
 
     try {
-      await dispatch(deleteContact(selectedContact.id)).unwrap();
+      await dispatch(deleteTicket(selectedTicket.id)).unwrap();
       toast({ title: "Contacto eliminado exitosamente", variant: "default" });
       setIsModalDeleteOpen(false);
     } catch (error: unknown) {
@@ -130,8 +117,16 @@ const ContactsABM = () => {
       }
     }
   };
-
+  const filteredTickets = tickets.map((ticket) => ({
+    ...ticket,
+    company_name: ticket.contact?.company_name || "-",
+    first_name: ticket.contact?.first_name || "-",
+    last_name: ticket.contact?.last_name || "-",
+    email: ticket.contact?.email || "-",
+    phone: ticket.contact?.phone || "-",
+  }));
   const columns = [
+    { key: "ticket_number", label: "N° Ticket", sortable: true },
     {
       key: "company_name",
       label: "Empresa",
@@ -141,7 +136,7 @@ const ContactsABM = () => {
     { key: "last_name", label: "Apellido", sortable: true },
     { key: "email", label: "Email", sortable: true },
     { key: "phone", label: "Teléfono", sortable: false },
-    { key: "country", label: "País", sortable: true },
+    // { key: "country", label: "País", sortable: true },
     {
       key: "created_at",
       label: "Fecha",
@@ -152,10 +147,9 @@ const ContactsABM = () => {
       key: "state",
       label: "Estado",
       sortable: true,
-      render: (value: stateEnum) => convertStateContact(value),
     },
   ];
-
+  console.log(filteredTickets, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
   const actions = [
     { icon: <Eye size={16} />, onClick: handleView, label: "Ver" },
     { icon: <Edit2 size={16} />, onClick: handleEdit, label: "Editar" },
@@ -184,44 +178,34 @@ const ContactsABM = () => {
       params.state = null;
     }
 
-    dispatch(fetchContacts(params));
+    dispatch(fetchTickets(params));
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
-        <div className="flex gap-4 flex-1">
-          <InputField
-            placeholder="Buscar por empresa, nombre, apellido o email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-md"
-          />
-          <Select
-            options={[
-              { value: "all", label: "Todos los estados" },
-              ...states.map((item) => ({
-                value: item.id,
-                label: convertStateContact(item.name as stateEnum),
-              })),
-            ]}
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="max-w-xs"
-          />
-        </div>
-        <Button
-          className="flex items-center gap-2"
-          variant="primary"
-          onClick={handleCreate}
-        >
-          <Plus size={18} />
-          Crear contacto
-        </Button>
+        <InputField
+          placeholder="Buscar por empresa, nombre, apellido o email..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="max-w-md"
+        />
+        <Select
+          options={[
+            { value: "all", label: "Todos los estados" },
+            ...states.map((item) => ({
+              value: item.id,
+              label: convertStateContact(item.name as stateEnum),
+            })),
+          ]}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="w-48"
+        />
       </div>
       <Table
         columns={columns}
-        data={contacts}
+        data={filteredTickets}
         actions={actions}
         serverPagination={{
           currentPage: pagination.current_page,
@@ -232,35 +216,34 @@ const ContactsABM = () => {
         }}
       />
 
-      <ViewContactModal
-        contact={selectedContact}
+      <ViewTicketModal
+        ticket={selectedTicket}
         open={viewModalOpen}
         onOpenChange={setViewModalOpen}
-        users={users}
       />
 
-      <EditContactModal
-        isNew={isNew}
-        contact={selectedContact}
+      <EditTicketsService
+        ticket={selectedTicket}
         open={editModalOpen}
         onOpenChange={setEditModalOpen}
         states={states}
         users={users}
+        priorities={priorities}
         // users={users} // Pasá la lista de usuarios si la tenés disponible
       />
       <ModalDelete
         isOpen={isModalDeleteOpen}
         onClose={() => {
           setIsModalDeleteOpen(false);
-          setSelectedContact(null);
+          setSelectedTicket(null);
         }}
-        itemName={`${selectedContact?.first_name || ""} ${
-          selectedContact?.last_name || ""
-        } Empresa: ${selectedContact?.company_name || ""}`}
+        itemName={`${selectedTicket?.ticket_number || ""} de ${
+          selectedTicket?.contact?.first_name || ""
+        }  ${selectedTicket?.contact?.last_name || ""}`}
         onConfirm={handleDelete}
       />
     </div>
   );
 };
 
-export default ContactsABM;
+export default TicketsABM;
