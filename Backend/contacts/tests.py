@@ -56,12 +56,27 @@ class ContactAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_validate_short_phone(self):
-        """Validar que el teléfono tenga al menos 7 caracteres"""
+        """Si el email ya existe, se retorna el contacto existente (dedup por email) ignorando datos inválidos"""
         data = {
             'company_name': 'Test Company',
             'first_name': 'John',
             'last_name': 'Doe',
             'email': 'john@example.com',
+            'phone': '123',
+            'state': self.contact_state.id
+        }
+        response = self.client.post('/contacts/list/', data)
+        # El email ya existe → retorna el contacto existente sin crear duplicado
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Contact.objects.count(), 1)
+
+    def test_validate_short_phone_new_email(self):
+        """Validar que el teléfono tenga al menos 7 caracteres para contactos nuevos"""
+        data = {
+            'company_name': 'Test Company',
+            'first_name': 'New',
+            'last_name': 'Person',
+            'email': 'newperson@example.com',
             'phone': '123',
             'state': self.contact_state.id
         }

@@ -440,41 +440,67 @@ class QuotePackageSerializer(serializers.Serializer):
             quote_create_data['state'] = default_quote_state
             logger.warning("No state provided, using default: %s", default_quote_state.id)
 
-        quote = Quote.objects.create(**quote_create_data)
-        logger.info(f"Quote created: {quote.quote_number} (ID: {quote.id})")
+        # Disconnect signal before creating quote so email is not sent before items exist
+        from django.db.models.signals import post_save
+        from .signals import send_quote_notification
+        from .emails import send_quote_created_email as _send_quote_created_email
 
-        # 3. Crear los items de la cotización
-        created_items = []
-        total_amount = 0
+        post_save.disconnect(send_quote_notification, sender=Quote)
+        try:
+            quote = Quote.objects.create(**quote_create_data)
+            logger.info(f"Quote created: {quote.quote_number} (ID: {quote.id})")
 
-        for item_data in items_data:
-            product = Product.objects.get(id=item_data['product'])
-            quantity = item_data['quantity']
-            unit_price = item_data.get('unit_price')
+            # 3. Crear los items de la cotización
+            created_items = []
+            total_amount = 0
 
-            # Si no se proporciona unit_price, usar el del producto
-            if unit_price is None:
-                unit_price = product.price if hasattr(product, 'price') else 0
+            for item_data in items_data:
+                product = Product.objects.get(id=item_data['product'])
+                quantity = item_data['quantity']
+                unit_price = item_data.get('unit_price')
+
+                # Si no se proporciona unit_price, usar el del producto
+                if unit_price is None:
+                    unit_price = product.price if hasattr(product, 'price') else 0
+                else:
+                    unit_price = float(unit_price)
+
+                subtotal = quantity * unit_price
+
+                quote_item = QuoteItem.objects.create(
+                    quote=quote,
+                    product=product,
+                    quantity=quantity,
+                    unit_price=unit_price,
+                    subtotal=subtotal
+                )
+                created_items.append(quote_item)
+                total_amount += subtotal
+                logger.info(f"QuoteItem created for product {product.id}, quantity: {quantity}")
+
+            # 4. Actualizar el total de la cotización
+            quote.total_amount = total_amount
+            quote.save()
+            logger.info(f"Quote total_amount updated: {total_amount}")
+        finally:
+            post_save.connect(send_quote_notification, sender=Quote)
+
+        # Send created email now that all items exist in the DB
+        try:
+            results = _send_quote_created_email(quote)
+            if results['business']:
+                logger.info("Email enviado al negocio para cotizacion #%s", quote.quote_number)
             else:
-                unit_price = float(unit_price)
-
-            subtotal = quantity * unit_price
-
-            quote_item = QuoteItem.objects.create(
-                quote=quote,
-                product=product,
-                quantity=quantity,
-                unit_price=unit_price,
-                subtotal=subtotal
-            )
-            created_items.append(quote_item)
-            total_amount += subtotal
-            logger.info(f"QuoteItem created for product {product.id}, quantity: {quantity}")
-
-        # 4. Actualizar el total de la cotización
-        quote.total_amount = total_amount
-        quote.save()
-        logger.info(f"Quote total_amount updated: {total_amount}")
+                logger.warning("No se pudo enviar email al negocio para cotizacion #%s", quote.quote_number)
+            if results['customer']:
+                logger.info("Email enviado al cliente para cotizacion #%s", quote.quote_number)
+            else:
+                logger.warning("No se pudo enviar email al cliente para cotizacion #%s", quote.quote_number)
+            if results['errors']:
+                for error in results['errors']:
+                    logger.error("Error en email de cotizacion: %s", error)
+        except Exception as e:
+            logger.exception("Error al enviar emails para cotizacion #%s: %s", quote.quote_number, e)
 
         return {
             'contact': contact,
