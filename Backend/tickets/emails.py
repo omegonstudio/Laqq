@@ -120,7 +120,7 @@ def send_ticket_to_business(ticket):
         safe_print("="*80 + "\n")
 
         # Send email
-        email.send(send_email_message(email))
+        send_email_message(email)
         logger.info(f"Ticket #{ticket.ticket_number} email sent to business: {settings.BUSINESS_EMAIL}")
 
         return True
@@ -202,7 +202,7 @@ def send_ticket_to_customer(ticket, username, password):
         safe_print("="*80 + "\n")
 
         # Send email
-        email.send(send_email_message(email))
+        send_email_message(email)
         logger.info(f"Ticket #{ticket.ticket_number} confirmation with credentials sent to customer: {ticket.contact.email}")
 
         return True
