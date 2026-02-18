@@ -279,7 +279,8 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         }
         // ========== EDITAR PRODUCTO ==========
         let attachmentId;
-        if (initialImage && !currentImage) {
+        const userRemovedPortada = initialImage && !currentImage && !localState.image_attachment_id;
+        if (userRemovedPortada) {
           await attachmentsApi.remove(initialImage);
           attachmentId = null;
         }
