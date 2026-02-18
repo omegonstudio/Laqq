@@ -1,5 +1,6 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import ContactState, Contact, Message
@@ -22,6 +23,15 @@ class ContactViewSet(viewsets.ModelViewSet):
     search_fields = ['company_name', 'first_name', 'last_name', 'email', 'phone']
     ordering_fields = ['company_name', 'created_at', 'updated_at']
     ordering = ['-created_at']
+
+    def create(self, request, *args, **kwargs):
+        email = request.data.get('email', '').strip()
+        if email:
+            existing = Contact.objects.filter(email__iexact=email).first()
+            if existing:
+                serializer = self.get_serializer(existing)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+        return super().create(request, *args, **kwargs)
 
 class MessageViewSet(viewsets.ModelViewSet):
     queryset = Message.objects.all()
