@@ -276,6 +276,49 @@
             </div>
         </div>
 
+        <!-- Credentials -->
+        <div class="credentials-box">
+            <h3>🔑 Acceso al Portal de Cliente</h3>
+            <p style="text-align: center; margin-bottom: 20px; opacity: 0.95;">
+                Hemos creado una cuenta para que puedas hacer seguimiento de tu ticket
+            </p>
+
+            <div class="credential-item">
+                <span class="credential-label">URL del Portal:</span>
+                <div class="credential-value">{{ portal_url }}</div>
+            </div>
+
+            <div class="credential-item">
+                <span class="credential-label">Usuario:</span>
+                <div class="credential-value">{{ username }}</div>
+            </div>
+
+            <div class="credential-item">
+                <span class="credential-label">Contraseña:</span>
+                <div class="credential-value">{{ password }}</div>
+            </div>
+
+            <a href="{{ portal_url }}" class="portal-button">Ingresar al Portal</a>
+        </div>
+
+        <div class="warning-box">
+            <strong>⚠ IMPORTANTE:</strong> Guarda estas credenciales en un lugar seguro.
+            Podrás cambiar tu contraseña una vez que ingreses al portal.
+        </div>
+
+        <!-- Portal Features -->
+        <div class="section">
+            <div class="section-title">
+                
+                ¿Qué puedes hacer en el Portal?
+            </div>
+            <ul class="features-list">
+                <li>Ver el estado actual de tu ticket en tiempo real</li>
+                <li>Adjuntar imágenes o documentos adicionales</li>
+                <li>Agregar comentarios o información complementaria</li>
+                <li>Revisar el historial de cambios</li>
+            </ul>
+        </div>
 
         <!-- Contact Information -->
         <div class="contact-section">

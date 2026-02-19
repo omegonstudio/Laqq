@@ -79,8 +79,9 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
         return AttachmentSerializer(qs, many=True, context=self.context).data
 
     def validate_description(self, value):
-        if not value or not value.strip():
-            raise serializers.ValidationError("Description is required")
+        """Validar que la descripción tenga al menos 20 caracteres"""
+        if len(value.strip()) < 20:
+            raise serializers.ValidationError("Description must be at least 20 characters long")
         return value
 
     def validate(self, data):
@@ -278,9 +279,13 @@ class TicketPackageSerializer(serializers.Serializer):
 
     def validate_ticket(self, value):
         """Validar datos del ticket"""
-        if 'description' not in value or not value['description'] or not value['description'].strip():
+        if 'description' not in value or not value['description']:
             raise serializers.ValidationError(
                 "Field 'description' is required in ticket data"
+            )
+        if len(value['description'].strip()) < 20:
+            raise serializers.ValidationError(
+                "Description must be at least 20 characters long"
             )
 
         # Validar product si está presente
