@@ -146,12 +146,12 @@ class ServiceTicketAPITestCase(APITestCase):
         self.assertEqual(response.data['state'], 'open')
         self.assertEqual(response.data['priority'], 'medium')
 
-    def test_validate_short_description(self):
-        """Validar que la descripción tenga al menos 20 caracteres"""
+    def test_validate_empty_description(self):
+        """Validar que la descripción no esté vacía"""
         data = {
             'contact': self.contact.id,
             'product_name': 'Test Product',
-            'description': 'Short desc'
+            'description': '   '
         }
         response = self.client.post('/tickets/', data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

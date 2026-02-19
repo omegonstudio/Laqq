@@ -26,11 +26,15 @@ class ContactViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         email = request.data.get('email', '').strip()
+        phone = request.data.get('phone', '').strip()
+        existing = None
         if email:
             existing = Contact.objects.filter(email__iexact=email).first()
-            if existing:
-                serializer = self.get_serializer(existing)
-                return Response(serializer.data, status=status.HTTP_200_OK)
+        if not existing and phone:
+            existing = Contact.objects.filter(phone=phone).first()
+        if existing:
+            serializer = self.get_serializer(existing)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         return super().create(request, *args, **kwargs)
 
 class MessageViewSet(viewsets.ModelViewSet):
@@ -46,3 +50,14 @@ class MessageViewSet(viewsets.ModelViewSet):
         if self.request.method == 'POST':
             return [AllowAny()]
         return [IsAuthenticated()]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        if not data.get('state'):
+            default_state = ContactState.objects.filter(id='new').first() or ContactState.objects.first()
+            if default_state:
+                data['state'] = default_state.id
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

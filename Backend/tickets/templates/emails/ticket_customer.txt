@@ -20,28 +20,6 @@ Descripción del problema:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🔑 ACCESO AL PORTAL DE CLIENTE
-
-Hemos creado una cuenta para que puedas hacer seguimiento de tu ticket:
-
-URL: {{ portal_url }}
-Usuario: {{ username }}
-Contraseña: {{ password }}
-
-IMPORTANTE: Guarda estas credenciales en un lugar seguro.
-Podrás cambiar tu contraseña una vez que ingreses al portal.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✨ ¿QUÉ PUEDES HACER EN EL PORTAL?
-
-• Ver el estado actual de tu ticket en tiempo real
-• Adjuntar imágenes o documentos adicionales
-• Agregar comentarios o información complementaria
-• Revisar el historial de cambios
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 📞 CONTACTO
 
 Si tienes alguna consulta urgente, puedes contactarnos:
