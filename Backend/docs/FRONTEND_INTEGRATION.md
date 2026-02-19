@@ -73,6 +73,48 @@ El backend está **100% funcional** y listo para ser consumido desde el frontend
 
 ---
 
+## 🚀 Setup local (primera vez o DB nueva)
+
+Si levantás el entorno por primera vez o con una DB vacía, el entrypoint corre automáticamente al hacer `docker compose up`:
+
+1. Migraciones
+2. Datos de referencia (estados, tipos, prioridades)
+3. Seed data de desarrollo
+
+**No tenés que correr ningún comando manual.** Solo:
+
+```bash
+cp env.example .env
+docker compose -f docker-compose.dev.yml up --build
+```
+
+Si por alguna razón los datos de referencia no están cargados (por ejemplo, si usás una DB existente de prod), podés correrlos manualmente:
+
+```bash
+docker compose -f docker-compose.dev.yml exec backend python manage.py populate_user_data
+docker compose -f docker-compose.dev.yml exec backend python manage.py populate_ticket_data
+docker compose -f docker-compose.dev.yml exec backend python manage.py populate_contact_data
+docker compose -f docker-compose.dev.yml exec backend python manage.py populate_quote_data
+```
+
+Estos comandos son **idempotentes**: podés correrlos múltiples veces sin problema.
+
+### Datos creados automáticamente
+
+| Tipo | IDs disponibles |
+|------|----------------|
+| UserType | `admin`, `back`, `client` |
+| UserState | `active`, `inactive`, `suspended` |
+| TicketState | `new`, `open`, `in_progress`, `waiting_parts`, `resolved`, `closed` |
+| TicketPriority | `low`, `medium`, `high`, `urgent` |
+| ContactState | `new`, `in_progress`, `responded`, `closed` |
+| QuoteType | `standard`, `express` |
+| QuoteState | `pending`, `sent`, `confirmed`, `rejected`, `expired` |
+
+> **Atención:** Los endpoints de tickets usan estos IDs hardcodeados. Si la DB no tiene estos registros, los endpoints `start/`, `resolve/` y `close/` de tickets van a responder con error `DoesNotExist`.
+
+---
+
 ## 🔧 Configuración Necesaria
 
 ### 1. Variables de Entorno del Backend

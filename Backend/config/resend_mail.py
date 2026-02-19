@@ -140,11 +140,13 @@ def send_email_message(email: EmailMultiAlternatives) -> bool:
     Entry point: envía usando Resend. NO realiza fallback a SMTP.
     - Si RESEND_API_KEY está configurada envía por Resend.
     - Si no está configurada lanza RuntimeError para evitar intento SMTP.
-    - Durante tests (TESTING=True) usa mail.outbox en lugar de Resend.
+    - Durante tests (mail.outbox existe) usa el backend estándar de Django.
     """
-    # During tests use Django's standard email backend (populates mail.outbox)
-    email_backend = getattr(settings, "EMAIL_BACKEND", "")
-    if "locmem" in email_backend or getattr(settings, "TESTING", False):
+    # Durante tests Django inicializa mail.outbox. Usamos eso como detector
+    # en lugar de settings.TESTING para que @override_settings(TESTING=False)
+    # no bypasee este check.
+    from django.core import mail as django_mail
+    if hasattr(django_mail, 'outbox'):
         email.send()
         return True
 

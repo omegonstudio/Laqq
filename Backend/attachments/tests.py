@@ -292,4 +292,3 @@ class TicketAttachmentsTest(APITestCase):
         )
         self.assertEqual(attachments.count(), 1)
         self.assertEqual(attachments.first().role, ROLE_IMAGE)
-

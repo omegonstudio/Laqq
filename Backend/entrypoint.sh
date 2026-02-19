@@ -18,6 +18,13 @@ echo ""
 echo "Running migrations..."
 python manage.py migrate --noinput
 
+echo ""
+echo "Loading initial reference data (idempotent)..."
+python manage.py populate_user_data
+python manage.py populate_ticket_data
+python manage.py populate_contact_data
+python manage.py populate_quote_data
+
 if [ "$LOAD_SEED_DATA" = "true" ]; then
     echo ""
     echo "Loading seed data..."
