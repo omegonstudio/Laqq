@@ -367,12 +367,15 @@ class QuotePackageSerializer(serializers.Serializer):
         quote_data = validated_data['quote']
         items_data = validated_data.get('items', [])
 
-        # 1. Buscar o crear contacto por email
+        # 1. Buscar o crear contacto por email o teléfono
         email = contact_data['email']
-        contact = Contact.objects.filter(email=email).first()
+        phone = contact_data.get('phone', '').strip()
+        contact = Contact.objects.filter(email__iexact=email).first()
+        if not contact and phone:
+            contact = Contact.objects.filter(phone=phone).first()
 
         if contact:
-            logger.info(f"Contact found with email {email}: {contact.id}")
+            logger.info(f"Contact found with email/phone {email}/{phone}: {contact.id}")
         else:
             # Crear nuevo contacto
             # Buscar un estado por defecto o usar el primero disponible
