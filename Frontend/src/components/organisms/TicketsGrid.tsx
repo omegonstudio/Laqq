@@ -1,46 +1,18 @@
-import React, { useEffect } from "react";
-
+import { useEffect } from "react";
 import { useState } from "react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
-import {
-  Clock,
-  User,
-  Package,
-  AlertCircle,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  Paperclip,
-  Calendar,
-  FileText,
-  Plus,
-  Search,
-} from "lucide-react";
+import { AlertCircle, Plus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
+import Select from "@/components/atoms/Select";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import TicketForm from "../molecules/TicketForm";
-import { ServiceTicket, TicketPriority } from "@/types/api";
+import { ServiceTicket } from "@/types/api";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchTicketPriorities, fetchTicketStates } from "@/store/ticketsSlice";
 import { RootState } from "@/store";
 import { TicketCard } from "../molecules/CardTicketClient";
 import { TicketDetailModal } from "../molecules/Modals/CardTicketDetailClient";
+import { convertStateTicket, stateEnum } from "@/utils/quotesConvert";
 
 interface ServiceTicketGridProps {
   tickets: ServiceTicket[];
@@ -159,7 +131,32 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
             />
           </div>
           <div className="flex gap-2">
-            <Select value={stateFilter} onValueChange={setStateFilter}>
+            <Select
+              options={[
+                { value: "all", label: "Todos los estados" },
+                ...states.map((item) => ({
+                  value: item.id,
+                  label: convertStateTicket(item.name as stateEnum),
+                })),
+              ]}
+              value={stateFilter}
+              onChange={(e) => setStateFilter(e.target.value)}
+              className="w-48"
+            />
+
+            <Select
+              options={[
+                { value: "all", label: "Todas las prioridades" },
+                ...priorities.map((item) => ({
+                  value: item.id,
+                  label: item.name,
+                })),
+              ]}
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              className="w-48"
+            />
+            {/* <Select value={stateFilter} onValueChange={setStateFilter}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
@@ -171,8 +168,8 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select>
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            </Select> */}
+            {/* <Select value={priorityFilter} onValueChange={setPriorityFilter}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Prioridad" />
               </SelectTrigger>
@@ -184,7 +181,7 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select>
+            </Select> */}
           </div>
         </div>
         {hasFilters && (

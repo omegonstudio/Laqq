@@ -371,6 +371,7 @@ export interface CreateTicketPayload {
     company_name?: string;
     phone?: string;
     country?: string;
+
     state: string;
   };
   ticket: {
@@ -380,6 +381,7 @@ export interface CreateTicketPayload {
     description?: string;
     resolution_notes?: string | null;
     attachment?: string | null;
+    priority: string | null;
     attachments?: string[] | null;
   };
 }

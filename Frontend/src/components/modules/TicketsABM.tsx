@@ -5,7 +5,7 @@ import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { RootState } from "@/store";
-import { convertStateContact, stateEnum } from "@/utils/quotesConvert";
+import { convertStateTicket, stateEnum } from "@/utils/quotesConvert";
 import { ServiceTicket } from "@/types/api";
 import { EditTicketsService } from "../molecules/Modals/editTicket";
 import { formatDate } from "@/utils/formatDate";
@@ -40,6 +40,7 @@ const TicketsABM = () => {
     states,
     priorities,
   } = useAppSelector((state: RootState) => state.ticketsService);
+
   const { list: users } = useAppSelector((state: RootState) => state.users);
 
   const dispatch = useAppDispatch();
@@ -82,6 +83,7 @@ const TicketsABM = () => {
 
     dispatch(fetchTickets(params));
   }, [dispatch, debouncedSearch, statusFilter]);
+
   const handleView = (ticket: ServiceTicket) => {
     setSelectedTicket(ticket);
     setViewModalOpen(true);
@@ -147,9 +149,9 @@ const TicketsABM = () => {
       key: "state",
       label: "Estado",
       sortable: true,
+      render: (value: stateEnum) => convertStateTicket(value),
     },
   ];
-  console.log(filteredTickets, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
   const actions = [
     { icon: <Eye size={16} />, onClick: handleView, label: "Ver" },
     { icon: <Edit2 size={16} />, onClick: handleEdit, label: "Editar" },
@@ -195,7 +197,7 @@ const TicketsABM = () => {
             { value: "all", label: "Todos los estados" },
             ...states.map((item) => ({
               value: item.id,
-              label: convertStateContact(item.name as stateEnum),
+              label: convertStateTicket(item.name as stateEnum),
             })),
           ]}
           value={statusFilter}

@@ -85,3 +85,16 @@ export const convertStateContact = (state: stateEnum): string => {
       return "Desconocido";
   }
 };
+
+export const convertStateTicket = (state: stateEnum | string): string => {
+  switch (state.toUpperCase()) {
+    case "CLOSED":
+      return "Cerrado";
+    case "IN_PROGRESS":
+      return "En progreso";
+    case "NEW":
+      return "Nuevo";
+    default:
+      return "Desconocido";
+  }
+};

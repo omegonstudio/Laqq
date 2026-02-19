@@ -47,6 +47,7 @@ const TicketForm = ({
       product_name: "",
       attachment: null,
       attachments: [],
+      priority: null,
     },
     contact: {
       first_name: "",
@@ -148,6 +149,7 @@ const TicketForm = ({
         description: "",
         product_name: "",
         attachment: null,
+        priority: null,
       },
       contact: {
         first_name: "",
@@ -264,11 +266,11 @@ const TicketForm = ({
 
   return (
     <Dialog open={isTicketModalOpen} onOpenChange={setIsTicketModalOpen}>
-      <DialogContent className="w-[90vw] sm:w-full">
+      <DialogContent className="h-[90%] sm:w-full overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Crear Ticket de Soporte</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 overflow-hidden">
+        <form onSubmit={handleSubmit} className="space-y-4 h-[90%]">
           <div className="grid md:grid-cols-2 gap-4">
             <InputField
               label="Nombre"

@@ -143,7 +143,6 @@ export function EditTicketsService({
       </div>
     );
   };
-  console.log(formData.started_at, "USERRRRRRRRRRRRRRRRR");
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData) return;

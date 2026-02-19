@@ -20,6 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { ServiceTicket, TicketPriority, TicketState } from "@/types/api";
 import { formatDate } from "@/utils/formatDate";
+import { convertStateTicket } from "@/utils/quotesConvert";
 
 export function TicketDetailModal({
   ticket,
@@ -49,7 +50,7 @@ export function TicketDetailModal({
     { label: "Resuelto", date: formatDate(ticket.resolved_at) },
     { label: "Cerrado", date: formatDate(ticket.closed_at) },
   ].filter((item) => item.date);
-
+  console.log(ticket, "AAAAAAAAAAAAAAAAAAAAAAA");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh]">
@@ -65,8 +66,8 @@ export function TicketDetailModal({
             </div>
             <div className="flex gap-2 shrink-0">
               <Badge variant="outline" className="font-mono text-xs">
-                <AlertCircle className="size-3" />
-                {ticketState.name}
+                <AlertCircle className="size-3 mr-3" />
+                {convertStateTicket(ticketState.name)}
               </Badge>
               <Badge
                 variant="outline"
@@ -137,7 +138,7 @@ export function TicketDetailModal({
                 </div>
               )}
 
-              {ticket.attachment && (
+              {ticket.attachments.map((attachment) => (
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium flex items-center gap-2">
                     <Paperclip className="size-4" />
@@ -145,7 +146,7 @@ export function TicketDetailModal({
                   </h4>
                   <Button variant="outline" size="sm" asChild>
                     <a
-                      href={ticket.attachment}
+                      href={attachment.url}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -153,7 +154,7 @@ export function TicketDetailModal({
                     </a>
                   </Button>
                 </div>
-              )}
+              ))}
             </div>
 
             <Separator />
