@@ -263,8 +263,10 @@ POST /tickets/{id}/assign/
 ```
 
 **Comportamiento:**
+- Asigna el ticket al usuario especificado
+- Cambia el estado de `new` → `open` automáticamente
 - Establece `assigned_at` = fecha actual
-- Si el estado es `new`, cambia automáticamente a `open`
+- **Envía email al cliente** notificando que el ticket está siendo atendido
 
 ---
 
@@ -277,6 +279,7 @@ POST /tickets/{id}/start/
 **Comportamiento:**
 - Cambia estado a `in_progress`
 - Establece `started_at` = fecha actual
+- **Envía email al cliente** notificando el cambio de estado
 
 ---
 
@@ -293,6 +296,7 @@ POST /tickets/{id}/resolve/
 - Cambia estado a `resolved`
 - Establece `resolved_at` = fecha actual
 - Guarda las notas de resolución
+- **Envía email al cliente** notificando que el ticket fue resuelto (incluye notas de resolución)
 
 ---
 
@@ -306,6 +310,7 @@ POST /tickets/{id}/close/
 - Cambia estado a `closed`
 - Establece `closed_at` = fecha actual
 - Si no tiene `resolved_at`, también lo establece
+- **Envía email al cliente** notificando el cierre del ticket
 
 ---
 
@@ -483,7 +488,7 @@ POST /tickets/abc123.../close/
 
 | Campo | Validación |
 |-------|------------|
-| `description` | Mínimo 20 caracteres |
+| `description` | Requerido, no puede estar vacío |
 | `ticket_number` | Read-only, generado automáticamente |
 | `assigned_at`, `started_at`, `resolved_at`, `closed_at` | Read-only, gestionadas automáticamente |
 
@@ -559,17 +564,87 @@ Todos los modelos están registrados en el admin de Django:
 
 ---
 
+## Notificaciones por Email
+
+El sistema envía automáticamente emails al cliente en dos momentos:
+
+### 1. Creación del Ticket
+
+**Cuándo:** Al crear un ticket via `POST /tickets/` o `POST /tickets/from-package/`
+
+**Destinatarios:**
+- Email al **negocio** (BUSINESS_EMAIL) con todos los detalles
+- Email al **cliente** (contact.email) confirmando la creación
+
+**Templates:**
+- HTML: [tickets/templates/emails/ticket_customer.html](tickets/templates/emails/ticket_customer.html)
+- Texto: [tickets/templates/emails/ticket_customer.txt](tickets/templates/emails/ticket_customer.txt)
+
+**Contenido del email al cliente:**
+- Número de ticket
+- Producto y descripción del problema
+- Estado y prioridad
+- Datos de contacto del negocio
+
+**Nota:** El email de creación **NO incluye credenciales** de acceso (funcionalidad deshabilitada).
+
+---
+
+### 2. Cambios de Estado
+
+**Cuándo:** Cuando el ticket cambia de estado vía los endpoints de transición
+
+**Triggers:**
+- `POST /tickets/{id}/assign/` → Estado cambia a `open`
+- `POST /tickets/{id}/start/` → Estado cambia a `in_progress`
+- `POST /tickets/{id}/resolve/` → Estado cambia a `resolved`
+- `POST /tickets/{id}/close/` → Estado cambia a `closed`
+
+**Destinatario:**
+- Solo al **cliente** (contact.email)
+
+**Templates:**
+- HTML: [tickets/templates/emails/ticket_status_change.html](tickets/templates/emails/ticket_status_change.html)
+- Texto: [tickets/templates/emails/ticket_status_change.txt](tickets/templates/emails/ticket_status_change.txt)
+
+**Contenido:**
+- Estado actual (con color)
+- Número de ticket
+- Producto y descripción
+- Prioridad
+- Fecha de última actualización
+- Notas de resolución (si aplica)
+- Datos de contacto del negocio
+
+**Implementación:**
+```python
+# En tickets/emails.py
+def send_ticket_status_change_email(ticket):
+    """Envía email al cliente notificando cambio de estado"""
+    # Renderiza templates con datos del ticket
+    # Envía via Resend (o locmem en tests)
+```
+
+**Configuración requerida:**
+- `BUSINESS_NAME` - Nombre del negocio
+- `BUSINESS_EMAIL` - Email del negocio
+- `BUSINESS_PHONE` - Teléfono del negocio (opcional)
+- `DEFAULT_FROM_NAME` - Nombre del remitente
+- `DEFAULT_FROM_EMAIL` - Email remitente
+
+---
+
 ## Próximas Mejoras (Opcional)
 
 Funcionalidades que podrían agregarse en el futuro:
 
-1. **Historial de cambios:** Registro de todas las transiciones de estado
-2. **Notificaciones:** Emails automáticos al crear, asignar o resolver tickets
-3. **SLA (Service Level Agreement):** Tiempo máximo de resolución según prioridad
-4. **Comentarios:** Sistema de comentarios en el ticket
-5. **Adjuntos múltiples:** Permitir varios archivos por ticket
-6. **Relación con cotizaciones:** Vincular tickets con presupuestos de reparación
-7. **Métricas avanzadas:** Tiempo promedio de resolución, satisfacción del cliente
+1. **Historial de cambios:** Registro de todas las transiciones de estado con timestamps y usuario
+2. **SLA (Service Level Agreement):** Tiempo máximo de resolución según prioridad
+3. **Comentarios:** Sistema de comentarios/notas en el ticket (públicos y privados)
+4. **Adjuntos múltiples:** Permitir varios archivos por ticket (actualmente soportado via `attach_file`)
+5. **Relación con cotizaciones:** Vincular tickets con presupuestos de reparación
+6. **Métricas avanzadas:** Tiempo promedio de resolución, satisfacción del cliente, SLA compliance
+7. **Portal de cliente:** Sistema de tracking sin login (token único por ticket)
 
 ---
 

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actualización de Ticket {{ ticket_number }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .email-container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #FF6B00;
+            color: white;
+            padding: 25px;
+            border-radius: 8px 8px 0 0;
+            margin: -30px -30px 30px -30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 26px;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .status-badge {
+            background-color: #e3f2fd;
+            border: 2px solid {{ state.color }};
+            color: {{ state.color }};
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .ticket-number {
+            font-size: 24px;
+            color: #FF6B00;
+            font-weight: bold;
+            text-align: center;
+            margin: 15px 0;
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #FF6B00;
+            margin-bottom: 15px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .info-item {
+            background-color: white;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+        .info-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            font-size: 16px;
+            color: #333;
+            font-weight: bold;
+        }
+        .description-box {
+            background-color: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+            margin: 15px 0;
+        }
+        .contact-section {
+            background-color: #e7f3ff;
+            border: 2px solid #0d6efd;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .contact-section h3 {
+            margin-top: 0;
+            color: #0d6efd;
+        }
+        .contact-info {
+            margin: 10px 0;
+        }
+        .contact-info strong {
+            display: inline-block;
+            width: 80px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .footer-logo {
+            font-size: 20px;
+            font-weight: bold;
+            color: #FF6B00;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>🔧 Actualización de Ticket</h1>
+            <p>{{ business_name }}</p>
+        </div>
+
+        <div class="greeting">
+            Hola <strong>{{ customer_name }}</strong>,
+        </div>
+
+        <p>
+            Tu ticket de servicio ha sido actualizado.
+        </p>
+
+        <div class="status-badge">
+            Estado actual: {{ state.name }}
+        </div>
+
+        <div class="ticket-number">
+            Ticket: {{ ticket_number }}
+        </div>
+
+        <!-- Ticket Information -->
+        <div class="section">
+            <div class="section-title">Información del Ticket</div>
+
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Producto</div>
+                    <div class="info-value">{{ product_name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Prioridad</div>
+                    <div class="info-value" style="color: {{ priority.color }};">{{ priority.name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Estado</div>
+                    <div class="info-value" style="color: {{ state.color }};">{{ state.name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Última actualización</div>
+                    <div class="info-value">{{ updated_at|date:"d/m/Y H:i" }}</div>
+                </div>
+            </div>
+
+            <div class="info-label" style="margin-top: 15px;">Descripción del problema:</div>
+            <div class="description-box">
+                {{ description|linebreaks }}
+            </div>
+
+            {% if resolution_notes %}
+            <div class="info-label" style="margin-top: 15px;">Notas de resolución:</div>
+            <div class="description-box">
+                {{ resolution_notes|linebreaks }}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Contact Information -->
+        <div class="contact-section">
+            <h3>📞 ¿Necesitas ayuda?</h3>
+            <p>Si tienes alguna consulta, puedes contactarnos:</p>
+            <div class="contact-info">
+                <strong>Email:</strong> <a href="mailto:{{ business_email }}">{{ business_email }}</a>
+            </div>
+            {% if business_phone %}
+            <div class="contact-info">
+                <strong>Teléfono:</strong> {{ business_phone }}
+            </div>
+            {% endif %}
+        </div>
+
+        <p style="text-align: center; margin-top: 30px;">
+            Gracias por confiar en <strong>{{ business_name }}</strong>.
+        </p>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-logo">{{ business_name }}</div>
+            <p>Este es un mensaje automático, por favor no respondas a este correo.</p>
+            <p>Para comunicarte con nosotros, escribe a {{ business_email }}</p>
+            <p style="font-size: 12px; color: #999;">
+                Ticket #{{ ticket_number }} | {{ updated_at|date:"d/m/Y H:i" }}
+            </p>
+        </div>
+    </div>
+</body>
+</html>
