@@ -26,7 +26,7 @@ from .permissions import (
 from .filters import ServiceTicketFilter
 
 from attachments.models import Attachment
-from .emails import send_ticket_created_email, send_ticket_status_change_email
+from .emails import send_ticket_created_email
 
 import secrets
 import string
@@ -260,47 +260,28 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOrBackOffice])
     def assign(self, request, pk=None):
         ticket = self.get_object()
-
-        # If ticket is in 'new' state, change to 'open'
-        data = {'assigned_user_id': request.data.get('assigned_user')}
-        if ticket.state_id == 'new':
-            open_state = TicketState.objects.get(id='open')
-            data['state'] = open_state.id
-
-        serializer = self.get_serializer(ticket, data=data, partial=True)
+        serializer = self.get_serializer(
+            ticket,
+            data={'assigned_user_id': request.data.get('assigned_user')},
+            partial=True
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-
-        # Send status change email to customer
-        try:
-            send_ticket_status_change_email(ticket)
-        except Exception as e:
-            logger.error(f"Error sending status change email for ticket {ticket.ticket_number}: {e}")
-
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOrBackOffice])
     def start(self, request, pk=None):
-        ticket = self.get_object()
         state = TicketState.objects.get(id='in_progress')
-        serializer = self.get_serializer(ticket, data={'state': state.id}, partial=True)
+        serializer = self.get_serializer(self.get_object(), data={'state': state.id}, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-
-        # Send status change email to customer
-        try:
-            send_ticket_status_change_email(ticket)
-        except Exception as e:
-            logger.error(f"Error sending status change email for ticket {ticket.ticket_number}: {e}")
-
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOrBackOffice])
     def resolve(self, request, pk=None):
-        ticket = self.get_object()
         state = TicketState.objects.get(id='resolved')
         serializer = self.get_serializer(
-            ticket,
+            self.get_object(),
             data={
                 'state': state.id,
                 'resolution_notes': request.data.get('resolution_notes', '')
@@ -309,29 +290,14 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-
-        # Send status change email to customer
-        try:
-            send_ticket_status_change_email(ticket)
-        except Exception as e:
-            logger.error(f"Error sending status change email for ticket {ticket.ticket_number}: {e}")
-
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOrBackOffice])
     def close(self, request, pk=None):
-        ticket = self.get_object()
         state = TicketState.objects.get(id='closed')
-        serializer = self.get_serializer(ticket, data={'state': state.id}, partial=True)
+        serializer = self.get_serializer(self.get_object(), data={'state': state.id}, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-
-        # Send status change email to customer
-        try:
-            send_ticket_status_change_email(ticket)
-        except Exception as e:
-            logger.error(f"Error sending status change email for ticket {ticket.ticket_number}: {e}")
-
         return Response(serializer.data)
 
     # -------------------------
