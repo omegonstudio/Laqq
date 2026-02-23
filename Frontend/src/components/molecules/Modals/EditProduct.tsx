@@ -224,6 +224,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     try {
       const initialImage = initialData?.image_attachment ?? null;
       const currentImage = localState.image_file ?? null;
+
       // ============================================
       // VALIDACIÓN: Campos obligatorios
       // ============================================
@@ -245,92 +246,125 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         localState.fixed_specs || []
       );
 
+      let product: Product;
+
       if (isNew) {
-        const newAttachmentIds: string[] = [];
+        // ========== CREAR PRODUCTO ==========
+        try {
+          let attachmentId: string | null = localState.image_attachment_id;
 
-        // ========== CREAR PRODUCTO EXISTENTE ==========
-        let attachmentId: string | null = localState.image_attachment_id;
-        if (currentImage) {
-          const attachment = await attachmentsApi.create({
-            file: currentImage,
-            role: "image",
-            attachable_type: "product",
-          });
-
-          attachmentId = attachment.id;
-        }
-
-        // if (
-        //   localState.attachments_files &&
-        //   localState.attachments_files.length > 0
-        // ) {
-        //   await Promise.all(
-        //     localState.attachments_files.map(async (item) => {
-        //       const carrouselAttachment = await attachmentsApi.create({
-        //         file: item.name ? item : (item as unknown as File), // Asegurarse de que sea un File
-        //         role: "image",
-        //         attachable_type: "product",
-        //       });
-        //       newAttachmentIds.push(carrouselAttachment.id);
-        //     })
-        //   );
-        // }
-        const product = await CreateProduct({
-          dispatch,
-          formState: {
-            ...localState,
-            specs: cleanedSpecs,
-          },
-          attachmentId: attachmentId,
-        });
-        if (carrouselPreview && carrouselPreview.length > 0) {
-          // Filtrar solo las imágenes nuevas (type: 'new')
-          const newImages = carrouselPreview.filter(
-            (item) => item.type === "new"
-          );
-
-          if (newImages.length > 0) {
-            const formData = new FormData();
-
-            // Agregar todos los archivos al campo 'files' (plural)
-            newImages.forEach((item) => {
-              if (item.file) {
-                formData.append("files", item.file); // Importante: usar 'files' no 'file'
-              }
+          // Subir imagen principal si existe
+          if (currentImage) {
+            const attachment = await attachmentsApi.create({
+              file: currentImage,
+              role: "image",
+              attachable_type: "product",
             });
-
-            // Agregar el role (opcional, puede ser 'image' para todos)
-            formData.append("role", "image");
-
-            // Enviar TODOS los archivos en una sola petición
-            const response = await productsApi.uploadAttachments(
-              product.id,
-              formData
-            );
-            console.log("Attachments creados:", response.attachments);
+            attachmentId = attachment.id;
           }
-        }
-        await syncProductSpecifications({
-          dispatch,
-          productId: product.id,
-          nextSpecs: cleanedSpecs,
-          initialSpecs: initialData.specs || [],
-        });
-        dispatch(refreshProductEverywhere(product.id));
 
-        if (localState.fixed_specs.length === 0) {
-          dispatch(deleteFixedSpec(product.fixed_specs[0].id!));
-        } else {
-          await syncProductFixedSpecifications({
+          // Crear producto
+          product = await CreateProduct({
             dispatch,
-            productId: product.id,
-            nextSpecs: cleanedFixedSpecs,
-            initialSpecs: initialData.fixed_specs || [],
+            formState: {
+              ...localState,
+              specs: cleanedSpecs,
+            },
+            attachmentId: attachmentId,
           });
-        }
 
-        toast({ title: "Producto creado exitosamente" });
+          // Subir imágenes del carrusel (si las hay)
+          if (carrouselPreview?.length > 0) {
+            const newImages = carrouselPreview.filter(
+              (item) => item.type === "new"
+            );
+
+            if (newImages.length > 0) {
+              try {
+                const formData = new FormData();
+                newImages.forEach((item) => {
+                  if (item.file) {
+                    formData.append("files", item.file);
+                  }
+                });
+                formData.append("role", "image");
+
+                await productsApi.uploadAttachments(product.id, formData);
+              } catch (carruselError) {
+                // Error al subir imágenes del carrusel - NO impide cerrar el modal
+                console.error(
+                  "Error subiendo imágenes del carrusel:",
+                  carruselError
+                );
+                toast({
+                  title:
+                    "Producto creado pero hubo un error al subir algunas imágenes",
+                  variant: "destructive", // Asumiendo que tienes variante warning
+                });
+              }
+            }
+          }
+
+          // Sincronizar especificaciones
+          try {
+            await syncProductSpecifications({
+              dispatch,
+              productId: product.id,
+              nextSpecs: cleanedSpecs,
+              initialSpecs: initialData?.specs || [],
+            });
+          } catch (specsError) {
+            console.error("Error sincronizando especificaciones:", specsError);
+            toast({
+              title:
+                "Producto creado pero hubo un error con las especificaciones",
+              variant: "destructive",
+            });
+          }
+
+          // Sincronizar fixed specs
+          try {
+            if (
+              localState.fixed_specs.length === 0 &&
+              product.fixed_specs?.[0]?.id
+            ) {
+              await dispatch(
+                deleteFixedSpec(product.fixed_specs[0].id)
+              ).unwrap();
+            } else {
+              await syncProductFixedSpecifications({
+                dispatch,
+                productId: product.id,
+                nextSpecs: cleanedFixedSpecs,
+                initialSpecs: initialData?.fixed_specs || [],
+              });
+            }
+          } catch (fixedSpecsError) {
+            console.error("Error sincronizando fixed specs:", fixedSpecsError);
+            toast({
+              title:
+                "Producto creado pero hubo un error con las especificaciones fijas",
+              variant: "destructive",
+            });
+          }
+
+          // Refrescar datos
+          dispatch(refreshProductEverywhere(product.id));
+          toast({ title: "Producto creado exitosamente" });
+        } catch (createError) {
+          // Error CRÍTICO: No se pudo crear el producto
+          console.error("Error creando producto:", createError);
+          toast({
+            title:
+              createError instanceof Error
+                ? createError.message
+                : "Error al crear el producto",
+            variant: "destructive",
+          });
+          return; // No cerramos el modal
+        }
       } else {
+        // ========== EDITAR PRODUCTO ==========
         if (!initialData) {
           toast({
             title: "No se encontraron datos del producto a editar",
@@ -338,103 +372,166 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           });
           return;
         }
-        // ========== EDITAR PRODUCTO ==========
-        let attachmentId;
-        if (carrouselPreview && carrouselPreview.length > 0) {
-          // Filtrar solo las imágenes nuevas (type: 'new')
-          const newImages = carrouselPreview.filter(
-            (item) => item.type === "new"
-          );
 
-          if (newImages.length > 0) {
-            const formData = new FormData();
+        try {
+          let attachmentId: string | null | undefined =
+            localState.image_attachment_id;
 
-            // Agregar todos los archivos al campo 'files' (plural)
-            newImages.forEach((item) => {
-              if (item.file) {
-                formData.append("files", item.file); // Importante: usar 'files' no 'file'
+          // 1. GESTIÓN DE CARRUSEL (operaciones no críticas)
+          try {
+            // Subir nuevas imágenes del carrusel
+            if (carrouselPreview?.length > 0) {
+              const newImages = carrouselPreview.filter(
+                (item) => item.type === "new"
+              );
+
+              if (newImages.length > 0) {
+                const formData = new FormData();
+                newImages.forEach((item) => {
+                  if (item.file) {
+                    formData.append("files", item.file);
+                  }
+                });
+                formData.append("role", "image");
+
+                await productsApi.uploadAttachments(initialData.id, formData);
               }
+            }
+
+            // Eliminar imágenes del carrusel
+            if (carrouselDeleteIds.length > 0) {
+              await Promise.all(
+                carrouselDeleteIds.map(async (item) => {
+                  try {
+                    await attachmentsApi.remove(item);
+                  } catch (deleteError) {
+                    console.error(
+                      `Error eliminando attachment ${item}:`,
+                      deleteError
+                    );
+                    // Continuamos con las demás eliminaciones
+                  }
+                })
+              );
+            }
+          } catch (carruselError) {
+            console.error("Error en operaciones de carrusel:", carruselError);
+            toast({
+              title:
+                "Hubo un problema con las imágenes del carrusel, pero continuamos",
+              variant: "destructive",
             });
-
-            // Agregar el role (opcional, puede ser 'image' para todos)
-            formData.append("role", "image");
-
-            // Enviar TODOS los archivos en una sola petición
-            const response = await productsApi.uploadAttachments(
-              initialData.id,
-              formData
-            );
-            console.log("Attachments creados:", response.attachments);
           }
-        }
-        if (carrouselDeleteIds.length > 0) {
-          await Promise.all(
-            carrouselDeleteIds.map(async (item) => {
-              await attachmentsApi.remove(item);
-            })
-          );
-        }
 
-        // Combinar todas las imágenes del carrusel (existentes + nuevas)
+          // 2. GESTIÓN DE IMAGEN PRINCIPAL
+          try {
+            const userRemovedPortada =
+              initialImage && !currentImage && !localState.image_attachment_id;
 
-        const userRemovedPortada =
-          initialImage && !currentImage && !localState.image_attachment_id;
-        if (userRemovedPortada) {
-          await attachmentsApi.remove(initialImage);
-          attachmentId = null;
-        }
-        if (!initialImage && currentImage) {
-          const attachment = await attachmentsApi.create({
-            file: currentImage,
-            role: "image",
-            attachable_type: "product",
+            if (userRemovedPortada) {
+              await attachmentsApi.remove(initialImage);
+              attachmentId = null;
+            } else if (!initialImage && currentImage) {
+              const attachment = await attachmentsApi.create({
+                file: currentImage,
+                role: "image",
+                attachable_type: "product",
+              });
+              attachmentId = attachment.id;
+            } else if (initialImage && currentImage) {
+              const attachment = await attachmentsApi.update(initialImage, {
+                file: currentImage,
+                role: "image",
+              });
+              attachmentId = attachment.id;
+            }
+          } catch (imageError) {
+            console.error("Error gestionando imagen principal:", imageError);
+            toast({
+              title: "Error al actualizar la imagen principal",
+              variant: "destructive",
+            });
+            // Continuamos con attachmentId original
+          }
+
+          // 3. ACTUALIZAR PRODUCTO (operación crítica)
+          const updatedFormState = {
+            ...localState,
+            specs: cleanedSpecs,
+          };
+
+          product = await saveProductEntity({
+            dispatch,
+            formState: updatedFormState,
+            initialData: initialData,
+            attachmentId: attachmentId,
           });
-          attachmentId = attachment.id;
-        }
-        if (initialImage && currentImage) {
-          const attachment = await attachmentsApi.update(initialImage, {
-            file: currentImage,
-            role: "image",
+
+          // 4. Sincronizar especificaciones (operaciones secundarias)
+          try {
+            await syncProductSpecifications({
+              dispatch,
+              productId: product.id,
+              nextSpecs: cleanedSpecs,
+              initialSpecs: initialData.specs,
+            });
+          } catch (specsError) {
+            console.error("Error sincronizando especificaciones:", specsError);
+            toast({
+              title:
+                "Producto actualizado pero hubo un error con las especificaciones",
+              variant: "destructive",
+            });
+          }
+
+          try {
+            await syncProductFixedSpecifications({
+              dispatch,
+              productId: product.id,
+              nextSpecs: cleanedFixedSpecs,
+              initialSpecs: initialData.fixed_specs,
+            });
+          } catch (fixedSpecsError) {
+            console.error("Error sincronizando fixed specs:", fixedSpecsError);
+            toast({
+              title:
+                "Producto actualizado pero hubo un error con las especificaciones fijas",
+              variant: "destructive",
+            });
+          }
+
+          // Refrescar datos
+          dispatch(refreshProductEverywhere(initialData.id));
+          toast({ title: "Producto actualizado exitosamente" });
+        } catch (updateError) {
+          // Error CRÍTICO: No se pudo actualizar el producto
+          console.error("Error actualizando producto:", updateError);
+          toast({
+            title:
+              updateError instanceof Error
+                ? updateError.message
+                : "Error al actualizar el producto",
+            variant: "destructive",
           });
-          attachmentId = attachment.id;
+          return; // No cerramos el modal
         }
-
-        const updatedFormState = {
-          ...localState,
-          specs: cleanedSpecs,
-        };
-
-        const product = await saveProductEntity({
-          dispatch,
-          formState: updatedFormState,
-          initialData: initialData,
-          attachmentId: attachmentId, // ← Esto es la imagen principal (singular)
-        });
-        await syncProductSpecifications({
-          dispatch,
-          productId: product.id,
-          nextSpecs: cleanedSpecs,
-          initialSpecs: initialData.specs,
-        });
-        await syncProductFixedSpecifications({
-          dispatch,
-          productId: product.id,
-          nextSpecs: cleanedFixedSpecs,
-          initialSpecs: initialData.fixed_specs,
-        });
-        dispatch(refreshProductEverywhere(initialData.id));
-        toast({ title: "Producto actualizado exitosamente" });
       }
 
+      // ✅ CERRAR MODAL SOLO SI TODO SALIÓ BIEN (o al menos el producto se creó/actualizó)
       onClose();
     } catch (error: unknown) {
-      // Mensaje de error más específico
-      const errorMessage =
-        error instanceof Error ? error.message : "Error al guardar el producto";
-      toast({ title: errorMessage, variant: "destructive" });
+      // Error inesperado (catch general)
+      console.error("Error inesperado:", error);
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : "Error inesperado al guardar",
+        variant: "destructive",
+      });
+      // No cerramos el modal en caso de error inesperado
     }
   };
-
   const handleFile = (selectedFile: File | null) => {
     if (selectedFile) {
       const reader = new FileReader();
