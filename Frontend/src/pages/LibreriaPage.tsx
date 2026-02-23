@@ -1,9 +1,19 @@
 import { attachmentsApi } from "@/lib/api/attachments";
 import { useAppDispatch } from "@/store/hooks";
 import { useEffect, useState, useRef } from "react";
-import { Upload, FileText, Image, File, Search, Loader2 } from "lucide-react";
+import {
+  Upload,
+  FileText,
+  Image,
+  File,
+  Search,
+  Loader2,
+  Trash2,
+  Copy,
+} from "lucide-react";
 import { Attachment } from "@/types/types";
 import Button from "@/components/atoms/Button";
+import { toast } from "@/hooks/use-toast";
 
 interface AttachmentListResponse {
   count: number;
@@ -108,7 +118,10 @@ const LibreriaPage = () => {
       setUploading(false);
     }
   };
-
+  const handleDelete = async (id: string) => {
+    await attachmentsApi.remove(id);
+    await fetchAtt(1);
+  };
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + " B";
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
@@ -126,7 +139,15 @@ const LibreriaPage = () => {
   };
 
   const hasMore = currentPage < totalPages;
-
+  const copyToClipboard = async (value?: string | null) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      toast({ title: "Copiado al portapapeles", description: value });
+    } catch (e) {
+      console.error("No se pudo copiar al portapapeles", e);
+    }
+  };
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -239,16 +260,22 @@ const LibreriaPage = () => {
                   </div>
 
                   <div className="flex gap-2 pt-2 justify-between">
-                    <a
-                      href={attachment.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <div className="flex gap-2 ">
+                      <Button
+                        type="button"
+                        onClick={() => copyToClipboard(attachment.file_name)}
+                        title={"Copiar nombre"}
+                        variant="ghost"
+                      >
+                        <Copy size={20} />
+                      </Button>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleDelete(attachment.id)}
                     >
-                      <Button variant="secondary">Ver</Button>
-                    </a>
-                    <a href={attachment.url} download={attachment.file_name}>
-                      <Button variant="secondary">Descargar</Button>
-                    </a>
+                      <Trash2 />
+                    </Button>
                   </div>
                 </div>
               </div>

@@ -60,7 +60,6 @@ export const refreshProductEverywhere = createAsyncThunk<
 >("products/refreshEverywhere", async (productId: string) => {
   // GET /products/{id}
   const product = await productsApi.retrieve(productId);
-  console.log(product, "REFRESHED PRODUCT");
   return product;
 });
 
@@ -81,6 +80,7 @@ export const fetchProduct = createAsyncThunk(
 export const createProduct = createAsyncThunk(
   "products/createProduct",
   async (data: ProductCreateRequest) => {
+    console.log("Creando producto con datos:", data);
     return productsApi.create(data);
   }
 );
@@ -91,14 +91,14 @@ export const updateProduct = createAsyncThunk(
     return productsApi.update(id, data);
   }
 );
-export const updateProductWithFiles = createAsyncThunk(
-  "products/updateProductWithFiles",
-  async ({ id, data }: { id: string; data: ProductUpdateRequest }) => {
-    const formData = productsApi.buildProductUploadFormData(data);
+// export const updateProductWithFiles = createAsyncThunk(
+//   "products/updateProductWithFiles",
+//   async ({ id, data }: { id: string; data: ProductUpdateRequest }) => {
+//     const formData = productsApi.buildProductUploadFormData(data);
 
-    return productsApi.uploadAttachments(id, formData);
-  }
-);
+//     return productsApi.uploadAttachments(id, formData);
+//   }
+// );
 
 export const deleteProduct = createAsyncThunk(
   "products/deleteProduct",

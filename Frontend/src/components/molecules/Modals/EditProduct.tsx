@@ -35,6 +35,7 @@ import { attachmentsApi } from "@/lib/api/attachments";
 import { Toggle } from "@/components/ui/toggle";
 import { refreshProductEverywhere } from "@/store/productSlice";
 import { toast } from "@/hooks/use-toast";
+import { productsApi } from "@/lib/api/products";
 
 interface ModalProductProps {
   isOpen: boolean;
@@ -58,17 +59,21 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     getEmptyProductFormState()
   );
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [carrouselPreview, setCarrouselPreview] = useState<string[] | null>(
-    null
-  );
+  // Cambia la definición del estado para incluir tipo y metadata
+  const [carrouselPreview, setCarrouselPreview] = useState<Array<{
+    url: string;
+    type: "existing" | "new";
+    id?: string; // Para imágenes existentes, guardamos el ID
+    file?: File; // Para imágenes nuevas, guardamos el archivo
+  }> | null>(null);
 
   const [selectedRelated, setSelectedRelated] = useState<string>("");
-
+  const [carrouselDeleteIds, setCarrouselDeleteIds] = useState<string[]>([]);
   // ============================================
   // EFFECTS
   // ============================================
   useEffect(() => {
-    if (!isNew) {
+    if (!isNew && initialData) {
       // Convertir Product a ProductFormState
       const formState = productToFormState(initialData);
       setLocalState({
@@ -82,19 +87,25 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       });
       // Si hay imagen, cargar preview (asumiendo que es UUID)
       if (initialData.image_url) {
-        // Aquí podrías cargar la imagen desde el backend si es necesario
-        // Por ahora, si es un UUID no tenemos la imagen para preview
         setImagePreview(initialData.image_url);
+      }
+      if (initialData.attachments !== null) {
         setCarrouselPreview(
-          initialData.attachments?.map((att) => att.url) || []
+          initialData.attachments?.map((att) => ({
+            url: att.url,
+            type: "existing",
+            id: att.id,
+          })) || null
         );
       }
+      setCarrouselDeleteIds([]);
     } else {
       setLocalState({
         ...getEmptyProductFormState(),
       });
-
+      setCarrouselPreview(null);
       setImagePreview(null);
+      setCarrouselDeleteIds([]);
     }
   }, [initialData, isNew]);
 
@@ -102,6 +113,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     if (!isOpen) {
       setImagePreview(null);
       setSelectedRelated("");
+      setCarrouselDeleteIds([]); // ← Limpiar eliminaciones pendientes
 
       // ✅ Restaurar al estado inicial
       if (initialData) {
@@ -140,28 +152,34 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   // }, [initialData, localState]);
 
   const haveAttachmentsChanged = (
-    existing: Attachment[] = [],
-    initial: Attachment[] = [],
-    newFiles: File[] = []
+    existing: Attachment[] = [], // Attachments existentes actuales (después de eliminaciones)
+    initial: Attachment[] = [], // Attachments originales de la BD
+    newFiles: File[] = [] // Archivos nuevos agregados
   ): boolean => {
-    // 1. IDs iniciales
+    // 1. Verificar si se eliminaron attachments
     const initialIds = initial.map((a) => a.id).sort();
-
-    // 2. IDs actuales (solo existentes)
     const currentIds = existing.map((a) => a.id).sort();
 
-    // 3. Se eliminaron attachments
     const removed = JSON.stringify(initialIds) !== JSON.stringify(currentIds);
+    if (removed) {
+      return true;
+    }
 
-    // 4. Se agregaron archivos nuevos
+    // 2. Verificar si se agregaron archivos nuevos
     const added = newFiles.length > 0;
-
-    return removed || added;
+    if (added) {
+      return true;
+    }
+    // 3. Verificar si hay IDs en carrouselDeleteIds (por si acaso)
+    const hasPendingDeletions = carrouselDeleteIds.length > 0;
+    if (hasPendingDeletions) {
+      return true;
+    }
+    return false;
   };
 
   const hasChanges = useMemo(() => {
     if (!initialData) return true;
-
     const productUpdate = formStateToUpdateRequest(
       localState,
       initialData,
@@ -179,17 +197,15 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       localState.fixed_specs,
       initialData.fixed_specs
     );
-    console.log(fixedSpecsChanged, "fixedSpecsChanged");
     const imageChanged =
       localState.image_file !== null ||
       localState.image_attachment_id !== initialData.image_attachment;
 
     const attachmentsChanged = haveAttachmentsChanged(
-      localState.attachments_existing ?? [],
-      initialData.attachments ?? [],
-      localState.attachments_files ?? []
+      localState.attachments_existing ?? [], // Attachments existentes actuales
+      initialData.attachments ?? [], // Attachments originales
+      localState.attachments_files ?? [] // Archivos nuevos
     );
-
     return (
       productChanged ||
       specsChanged ||
@@ -197,7 +213,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       imageChanged ||
       attachmentsChanged
     );
-  }, [localState, initialData]);
+  }, [localState, initialData, carrouselDeleteIds]);
 
   // ✅ Botón habilitado solo si: formulario válido Y (es nuevo O tiene cambios)
   const isSaveEnabled = useMemo(() => {
@@ -230,6 +246,8 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       );
 
       if (isNew) {
+        const newAttachmentIds: string[] = [];
+
         // ========== CREAR PRODUCTO EXISTENTE ==========
         let attachmentId: string | null = localState.image_attachment_id;
         if (currentImage) {
@@ -242,20 +260,63 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           attachmentId = attachment.id;
         }
 
+        // if (
+        //   localState.attachments_files &&
+        //   localState.attachments_files.length > 0
+        // ) {
+        //   await Promise.all(
+        //     localState.attachments_files.map(async (item) => {
+        //       const carrouselAttachment = await attachmentsApi.create({
+        //         file: item.name ? item : (item as unknown as File), // Asegurarse de que sea un File
+        //         role: "image",
+        //         attachable_type: "product",
+        //       });
+        //       newAttachmentIds.push(carrouselAttachment.id);
+        //     })
+        //   );
+        // }
         const product = await CreateProduct({
           dispatch,
-          formState: { ...localState, specs: cleanedSpecs },
-          initialData: null,
+          formState: {
+            ...localState,
+            specs: cleanedSpecs,
+          },
           attachmentId: attachmentId,
         });
+        if (carrouselPreview && carrouselPreview.length > 0) {
+          // Filtrar solo las imágenes nuevas (type: 'new')
+          const newImages = carrouselPreview.filter(
+            (item) => item.type === "new"
+          );
 
+          if (newImages.length > 0) {
+            const formData = new FormData();
+
+            // Agregar todos los archivos al campo 'files' (plural)
+            newImages.forEach((item) => {
+              if (item.file) {
+                formData.append("files", item.file); // Importante: usar 'files' no 'file'
+              }
+            });
+
+            // Agregar el role (opcional, puede ser 'image' para todos)
+            formData.append("role", "image");
+
+            // Enviar TODOS los archivos en una sola petición
+            const response = await productsApi.uploadAttachments(
+              product.id,
+              formData
+            );
+            console.log("Attachments creados:", response.attachments);
+          }
+        }
         await syncProductSpecifications({
           dispatch,
           productId: product.id,
           nextSpecs: cleanedSpecs,
           initialSpecs: initialData.specs || [],
         });
-        //dispatch(refreshProductEverywhere(product.id));
+        dispatch(refreshProductEverywhere(product.id));
 
         if (localState.fixed_specs.length === 0) {
           dispatch(deleteFixedSpec(product.fixed_specs[0].id!));
@@ -279,7 +340,45 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         }
         // ========== EDITAR PRODUCTO ==========
         let attachmentId;
-        const userRemovedPortada = initialImage && !currentImage && !localState.image_attachment_id;
+        if (carrouselPreview && carrouselPreview.length > 0) {
+          // Filtrar solo las imágenes nuevas (type: 'new')
+          const newImages = carrouselPreview.filter(
+            (item) => item.type === "new"
+          );
+
+          if (newImages.length > 0) {
+            const formData = new FormData();
+
+            // Agregar todos los archivos al campo 'files' (plural)
+            newImages.forEach((item) => {
+              if (item.file) {
+                formData.append("files", item.file); // Importante: usar 'files' no 'file'
+              }
+            });
+
+            // Agregar el role (opcional, puede ser 'image' para todos)
+            formData.append("role", "image");
+
+            // Enviar TODOS los archivos en una sola petición
+            const response = await productsApi.uploadAttachments(
+              initialData.id,
+              formData
+            );
+            console.log("Attachments creados:", response.attachments);
+          }
+        }
+        if (carrouselDeleteIds.length > 0) {
+          await Promise.all(
+            carrouselDeleteIds.map(async (item) => {
+              await attachmentsApi.remove(item);
+            })
+          );
+        }
+
+        // Combinar todas las imágenes del carrusel (existentes + nuevas)
+
+        const userRemovedPortada =
+          initialImage && !currentImage && !localState.image_attachment_id;
         if (userRemovedPortada) {
           await attachmentsApi.remove(initialImage);
           attachmentId = null;
@@ -299,11 +398,17 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           });
           attachmentId = attachment.id;
         }
+
+        const updatedFormState = {
+          ...localState,
+          specs: cleanedSpecs,
+        };
+
         const product = await saveProductEntity({
           dispatch,
-          formState: { ...localState, specs: cleanedSpecs },
+          formState: updatedFormState,
           initialData: initialData,
-          attachmentId: attachmentId,
+          attachmentId: attachmentId, // ← Esto es la imagen principal (singular)
         });
         await syncProductSpecifications({
           dispatch,
@@ -348,6 +453,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       setImagePreview(null);
     }
   };
+
   const handleCarouselFile = (file: File | null) => {
     if (!file) return;
 
@@ -361,12 +467,15 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         attachments_files: [...(prev.attachments_files || []), file],
       }));
 
-      setCarrouselPreview((prev) => (prev ? [...prev, base64] : [base64]));
+      setCarrouselPreview((prev) =>
+        prev
+          ? [...prev, { url: base64, type: "new", file }]
+          : [{ url: base64, type: "new", file }]
+      );
     };
 
     reader.readAsDataURL(file);
   };
-  console.log(localState.attachments_files);
   const handleRemoveImage = () => {
     setLocalState({
       ...localState,
@@ -376,18 +485,45 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     setImagePreview(null);
   };
   const handleRemoveCarouselItem = (index: number) => {
+    // Obtener el item a eliminar
+    const itemToRemove = carrouselPreview?.[index];
+
+    if (itemToRemove?.type === "existing" && itemToRemove.id) {
+      // Si es una imagen existente, agregar su ID a carrouselDeleteIds
+      setCarrouselDeleteIds((prev) => [...prev, itemToRemove.id!]);
+
+      // IMPORTANTE: Actualizar attachments_existing para eliminar esta imagen
+      setLocalState((prev) => ({
+        ...prev,
+        attachments_existing:
+          prev.attachments_existing?.filter(
+            (att) => att.id !== itemToRemove.id
+          ) || [],
+      }));
+    }
+
     setLocalState((prev) => ({
       ...prev,
-      attachments_files: prev.attachments_files
-        ? prev.attachments_files.filter((_, i) => i !== index)
-        : [],
+      attachments_files:
+        itemToRemove?.type === "new"
+          ? prev.attachments_files?.filter((_, i) => {
+              const newFilesCount =
+                carrouselPreview?.filter((item) => item.type === "new")
+                  .length || 0;
+              const newFilesIndex =
+                carrouselPreview
+                  ?.slice(0, index)
+                  .filter((item) => item.type === "new").length || 0;
+
+              return i !== newFilesIndex;
+            })
+          : prev.attachments_files,
     }));
 
     setCarrouselPreview((prev) =>
       prev ? prev.filter((_, i) => i !== index) : null
     );
   };
-
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setLocalState({ ...localState, category: e.target.value });
   };
@@ -771,13 +907,22 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             </span>
             <UploadFile onFileChange={handleCarouselFile} />
             <div className="grid grid-cols-3 gap-2">
-              {carrouselPreview?.map((preview, index) => (
-                <div className="relative inline-block mt-2 w-32 h-32">
+              {carrouselPreview?.map((item, index) => (
+                <div
+                  key={item.type === "existing" ? item.id : index}
+                  className="relative inline-block mt-2 w-32 h-32"
+                >
                   <img
-                    src={preview}
+                    src={item.url}
                     alt="Preview"
                     className="w-32 h-32 object-cover rounded-lg border-2 border-gray-100"
                   />
+                  {/* Opcional: Mostrar un indicador del tipo de imagen */}
+                  {item.type === "existing" && (
+                    <span className="absolute top-0 left-0 bg-blue-500 text-white text-xs px-1 rounded">
+                      DB
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => handleRemoveCarouselItem(index)}

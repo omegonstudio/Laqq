@@ -20,7 +20,6 @@ const CategoriesABM = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(
     null
   );
-  console.log(selectedCategory, "AAAAAAAAAA");
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
   const [searchCategories, setSearchCategories] = useState("");
 

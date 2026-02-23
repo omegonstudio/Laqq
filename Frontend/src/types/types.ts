@@ -83,25 +83,14 @@ export interface Product {
   related?: RelatedProduct[]; // Alias de productos relacionados
   image_url: string | null; // URL de la imagen
   related_products?: RelatedProduct[]; // Campo original del backend
-  attachments: {
-    id: string;
-    file_name: string;
-    content_type_str: string;
-    size_bytes: number;
-    file: string;
-    url: string;
-    role: "image" | "manual" | "datasheet" | "other" | null;
-    attachable_type: string;
-    attachable_id: string;
-    created_by: string;
-    created_at: string;
-  }[];
+  attachments: Attachment[];
 }
 
 // ============================================
 // PRODUCT - Para enviar al backend (POST/PUT/PATCH)
 // ============================================
 export interface ProductCreateRequest {
+  attachments?: string[];
   name: string;
   brand_id: string; // UUID
   category_id: string; // UUID
@@ -125,6 +114,7 @@ export interface ProductUpdateRequest extends Partial<ProductCreateRequest> {
 export interface ProductFormState {
   id?: string;
   is_featured: boolean;
+  attachments: string[]; // IDs de attachments que permanecen
   name: string;
   brand: string; // UUID
   category: string; // UUID

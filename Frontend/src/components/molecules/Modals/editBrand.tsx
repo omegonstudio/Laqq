@@ -106,8 +106,6 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
         // ========== EDITAR MARCA EXISTENTE ==========
         if (imageFile && !initialImage) {
           // Si hay un nuevo archivo, subirlo
-          console.log("📤 Subiendo nueva imagen...");
-          console.log("CREANDO ATTACHMENT PARA MARCA:", localState.name);
           try {
             const attachment = await attachmentsApi.create({
               file: imageFile,
@@ -115,7 +113,6 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
               attachable_type: "product",
             });
             attachmentId = attachment.id; // Asumiendo que createAttachment devuelve { id, url }
-            console.log("✅ Imagen subida:", attachmentId);
           } catch (error) {
             toast({
               title: "Error al subir la imagen",
@@ -124,18 +121,12 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
             throw error;
           }
         } else if (initialImage && !currentImage) {
-          console.log("BORRANDO ATTACHMENT PARA MARCA:", localState.name);
-
           const attachment = await attachmentsApi.remove(initialImage);
-          console.log("✅ Imagen eliminada:", attachment);
           attachmentId = null;
         } else if (initialImage && currentImage) {
-          console.log("ACTUALIZANDO ATTACHMENT PARA MARCA:", localState.name);
-
           const attachment = await attachmentsApi.update(initialImage, {
             file: imageFile,
           });
-          console.log("✅ Imagen eliminada:", attachment);
           attachmentId = attachment.id;
         }
         const updateData: Partial<Brand> = {
@@ -155,14 +146,11 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
             data: updateData,
           })
         ).unwrap();
-
-        console.log("✅ Marca actualizada:", updatedBrand);
         toast({ title: "Marca actualizada exitosamente" });
       } else {
         // ========== CREAR NUEVA MARCA ==========
         if (imageFile) {
           // Si hay un nuevo archivo, subirlo
-          console.log("CREANDO ATTACHMENT PARA MARCA NUEVA:", localState.name);
           try {
             const attachment = await attachmentsApi.create({
               file: imageFile,
@@ -170,7 +158,6 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
               attachable_type: "product",
             });
             attachmentId = attachment.id; // Asumiendo que createAttachment devuelve { id, url }
-            console.log("✅ Imagen subida:", attachmentId);
           } catch (error) {
             toast({
               title: "Error al subir la imagen",
@@ -187,7 +174,6 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
 
         const createdBrand = await dispatch(createBrand(createData)).unwrap();
 
-        console.log("✅ Marca creada:", createdBrand);
         toast({ title: "Marca creada exitosamente" });
       }
 

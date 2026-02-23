@@ -5,10 +5,9 @@ import {
   PaginatedResponse,
   TokenObtainPair,
   TokenRefresh,
-  User,
   UserCreate,
   UserState,
-  UserType,
+  UserData,
 } from "@/types/api";
 
 const usersListKey = (params?: UserListParams) => ["users", "list", params];
@@ -19,14 +18,31 @@ const userStatesKey = ["users", "states"];
 const userStateDetailKey = (id?: string) => ["users", "states", "detail", id];
 
 export const useUsersList = (params?: UserListParams) =>
-  useQuery<PaginatedResponse<User>, NormalizedApiError>({
+  useQuery<PaginatedResponse<UserData>, NormalizedApiError>({
     queryKey: usersListKey(params),
     queryFn: () => usersApi.list(params),
     placeholderData: (prev) => prev,
   });
 
+export const useUserAdmins = (params?: UserListParams) =>
+  useQuery<PaginatedResponse<UserData>, NormalizedApiError>({
+    queryKey: usersListKey(params),
+    queryFn: async () => {
+      const response = await usersApi.list(params);
+      const filteredResults = response.results.filter((user) => {
+        return !user.user_type || user.user_type.id !== "client";
+      });
+      return {
+        ...response,
+        results: filteredResults,
+        count: filteredResults.length, // Opcional: actualizar el contador
+      };
+    },
+    placeholderData: (prev) => prev,
+  });
+
 export const useUser = (id?: string) =>
-  useQuery<User, NormalizedApiError>({
+  useQuery<UserData, NormalizedApiError>({
     queryKey: userDetailKey(id),
     queryFn: () => usersApi.get(id as string),
     enabled: Boolean(id),
@@ -35,7 +51,7 @@ export const useUser = (id?: string) =>
 export const useCreateUser = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<User, NormalizedApiError, UserCreate>({
+  return useMutation<UserData, NormalizedApiError, UserCreate>({
     mutationFn: (payload) => usersApi.create(payload),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -48,7 +64,7 @@ export const useUpdateUser = () => {
   const queryClient = useQueryClient();
 
   return useMutation<
-    User,
+    UserData,
     NormalizedApiError,
     { id: string; payload: Partial<UserCreate> }
   >({
@@ -64,7 +80,7 @@ export const usePatchUser = () => {
   const queryClient = useQueryClient();
 
   return useMutation<
-    User,
+    UserData,
     NormalizedApiError,
     { id: string; payload: Partial<UserCreate> }
   >({
@@ -90,14 +106,14 @@ export const useDeleteUser = () => {
 
 // Types
 export const useUserTypes = () =>
-  useQuery<PaginatedResponse<UserType>, NormalizedApiError>({
+  useQuery<PaginatedResponse<UserData>, NormalizedApiError>({
     queryKey: userTypesKey,
     queryFn: () => usersApi.listTypes(),
     placeholderData: (prev) => prev,
   });
 
 export const useUserType = (id?: string) =>
-  useQuery<UserType, NormalizedApiError>({
+  useQuery<UserData, NormalizedApiError>({
     queryKey: userTypeDetailKey(id),
     queryFn: () => usersApi.getType(id as string),
     enabled: Boolean(id),
@@ -106,7 +122,7 @@ export const useUserType = (id?: string) =>
 export const useCreateUserType = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<UserType, NormalizedApiError, Partial<UserType>>({
+  return useMutation<UserData, NormalizedApiError, Partial<UserData>>({
     mutationFn: (payload) => usersApi.createType(payload),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["users", "types"] });
@@ -119,9 +135,9 @@ export const useUpdateUserType = () => {
   const queryClient = useQueryClient();
 
   return useMutation<
-    UserType,
+    UserData,
     NormalizedApiError,
-    { id: string; payload: Partial<UserType> }
+    { id: string; payload: Partial<UserData> }
   >({
     mutationFn: ({ id, payload }) => usersApi.updateType(id, payload),
     onSuccess: (data) => {
@@ -135,9 +151,9 @@ export const usePatchUserType = () => {
   const queryClient = useQueryClient();
 
   return useMutation<
-    UserType,
+    UserData,
     NormalizedApiError,
-    { id: string; payload: Partial<UserType> }
+    { id: string; payload: Partial<UserData> }
   >({
     mutationFn: ({ id, payload }) => usersApi.patchType(id, payload),
     onSuccess: (data) => {
@@ -232,7 +248,11 @@ export const useDeleteUserState = () => {
 
 // Auth token helpers
 export const useObtainToken = () =>
-  useMutation<TokenObtainPair, NormalizedApiError, { username: string; password: string }>({
+  useMutation<
+    TokenObtainPair,
+    NormalizedApiError,
+    { username: string; password: string }
+  >({
     mutationFn: (payload) => usersApi.obtainToken(payload),
   });
 
@@ -240,4 +260,3 @@ export const useRefreshToken = () =>
   useMutation<TokenRefresh, NormalizedApiError, { refresh: string }>({
     mutationFn: (payload) => usersApi.refreshToken(payload),
   });
-

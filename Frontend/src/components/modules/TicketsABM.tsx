@@ -19,6 +19,7 @@ import {
 } from "@/store/ticketsSlice";
 import { fetchUsers } from "@/store/usersSlice";
 import { ViewTicketModal } from "../molecules/Modals/ViewTicketService";
+import { useUserAdmins } from "@/hooks/useUsers";
 
 const TicketsABM = () => {
   // const [contacts] = useState<Contact[]>(mockContacts);
@@ -40,8 +41,15 @@ const TicketsABM = () => {
     states,
     priorities,
   } = useAppSelector((state: RootState) => state.ticketsService);
-
-  const { list: users } = useAppSelector((state: RootState) => state.users);
+  const {
+    data: users,
+    isLoading,
+    error,
+  } = useUserAdmins({
+    page: 1,
+    page_size: 100,
+  });
+  //const { list: users } = useAppSelector((state: RootState) => state.users);
 
   const dispatch = useAppDispatch();
 
@@ -149,7 +157,7 @@ const TicketsABM = () => {
       key: "state",
       label: "Estado",
       sortable: true,
-      render: (value: stateEnum) => convertStateTicket(value),
+      render: (value) => convertStateTicket(value),
     },
   ];
   const actions = [
@@ -197,7 +205,7 @@ const TicketsABM = () => {
             { value: "all", label: "Todos los estados" },
             ...states.map((item) => ({
               value: item.id,
-              label: convertStateTicket(item.name as stateEnum),
+              label: convertStateTicket(item.name),
             })),
           ]}
           value={statusFilter}
@@ -229,7 +237,7 @@ const TicketsABM = () => {
         open={editModalOpen}
         onOpenChange={setEditModalOpen}
         states={states}
-        users={users}
+        users={users?.results ?? []}
         priorities={priorities}
         // users={users} // Pasá la lista de usuarios si la tenés disponible
       />

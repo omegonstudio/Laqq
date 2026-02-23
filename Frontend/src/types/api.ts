@@ -344,7 +344,7 @@ export interface ServiceTicket {
   product: string | null;
   product_name: string;
   description: string;
-  state: string;
+  state: "open" | "closed" | "in_progress" | "resolved";
   priority: string;
   assigned_user: {
     id: string;
@@ -371,7 +371,6 @@ export interface CreateTicketPayload {
     company_name?: string;
     phone?: string;
     country?: string;
-
     state: string;
   };
   ticket: {
@@ -438,7 +437,13 @@ export interface TicketPriority {
 
 export interface TicketState {
   id: string;
-  name: string;
+  name:
+    | "open"
+    | "closed"
+    | "in_progress"
+    | "resolved"
+    | "waiting_parts"
+    | "new";
   color: string | null;
   description: string | null;
   is_final: boolean;

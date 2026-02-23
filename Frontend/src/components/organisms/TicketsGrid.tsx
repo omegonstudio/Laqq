@@ -6,7 +6,7 @@ import Select from "@/components/atoms/Select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import TicketForm from "../molecules/TicketForm";
-import { ServiceTicket } from "@/types/api";
+import { CreateTicketPayload, ServiceTicket } from "@/types/api";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchTicketPriorities, fetchTicketStates } from "@/store/ticketsSlice";
 import { RootState } from "@/store";
@@ -57,6 +57,26 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
   const [stateFilter, setStateFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
 
+  const TicketInitialState: CreateTicketPayload = {
+    ticket: {
+      state: "open",
+      product: "",
+      description: "",
+      product_name: "",
+      attachment: null,
+      attachments: [],
+      priority: null,
+    },
+    contact: {
+      first_name: tickets[0].contact.first_name,
+      last_name: tickets[0].contact.last_name,
+      email: tickets[0].contact.email,
+      company_name: tickets[0].contact.company_name,
+      phone: tickets[0].contact.phone,
+      country: tickets[0].contact.country,
+      state: "new",
+    },
+  };
   // Cargar prioridades una sola vez al montar el componente
   useEffect(() => {
     dispatch(fetchTicketPriorities({}));
@@ -136,7 +156,7 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
                 { value: "all", label: "Todos los estados" },
                 ...states.map((item) => ({
                   value: item.id,
-                  label: convertStateTicket(item.name as stateEnum),
+                  label: item.name,
                 })),
               ]}
               value={stateFilter}
@@ -223,6 +243,7 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
         </div>
       )}
       <TicketForm
+        ticketInitialState={TicketInitialState}
         onClose={() => setCreateModalOpen(false)}
         isTicketModalOpen={createModalOpen}
         setIsTicketModalOpen={setCreateModalOpen}

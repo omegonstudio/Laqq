@@ -10,6 +10,7 @@ import {
   useCreateUser,
   useDeleteUser,
   usePatchUser,
+  useUserAdmins,
   useUsersList,
   useUserStates,
   useUserTypes,
@@ -47,7 +48,7 @@ const UsersTable = () => {
     data: usersData,
     isLoading,
     error,
-  } = useUsersList({
+  } = useUserAdmins({
     page: 1,
     page_size: PAGE_SIZE,
   });
@@ -104,12 +105,12 @@ const UsersTable = () => {
         user.email.toLowerCase().includes(q)
     );
   }, [searchTerm, tableRows]);
-
+  console.log(usersData, "AAAA");
   const userTypeOptions = useMemo(() => {
     const items = userTypesData?.results ?? [];
     return [
       { value: "", label: "Sin tipo" },
-      ...items.map((t) => ({ value: t.id, label: t.name })),
+      ...items.map((t) => ({ value: t.id, label: t.first_name })),
     ];
   }, [userTypesData?.results]);
 
@@ -177,7 +178,7 @@ const UsersTable = () => {
 
   const handleSubmitUpsert = async () => {
     setFormErrors({});
-  
+
     try {
       if (upsertMode === "create") {
         const createPayload: UserCreate = {
@@ -190,16 +191,16 @@ const UsersTable = () => {
           state_id: form.state_id || null,
           is_active: form.is_active === "true",
         };
-  
+
         await createUserMutation.mutateAsync(createPayload);
-  
+
         toast({ title: "Usuario creado exitosamente" });
         setIsUpsertOpen(false);
         return;
       }
-  
+
       if (!selectedUser?.id) return;
-  
+
       const patchPayload: Partial<UserCreate> = {
         email: form.email.trim(),
         first_name: form.first_name.trim(),
@@ -209,23 +210,22 @@ const UsersTable = () => {
         state_id: form.state_id || null,
         is_active: form.is_active === "true",
       };
-  
+
       if (form.password.trim()) {
         patchPayload.password = form.password;
       }
-  
+
       await patchUserMutation.mutateAsync({
         id: selectedUser.id,
         payload: patchPayload,
       });
-  
+
       toast({ title: "Usuario actualizado exitosamente" });
       setIsUpsertOpen(false);
     } catch (err) {
       normalizeMutationError(err);
     }
   };
-  
 
   const handleEdit = (row: UserRow) => openEditModal(row.raw);
   const handleDelete = (row: UserRow) => openDeleteModal(row.raw);

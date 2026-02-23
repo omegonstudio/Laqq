@@ -102,7 +102,6 @@ export function ViewContactModal({
     dispatch(fetchUsers({ page: 1, page_size: 1000 }));
   }, [dispatch]);
   const { list: users } = useAppSelector((state: RootState) => state.users);
-  console.log(users);
   if (!contact) return null;
 
   const getUserName = () => {

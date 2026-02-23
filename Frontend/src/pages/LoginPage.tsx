@@ -35,7 +35,6 @@ const LoginPage = () => {
       console.log(result, "RESULT LOGIN");
       if (loginThunk.fulfilled.match(result)) {
         // Login exitoso, el useEffect manejará la redirección
-        console.log("Login exitoso");
       } else if (loginThunk.rejected.match(result)) {
         setError((result.payload as string) || "Error al iniciar sesión");
       }

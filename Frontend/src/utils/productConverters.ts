@@ -62,6 +62,9 @@ export const sanitizeFixedSpecs = (
  */
 export const productToFormState = (product: Product): ProductFormState => {
   return {
+    attachments: product.attachments.map((att) => {
+      return att.id;
+    }),
     attachments_files: null,
     attachments_existing: null,
     id: product.id,
@@ -120,8 +123,21 @@ export const formStateToUpdateRequest = (
     updateRequest.brand_id = formState.brand;
     hasRealChanges = true;
   }
-  if (formState.attachments_files && formState.attachments_files.length > 0) {
-    updateRequest.files = formState.attachments_files;
+  const initialAttachmentIds =
+    initialData.attachments?.map((att) => att.id) || [];
+  const currentAttachmentIds = formState.attachments || [];
+
+  // Verificar si los attachments han cambiado (porque se agregaron o eliminaron imágenes)
+  const attachmentsChanged =
+    JSON.stringify([...initialAttachmentIds].sort()) !==
+    JSON.stringify([...currentAttachmentIds].sort());
+
+  if (attachmentsChanged) {
+    console.log("Attachments cambiaron:", {
+      initial: initialAttachmentIds,
+      current: currentAttachmentIds,
+    });
+    updateRequest.attachments = currentAttachmentIds;
     hasRealChanges = true;
   }
 
@@ -210,6 +226,7 @@ export const hasProductChanges = (updateRequest: ProductUpdateRequest) =>
 
 export const getEmptyProductFormState = (): ProductFormState => ({
   name: "",
+  attachments: [],
   brand: "",
   category: "",
   description: "",

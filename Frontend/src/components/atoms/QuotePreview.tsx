@@ -198,7 +198,6 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
       setIsLoading(false);
     }
   };
-  console.log(users, "AAAAAAAAAAAAAA");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">

@@ -102,7 +102,6 @@ export const ticketsApi = {
   attachFile: (id: string, payload: FormData | AttachTicketFileBase64) =>
     api.post(`${BASE}/${id}/attach_file/`, payload),
   attachFileMultipart: (id: string, payload: AttachTicketFileMultipart) => {
-    console.log("Attaching file with payload:", id);
     const formData = new FormData();
     formData.append("file", payload.file);
 

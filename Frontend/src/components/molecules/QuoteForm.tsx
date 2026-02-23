@@ -3,7 +3,7 @@ import InputField from "../atoms/InputField";
 import Button from "../atoms/Button";
 import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { Plus, X } from "lucide-react";
+import { DeleteIcon, Plus, Trash2, X } from "lucide-react";
 import { QuoteFormState } from "@/types/api";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
@@ -99,12 +99,16 @@ function QuoteForm() {
   const updateItemQuantity = (index: number, quantity: number) => {
     setFormState((prev) => ({
       ...prev,
-      items: prev.items.map((item, i) =>
-        i === index ? { ...item, quantity: Math.max(1, quantity) } : item
-      ),
+      items: prev.items.map((item, i) => {
+        if (i === index) {
+          // Permitimos cualquier número, incluyendo 0
+          // Si es negativo, lo convertimos a 0
+          return { ...item, quantity: quantity < 0 ? 0 : quantity };
+        }
+        return item;
+      }),
     }));
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -125,6 +129,17 @@ function QuoteForm() {
       return;
     }
 
+    // Validar que ninguna cantidad sea 0
+    if (formState.items.some((item) => item.quantity === 0)) {
+      toast({
+        title: "La cantidad de productos no puede ser 0",
+        description:
+          "Por favor, ingresa una cantidad válida para todos los productos",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const result = await dispatch(createQuoteFromForm(formState)).unwrap();
 
@@ -133,11 +148,6 @@ function QuoteForm() {
       // Limpiar formulario y carrito
       setFormState(initialState);
       clearCart();
-
-      // Opcional: redirigir a la lista de cotizaciones
-      // navigate("/quotes");
-
-      console.log("Cotización creada:", result);
     } catch (err) {
       console.error("Error al crear cotización:", err);
       toast({
@@ -234,22 +244,43 @@ function QuoteForm() {
         {formState.items.map((item, index) => {
           const selectedProduct = getProductById(item.product);
           return (
-            <div key={index} className="flex gap-2">
+            <div key={index} className="flex gap-2 grid grid-cols-2">
               <ProductSearchCombobox
                 products={products}
                 selectedProduct={selectedProduct}
                 onSelect={(product) => updateItemProduct(index, product)}
               />
 
-              <InputField
-                type="number"
-                value={item.quantity}
-                min={1}
-                className="w-24"
-                onChange={(e) =>
-                  updateItemQuantity(index, Number(e.target.value) || 1)
-                }
-              />
+              <div className="flex items-center gap-2">
+                <div className="w-[80%]">
+                  {" "}
+                  <InputField
+                    type="number"
+                    value={item.quantity}
+                    min={0}
+                    placeholder="1"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Si el campo está vacío, pasamos 0
+                      // Esto permite borrar completamente el input
+                      updateItemQuantity(
+                        index,
+                        value === "" ? 0 : Number(value)
+                      );
+                    }}
+                    className={item.quantity === 0 ? "border-yellow-500" : ""}
+                  />
+                  {item.quantity === 0 && (
+                    <span className="text-xs text-yellow-600">Mínimo 1</span>
+                  )}
+                </div>
+                <Button
+                  className="bg-transparent text-red-600 hover:bg-red-600 hover:text-white"
+                  onClick={() => removeItem(index)}
+                >
+                  <Trash2 size={20} />
+                </Button>
+              </div>
             </div>
           );
         })}

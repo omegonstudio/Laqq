@@ -17,10 +17,13 @@ import { CreateTicketPayload } from "@/types/api";
 import { createTicket } from "@/store/ticketsSlice";
 import { FileText, File as FileIcon } from "lucide-react";
 import { ticketsApi } from "@/lib/api/tickets";
+import { Textarea } from "../ui/textarea";
+
 interface TicketFormProps {
   onClose?: () => void;
   isTicketModalOpen: boolean;
   setIsTicketModalOpen: (open: boolean) => void;
+  ticketInitialState?: CreateTicketPayload;
 }
 export interface AttachTicketFileMultipart {
   file: File;
@@ -38,8 +41,7 @@ const TicketForm = ({
   onClose,
   isTicketModalOpen,
   setIsTicketModalOpen,
-}: TicketFormProps) => {
-  const [formData, setFormData] = useState<CreateTicketPayload>({
+  ticketInitialState = {
     ticket: {
       state: "open",
       product: "",
@@ -58,30 +60,58 @@ const TicketForm = ({
       country: null,
       state: "new",
     },
-  });
+  },
+}: TicketFormProps) => {
+  const [formData, setFormData] =
+    useState<CreateTicketPayload>(ticketInitialState);
 
   const dispatch = useAppDispatch();
   const { list: products } = useAppSelector((state) => state.products);
+  const [disabled, setDisabled] = useState(true);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const validateForm = () => {
+    const newErrors: { [key: string]: string } = {};
 
-  useEffect(() => {
-    dispatch(fetchAllProducts());
-  }, [dispatch]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    if (!formData.contact.first_name.trim()) {
+      newErrors.first_name = "El nombre es obligatorio.";
+    }
+    if (!formData.contact.last_name.trim()) {
+      newErrors.last_name = "El apellido es obligatorio.";
+    }
+    if (!formData.contact.email.trim()) {
+      newErrors.email = "El email es obligatorio.";
+    } else if (!/\S+@\S+\.\S+/.test(formData.contact.email)) {
+      newErrors.email = "El email no es válido.";
+    }
+    if (!formData.ticket.product.trim()) {
+      newErrors.product = "El producto es obligatorio.";
+    }
+    if (!formData.ticket.description.trim()) {
+      newErrors.description = "La descripción es obligatoria.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      toast({
+        title: "Error",
+        description: "Por favor corrige los errores en el formulario.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       setIsUploading(true);
 
       // 1. Crear ticket SIN archivo
       const ticket = await dispatch(createTicket(formData)).unwrap();
-      console.log("Ticket creado:", ticket.ticket.id);
-
       // 2. Si hay archivo, adjuntarlo al ticket
       if (selectedFile) {
         await ticketsApi.attachFileMultipart(ticket.ticket.id, {
@@ -107,6 +137,29 @@ const TicketForm = ({
       setIsUploading(false);
     }
   };
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  useEffect(() => {
+    setFormData(ticketInitialState);
+  }, []);
+
+  useEffect(() => {
+    const { contact, ticket } = formData;
+    const isFormValid =
+      contact.first_name.trim() !== "" &&
+      contact.last_name.trim() !== "" &&
+      contact.email.trim() !== "" &&
+      ticket.product.trim() !== "" &&
+      ticket.description.trim() !== "";
+    setDisabled(!isFormValid);
+  }, [formData]);
+
+  useEffect(() => {
+    dispatch(fetchAllProducts());
+  }, [dispatch]);
 
   const handleFile = (file: File | null) => {
     if (file) {
@@ -142,32 +195,13 @@ const TicketForm = ({
   };
 
   const resetForm = () => {
-    setFormData({
-      ticket: {
-        state: "open",
-        product: "",
-        description: "",
-        product_name: "",
-        attachment: null,
-        priority: null,
-      },
-      contact: {
-        first_name: "",
-        last_name: "",
-        email: "",
-        company_name: "",
-        phone: "",
-        country: null,
-        state: "new",
-      },
-    });
+    setFormData(ticketInitialState);
     setSelectedFile(null);
     setFilePreview(null);
     setSelectedProduct(null);
   };
 
   const activeProducts = products.filter((p) => p.is_active);
-
   const renderFilePreview = () => {
     if (!selectedFile || !filePreview) return null;
 
@@ -293,22 +327,32 @@ const TicketForm = ({
                 })
               }
               placeholder="Apellido"
+              error={errors.last_name}
             />
-            <div className="col-span-2">
-              <InputField
-                label="Email"
-                type="email"
-                value={formData.contact.email}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    contact: { ...formData.contact, email: e.target.value },
-                  })
-                }
-                placeholder="Email asociado al ticket"
-                required
-              />
-            </div>
+            <InputField
+              label="Email"
+              type="email"
+              value={formData.contact.email}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  contact: { ...formData.contact, email: e.target.value },
+                })
+              }
+              placeholder="Email asociado al ticket"
+              required
+            />
+            <InputField
+              label="Teléfono"
+              value={formData.contact.phone}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  contact: { ...formData.contact, phone: e.target.value },
+                })
+              }
+              placeholder="Teléfono asociado al ticket"
+            />
           </div>
           <div className="min-w-0">
             <label className="block text-sm font-medium mb-2">
@@ -321,6 +365,11 @@ const TicketForm = ({
                 onSelect={handleProductSelect}
                 placeholder="Buscar producto por nombre o código"
               />
+              {errors.product && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.product}
+                </p>
+              )}
             </div>
           </div>
           <div>
@@ -328,7 +377,8 @@ const TicketForm = ({
               Descripción del Problema{" "}
               <span className="text-destructive">*</span>
             </label>
-            <textarea
+            <Textarea
+              error={errors.description}
               value={formData.ticket.description}
               onChange={(e) =>
                 setFormData({

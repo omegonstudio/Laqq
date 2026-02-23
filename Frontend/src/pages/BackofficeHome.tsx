@@ -74,7 +74,7 @@ const BackofficeHome = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-card p-6 rounded-2xl border border-border">
+        {/* <div className="bg-card p-6 rounded-2xl border border-border">
           <div className="flex items-center gap-3 mb-4">
             <TrendingUp className="text-primary" size={24} />
             <h3 className="text-xl font-bold text-foreground">
@@ -101,7 +101,7 @@ const BackofficeHome = () => {
               <p className="text-xs text-muted-foreground mt-1">Hace 1 día</p>
             </div>
           </div>
-        </div>
+        </div> */}
 
         <div className="bg-card p-6 rounded-2xl border border-border">
           <div className="flex items-center gap-3 mb-4">

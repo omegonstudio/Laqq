@@ -112,7 +112,6 @@ const Table = ({
       setCurrentPage(newPage);
     }
   };
-
   return (
     <div className="space-y-4">
       <div className="overflow-x-auto rounded-xl border border-border">

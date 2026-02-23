@@ -6,7 +6,6 @@ import { toast } from "@/hooks/use-toast";
 import { useAppDispatch } from "@/store/hooks";
 import { createContact, createMessage } from "@/store/contacts";
 import { MessageCreate } from "@/types/api";
-
 const ContactForm = () => {
   const dispatch = useAppDispatch();
   const [formData, setFormData] = useState<MessageCreate>({
@@ -15,12 +14,38 @@ const ContactForm = () => {
     last_name: "",
     country: "Argentina",
     message: "",
-    state: "NEW",
+    state: "new",
     email: "",
   });
+  const [messageError, setMessageError] = useState<string>("");
+
+  const validateMessage = (message: string): boolean => {
+    if (!message.trim()) {
+      setMessageError("El mensaje es obligatorio");
+      return false;
+    }
+    if (message.trim().length < 10) {
+      setMessageError("El mensaje debe tener al menos 10 caracteres");
+      return false;
+    }
+    setMessageError("");
+    return true;
+  };
+
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newMessage = e.target.value;
+    setFormData({ ...formData, message: newMessage });
+    validateMessage(newMessage);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validar el mensaje antes de enviar
+    if (!validateMessage(formData.message)) {
+      return;
+    }
+
     try {
       await dispatch(createMessage(formData)).unwrap();
       toast({
@@ -28,8 +53,17 @@ const ContactForm = () => {
         description: "Te responderemos a la brevedad posible.",
         variant: "default",
       });
-      // Opcional: limpiar el formulario después del éxito
-      // setFormData({ contact: '', content: '', ... });
+      // Limpiar el formulario después del éxito
+      setFormData({
+        company_name: "",
+        first_name: "",
+        last_name: "",
+        country: "Argentina",
+        message: "",
+        state: "new",
+        email: "",
+      });
+      setMessageError(""); // Limpiar el error
     } catch (error) {
       console.error("Error al enviar el mensaje:", error);
       toast({
@@ -136,7 +170,6 @@ const ContactForm = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, company_name: e.target.value })
                     }
-                    required
                   />
                   <InputField
                     label="País"
@@ -154,32 +187,36 @@ const ContactForm = () => {
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
+                  required
                   // required
                 />
-                {/* <InputField
-                  label="Asunto"
-                  value={formData.subject}
-                  onChange={(e) =>
-                    setFormData({ ...formData, subject: e.target.value })
-                  }
-                  required
-                /> */}
 
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    Mensaje
+                    Mensaje <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     value={formData.message}
-                    onChange={(e) =>
-                      setFormData({ ...formData, message: e.target.value })
-                    }
-                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background min-h-[150px] focus:outline-none focus:ring-2 focus:ring-primary"
+                    onChange={handleMessageChange}
+                    className={`w-full px-4 py-2.5 rounded-xl border ${
+                      messageError ? "border-red-500" : "border-input"
+                    } bg-background min-h-[150px] focus:outline-none focus:ring-2 focus:ring-primary`}
                     required
                   />
+                  {messageError && (
+                    <p className="text-sm text-red-500 mt-1">{messageError}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {formData.message.length}/10 caracteres mínimo
+                  </p>
                 </div>
 
-                <Button type="submit" size="lg" className="w-full">
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full"
+                  disabled={!!messageError || !formData.message.trim()}
+                >
                   Enviar Mensaje
                 </Button>
               </form>

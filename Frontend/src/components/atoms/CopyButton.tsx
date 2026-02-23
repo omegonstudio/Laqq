@@ -11,7 +11,14 @@ const copyToClipboard = async (value?: string | null) => {
     console.error("No se pudo copiar al portapapeles", e);
   }
 };
-export const CopyButton = ({ value }: { value?: string | null }) => {
+
+export const CopyButton = ({
+  value,
+  title,
+}: {
+  value?: string | null;
+  title?: string;
+}) => {
   if (!value) return null;
 
   return (
@@ -21,7 +28,7 @@ export const CopyButton = ({ value }: { value?: string | null }) => {
       size="icon"
       className="h-6 w-6"
       onClick={() => copyToClipboard(value)}
-      title="Copiar"
+      title={title ? title : "Copiar"}
     >
       <Copy size={14} />
     </Button>

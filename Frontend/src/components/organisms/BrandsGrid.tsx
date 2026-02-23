@@ -10,7 +10,6 @@ const BrandsGrid = () => {
   const handleBrandClick = (brandId: string) => {
     navigate(`/products?brand=${brandId}`);
   };
-  console.log(list, "AAAAAA LIST");
   return (
     <section className="py-16 bg-background">
       <div className="container mx-auto px-4">

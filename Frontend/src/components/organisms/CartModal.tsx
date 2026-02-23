@@ -14,7 +14,6 @@ const CartModal = ({ isOpen, onClose }: CartModalProps) => {
     useCart();
 
   if (!isOpen) return null;
-  console.log(items);
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />

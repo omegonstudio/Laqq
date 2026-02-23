@@ -29,10 +29,8 @@ import {
 import { useAppDispatch } from "@/store/hooks";
 import { updateTicket } from "@/store/ticketsSlice";
 import { formatDate, formatDateForInput } from "@/utils/formatDate";
-import { Input } from "@/components/ui/input";
 import { CopyButton } from "@/components/atoms/CopyButton";
 import { ticketsApi } from "@/lib/api/tickets";
-import { Tooltip } from "@radix-ui/react-tooltip";
 import { Toggle } from "@/components/ui/toggle";
 
 interface EditContactModalProps {
@@ -97,7 +95,6 @@ export function EditTicketsService({
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
-  console.log(closed, "ticket");
   if (!ticket) return null;
 
   const timelineItems = [
@@ -151,28 +148,35 @@ export function EditTicketsService({
 
     try {
       const newAssignedUserId = formData.assigned_user ?? null;
-
+      const originalAssignedUserId = ticket.assigned_user?.id ?? null;
       // 2. Asignar siempre que cambie
-      if (newAssignedUserId) {
+      if (newAssignedUserId && newAssignedUserId !== originalAssignedUserId) {
         await ticketsApi.assign(ticket.id, {
           assigned_user: newAssignedUserId,
         });
-        // 3. Primera asignación → iniciar ticket
         if (formData.started_at === null) {
           await ticketsApi.start(ticket.id);
         }
       }
 
       const newResolutionNotes = formData.resolution_notes ?? null;
+      const originalResolutionNotes = ticket.resolution_notes ?? null;
 
       // 2. Cambió y ahora hay contenido → resolver
-      if (newResolutionNotes && newResolutionNotes.trim() !== "") {
+      if (
+        newResolutionNotes &&
+        newResolutionNotes.trim() !== "" &&
+        newResolutionNotes !== originalResolutionNotes
+      ) {
         await ticketsApi.resolve(ticket.id, {
           resolution_notes: newResolutionNotes,
         });
+
+        setFormData({ ...formData, state: "in_progress" });
       }
       if (closed) {
         await ticketsApi.close(ticket.id);
+        setFormData({ ...formData, state: "closed" });
       }
 
       await dispatch(

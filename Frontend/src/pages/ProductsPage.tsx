@@ -111,7 +111,6 @@ const ProductsPage = () => {
   const activeCategoryId = searchParams.get("category");
   const activeBrand = brands.find((b) => b.id === activeBrandId);
   const activeCategory = categories.find((b) => b.id === activeCategoryId);
-  console.log(activeCategory, "AAAAAAAAAAAAAA");
   return (
     <div className="py-16">
       <div className="container mx-auto px-4">

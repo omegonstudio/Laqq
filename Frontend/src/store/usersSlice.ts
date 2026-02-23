@@ -13,7 +13,8 @@ interface userState {
   count: number;
   loading: boolean;
   error: string | null;
-
+  listAdmins: UserData[];
+  listClients: UserData[];
   selected: UserData | null;
   selectedLoading: boolean;
   selectedError: string | null;
@@ -33,6 +34,8 @@ interface userState {
 
 const initialState: userState = {
   list: [],
+  listAdmins: [],
+  listClients: [],
   count: 0,
   loading: false,
   error: null,
@@ -63,6 +66,15 @@ export const fetchUsers = createAsyncThunk(
   }
 );
 
+export const fetchAdmins = createAsyncThunk(
+  "user/fetch",
+  async (params?: FetchuserParams) => {
+    const users = usersApi.list(params);
+    return users.then((res) =>
+      res.results.filter((u) => u.user_type.name !== "client")
+    );
+  }
+);
 export const fetchUser = createAsyncThunk(
   "user/fetchOne",
   async (id: string) => {
@@ -127,6 +139,15 @@ export const userSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || "Error cargando usuarios";
       });
+    // builder
+    //   .addCase(fetchAdmins.pending, (state) => {
+    //     state.loading = true;
+    //     state.error = null;
+    //   })
+    //   .addCase(fetchAdmins.rejected, (state, action) => {
+    //     state.loading = false;
+    //     state.error = action.error.message || "Error cargando usuarios";
+    //   });
 
     // GET ONE
     builder

@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { ServiceTicket, TicketPriority, TicketState } from "@/types/api";
 import { formatDate } from "@/utils/formatDate";
 import { convertStateTicket } from "@/utils/quotesConvert";
+import { useEffect } from "react";
 
 export function TicketDetailModal({
   ticket,
@@ -36,9 +37,7 @@ export function TicketDetailModal({
   states: TicketState[];
 }) {
   if (!ticket) return null;
-
   const ticketPriority = priorities.find((p) => p.id === ticket.priority);
-  const ticketState = states?.find((s) => s.id === ticket.state);
 
   const timelineItems = [
     { label: "Creado", date: formatDate(ticket.created_at) },
@@ -50,12 +49,12 @@ export function TicketDetailModal({
     { label: "Resuelto", date: formatDate(ticket.resolved_at) },
     { label: "Cerrado", date: formatDate(ticket.closed_at) },
   ].filter((item) => item.date);
-  console.log(ticket, "AAAAAAAAAAAAAAAAAAAAAAA");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
+      <DialogContent className="max-w-2xl max-h-[90vh] ">
         <DialogHeader>
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-4 pr-5">
             <div>
               <DialogTitle className="text-xl">
                 Ticket #{ticket.ticket_number}
@@ -67,12 +66,12 @@ export function TicketDetailModal({
             <div className="flex gap-2 shrink-0">
               <Badge variant="outline" className="font-mono text-xs">
                 <AlertCircle className="size-3 mr-3" />
-                {convertStateTicket(ticketState.name)}
+                {convertStateTicket(ticket.state)}
               </Badge>
               <Badge
                 variant="outline"
                 style={
-                  ticketPriority.color
+                  ticketPriority.color !== null
                     ? {
                         backgroundColor: `${ticketPriority.color}15`,
                         color: ticketPriority.color,

@@ -101,7 +101,6 @@ export const refreshThunk = createAsyncThunk(
     }
   }
 );
-
 const authSlice = createSlice({
   name: "auth",
   initialState,

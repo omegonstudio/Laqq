@@ -214,14 +214,23 @@ export const ticketsSlice = createSlice({
       });
     /* UPDATE TICKET */
     builder.addCase(updateTicket.fulfilled, (state, action) => {
+      const updatedTicket = action.payload;
+
       // Actualizar el ticket seleccionado si coincide
-      if (state.selected?.id === action.payload.id) {
-        state.selected = action.payload;
+      if (state.selected?.id === updatedTicket.id) {
+        state.selected = updatedTicket;
       }
+
       // Actualizar el ticket en la lista
-      const index = state.list.findIndex((t) => t.id === action.payload.id);
+      const index = state.list.findIndex((t) => t.id === updatedTicket.id);
       if (index !== -1) {
-        state.list[index] = action.payload;
+        state.list[index] = updatedTicket;
+      } else {
+        // Opcional: Si el ticket no está en la lista actual (quizás por paginación),
+        // podrías agregarlo o ignorarlo según tu caso de uso
+        console.log(
+          `Ticket ${updatedTicket.id} no encontrado en la lista actual`
+        );
       }
     });
     /* TICKET GET ONE */

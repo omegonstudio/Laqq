@@ -4,10 +4,9 @@ import {
   PaginatedResponse,
   TokenObtainPair,
   TokenRefresh,
-  User,
   UserCreate,
+  UserData,
   UserState,
-  UserType,
 } from "@/types/api";
 
 const BASE = "/users";
@@ -24,30 +23,30 @@ export interface UserListParams {
 
 export const usersApi = {
   list: (params?: UserListParams) =>
-    api.get<PaginatedResponse<User>>(
+    api.get<PaginatedResponse<UserData>>(
       `${BASE}/list/`,
       cleanParams(params as QueryParams)
     ),
-  get: (id: string) => api.get<User>(`${BASE}/list/${id}/`),
-  create: (payload: UserCreate) => api.post<User>(`${BASE}/list/`, payload),
+  get: (id: string) => api.get<UserData>(`${BASE}/list/${id}/`),
+  create: (payload: UserCreate) => api.post<UserData>(`${BASE}/list/`, payload),
   update: (id: string, payload: Partial<UserCreate>) =>
-    api.put<User>(`${BASE}/list/${id}/`, payload),
+    api.put<UserData>(`${BASE}/list/${id}/`, payload),
   patch: (id: string, payload: Partial<UserCreate>) =>
-    api.patch<User>(`${BASE}/list/${id}/`, payload),
+    api.patch<UserData>(`${BASE}/list/${id}/`, payload),
   remove: (id: string) => api.delete<void>(`${BASE}/list/${id}/`),
 
   listTypes: (params?: { search?: string }) =>
-    api.get<PaginatedResponse<UserType>>(
+    api.get<PaginatedResponse<UserData>>(
       `${BASE}/types/`,
       cleanParams(params as QueryParams)
     ),
-  getType: (id: string) => api.get<UserType>(`${BASE}/types/${id}/`),
-  createType: (payload: Partial<UserType>) =>
-    api.post<UserType>(`${BASE}/types/`, payload),
-  updateType: (id: string, payload: Partial<UserType>) =>
-    api.put<UserType>(`${BASE}/types/${id}/`, payload),
-  patchType: (id: string, payload: Partial<UserType>) =>
-    api.patch<UserType>(`${BASE}/types/${id}/`, payload),
+  getType: (id: string) => api.get<UserData>(`${BASE}/types/${id}/`),
+  createType: (payload: Partial<UserData>) =>
+    api.post<UserData>(`${BASE}/types/`, payload),
+  updateType: (id: string, payload: Partial<UserData>) =>
+    api.put<UserData>(`${BASE}/types/${id}/`, payload),
+  patchType: (id: string, payload: Partial<UserData>) =>
+    api.patch<UserData>(`${BASE}/types/${id}/`, payload),
   removeType: (id: string) => api.delete<void>(`${BASE}/types/${id}/`),
 
   listStates: (params?: { search?: string }) =>
@@ -69,4 +68,3 @@ export const usersApi = {
   refreshToken: (payload: { refresh: string }) =>
     api.post<TokenRefresh>(`${BASE}/token/refresh/`, payload),
 };
-

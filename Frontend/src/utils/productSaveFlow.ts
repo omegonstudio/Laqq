@@ -3,11 +3,7 @@ import {
   hasProductChanges,
   sanitizeSpecs,
 } from "@/utils/productConverters";
-import {
-  createProduct,
-  updateProduct,
-  updateProductWithFiles,
-} from "@/store/productSlice";
+import { createProduct, updateProduct } from "@/store/productSlice";
 import { createSpec, updateSpec, deleteSpec } from "@/store/specsSlice";
 import { AppDispatch } from "@/store";
 import {
@@ -214,33 +210,26 @@ const haveAttachmentsChanged = (
 export const CreateProduct = async ({
   dispatch,
   formState,
-  initialData,
   attachmentId,
 }: {
   dispatch: AppDispatch;
   formState: ProductFormState;
-  initialData?: Product | null;
   attachmentId?: string | null;
 }): Promise<Product> => {
   // ===== CREATE =====
-
-  const product = await dispatch(
-    createProduct({
-      ...formState,
-      image_attachment: attachmentId,
-      brand_id: formState.brand, // Map brand to brand_id
-      category_id: formState.category, // Map category to category_id
-    })
-  ).unwrap();
-
-  return dispatch(
-    updateProductWithFiles({
-      id: product.id,
-      data: {
-        files: formState.attachments_files,
-      },
-    })
-  ).unwrap();
+  const payload: ProductCreateRequest = {
+    image_attachment: attachmentId,
+    brand_id: formState.brand,
+    category_id: formState.category,
+    attachments: formState.attachments,
+    name: formState.name,
+    description: formState.description,
+    product_code: formState.product_code,
+    is_active: formState.is_active,
+    related_product_ids: formState.related.map((r) => r.id),
+    is_featured: formState.is_featured,
+  };
+  return await dispatch(createProduct(payload)).unwrap();
 };
 
 export const saveProductEntity = async ({
@@ -255,32 +244,17 @@ export const saveProductEntity = async ({
   attachmentId?: string | null;
 }): Promise<Product> => {
   // ===== UPDATE =====
+  console.log("saveProductEntity", { formState, initialData, attachmentId });
   const updateRequest: ProductUpdateRequest = formStateToUpdateRequest(
     formState,
     initialData,
     attachmentId
   );
-  console.log("UPDATE REQUESTttttt", updateRequest, initialData, "AASAS");
-
-  if (!hasProductChanges(updateRequest)) {
-    return initialData;
-  }
-  const hasFiles = updateRequest.files && updateRequest.files.length > 0;
-  console.log("UPDATE REQUESTttttt", updateRequest);
-
-  if (hasFiles) {
-    return dispatch(
-      updateProductWithFiles({
-        id: initialData.id,
-        data: updateRequest,
-      })
-    ).unwrap();
-  }
 
   return dispatch(
     updateProduct({
       id: initialData.id,
-      data: updateRequest,
+      data: { name: formState.name, ...updateRequest },
     })
   ).unwrap();
 };

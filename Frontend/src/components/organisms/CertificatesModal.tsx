@@ -11,7 +11,6 @@ const CertificatesModal = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Searching certificates:", { brand, articleNo, lotNo });
     toast({
       title: "Búsqueda Realizada",
       description: "Los certificados serán descargados si están disponibles.",
@@ -23,7 +22,9 @@ const CertificatesModal = () => {
       <div className="container mx-auto px-4">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-4">Búsqueda de Certificados</h1>
+            <h1 className="text-4xl font-bold mb-4">
+              Búsqueda de Certificados
+            </h1>
             <p className="text-xl text-muted-foreground">
               Consulta certificados de análisis para productos Fisher y Acros
             </p>
@@ -64,7 +65,9 @@ const CertificatesModal = () => {
 
             <div className="mt-6 p-4 bg-muted/30 rounded-xl">
               <p className="text-sm text-muted-foreground">
-                <strong className="text-foreground">Nota:</strong> Los números de artículo y lote se encuentran en la etiqueta del producto. Los certificados están disponibles para productos recientes.
+                <strong className="text-foreground">Nota:</strong> Los números
+                de artículo y lote se encuentran en la etiqueta del producto.
+                Los certificados están disponibles para productos recientes.
               </p>
             </div>
           </div>

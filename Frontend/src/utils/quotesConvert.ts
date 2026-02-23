@@ -86,13 +86,27 @@ export const convertStateContact = (state: stateEnum): string => {
   }
 };
 
-export const convertStateTicket = (state: stateEnum | string): string => {
-  switch (state.toUpperCase()) {
-    case "CLOSED":
+export const convertStateTicket = (
+  state:
+    | "open"
+    | "closed"
+    | "in_progress"
+    | "resolved"
+    | "waiting_parts"
+    | "new"
+): string => {
+  switch (state) {
+    case "open":
+      return "Abierto";
+    case "closed":
       return "Cerrado";
-    case "IN_PROGRESS":
+    case "in_progress":
       return "En progreso";
-    case "NEW":
+    case "resolved":
+      return "Resuelto";
+    case "waiting_parts":
+      return "Piezas en espera";
+    case "new":
       return "Nuevo";
     default:
       return "Desconocido";

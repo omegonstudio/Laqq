@@ -10,7 +10,6 @@ const Footer = () => {
   const { setFilter } = useProductFilters();
 
   const menuItems = buildCategories(categories);
-  console.log(menuItems, "A");
   return (
     <footer className="bg-secondary text-secondary-foreground pt-16 pb-8">
       <div className="container mx-auto px-4">
@@ -133,7 +132,7 @@ const Footer = () => {
               © 2025 La Química Quirúrgica. Todos los derechos reservados.
             </p>
 
-           {/*  <div className="flex gap-4">
+            {/*  <div className="flex gap-4">
               <a
                 href="#"
                 className="opacity-80 hover:opacity-100 transition-opacity"

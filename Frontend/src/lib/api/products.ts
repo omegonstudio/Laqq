@@ -35,7 +35,8 @@ export const productsApi = {
       cleanParams(params as QueryParams)
     ),
   get: (id: string) => api.get<Product>(`${BASE}/list/${id}/`),
-  create: (data: Partial<Product>) => api.post<Product>(`${BASE}/list/`, data),
+  create: (data: Partial<ProductCreateRequest>) =>
+    api.post<Product>(`${BASE}/list/`, data),
   update: (id: string, data: Partial<ProductUpdateRequest>) =>
     api.put<Product>(`${BASE}/list/${id}/`, data),
   patch: (id: string, data: Partial<Product>) =>
@@ -56,6 +57,7 @@ export const productsApi = {
   updateProduct: (id: string, data: Partial<Product>) =>
     api.put<Product>(`${BASE}/list/${id}/`, data),
   deleteProduct: (id: string) => api.delete<void>(`${BASE}/list/${id}/`),
+
   buildProductUploadFormData: (data: ProductUpdateRequest): FormData => {
     const formData = new FormData();
 

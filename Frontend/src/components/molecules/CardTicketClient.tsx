@@ -17,7 +17,6 @@ export function TicketCard({
   // Buscar la prioridad del ticket en las prioridades de Redux
   const ticketPriority = priorities.find((p) => p.id === ticket.priority);
   const ticketState = states?.find((s) => s.id === ticket.state);
-  console.log(ticketState, "ticketState");
   if (!ticketState) {
     return null;
   }
@@ -27,7 +26,7 @@ export function TicketCard({
       onClick={onClick}
     >
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start justify-between gap-2 ">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <Badge variant="outline" className="font-mono text-xs">

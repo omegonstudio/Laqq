@@ -33,7 +33,6 @@ const FIXED_SPEC_ORDER: Record<string, number> = {
  */
 export const unifyProductSpecs = (product: Product): UnifiedSpec[] => {
   if (!product) return [];
-  console.log(product, "AA");
   const unified: UnifiedSpec[] = [];
 
   // 1. Procesar fixed_specs (puede no existir o estar vacío)
@@ -92,7 +91,6 @@ export const unifyProductSpecs = (product: Product): UnifiedSpec[] => {
   // 2. Procesar specs dinámicas
   const dynamicSpecs = product.specs || product.specifications;
   if (dynamicSpecs && Array.isArray(dynamicSpecs) && dynamicSpecs.length > 0) {
-    console.log(dynamicSpecs);
     dynamicSpecs.forEach((spec) => {
       if (!spec || !spec.key || !spec.value || spec.is_visible === false) {
         return;
