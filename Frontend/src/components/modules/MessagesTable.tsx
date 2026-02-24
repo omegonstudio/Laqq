@@ -102,6 +102,7 @@ const MessagesTable = () => {
       render: (value: stateEnum) => convertStateContact(value),
     },
   ];
+  const { user } = useAppSelector((state) => state.auth);
 
   const actions = [
     { icon: <Eye size={16} />, onClick: handleView, label: "Ver detalles" },
@@ -111,6 +112,7 @@ const MessagesTable = () => {
       onClick: handleDelete,
       color: "red",
       label: "Eliminar",
+      disabled: !user?.is_superuser, // Solo superusuarios pueden eliminar
     },
   ];
 

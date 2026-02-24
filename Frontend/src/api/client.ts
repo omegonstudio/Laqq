@@ -81,12 +81,16 @@ class ApiClient {
         parsed && typeof parsed === "object" && !Array.isArray(parsed);
 
       const errorsField = parsed?.errors ?? (isObject ? parsed : undefined);
+      const firstFieldError =
+        isObject && errorsField
+          ? Object.values(errorsField)?.[0]?.[0]
+          : undefined;
 
       const message =
+        firstFieldError ||
         parsed?.detail ||
         parsed?.message ||
-        response.statusText ||
-        (rawText && rawText.trim()) ||
+        rawText ||
         "Error en la petición";
 
       const error: ApiError = {
@@ -185,8 +189,7 @@ class ApiClient {
     };
 
     if (!isFormData && options.body !== undefined) {
-      (headers as Record<string, string>)["Content-Type"] =
-        "application/json";
+      (headers as Record<string, string>)["Content-Type"] = "application/json";
     }
 
     if (token) {

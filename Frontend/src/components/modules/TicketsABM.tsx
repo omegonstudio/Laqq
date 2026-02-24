@@ -27,6 +27,7 @@ const TicketsABM = () => {
   const [selectedTicket, setSelectedTicket] = useState<ServiceTicket | null>(
     null
   );
+  const { user } = useAppSelector((state) => state.auth);
 
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -160,14 +161,21 @@ const TicketsABM = () => {
       render: (value) => convertStateTicket(value),
     },
   ];
+  console.log(user, "asas");
   const actions = [
     { icon: <Eye size={16} />, onClick: handleView, label: "Ver" },
-    { icon: <Edit2 size={16} />, onClick: handleEdit, label: "Editar" },
+    {
+      icon: <Edit2 size={16} />,
+      onClick: handleEdit,
+      label: "Editar",
+      disabled: !user.is_superuser,
+    },
     {
       icon: <Trash2 size={16} />,
       onClick: handleOpenDeleteModal,
       color: "red",
       label: "Eliminar",
+      disabled: !user.is_superuser,
     },
   ];
   const handlePageChange = (newPage: number) => {

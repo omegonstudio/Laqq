@@ -19,7 +19,7 @@ export const decryptToken = (encryptedToken: string): string => {
 };
 
 interface AuthState {
-  user: { username: string } | null; // ❌ NUNCA guardes password
+  user: { username: string; is_superuser: boolean; is_staff: boolean } | null; // ❌ NUNCA guardes password
   access: string | null; // Guardará el token encriptado
   refresh: string | null; // Guardará el token encriptado
   loading: boolean;
@@ -59,7 +59,11 @@ export const loginThunk = createAsyncThunk(
       return {
         access: encryptToken(data.access),
         refresh: encryptToken(data.refresh),
-        user: { username },
+        user: {
+          username: username,
+          is_staff: data.is_staff,
+          is_superuser: data.is_superuser,
+        },
       };
     } catch (e) {
       return thunkAPI.rejectWithValue("Error de servidor");
@@ -119,7 +123,11 @@ const authSlice = createSlice({
       })
       .addCase(loginThunk.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = { username: action.payload.user.username };
+        state.user = {
+          username: action.payload.user.username,
+          is_superuser: action.payload.user.is_superuser,
+          is_staff: action.payload.user.is_staff,
+        };
         state.access = action.payload.access; // Ya encriptado
         state.refresh = action.payload.refresh; // Ya encriptado
       })

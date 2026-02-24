@@ -41,6 +41,7 @@ const ContactsABM = () => {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(
     contactInitialData
   );
+  const { user } = useAppSelector((state: RootState) => state.auth);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
@@ -53,7 +54,7 @@ const ContactsABM = () => {
 
   const { states } = useAppSelector((state: RootState) => state.contacts);
   const dispatch = useAppDispatch();
-
+  console.log(states, "aaa");
   useEffect(() => {
     dispatch(fetchContactStates({}));
     dispatch(fetchUsers({ page: 1, page_size: 1000 }));
@@ -164,6 +165,7 @@ const ContactsABM = () => {
       onClick: handleOpenDeleteModal,
       color: "red",
       label: "Eliminar",
+      disabled: !user?.is_superuser, // Solo superusuarios pueden eliminar
     },
   ];
   const handlePageChange = (newPage: number) => {
@@ -202,7 +204,7 @@ const ContactsABM = () => {
               { value: "all", label: "Todos los estados" },
               ...states.map((item) => ({
                 value: item.id,
-                label: convertStateContact(item.name as stateEnum),
+                label: item.name,
               })),
             ]}
             value={statusFilter}

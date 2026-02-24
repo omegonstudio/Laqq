@@ -19,6 +19,7 @@ import { toast } from "@/hooks/use-toast";
 
 const QuotesTable = () => {
   const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
 
   const { list: quotes, pagination } = useAppSelector((state) => state.quotes);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
@@ -114,6 +115,7 @@ const QuotesTable = () => {
       label: "Eliminar",
       color: "red",
       onClick: handleOpenDeleteModal,
+      disabled: !user?.is_superuser, // Solo superusuarios pueden eliminar
     },
   ];
 

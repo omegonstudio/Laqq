@@ -52,6 +52,7 @@ interface EditableData {
 const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
   const dispatch = useAppDispatch();
   const { list: users } = useAppSelector((state) => state.users);
+  const { user } = useAppSelector((state) => state.auth);
 
   const [edit, setEdit] = useState(false);
   const [formState, setFormState] = useState<EditableData | null>(null);
@@ -421,29 +422,30 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
             ? calculateTotal().toFixed(2)
             : parseFloat(quote.total_amount || "0").toFixed(2)}
         </div>
-
-        <div className="flex justify-between items-center pt-2">
-          <Button
-            variant={edit ? "secondary" : "primary"}
-            size="sm"
-            className="gap-2"
-            onClick={() => (edit ? handleCancel() : setEdit(true))}
-            disabled={isLoading}
-          >
-            {edit ? "Cancelar" : "Editar"}
-            {!edit && <PencilIcon size={15} />}
-          </Button>
-          {edit && (
+        {user?.is_superuser && (
+          <div className="flex justify-between items-center pt-2">
             <Button
-              variant="primary"
+              variant={edit ? "secondary" : "primary"}
               size="sm"
-              onClick={handleSave}
+              className="gap-2"
+              onClick={() => (edit ? handleCancel() : setEdit(true))}
               disabled={isLoading}
             >
-              {isLoading ? "Guardando..." : "Guardar cambios"}
+              {edit ? "Cancelar" : "Editar"}
+              {!edit && <PencilIcon size={15} />}
             </Button>
-          )}
-        </div>
+            {edit && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleSave}
+                disabled={isLoading}
+              >
+                {isLoading ? "Guardando..." : "Guardar cambios"}
+              </Button>
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

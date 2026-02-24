@@ -18,6 +18,8 @@ import {
 import type { NormalizedApiError } from "@/lib/api/client";
 import type { UserCreate, UserData } from "@/types/api";
 import { toast } from "@/hooks/use-toast";
+import { useAppSelector } from "@/store/hooks";
+import { RootState } from "@/store";
 
 type UserRow = {
   id: string;
@@ -57,7 +59,7 @@ const UsersTable = () => {
   const createUserMutation = useCreateUser();
   const patchUserMutation = usePatchUser();
   const deleteUserMutation = useDeleteUser();
-
+  const { user } = useAppSelector((state: RootState) => state.auth);
   const [searchTerm, setSearchTerm] = useState("");
   const [isUpsertOpen, setIsUpsertOpen] = useState(false);
   const [upsertMode, setUpsertMode] = useState<"create" | "edit">("create");
@@ -257,18 +259,24 @@ const UsersTable = () => {
   ];
 
   const actions = [
-    { icon: <Edit2 size={16} />, onClick: handleEdit, label: "Editar" },
+    {
+      icon: <Edit2 size={16} />,
+      onClick: handleEdit,
+      label: "Editar",
+      disabled: !user?.is_superuser,
+    },
     {
       icon: <Trash2 size={16} />,
       onClick: handleDelete,
       color: "red",
       label: "Eliminar",
+      disabled: !user?.is_superuser, // Solo superusuarios pueden eliminar
     },
   ];
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex gap-4 flex-1">
         <InputField
           placeholder="Buscar por nombre, apellido o email..."
           value={searchTerm}
@@ -277,7 +285,7 @@ const UsersTable = () => {
         />
         <Button
           variant="primary"
-          className="flex items-center gap-2"
+          className="whitespace-nowrap w-fit"
           onClick={openCreateModal}
         >
           <Plus size={18} />

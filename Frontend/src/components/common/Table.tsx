@@ -22,6 +22,7 @@ interface TableAction {
   onClick: (row: any) => void;
   color?: string;
   label?: string;
+  disabled?: boolean;
 }
 
 interface ServerPagination {
@@ -168,21 +169,32 @@ const Table = ({
                   {actions && actions.length > 0 && (
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        {actions.map((action, actionIdx) => (
-                          <button
-                            key={actionIdx}
-                            onClick={() => action.onClick(row)}
-                            className={cn(
-                              "p-2 rounded-lg transition-colors",
-                              action.color === "red"
-                                ? "hover:bg-destructive/10 text-destructive"
-                                : "hover:bg-primary/10 text-primary"
-                            )}
-                            title={action.label}
-                          >
-                            {action.icon}
-                          </button>
-                        ))}
+                        {actions.map((action, actionIdx) => {
+                          const isDisabled = action.disabled;
+
+                          return (
+                            <button
+                              key={actionIdx}
+                              disabled={isDisabled}
+                              onClick={() => action.onClick(row)}
+                              className={cn(
+                                "p-2 rounded-lg transition-colors",
+                                isDisabled
+                                  ? "opacity-40"
+                                  : action.color === "red"
+                                  ? "text-destructive hover:bg-destructive/10"
+                                  : "text-primary hover:bg-primary/10"
+                              )}
+                              title={
+                                isDisabled
+                                  ? "Acción no disponible"
+                                  : action.label
+                              }
+                            >
+                              {action.icon}
+                            </button>
+                          );
+                        })}
                       </div>
                     </td>
                   )}

@@ -24,6 +24,7 @@ import {
 import { convertStateContact } from "@/utils/quotesConvert";
 import { useAppDispatch } from "@/store/hooks";
 import { createContact, updateContact } from "@/store/contacts";
+import { toast } from "@/hooks/use-toast";
 
 interface EditContactModalProps {
   contact: Contact | null;
@@ -43,6 +44,7 @@ export function EditContactModal({
   isNew,
 }: EditContactModalProps) {
   const [formData, setFormData] = useState<Partial<Contact>>({});
+  console.log(formData, "aaa");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const dispatch = useAppDispatch();
@@ -89,9 +91,6 @@ export function EditContactModal({
     if (!formData.last_name?.trim()) {
       newErrors.last_name = "El apellido es requerido";
     }
-    if (formData.phone && formData.phone.trim().length <= 7) {
-      newErrors.phone = "El teléfono debe tener más de 7 caracteres";
-    }
     if (!formData.email?.trim()) {
       newErrors.email = "El email es requerido";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -104,13 +103,13 @@ export function EditContactModal({
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validate() || !contact) return;
 
     setIsLoading(true);
+
     try {
       const updatedContact: Contact = {
         ...contact,
@@ -119,22 +118,41 @@ export function EditContactModal({
         country: formData.country || null,
         message: formData.message || null,
         assigned_user: formData.assigned_user || null,
-      } as Contact;
-      if (!isNew) {
-        dispatch(
+      };
+
+      if (isNew) {
+        await dispatch(createContact(updatedContact)).unwrap();
+      } else {
+        await dispatch(
           updateContact({ data: updatedContact, id: contact.id })
         ).unwrap();
-        setFormData({});
-        setErrors({});
-        onOpenChange(false);
-      } else {
-        dispatch(createContact(updatedContact)).unwrap();
-        setFormData({});
-        setErrors({});
-        onOpenChange(false);
       }
-    } catch (error) {
-      console.error("Error al guardar:", error);
+
+      // SOLO si no hubo error
+      setFormData({});
+      setErrors({});
+      onOpenChange(false);
+
+      toast({ title: "Contacto guardado correctamente" });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      if (error?.errors) {
+        const fieldErrors: Record<string, string> = {};
+
+        Object.entries(error.errors).forEach(([field, messages]) => {
+          fieldErrors[field] = Array.isArray(messages)
+            ? messages[0]
+            : String(messages);
+        });
+
+        setErrors(fieldErrors);
+      }
+
+      toast({
+        title: "Error al guardar",
+        description: error?.message, // ← ya no es "Bad Request"
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -155,14 +173,13 @@ export function EditContactModal({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="company_name">
-                Empresa <span className="text-destructive">*</span>
+                Empresa<span className="text-destructive">*</span>
               </Label>
               <Input
                 id="company_name"
                 name="company_name"
                 value={formData.company_name || ""}
                 onChange={handleChange}
-                aria-invalid={!!errors.company_name}
               />
               {errors.company_name && (
                 <p className="text-xs text-destructive">
@@ -221,22 +238,16 @@ export function EditContactModal({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">
-                Teléfono <span className="text-destructive">*</span>
-              </Label>
+              <Label htmlFor="phone">Teléfono</Label>
               <Input
                 id="phone"
                 name="phone"
-                type="text"
+                type="number"
                 inputMode="numeric"
-                value={formData.phone ?? ""}
+                value={formData.phone ?? 0}
                 onChange={handleChange}
                 aria-invalid={!!errors.phone}
               />
-
-              {errors.phone && (
-                <p className="text-xs text-destructive">{errors.phone}</p>
-              )}
             </div>
 
             <div className="space-y-2">
@@ -269,7 +280,7 @@ export function EditContactModal({
                 <SelectContent>
                   {states.map((state) => (
                     <SelectItem key={state.id} value={state.id}>
-                      {convertStateContact(state.name)}
+                      {state.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
