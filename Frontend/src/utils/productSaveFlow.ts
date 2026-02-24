@@ -244,7 +244,6 @@ export const saveProductEntity = async ({
   attachmentId?: string | null;
 }): Promise<Product> => {
   // ===== UPDATE =====
-  console.log("saveProductEntity", { formState, initialData, attachmentId });
   const updateRequest: ProductUpdateRequest = formStateToUpdateRequest(
     formState,
     initialData,
@@ -391,7 +390,6 @@ export const syncProductFixedSpecifications = async ({
 //     formState: { ...formState, specs: cleanedSpecs },
 //     initialData,
 //   });
-//   console.log("DISPATCH REFRESH", product.id);
 //   dispatch(refreshProductEverywhere(product.id));
 
 //   return product;

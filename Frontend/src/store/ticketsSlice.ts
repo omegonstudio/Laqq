@@ -103,7 +103,6 @@ export const createTicket = createAsyncThunk(
 export const updateTicket = createAsyncThunk(
   "tickets/updateTicket",
   async ({ id, data }: { id: string; data: Partial<UpdateTicketPayload> }) => {
-    console.log(data, "AA");
     return ticketsApi.update(id, data);
   }
 );
@@ -228,9 +227,6 @@ export const ticketsSlice = createSlice({
       } else {
         // Opcional: Si el ticket no está en la lista actual (quizás por paginación),
         // podrías agregarlo o ignorarlo según tu caso de uso
-        console.log(
-          `Ticket ${updatedTicket.id} no encontrado en la lista actual`
-        );
       }
     });
     /* TICKET GET ONE */

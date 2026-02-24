@@ -107,7 +107,6 @@ const UsersTable = () => {
         user.email.toLowerCase().includes(q)
     );
   }, [searchTerm, tableRows]);
-  console.log(usersData, "AAAA");
   const userTypeOptions = useMemo(() => {
     const items = userTypesData?.results ?? [];
     return [

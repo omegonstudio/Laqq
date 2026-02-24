@@ -133,10 +133,6 @@ export const formStateToUpdateRequest = (
     JSON.stringify([...currentAttachmentIds].sort());
 
   if (attachmentsChanged) {
-    console.log("Attachments cambiaron:", {
-      initial: initialAttachmentIds,
-      current: currentAttachmentIds,
-    });
     updateRequest.attachments = currentAttachmentIds;
     hasRealChanges = true;
   }
@@ -216,8 +212,6 @@ export const haveFixedSpecsChanged = (
   if (areEqual) {
     return codeValid;
   }
-
-  // console.log(initial, current, areEqual, "AAAAAAAAAAAA");
   // return areEqual;
 };
 

@@ -148,7 +148,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     [localState]
   );
   // useEffect(() => {
-  //   console.log("INITIAL DATA", initialData, "LOCAL STATE", localState);
   // }, [initialData, localState]);
 
   const haveAttachmentsChanged = (

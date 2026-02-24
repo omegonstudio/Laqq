@@ -44,7 +44,6 @@ export function EditContactModal({
   isNew,
 }: EditContactModalProps) {
   const [formData, setFormData] = useState<Partial<Contact>>({});
-  console.log(formData, "aaa");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const dispatch = useAppDispatch();

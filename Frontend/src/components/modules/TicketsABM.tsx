@@ -161,7 +161,6 @@ const TicketsABM = () => {
       render: (value) => convertStateTicket(value),
     },
   ];
-  console.log(user, "asas");
   const actions = [
     { icon: <Eye size={16} />, onClick: handleView, label: "Ver" },
     {

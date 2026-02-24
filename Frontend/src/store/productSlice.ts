@@ -80,7 +80,6 @@ export const fetchProduct = createAsyncThunk(
 export const createProduct = createAsyncThunk(
   "products/createProduct",
   async (data: ProductCreateRequest) => {
-    console.log("Creando producto con datos:", data);
     return productsApi.create(data);
   }
 );

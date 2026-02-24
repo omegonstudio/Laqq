@@ -54,7 +54,6 @@ const ContactsABM = () => {
 
   const { states } = useAppSelector((state: RootState) => state.contacts);
   const dispatch = useAppDispatch();
-  console.log(states, "aaa");
   useEffect(() => {
     dispatch(fetchContactStates({}));
     dispatch(fetchUsers({ page: 1, page_size: 1000 }));
