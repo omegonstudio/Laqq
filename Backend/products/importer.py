@@ -7,6 +7,7 @@ from io import BytesIO, StringIO
 
 from django.conf import settings
 from django.db import transaction
+from django.core.files.base import ContentFile
 
 # openpyxl para leer .xlsx
 try:
@@ -36,32 +37,37 @@ def parse_bool(value):
     v = str(value).strip().lower()
     return v in ('1', 'true', 'yes', 'y', 't')
 
-def _generate_attachment_from_url(image_url, *, summary=None):
+def _get_attachment_by_name(image_name):
     """
-    Descarga la URL y crea un Attachment. Devuelve el Attachment o None.
-    Aplica validaciones básicas (host permitido, tamaño) y respeta el feature flag
-    ENABLE_PRODUCT_IMAGE_DOWNLOADS.
+    Busca un Attachment por nombre de archivo en la librería.
+    Retorna el Attachment o None si no lo encuentra.
     """
-    if not getattr(settings, 'ENABLE_PRODUCT_IMAGE_DOWNLOADS', True):
-        logger.info("Descarga de imágenes deshabilitada por configuración")
+    if not image_name:
         return None
-
+    
+    image_name = image_name.strip()
+    if not image_name:
+        return None
+    
     try:
-        binary = image_http_client.fetch_binary(image_url)
-    except (HttpClientConfigError, HttpClientResponseError, HttpClientError) as exc:
-        logger.warning("No se pudo descargar %s: %s", image_url, exc)
-        if summary is not None:
-            summary['errors'].append({'image_url': image_url, 'error': str(exc)})
+        # Buscar por file_name (búsqueda exacta)
+        att = Attachment.objects.filter(file_name=image_name).first()
+        if att:
+            return att
+        
+        # Si no encuentra exacto, buscar case-insensitive
+        att = Attachment.objects.filter(file_name__iexact=image_name).first()
+        if att:
+            return att
+        
+        # Si tampoco encuentra, buscar por nombre sin extensión
+        name_without_ext = os.path.splitext(image_name)[0]
+        att = Attachment.objects.filter(file_name__istartswith=name_without_ext).first()
+        
+        return att
+    except Exception as e:
+        logger.warning("Error buscando attachment por nombre '%s': %s", image_name, e)
         return None
-
-    filename = binary.filename or f'{uuid.uuid4().hex[:12]}.bin'
-    att = Attachment.objects.create(
-        file_name=filename,
-        content_type=binary.content_type,
-        size_bytes=len(binary.content),
-        data=binary.content
-    )
-    return att
 
 def _get_or_create_brand(name, brand_cache, summary):
     name = (name or '').strip()
@@ -191,11 +197,12 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
     fileobj: objeto tipo UploadedFile o file-like. Se detecta la extensión por fileobj.name si está disponible.
     Retorna un dict resumen con contadores y errores.
     CSV/Excel debe contener columnas (recomendadas):
-      product_code, name, brand, category_level_0, category_level_1, category_level_2, description, image_url, is_active, related_product_codes, spec_code, volume, dimensions, cap, outlet, accuracy, precision, additional_specs
+      product_code, name, brand, category_level_0, category_level_1, category_level_2, description, image_name, is_active, related_product_codes, spec_code, volume, dimensions, cap, outlet, accuracy, precision, additional_specs
     Categorías:
       - category_level_0: obligatorio si hay categoría. Solo acepta: insumos, procesos, equipos, mobiliario
       - category_level_1: opcional, se crea si no existe
       - category_level_2: opcional, se crea si no existe (requiere level_1)
+    image_name: nombre del archivo de imagen en la librería (ej: vaso.jpg)
     """
     # Intentar detectar tipo (xlsx vs csv) por nombre de archivo si está presente
     filename = getattr(fileobj, 'name', '') or ''
@@ -245,7 +252,7 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
     summary = {
         'created_brands': 0,
         'created_categories': 0,
-        'created_attachments': 0,
+        'linked_attachments': 0,
         'created_products': 0,
         'updated_products': 0,
         'created_specs': 0,
@@ -276,14 +283,18 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                 cat_level_2 = (first_row.get('category_level_2') or '').strip()
                 category = _get_or_create_category_by_levels(cat_level_0, cat_level_1, cat_level_2, category_cache, summary)
 
-                # image attachment
-                image_url = (first_row.get('image_url') or '').strip()
+                # image attachment por nombre (búsqueda en librería)
+                image_name = (first_row.get('image_name') or first_row.get('image_url') or '').strip()
                 image_attachment = None
-                if image_url and not skip_downloads:
-                    att = _generate_attachment_from_url(image_url, summary=summary)
+                if image_name and not skip_downloads:
+                    att = _get_attachment_by_name(image_name)
                     if att:
                         image_attachment = att
-                        summary['created_attachments'] += 1
+                        summary['linked_attachments'] += 1
+                    else:
+                        logger.warning("Imagen '%s' no encontrada en la librería para el producto '%s'", image_name, product_key)
+                        if summary is not None:
+                            summary['errors'].append({'product': product_key, 'error': f'Imagen "{image_name}" no encontrada en la librería'})
 
                 # lookup product by product_code if provided, else by name+brand
                 product_lookup = {}
