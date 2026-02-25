@@ -106,7 +106,12 @@ const MessagesTable = () => {
 
   const actions = [
     { icon: <Eye size={16} />, onClick: handleView, label: "Ver detalles" },
-    { icon: <Mail size={16} />, onClick: handleReply, label: "Responder" },
+    {
+      icon: <Mail size={16} />,
+      onClick: handleReply,
+      label: "Responder",
+      disabled: true,
+    },
     {
       icon: <Trash2 size={16} />,
       onClick: handleDelete,
