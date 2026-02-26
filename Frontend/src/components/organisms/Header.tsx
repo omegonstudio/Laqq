@@ -12,10 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import logoLight from "@/assets/laqq_marca_color_neg.svg";
 import { useAppSelector } from "@/store/hooks";
 import SearchBar from "../molecules/SearchBar";
 import { useProductFilters } from "@/hooks/useFilters";
+import Logo from "../atoms/Logo";
 
 const Header = () => {
   const { searchParams, setFilter } = useProductFilters();
@@ -73,13 +73,8 @@ const Header = () => {
         >
           <div className="container mx-auto flex items-center justify-between py-3 px-4 md:px-6">
             {/* Logo */}
-            <Link to="/" className="flex items-center">
-              <img
-                src={logoLight || "/placeholder.svg"}
-                alt="La Química Quirúrgica"
-                className="h-8 md:h-10"
-              />
-            </Link>
+         
+            <Logo variant="auto" className="h-8 md:h-10" showLink={false} />
 
             {/* Search Section - Hidden on mobile */}
             <div className="hidden lg:flex flex-1 items-center justify-center gap-3">
@@ -219,13 +214,7 @@ const Header = () => {
           <div className="container mx-auto flex items-center justify-between py-2 px-4 md:px-6">
             {/* Logo in sticky mode */}
             {scrolled && (
-              <Link to="/" className="flex items-center mr-4 md:mr-6">
-                <img
-                  src={logoLight || "/placeholder.svg"}
-                  alt="La Química Quirúrgica"
-                  className="h-6 md:h-8"
-                />
-              </Link>
+              <Logo variant="auto" className="h-8 md:h-10" showLink={false} />
             )}
 
             {/* Desktop Navigation */}

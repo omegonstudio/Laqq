@@ -104,7 +104,7 @@ const Sidebar = () => {
       )}
     >
       <div className="p-4 border-b border-white/10 flex items-center justify-between">
-        {!collapsed && <Logo />}
+        {!collapsed && <Logo variant="dark"/>}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="p-2 hover:bg-white/10 rounded-lg transition-colors"

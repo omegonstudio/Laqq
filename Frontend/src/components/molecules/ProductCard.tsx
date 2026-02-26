@@ -5,6 +5,9 @@ import Badge from "../atoms/Badge";
 import Button from "../atoms/Button";
 import { useCart } from "@/contexts/CartContext";
 import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
+import placeholderImageDark from "@/assets/laqq_marca_color_pos.svg";
+import { useTheme } from "next-themes";
+import Logo from "@/components/atoms/Logo";
 
 interface ProductCardProps {
   product: Product;
@@ -12,17 +15,23 @@ interface ProductCardProps {
 
 const ProductCard = ({ product }: ProductCardProps) => {
   const { addToCart } = useCart();
+  const { resolvedTheme } = useTheme();
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     addToCart(product);
   };
-  // const placeholderImage = "@/assets/laqq_marca_color_neg.svg";
   return (
     <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-shadow">
       <div className="aspect-square bg-muted rounded-xl mb-4 overflow-hidden">
         <img
-          src={product.image_url ? product.image_url : placeholderImage}
+          src={
+            product.image_url
+              ? product.image_url
+              : resolvedTheme === "dark"
+              ? placeholderImage
+              : placeholderImageDark
+          }          
           alt={product.name}
           className="w-full h-full object-contain p-4"
         />

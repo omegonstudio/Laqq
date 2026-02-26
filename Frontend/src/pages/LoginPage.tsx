@@ -53,7 +53,7 @@ const LoginPage = () => {
           className="bg-card p-8 rounded-2xl shadow-lg border border-border"
         >
           <div className="flex justify-center mb-6">
-            <Logo />
+            < Logo variant="auto" showLink={false} />
           </div>
 
           <h2 className="text-2xl font-bold text-foreground text-center mb-6">
