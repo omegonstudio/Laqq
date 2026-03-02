@@ -383,3 +383,83 @@ def send_quote_updated_to_customer(quote):
     except Exception as e:
         logger.error(f"Failed to send update email to customer: {str(e)}")
         raise
+
+
+def send_updated_quote_to_customer(quote):
+    """
+    Send updated quote with full details to customer (manual send from backoffice).
+    This is called manually when the user presses the "Send" button.
+
+    Args:
+        quote: Quote instance
+
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    try:
+        # Check if contact has email
+        if not quote.contact.email:
+            logger.warning(f"Quote #{quote.quote_number}: Contact has no email address")
+            return False
+
+        # Prepare context for template
+        items = quote.quoteitem_set.select_related('product').all()
+
+        # Build customer full name
+        customer_name = f"{quote.contact.first_name} {quote.contact.last_name}".strip() or "Cliente"
+
+        context = {
+            'quote': quote,
+            'quote_number': quote.quote_number,
+            'contact': quote.contact,
+            'customer_name': customer_name,
+            'items': items,
+            'total_items': items.count(),
+            'total_amount': quote.total_amount or sum(item.subtotal or 0 for item in items),
+            'business_name': settings.BUSINESS_NAME,
+            'business_email': settings.BUSINESS_EMAIL,
+            'business_phone': settings.BUSINESS_PHONE,
+            'business_address': settings.BUSINESS_ADDRESS,
+            'created_at': quote.created_at,
+            'updated_at': quote.updated_at,
+            'message': quote.message,
+            'observaciones': quote.observaciones,
+        }
+
+        # Render HTML and text versions
+        html_content = render_to_string('emails/quote_updated_customer.html', context)
+        text_content = render_to_string('emails/quote_updated_customer.txt', context)
+
+        # Create email
+        subject = f'Cotización Actualizada #{quote.quote_number} - {settings.BUSINESS_NAME}'
+        from_email = f'{settings.DEFAULT_FROM_NAME} <{settings.DEFAULT_FROM_EMAIL}>'
+        to_email = [quote.contact.email]
+
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=from_email,
+            to=to_email,
+        )
+        email.attach_alternative(html_content, "text/html")
+
+        # Print email content to console for debugging (BEFORE sending)
+        safe_print("\n" + "="*80)
+        safe_print(f"UPDATED QUOTE EMAIL TO CUSTOMER: {quote.contact.email}")
+        safe_print("="*80)
+        safe_print(f"Subject: {subject}")
+        safe_print(f"From: {from_email}")
+        safe_print(f"To: {to_email}")
+        safe_print("-"*80)
+        safe_print(text_content)
+        safe_print("="*80 + "\n")
+
+        # Send email via Resend API (or locmem during tests)
+        send_email_message(email)
+        logger.info(f"Updated quote #{quote.quote_number} sent to customer: {quote.contact.email}")
+
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to send updated quote email to customer: {str(e)}")
+        raise

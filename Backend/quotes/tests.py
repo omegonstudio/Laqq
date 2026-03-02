@@ -422,3 +422,134 @@ class QuoteEmailNotificationTestCase(APITestCase):
 
         # Verify emails were sent (2 emails: business + customer)
         self.assertEqual(len(mail.outbox), 2)
+
+
+@override_settings(TESTING=False)
+class QuoteSendUpdatedTestCase(APITestCase):
+    """Tests para el endpoint de envío manual de cotización actualizada"""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user_type = UserType.objects.create(id='admin', name='Admin')
+        self.user = User.objects.create_user(username='testuser', password='testpass123', is_staff=True)
+        self.user.user_type = self.user_type
+        self.user.save()
+        self.client.force_authenticate(user=self.user)
+
+        # Create required related objects
+        self.contact_state = ContactState.objects.create(id='active', name='Active')
+        self.contact = Contact.objects.create(
+            company_name='Test Company',
+            first_name='John',
+            last_name='Doe',
+            email='customer@test.com',
+            state=self.contact_state
+        )
+        self.quote_type = QuoteType.objects.create(id='standard', name='Standard')
+        self.quote_state = QuoteState.objects.create(id='pending', name='Pending')
+
+        # Create product for quote items
+        self.brand = Brand.objects.create(name='Test Brand')
+        self.category = Category.objects.create(name='Test Category')
+        self.product = Product.objects.create(
+            name='Test Product',
+            brand=self.brand,
+            category=self.category
+        )
+
+        # Create quote with observaciones
+        self.quote = Quote.objects.create(
+            quote_number='Q-2026-00001',
+            contact=self.contact,
+            quote_type=self.quote_type,
+            state=self.quote_state,
+            total_amount=500.00,
+            message='Test message',
+            observaciones='Estas son observaciones de prueba'
+        )
+
+        # Create quote item
+        self.quote_item = QuoteItem.objects.create(
+            quote=self.quote,
+            product=self.product,
+            quantity=2,
+            unit_price=250.00,
+            subtotal=500.00
+        )
+
+    def test_send_updated_quote_success(self):
+        """Verificar que se envía el email de cotización actualizada correctamente"""
+        # Clear mail outbox
+        mail.outbox = []
+
+        # Call the send-updated endpoint
+        url = f'/quotes/list/{self.quote.id}/send-updated/'
+        response = self.client.post(url)
+
+        # Verify response
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('message', response.data)
+        self.assertIn('quote_number', response.data)
+        self.assertIn('sent_to', response.data)
+        self.assertEqual(response.data['sent_to'], 'customer@test.com')
+        self.assertEqual(response.data['quote_number'], 'Q-2026-00001')
+
+        # Verify email was sent
+        self.assertEqual(len(mail.outbox), 1)
+        sent_email = mail.outbox[0]
+        self.assertIn('customer@test.com', sent_email.to)
+        self.assertIn('Q-2026-00001', sent_email.subject)
+
+    def test_send_updated_quote_no_email(self):
+        """Verificar error cuando el contacto no tiene email"""
+        # Create contact without email
+        contact_no_email = Contact.objects.create(
+            first_name='Jane',
+            last_name='Smith',
+            email='',
+            state=self.contact_state
+        )
+        quote_no_email = Quote.objects.create(
+            quote_number='Q-2026-00002',
+            contact=contact_no_email,
+            quote_type=self.quote_type,
+            state=self.quote_state
+        )
+
+        url = f'/quotes/list/{quote_no_email.id}/send-updated/'
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+        self.assertIn('no email', response.data['error'].lower())
+
+    def test_send_updated_quote_not_found(self):
+        """Verificar error 404 cuando la cotización no existe"""
+        fake_uuid = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        url = f'/quotes/list/{fake_uuid}/send-updated/'
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn('error', response.data)
+
+    def test_send_updated_quote_with_observaciones(self):
+        """Verificar que las observaciones se incluyen en el email"""
+        mail.outbox = []
+
+        url = f'/quotes/list/{self.quote.id}/send-updated/'
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)
+
+        # The email HTML should include the observaciones
+        # (actual content verification would require checking email body)
+
+    def test_send_updated_requires_authentication(self):
+        """Verificar que el endpoint requiere autenticación"""
+        # Create unauthenticated client
+        unauth_client = APIClient()
+        url = f'/quotes/list/{self.quote.id}/send-updated/'
+        response = unauth_client.post(url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

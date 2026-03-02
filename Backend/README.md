@@ -21,8 +21,10 @@ Sistema backend desarrollado con Django REST Framework para la gestión completa
 
 ### Gestión Comercial
 - ✅ **Cotizaciones** - Sistema completo de generación de cotizaciones
+- ✅ **Observaciones en Cotizaciones** - Campo de texto para notas internas de backoffice
+- ✅ **Envío Manual de Cotizaciones** - Endpoint para enviar cotizaciones actualizadas por email
 - ✅ **Contactos y Clientes** - CRM integrado con estados y seguimiento
-- ✅ **Notificaciones Email** - Emails automáticos para cotizaciones
+- ✅ **Notificaciones Email** - Emails automáticos y manuales para cotizaciones
 - ✅ **Tickets de Servicio** - Sistema de soporte y seguimiento
 
 ### Adicionales
@@ -201,9 +203,11 @@ El servidor estará disponible en: http://127.0.0.1:8000/
 
 ## 📧 Notificaciones por Email
 
-El sistema envía notificaciones automáticas por email cuando se crean cotizaciones.
+El sistema soporta notificaciones por email tanto automáticas como manuales para cotizaciones.
 
 ### Funcionamiento
+
+#### Email Automático al Crear Cotización
 
 Cuando un cliente envía su carrito y se genera una cotización:
 
@@ -219,6 +223,32 @@ Cuando un cliente envía su carrito y se genera una cotización:
    - Resumen de productos solicitados
    - Tiempo estimado de respuesta
    - Datos de contacto del negocio
+
+#### Email Manual de Cotización Actualizada
+
+Desde el backoffice, se puede enviar manualmente una cotización actualizada al cliente:
+
+**Endpoint:** `POST /api/quotes/list/{id}/send-updated/`
+
+**Características:**
+- ✅ Envía email HTML profesional con todos los detalles de la cotización
+- ✅ Incluye productos, cantidades, precios y total
+- ✅ Muestra observaciones internas si están presentes
+- ✅ Incluye información del negocio para contacto
+- ✅ Solo requiere autenticación (Admin/BackOffice)
+
+**Ejemplo de uso:**
+```bash
+POST /api/quotes/list/a1b2c3d4-e5f6-7890-abcd-ef1234567890/send-updated/
+Headers: Authorization: Bearer {jwt_token}
+
+# Respuesta exitosa
+{
+  "message": "Updated quote sent successfully to cliente@example.com",
+  "quote_number": "Q-2026-00015",
+  "sent_to": "cliente@example.com"
+}
+```
 
 ### Configuración de Email
 
@@ -254,10 +284,23 @@ EMAIL_HOST_PASSWORD=password
 ### Personalización
 
 Puedes personalizar los templates de email en:
+
+**Cotizaciones Nuevas:**
 - `quotes/templates/emails/quote_business.html` - Email al negocio (HTML)
 - `quotes/templates/emails/quote_business.txt` - Email al negocio (texto plano)
 - `quotes/templates/emails/quote_customer.html` - Email al cliente (HTML)
 - `quotes/templates/emails/quote_customer.txt` - Email al cliente (texto plano)
+
+**Cotizaciones Actualizadas (envío manual):**
+- `quotes/templates/emails/quote_updated_customer.html` - Email al cliente con cotización completa (HTML)
+- `quotes/templates/emails/quote_updated_customer.txt` - Email al cliente (texto plano)
+
+Los templates de cotización actualizada incluyen:
+- Tabla completa de productos con precios unitarios y subtotales
+- Total de la cotización
+- Observaciones internas (si están presentes)
+- Fechas de creación y última actualización
+- Información de contacto del negocio
 
 ### Testing de Emails
 

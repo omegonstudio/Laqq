@@ -6,6 +6,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import QuoteType, QuoteState, Quote, QuoteItem
 from .serializers import QuoteTypeSerializer, QuoteStateSerializer, QuoteSerializer, QuoteItemSerializer, BulkQuoteItemSerializer, QuotePackageSerializer
 from .permissions import CanCreateOrAdmin, AllowPublicQuoteItems
+from .emails import send_updated_quote_to_customer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -229,6 +230,89 @@ class QuoteViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_201_CREATED
         )
+
+    @action(detail=True, methods=['post'], url_path='send-updated')
+    def send_updated(self, request, pk=None):
+        """
+        Envía la cotización actualizada por email al cliente.
+
+        Este endpoint es llamado manualmente desde el backoffice cuando el usuario
+        presiona el botón "Enviar" después de actualizar una cotización.
+
+        ENDPOINT: POST /api/quotes/list/{id}/send-updated/
+
+        EJEMPLO:
+        POST /api/quotes/list/a1b2c3d4-e5f6-7890-abcd-ef1234567890/send-updated/
+
+        RESPUESTA EXITOSA (200 OK):
+        {
+            "message": "Updated quote sent successfully to cliente@example.com",
+            "quote_number": "Q-2026-00015",
+            "sent_to": "cliente@example.com"
+        }
+
+        RESPUESTA ERROR (404 Not Found):
+        {
+            "error": "Quote not found"
+        }
+
+        RESPUESTA ERROR (400 Bad Request):
+        {
+            "error": "Contact has no email address"
+        }
+
+        RESPUESTA ERROR (500 Internal Server Error):
+        {
+            "error": "Failed to send email: [error message]"
+        }
+        """
+        try:
+            # Get the quote
+            quote = self.get_object()
+
+            # Check if contact has email
+            if not quote.contact.email:
+                return Response(
+                    {
+                        'error': 'Contact has no email address',
+                        'quote_number': quote.quote_number
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Send the email
+            success = send_updated_quote_to_customer(quote)
+
+            if success:
+                logger.info(f"Updated quote #{quote.quote_number} sent manually to {quote.contact.email}")
+                return Response(
+                    {
+                        'message': f'Updated quote sent successfully to {quote.contact.email}',
+                        'quote_number': quote.quote_number,
+                        'sent_to': quote.contact.email
+                    },
+                    status=status.HTTP_200_OK
+                )
+            else:
+                return Response(
+                    {
+                        'error': 'Failed to send email',
+                        'quote_number': quote.quote_number
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        except Quote.DoesNotExist:
+            return Response(
+                {'error': 'Quote not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error sending updated quote: {str(e)}")
+            return Response(
+                {'error': f'Failed to send email: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class QuoteItemViewSet(viewsets.ModelViewSet):
     queryset = QuoteItem.objects.all()

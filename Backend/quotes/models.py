@@ -28,6 +28,7 @@ class Quote(models.Model):
     quote_type = models.ForeignKey(QuoteType, on_delete=models.PROTECT, default='standard')
     state = models.ForeignKey(QuoteState, on_delete=models.PROTECT, default='pending')
     message = models.TextField(blank=True, null=True)
+    observaciones = models.TextField(blank=True, null=True)
     total_amount = models.DecimalField(max_digits=14, decimal_places=2, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
