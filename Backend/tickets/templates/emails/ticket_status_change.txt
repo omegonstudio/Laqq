@@ -1,0 +1,41 @@
+{{ business_name }}
+Actualización de Ticket de Servicio
+
+Hola {{ customer_name }},
+
+Tu ticket de servicio ha sido actualizado.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INFORMACIÓN DEL TICKET
+
+Número de Ticket: {{ ticket_number }}
+Producto: {{ product_name }}
+Prioridad: {{ priority.name }}
+Estado actual: {{ state.name }}
+Última actualización: {{ updated_at|date:"d/m/Y H:i" }}
+
+Descripción del problema:
+{{ description }}
+{% if resolution_notes %}
+Notas de resolución:
+{{ resolution_notes }}
+{% endif %}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📞 CONTACTO
+
+Si tienes alguna consulta, puedes contactarnos:
+
+Email: {{ business_email }}
+{% if business_phone %}Teléfono: {{ business_phone }}{% endif %}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Gracias por confiar en {{ business_name }}.
+
+---
+Este es un mensaje automático. Por favor no respondas a este correo.
+Para comunicarte con nosotros, escribe a {{ business_email }}
+
+Ticket #{{ ticket_number }} | {{ updated_at|date:"d/m/Y H:i" }}
