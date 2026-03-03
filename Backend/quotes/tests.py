@@ -530,7 +530,8 @@ class QuoteSendUpdatedTestCase(APITestCase):
         response = self.client.post(url)
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertIn('error', response.data)
+        # DRF returns 'detail' key for 404 errors
+        self.assertIn('detail', response.data)
 
     def test_send_updated_quote_with_observaciones(self):
         """Verificar que las observaciones se incluyen en el email"""

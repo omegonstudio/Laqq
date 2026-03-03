@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import QuoteType, QuoteState, Quote, QuoteItem
@@ -231,7 +232,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED
         )
 
-    @action(detail=True, methods=['post'], url_path='send-updated')
+    @action(detail=True, methods=['post'], url_path='send-updated', permission_classes=[IsAuthenticated])
     def send_updated(self, request, pk=None):
         """
         Envía la cotización actualizada por email al cliente.
@@ -266,20 +267,20 @@ class QuoteViewSet(viewsets.ModelViewSet):
             "error": "Failed to send email: [error message]"
         }
         """
+        # Get the quote (handles 404 automatically)
+        quote = self.get_object()
+
+        # Check if contact has email
+        if not quote.contact.email:
+            return Response(
+                {
+                    'error': 'Contact has no email address',
+                    'quote_number': quote.quote_number
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
-            # Get the quote
-            quote = self.get_object()
-
-            # Check if contact has email
-            if not quote.contact.email:
-                return Response(
-                    {
-                        'error': 'Contact has no email address',
-                        'quote_number': quote.quote_number
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
             # Send the email
             success = send_updated_quote_to_customer(quote)
 
@@ -302,11 +303,6 @@ class QuoteViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
-        except Quote.DoesNotExist:
-            return Response(
-                {'error': 'Quote not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
         except Exception as e:
             logger.error(f"Error sending updated quote: {str(e)}")
             return Response(
