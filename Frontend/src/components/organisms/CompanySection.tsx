@@ -82,7 +82,7 @@ const CompanySection = () => {
       </div>
 
 {/* COMPROMISO SOSTENIDO */}
-<div className="bg-gray-100 py-24">
+<div className="bg-gray-100 dark:bg-neutral-900 py-24">
   <div className="container mx-auto px-6 max-w-7xl">
 
     {/* Título + descripción */}
@@ -91,7 +91,7 @@ const CompanySection = () => {
         Compromiso sostenido
       </h2>
 
-      <p className="text-lg text-gray-600 leading-relaxed">
+      <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
         Brindamos soluciones diseñadas a medida, con asesoramiento personalizado
         y acompañamiento continuo en cada etapa del proceso.
       </p>
@@ -131,16 +131,15 @@ const CompanySection = () => {
 </div>
 
 {/* COBERTURA ESTRATÉGICA */}
-<div className="bg-gray-100 py-24">
+<div className="bg-gray-100 dark:bg-neutral-900 py-24">
   <div className="container mx-auto px-6 max-w-7xl">
 
     {/* Título + descripción */}
     <div className="mb-16 max-w-3xl">
-      <h2 className="text-5xl font-light mb-6">
-        Cobertura estratégica
+    <h2 className="text-5xl font-light mb-6 text-gray-900 dark:text-white">        Cobertura estratégica
       </h2>
 
-      <p className="text-lg text-gray-600 leading-relaxed">
+      <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
         Abastecemos laboratorios de control, investigación y desarrollo,
         ofreciendo soluciones confiables a industrias y centros de investigación
         de diversos sectores.
@@ -152,7 +151,7 @@ const CompanySection = () => {
 
       {[
         { title: "Farmacéutica", img: "/farma.png" },
-        { title: "Energía", img: "/petroleo.png" }, // renombrar archivo sin tilde
+        { title: "Energía", img: "/petroleo.png" }, 
         { title: "Alimentos", img: "/alimentos2.png" },
         { title: "Química", img: "/quimica.jpg" },
         { title: "Metalúrgica", img: "/metalurgia.png" },
