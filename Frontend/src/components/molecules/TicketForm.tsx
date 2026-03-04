@@ -158,7 +158,7 @@ const TicketForm = ({
   }, [formData]);
 
   useEffect(() => {
-    dispatch(fetchAllProducts());
+    dispatch(fetchAllProducts({}));
   }, [dispatch]);
 
   const handleFile = (file: File | null) => {

@@ -322,12 +322,10 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
                       : ""
                   }
                 >
-                  <SelectValue placeholder="Sin categoría padre (raíz)" />
+                  <SelectValue placeholder="Sin categoría padre" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">
-                    Sin categoría padre (raíz)
-                  </SelectItem>
+                  <SelectItem value="none">Sin categoría padre</SelectItem>
 
                   {flatCategories.map((cat) => {
                     const disabled = isDisabled(cat);

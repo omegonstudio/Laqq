@@ -166,18 +166,18 @@ const ProductDetailPage = () => {
                 <>
                   <button
                     onClick={goToPrevious}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg transition-all z-10"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 hover:bg-white p-2 rounded-full shadow-lg transition-all z-10"
                     aria-label="Imagen anterior"
                   >
-                    <ChevronLeft className="w-6 h-6" />
+                    <ChevronLeft className="w-6 h-6 hover:bg-black" />
                   </button>
 
                   <button
                     onClick={goToNext}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg transition-all z-10"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 hover:bg-white p-2 rounded-full shadow-lg transition-all z-10"
                     aria-label="Imagen siguiente"
                   >
-                    <ChevronRight className="w-6 h-6" />
+                    <ChevronRight className="w-6 h-6 hover:bg-black" />
                   </button>
                 </>
               )}
@@ -219,7 +219,7 @@ const ProductDetailPage = () => {
               {product.brand}
             </Badge>
             <h1 className="text-4xl font-bold mb-4">{product.name}</h1>
-            <p className="text-lg text-muted-foreground mb-8">
+            <p className="text-lg text-muted-foreground mb-8 whitespace-pre-line ">
               {product.description}
             </p>
 

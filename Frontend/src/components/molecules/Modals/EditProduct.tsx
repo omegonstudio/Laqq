@@ -8,7 +8,13 @@ import {
   ProductFormState,
   ProductSpec,
 } from "@/types/types";
-import Select from "@/components/atoms/Select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import UploadFile from "@/components/atoms/UploadFile";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import Modal from "@/components/common/Modal";
@@ -36,6 +42,8 @@ import { Toggle } from "@/components/ui/toggle";
 import { refreshProductEverywhere } from "@/store/productSlice";
 import { toast } from "@/hooks/use-toast";
 import { productsApi } from "@/lib/api/products";
+import { Textarea } from "@/components/ui/textarea";
+import SelectCategories from "@/components/atoms/SelectCategories";
 
 interface ModalProductProps {
   isOpen: boolean;
@@ -620,38 +628,37 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       prev ? prev.filter((_, i) => i !== index) : null
     );
   };
-  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setLocalState({ ...localState, category: e.target.value });
+  const handleCategoryChange = (e: string) => {
+    setLocalState({ ...localState, category: e });
   };
 
-  const handleBrandChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setLocalState({ ...localState, brand: e.target.value });
-  };
-
-  const handleRelatedChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedId = e.target.value;
+  const handleRelatedChange = (selectedId: string) => {
     if (!selectedId) return;
 
     const currentRelated = localState.related || [];
     const alreadyExists = currentRelated.some((rel) => rel.id === selectedId);
 
-    if (!alreadyExists) {
-      const selectedProduct = products.find((p) => p.id === selectedId);
-      if (selectedProduct) {
-        setLocalState({
-          ...localState,
-          related: [
-            ...currentRelated,
-            {
-              id: selectedProduct.id,
-              name: selectedProduct.name,
-              brand: selectedProduct.brand,
-              product_code: selectedProduct.product_code,
-            },
-          ],
-        });
-      }
+    if (alreadyExists) {
+      setSelectedRelated("");
+      return;
     }
+
+    const selectedProduct = products.find((p) => p.id === selectedId);
+
+    if (!selectedProduct) return;
+
+    setLocalState({
+      ...localState,
+      related: [
+        ...currentRelated,
+        {
+          id: selectedProduct.id,
+          name: selectedProduct.name,
+          brand: selectedProduct.brand,
+          product_code: selectedProduct.product_code,
+        },
+      ],
+    });
 
     setSelectedRelated("");
   };
@@ -784,53 +791,69 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             Destacar
           </label>
         </div>
-        <InputField
-          label="Descripción"
+        <Textarea
           value={localState.description}
           onChange={(e) =>
             setLocalState({ ...localState, description: e.target.value })
           }
         />
         <div className="flex gap-5">
-          <Select
-            label="Categoría"
-            value={localState.category}
-            onChange={handleCategoryChange}
-            options={[
-              { value: "", label: "Selecciona una categoría" },
-              ...categories.map((cat) => ({
-                value: cat.id,
-                label: cat.name,
-              })),
-            ]}
-          />
-          <Select
-            label="Marca"
-            value={localState.brand}
-            onChange={handleBrandChange}
-            options={[
-              { value: "", label: "Selecciona una marca" },
-              ...brands.map((brand) => ({
-                value: brand.id,
-                label: brand.name,
-              })),
-            ]}
-          />
+          <div className="w-[50%]">
+            <SelectCategories
+              editProductModal
+              onChange={handleCategoryChange}
+            />
+          </div>
+          <div className="w-[50%]">
+            <label className="text-sm font-medium">Marca</label>
+
+            <Select
+              value={localState.brand || ""}
+              onValueChange={(value) =>
+                setLocalState((prev) => ({
+                  ...prev,
+                  brand: value,
+                }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona una marca" />
+              </SelectTrigger>
+
+              <SelectContent>
+                {brands.map((brand) => (
+                  <SelectItem key={brand.id} value={brand.id}>
+                    {brand.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         {/* ✅ Select de productos relacionados + Lista de seleccionados */}
         <div className="space-y-2">
+          <label className="text-sm font-medium">Productos relacionados</label>
+
           <Select
-            label="Productos relacionados"
-            value={selectedRelated}
-            onChange={handleRelatedChange}
-            options={[
-              { value: "", label: "Agregar producto relacionado" },
-              ...availableProducts.map((prod) => ({
-                value: prod.id,
-                label: prod.name,
-              })),
-            ]}
-          />
+            value={selectedRelated || ""}
+            onValueChange={(value) => {
+              if (!value) return;
+
+              handleRelatedChange(value);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Agregar producto relacionado" />
+            </SelectTrigger>
+
+            <SelectContent>
+              {availableProducts.map((prod) => (
+                <SelectItem key={prod.id} value={prod.id}>
+                  {prod.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {/* Lista de productos relacionados seleccionados */}
           {localState.related && localState.related.length > 0 && (

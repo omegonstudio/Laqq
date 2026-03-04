@@ -1,6 +1,7 @@
 import {
   Attachment,
   PaginatedResponse as BasePaginatedResponse,
+  Product,
 } from "./types";
 
 export type PaginatedResponse<T> = BasePaginatedResponse<T>;
@@ -149,29 +150,6 @@ export interface RelatedProduct {
   name: string;
   relation_type: string | null;
   brand?: string | null;
-}
-
-export interface Product {
-  id: string;
-  product_code: string;
-  name: string;
-  brand: string | null;
-  brand_id?: string;
-  category: string | null;
-  category_id?: string;
-  description: string | null;
-  image_attachment: string | null;
-  image?: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  specs: ProductSpec[];
-  specifications?: ProductSpec[]; // alias de backend
-  fixed_specs: ProductFixedSpec[];
-  related_product_ids?: string[];
-  related_product_codes?: string[];
-  related_products: RelatedProduct[];
-  related?: RelatedProduct[];
 }
 
 // =================== QUOTE ENUMS ===================
