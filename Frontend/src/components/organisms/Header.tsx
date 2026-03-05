@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Moon, Sun, User, ShoppingCart, X, Menu } from "lucide-react";
 import NavDropdown from "../molecules/NavDropdown";
@@ -21,20 +21,11 @@ const Header = () => {
   const { searchParams, setFilter } = useProductFilters();
 
   const [cartOpen, setCartOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const { totalItems } = useCart();
   const { list: brands, loading } = useAppSelector((state) => state.brands);
   const [selectedBrand, setSelectedBrand] = useState("all");
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 60);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   const handleViewAllResults = (query: string) => {
     setFilter("search", query);
@@ -54,28 +45,32 @@ const Header = () => {
     const brand = brands.find((b) => b.id === selectedBrand);
     return brand?.name || "Todas las marcas";
   };
-
+  const navigate = useNavigate();
+  const navigateNosotros: { name: string; path: string }[] = [
+    { name: "Certificados", path: "/certificates" },
+    { name: "Empresa", path: "/company" },
+    { name: "Contacto", path: "/contact" },
+  ];
   return (
     <>
       {/* Spacer to prevent content jump */}
-      <div className={scrolled ? "h-[60px]" : "h-0"} />
 
-      <header className="w-full">
+      <header className="w-full sticky top-0 z-50">
+        {" "}
         {/* --- Top Bar (hides on scroll) --- */}
         <div
-          className={`w-full border-b transition-all duration-300 ${
-            scrolled ? "hidden" : "block"
-          } ${
-            theme === "dark"
-              ? "bg-[#0a0a0a] border-[#222]"
-              : "bg-white border-gray-200"
-          }`}
+          className={`w-full border-b
+           ${
+             theme === "dark"
+               ? "bg-[#0a0a0a] border-[#222]"
+               : "bg-white border-gray-200"
+           }`}
         >
           <div className="container mx-auto flex items-center justify-between py-3 px-4 md:px-6">
             {/* Logo */}
-         
-            <Logo variant="auto" className="h-8 md:h-10" showLink={false} />
-
+            <a href="/">
+              <Logo variant="auto" className="h-8 md:h-10" showLink={false} />
+            </a>
             {/* Search Section - Hidden on mobile */}
             <div className="hidden lg:flex flex-1 items-center justify-center gap-3">
               <div
@@ -200,12 +195,9 @@ const Header = () => {
             </div>
           </div>
         </div>
-
         {/* --- Bottom Navigation (sticky) --- */}
         <nav
-          className={`border-b transition-all duration-300 ${
-            scrolled ? "fixed top-0 left-0 right-0 z-50 shadow-md" : ""
-          } ${
+          className={`border-b  ${
             theme === "dark"
               ? "border-gray-800 bg-[#0a0a0a]"
               : "border-gray-200 bg-white"
@@ -213,18 +205,16 @@ const Header = () => {
         >
           <div className="container mx-auto flex items-center justify-between py-2 px-4 md:px-6">
             {/* Logo in sticky mode */}
-            {scrolled && (
+            {/* {scrolled && (
               <Logo variant="auto" className="h-8 md:h-10" showLink={false} />
-            )}
+            )} */}
 
             {/* Desktop Navigation */}
             <div
-              className={`hidden md:flex items-center gap-2 text-sm font-medium ${
-                scrolled ? "" : "justify-center w-full"
-              }`}
+              className={`hidden md:flex items-center gap-2 text-sm font-medium`}
             >
               <NavDropdown />
-              <Link
+              {/* <Link
                 to="/quote"
                 className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
                   theme === "dark"
@@ -233,7 +223,7 @@ const Header = () => {
                 }`}
               >
                 Solicitud de cotización
-              </Link>
+              </Link> */}
               <Link
                 to="/support"
                 className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
@@ -244,106 +234,39 @@ const Header = () => {
               >
                 Servicio técnico
               </Link>
+              <Select onValueChange={(value) => navigate(value)}>
+                <SelectTrigger
+                  className={`w-[180px] text-sm rounded-2xl px-4 py-2 border transition-colors ${
+                    theme === "dark"
+                      ? "bg-[#0a0a0a] border-gray-700 text-gray-200"
+                      : "bg-white border-gray-300 text-gray-700"
+                  }`}
+                >
+                  <SelectValue placeholder="NOSOTROS" />
+                </SelectTrigger>
+
+                <SelectContent className="rounded-2xl">
+                  {navigateNosotros.map((n) => (
+                    <SelectItem
+                      key={n.path}
+                      className="rounded-xl"
+                      value={n.path}
+                    >
+                      {n.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Mobile Navigation Toggle */}
-            <div
-              className={`flex md:hidden items-center ${
-                scrolled ? "" : "justify-center w-full"
-              }`}
-            >
+            <div className={`flex md:hidden items-center `}>
               <NavDropdown />
             </div>
 
             {/* Icons in sticky mode */}
-            {scrolled && (
-              <>
-                {/* Desktop icons */}
-                <div className="hidden md:flex items-center gap-3 ml-6">
-                  <button
-                    onClick={() => setCartOpen(true)}
-                    className="relative p-2 hover:bg-muted rounded-lg transition-colors"
-                    aria-label="Carrito de compras"
-                  >
-                    <ShoppingCart
-                      className={`w-6 h-6 ${
-                        theme === "dark" ? "text-gray-200" : "text-gray-700"
-                      }`}
-                    />
-                    {totalItems > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                        {totalItems}
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    onClick={() =>
-                      setTheme(theme === "dark" ? "light" : "dark")
-                    }
-                    className="p-2 rounded-lg hover:bg-muted transition-colors"
-                    aria-label="Toggle theme"
-                  >
-                    {theme === "dark" ? (
-                      <Sun className="w-6 h-6 text-gray-200" />
-                    ) : (
-                      <Moon className="w-6 h-6 text-gray-700" />
-                    )}
-                  </button>
-                  <Link
-                    to="/login"
-                    className={`p-2 rounded-lg hover:bg-muted transition-colors ${
-                      theme === "dark"
-                        ? "text-gray-300 hover:text-primary"
-                        : "text-gray-600 hover:text-primary"
-                    }`}
-                  >
-                    <User className="w-6 h-6" />
-                  </Link>
-                </div>
-
-                {/* Mobile icons in sticky */}
-                <div className="flex md:hidden items-center gap-2 ml-auto">
-                  <button
-                    onClick={() => setCartOpen(true)}
-                    className="relative p-2 hover:bg-muted rounded-lg transition-colors"
-                    aria-label="Carrito de compras"
-                  >
-                    <ShoppingCart
-                      className={`w-5 h-5 ${
-                        theme === "dark" ? "text-gray-200" : "text-gray-700"
-                      }`}
-                    />
-                    {totalItems > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold text-[10px]">
-                        {totalItems}
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    className="p-2 hover:bg-muted rounded-lg transition-colors"
-                    aria-label="Menú"
-                  >
-                    {mobileMenuOpen ? (
-                      <X
-                        className={`w-5 h-5 ${
-                          theme === "dark" ? "text-gray-200" : "text-gray-700"
-                        }`}
-                      />
-                    ) : (
-                      <Menu
-                        className={`w-5 h-5 ${
-                          theme === "dark" ? "text-gray-200" : "text-gray-700"
-                        }`}
-                      />
-                    )}
-                  </button>
-                </div>
-              </>
-            )}
           </div>
         </nav>
-
         {/* Mobile Menu */}
         <div
           className={`md:hidden border-b transition-all duration-300 overflow-hidden ${
@@ -394,17 +317,29 @@ const Header = () => {
 
             {/* Navigation links on mobile */}
             <div className="flex flex-col gap-2">
-              <Link
-                to="/quote"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`px-4 py-3 rounded-md text-sm font-medium border text-center transition-colors ${
-                  theme === "dark"
-                    ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
-                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
-                }`}
-              >
-                Solicitud de cotización
-              </Link>
+              <Select onValueChange={(value) => navigate(value)}>
+                <SelectTrigger
+                  className={`w-[180px] text-sm rounded-2xl px-4 py-2 border transition-colors ${
+                    theme === "dark"
+                      ? "bg-[#0a0a0a] border-gray-700 text-gray-200"
+                      : "bg-white border-gray-300 text-gray-700"
+                  }`}
+                >
+                  <SelectValue placeholder="NOSOTROS" />
+                </SelectTrigger>
+
+                <SelectContent className="rounded-2xl">
+                  {navigateNosotros.map((n) => (
+                    <SelectItem
+                      key={n.path}
+                      className="rounded-xl"
+                      value={n.path}
+                    >
+                      {n.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Link
                 to="/support"
                 onClick={() => setMobileMenuOpen(false)}

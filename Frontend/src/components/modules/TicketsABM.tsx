@@ -214,7 +214,7 @@ const TicketsABM = () => {
             { value: "all", label: "Todos los estados" },
             ...states.map((item) => ({
               value: item.id,
-              label: convertStateTicket(item.name),
+              label: item.name,
             })),
           ]}
           value={statusFilter}

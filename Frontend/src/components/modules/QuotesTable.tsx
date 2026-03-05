@@ -169,7 +169,7 @@ const QuotesTable = () => {
             { value: "all", label: "Todos los tipos" },
             ...quotesTypes.map((item) => ({
               value: item.id,
-              label: convertQuotesTypes(item.name),
+              label: item.name,
             })),
           ]}
         />
@@ -180,7 +180,7 @@ const QuotesTable = () => {
             { value: "all", label: "Todos los estados" },
             ...quotesStates.map((item) => ({
               value: item.id,
-              label: convertQuotesState(item.name),
+              label: item.name,
             })),
           ]}
         />
