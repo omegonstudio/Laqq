@@ -323,7 +323,7 @@ export interface ServiceTicket {
   product_name: string;
   description: string;
   state: "open" | "closed" | "in_progress" | "resolved";
-  priority: string;
+  priority: "urgent" | "high" | "medium" | "low";
   assigned_user: {
     id: string;
     userName: string;

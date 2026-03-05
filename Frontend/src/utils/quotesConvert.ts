@@ -112,3 +112,20 @@ export const convertStateTicket = (
       return "Desconocido";
   }
 };
+
+export const convertPrioritiesTicket = (
+  state: "urgent" | "high" | "medium" | "low"
+): string => {
+  switch (state) {
+    case "urgent":
+      return "Urgente";
+    case "high":
+      return "Alta";
+    case "medium":
+      return "Media";
+    case "low":
+      return "baja";
+    default:
+      return "Desconocido";
+  }
+};

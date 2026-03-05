@@ -1,4 +1,5 @@
 import { CopyButton } from "@/components/atoms/CopyButton";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -7,9 +8,15 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { useAppSelector } from "@/store/hooks";
 import { ServiceTicket } from "@/types/api";
 import { formatDate } from "@/utils/formatDate";
+import {
+  convertPrioritiesTicket,
+  convertStateTicket,
+} from "@/utils/quotesConvert";
 import { File } from "lucide-react";
+import { useState } from "react";
 
 interface ViewTicketModalProps {
   ticket: ServiceTicket | null;
@@ -22,13 +29,23 @@ export function ViewTicketModal({
   open,
   onOpenChange,
 }: ViewTicketModalProps) {
+  const MAX_CHARS = 200;
+  const [expanded, setExpanded] = useState(false);
+
+  const { list } = useAppSelector((state) => state.products);
+  const product = list.find((item) => item.id === ticket?.product);
+  console.log(product, "PRODUCTTT");
   if (!ticket) return null;
 
+  const description = ticket.description || "-";
+  const isLong = description.length > MAX_CHARS;
+  const visibleText =
+    !expanded && isLong ? description.slice(0, MAX_CHARS) : description;
   const { contact } = ticket;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle>Detalle del Ticket</DialogTitle>
           <DialogDescription>
@@ -36,7 +53,7 @@ export function ViewTicketModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 text-sm">
+        <div className="space-y-6 text-sm w-full">
           {/* Ticket */}
           <section className="space-y-2">
             <h4 className="font-semibold">Ticket</h4>
@@ -54,17 +71,26 @@ export function ViewTicketModal({
 
               <div>
                 <Label>Estado</Label>
-                <p>{ticket.state}</p>
+                <p>{convertStateTicket(ticket.state)}</p>
               </div>
 
               <div>
                 <Label>Prioridad</Label>
-                <p className="capitalize">{ticket.priority}</p>
+                <p className="capitalize">
+                  {convertPrioritiesTicket(ticket.priority)}
+                </p>
               </div>
 
               <div className="col-span-2">
-                <Label>Producto</Label>
-                <p>{ticket.product_name || ticket.product || "-"}</p>
+                <Label className="text-lg font-semibold underline">
+                  Producto:
+                </Label>
+                <div className="flex items-center gap-2 mt-2">
+                  <p>Nombre: {product.name || ticket.product || "-"}</p>
+                  <p>Código: {product.product_code || ticket.product || "-"}</p>
+                  <p>Categoría: {product.category || ticket.product || "-"}</p>
+                  <p>Categoría: {product.brand || ticket.product || "-"}</p>
+                </div>
               </div>
             </div>
           </section>
@@ -72,9 +98,20 @@ export function ViewTicketModal({
           {/* Descripción */}
           <section className="space-y-2">
             <Label>Descripción</Label>
-            <p className="whitespace-pre-wrap rounded-md border p-3">
-              {ticket.description || "-"}
+            <p className="whitespace-pre-wrap break-all rounded-md border p-3 w-full">
+              {visibleText}
+              {!expanded && isLong && "…"}
             </p>
+
+            {isLong && (
+              <Button
+                variant="link"
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+              >
+                {expanded ? "Ver menos" : "Ver más..."}
+              </Button>
+            )}
           </section>
 
           {/* Resolución */}

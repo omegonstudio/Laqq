@@ -7,16 +7,15 @@ import {
 } from "@/components/ui/dialog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
-  createQuote,
   createQuoteItem,
   deleteQuoteItem,
+  fetchQuote,
   updateQuote,
   updateQuoteItem,
 } from "@/store/quotesSlice";
 import {
   QuoteRender,
   QuoteItemRender,
-  QuoteUpdatePayload,
   QuoteStateType,
   QuoteTypeEnum,
   UserData,
@@ -25,7 +24,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { CopyIcon, PencilIcon, Plus, Trash2 } from "lucide-react";
 import Button from "./Button";
-import { Input } from "../ui/input";
 import {
   Select,
   SelectContent,
@@ -45,6 +43,8 @@ import { ProductSearchCombobox } from "../molecules/ProductSearch";
 import { Product } from "@/types/types";
 import InputField from "./InputField";
 import { fetchAllProducts } from "@/store/productSlice";
+import { useUserAdmins } from "@/hooks/useUsers";
+import { Textarea } from "../ui/textarea";
 
 interface Props {
   open: boolean;
@@ -53,23 +53,43 @@ interface Props {
 }
 
 interface EditableData {
-  state: QuoteStateType; // Valor REAL (no convertido)
-  quote_type: QuoteTypeEnum; // Valor REAL (no convertido)
-  items: QuoteItemRender[];
+  state: QuoteStateType;
+  quote_type: QuoteTypeEnum;
+  items: (QuoteItemRender & { existing: boolean })[];
   user: UserData;
+  message?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
   const dispatch = useAppDispatch();
-  const { list: users } = useAppSelector((state) => state.users);
+  const { data: users, error } = useUserAdmins({
+    page: 1,
+    page_size: 50,
+  });
   const { user } = useAppSelector((state) => state.auth);
   const { list: products, loading: loadingProducts } = useAppSelector(
     (state) => state.products
   );
-  const [newProducts, setNewProducts] = useState<QuoteItemRender[]>([]);
+  const [newProducts, setNewProducts] = useState<
+    (QuoteItemRender & { existing: boolean })[]
+  >([]);
   const [edit, setEdit] = useState(false);
+  const [userError, setUserError] = useState(false);
   const [formState, setFormState] = useState<EditableData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [total, setTotal] = useState(0);
+  const calculateTotal = (): number => {
+    return newProducts.reduce((total, item) => {
+      return total + parseFloat(item.subtotal || "0");
+    }, 0);
+  };
+
+  useEffect(() => {
+    setTotal(calculateTotal());
+  }, [newProducts]);
+
   useEffect(() => {
     if (!open) {
       setEdit(false);
@@ -84,14 +104,16 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
 
   useEffect(() => {
     if (quote) {
+      setTotal(Number(quote.total_amount));
       setFormState({
         state: revertQuotesState(quote.state), // Convertir de vuelta a valor real
         quote_type: revertQuotesTypes(quote.quote_type), // Convertir de vuelta a valor real
-        items: quote.items ? [...quote.items] : [],
-        user: users.find((item) => item.id === quote.user) as UserData,
+        items: quote.items
+          ? quote.items.map((item) => ({ ...item, existing: true }))
+          : [],
+        user: users.results.find((item) => item.id === quote.user) as UserData,
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quote]);
 
   const quotesTypes = useAppSelector((state) => state.quotes.types);
@@ -105,21 +127,16 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
   if (!quote || !formState) {
     return null;
   }
-
   const contact = quote.contact;
-
-  const calculateTotal = (): number => {
-    return formState.items.reduce((total, item) => {
-      return total + parseFloat(item.subtotal || "0");
-    }, 0);
-  };
 
   const handleCancel = () => {
     setFormState({
       state: quote.state,
       quote_type: quote.quote_type,
-      items: quote.items ? [...quote.items] : [],
-      user: users.find((item) => item.id === quote.user) as UserData,
+      items: quote.items
+        ? quote.items.map((item) => ({ ...item, existing: true }))
+        : [],
+      user: users.results.find((item) => item.id === quote.user) as UserData,
     });
     setEdit(false);
   };
@@ -177,18 +194,27 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
         quantity: 1,
         unit_price: "0",
         subtotal: "0",
+        existing: false,
       },
     ]);
   };
-
-  console.log("Form State:", newProducts);
+  console.log(formState, "ASAS");
   const handleSave = async () => {
+    if (formState.user === null || formState.user === undefined) {
+      toast({
+        title: "El usuario es obligatorio",
+        variant: "destructive",
+      });
+      setUserError(true);
+      return;
+    }
+
     if (!formState || !contact) return;
 
     setIsLoading(true);
 
     try {
-      /* 1️⃣ Update quote (metadata) */
+      // 1️⃣ Update quote
       await dispatch(
         updateQuote({
           id: quote.id,
@@ -204,24 +230,19 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
       ).unwrap();
 
       const allItems = newProducts;
-      const existingItems = quote.items ?? [];
+      const existingItems = formState.items ?? [];
 
-      /* 2️⃣ Clasificación */
       const itemsToCreate = allItems.filter((i) => i.id.startsWith("new-"));
-
       const itemsToUpdate = allItems.filter(
         (i) =>
           !i.id.startsWith("new-") &&
           existingItems.some((orig) => orig.id === i.id)
       );
-
       const itemsToDelete = existingItems.filter(
         (orig) => !allItems.some((i) => i.id === orig.id)
       );
 
-      /* 3️⃣ Ejecutar operaciones */
       await Promise.all([
-        // CREATE
         ...itemsToCreate.map((item) =>
           dispatch(
             createQuoteItem({
@@ -233,8 +254,6 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
             })
           ).unwrap()
         ),
-
-        // UPDATE
         ...itemsToUpdate.map((item) =>
           dispatch(
             updateQuoteItem({
@@ -249,15 +268,31 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
             })
           ).unwrap()
         ),
-
-        // DELETE
         ...itemsToDelete.map((item) =>
           dispatch(deleteQuoteItem(item.id)).unwrap()
         ),
       ]);
 
+      // 🔄 4️⃣ REFRESH TOTAL
+      const updatedQuote = await dispatch(fetchQuote(quote.id)).unwrap();
+
+      setFormState({
+        state: revertQuotesState(updatedQuote.state),
+        quote_type: revertQuotesTypes(updatedQuote.quote_type),
+        items:
+          updatedQuote.items?.map((item) => ({ ...item, existing: true })) ??
+          [],
+        user:
+          users.results.find((u) => u.id === updatedQuote.user) ??
+          formState.user,
+        message: updatedQuote.message,
+        created_at: updatedQuote.created_at,
+        updated_at: updatedQuote.updated_at,
+      });
+
       toast({ title: "Cotización actualizada correctamente" });
       setEdit(false);
+      setUserError(false);
     } catch (error) {
       console.error(error);
       toast({
@@ -313,13 +348,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
         )}
         <p className="font-medium">Mensaje:</p>
         <div className="border rounded p-3">
-          {contact?.message ? (
-            <>
-              <p>{contact.message}</p>
-            </>
-          ) : (
-            <p className="text-muted-foreground">Sin mensaje</p>
-          )}
+          <p>{formState.message ?? "Sin mensaje"}</p>
         </div>
         <div className="grid grid-cols-3 gap-4 text-sm h-[4rem] m-h-fit">
           <div>
@@ -382,29 +411,39 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
           <div>
             <label>Usuario asignado</label>
             {edit ? (
-              <Select
-                value={formState?.user?.id ?? ""}
-                onValueChange={(userId) => {
-                  const selectedUser = users.find((u) => u.id === userId);
-                  if (!selectedUser) return;
+              <>
+                <Select
+                  value={formState?.user?.id ?? ""}
+                  onValueChange={(userId) => {
+                    const selectedUser = users.results.find(
+                      (u) => u.id === userId
+                    );
+                    if (!selectedUser) return;
 
-                  setFormState((prev) =>
-                    prev ? { ...prev, user: selectedUser } : null
-                  );
-                }}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Seleccionar usuario" />
-                </SelectTrigger>
+                    setFormState((prev) =>
+                      prev ? { ...prev, user: selectedUser } : null
+                    );
+                  }}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Seleccionar usuario" />
+                  </SelectTrigger>
 
-                <SelectContent>
-                  {users.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.first_name} {user.last_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <SelectContent>
+                    {users.results.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.first_name} {user.last_name} ({user.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {userError && (
+                  <p className="text-muted-foreground text-red-500">
+                    El usuario es obligatorio
+                  </p>
+                )}
+              </>
             ) : (
               <p className="text-muted-foreground">
                 {formState?.user
@@ -417,11 +456,11 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="font-medium mb-1">Creación</p>
-            <p className="text-muted-foreground">{quote.created_at}</p>
+            <p className="text-muted-foreground">{formState.created_at}</p>
           </div>
           <div>
             <p className="font-medium mb-1">Actualización</p>
-            <p className="text-muted-foreground">{quote.updated_at}</p>
+            <p className="text-muted-foreground">{formState.updated_at}</p>{" "}
           </div>
         </div>
         <div className="space-y-3 flex items-center justify-between h-[3rem]">
@@ -495,11 +534,15 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
                   key={item.id ?? index}
                   className="grid grid-cols-2 gap-2 items-end"
                 >
-                  <ProductSearchCombobox
-                    products={products}
-                    selectedProduct={selectedProduct}
-                    onSelect={(product) => updateItemProduct(index, product)}
-                  />
+                  {!item.existing ? (
+                    <ProductSearchCombobox
+                      products={products}
+                      selectedProduct={selectedProduct}
+                      onSelect={(product) => updateItemProduct(index, product)}
+                    />
+                  ) : (
+                    <p>{`${item.product?.name} (${item.product?.product_code})`}</p>
+                  )}
 
                   <div className="flex items-end gap-2">
                     <div>
@@ -543,13 +586,12 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
         )}
 
         <div className="text-right text-lg font-semibold pt-2 border-t">
-          Total: $
-          {edit
-            ? calculateTotal().toFixed(2)
-            : parseFloat(quote.total_amount || "0").toFixed(2)}
+          Total: ${total}
         </div>
+        <label>Observaciones</label>
+        <Textarea />
         {user?.is_superuser && (
-          <div className="flex justify-between items-center pt-2">
+          <div className="flex grid grid-cols-3 gap-20">
             <Button
               variant={edit ? "secondary" : "primary"}
               size="sm"
@@ -560,6 +602,15 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
               {edit ? "Cancelar" : "Editar"}
               {!edit && <PencilIcon size={15} />}
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSave}
+              disabled={isLoading}
+            >
+              {isLoading ? "Enviando al client..." : "Enviar al cliente"}
+            </Button>
+
             {edit && (
               <Button
                 variant="primary"

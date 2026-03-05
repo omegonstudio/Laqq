@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAppDispatch } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { updateTicket } from "@/store/ticketsSlice";
 import { formatDate, formatDateForInput } from "@/utils/formatDate";
 import { CopyButton } from "@/components/atoms/CopyButton";
@@ -66,6 +66,11 @@ export function EditTicketsService({
   const [closed, setIsClosed] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const dispatch = useAppDispatch();
+  const MAX_CHARS = 200;
+  const [expanded, setExpanded] = useState(false);
+  const { list } = useAppSelector((state) => state.products);
+  const product = list.find((item) => item.id === ticket?.product);
+
   useEffect(() => {
     if (ticket && open) {
       setFormData({
@@ -96,7 +101,10 @@ export function EditTicketsService({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
   if (!ticket) return null;
-
+  const description = ticket.description || "-";
+  const isLong = description.length > MAX_CHARS;
+  const visibleText =
+    !expanded && isLong ? description.slice(0, MAX_CHARS) : description;
   const timelineItems = [
     { key: "created_at", label: "Creación", value: ticket.created_at },
     { key: "started_at", label: "Iniciado", value: ticket.started_at },
@@ -112,15 +120,16 @@ export function EditTicketsService({
   const RenderText = ({
     title,
     value,
+    expand = false,
   }: {
     title: string;
     value: string | null;
+    expand?: boolean;
   }) => {
     return (
       <div className="space-y-2 sm:col-span-2">
         <div className="grid gap-4 sm:grid-cols-3">
           <span className="text-muted-foreground">{title}:</span>
-
           <div className="sm:col-span-2 flex gap-2 min-w-0">
             <span
               className="
@@ -131,9 +140,18 @@ export function EditTicketsService({
                 whitespace-pre-wrap
               "
             >
-              {value ?? "-"}
+              {value ?? "-"}{" "}
+              {expand && (
+                <Button
+                  variant="link"
+                  type="button"
+                  className="mb-[-10ox]"
+                  onClick={() => setExpanded((v) => !v)}
+                >
+                  {expanded ? "Ver menos" : "Ver más"}
+                </Button>
+              )}
             </span>
-
             {value && <CopyButton value={value} />}
           </div>
         </div>
@@ -214,7 +232,23 @@ export function EditTicketsService({
             />
             <RenderText title="Email" value={ticket.contact.email} />
             <RenderText title="Teléfono" value={ticket.contact.phone} />
-            <RenderText title="Descripción" value={ticket.description} />
+            <RenderText
+              title="Descripción"
+              value={`${visibleText}`}
+              expand={isLong}
+            />
+            <div className="col-span-2">
+              <Label className="text-lg font-semibold underline">
+                Producto:
+              </Label>
+              <div className="flex items-center gap-2 mt-2">
+                <p>Nombre: {product.name || ticket.product || "-"}</p>
+                <p>Código: {product.product_code || ticket.product || "-"}</p>
+                <p>Categoría: {product.category || ticket.product || "-"}</p>
+                <p>Categoría: {product.brand || ticket.product || "-"}</p>
+              </div>
+            </div>
+
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="assigned_user">Usuario asignado</Label>
               <Select

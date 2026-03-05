@@ -265,8 +265,11 @@ export const quotesSlice = createSlice({
         state.selectedLoading = true;
       })
       .addCase(fetchQuote.fulfilled, (state, action) => {
-        state.selectedLoading = false;
         state.selected = action.payload;
+
+        state.list = state.list.map((q) =>
+          q.id === action.payload.id ? action.payload : q
+        );
       });
 
     builder.addCase(createQuote.fulfilled, (state, action) => {
