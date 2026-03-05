@@ -49,6 +49,7 @@ const Header = () => {
   const navigateNosotros: { name: string; path: string }[] = [
     { name: "Certificados", path: "/certificates" },
     { name: "Empresa", path: "/company" },
+    { name: "Representaciones", path: "/company#representaciones" },
     { name: "Contacto", path: "/contact" },
   ];
   return (
