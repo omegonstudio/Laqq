@@ -185,16 +185,19 @@ const QuotesTable = () => {
           ]}
         />
       </div>
-      <QuotePreviewDialog
-        open={isModalEditOpen}
-        onOpenChange={(open) => {
-          setIsModalEditOpen(open);
-          if (!open) {
-            setPreviewQuote(null);
-          }
-        }}
-        quote={previewQuote}
-      />
+
+      {previewQuote && (
+        <QuotePreviewDialog
+          open={isModalEditOpen}
+          onOpenChange={(open) => {
+            setIsModalEditOpen(open);
+            if (!open) {
+              setPreviewQuote(null);
+            }
+          }}
+          quoteId={previewQuote.id}
+        />
+      )}
 
       <Table columns={columns} data={filteredQuotes} actions={actions} />
       <ModalDelete

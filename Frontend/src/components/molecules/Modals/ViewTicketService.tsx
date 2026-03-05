@@ -34,7 +34,6 @@ export function ViewTicketModal({
 
   const { list } = useAppSelector((state) => state.products);
   const product = list.find((item) => item.id === ticket?.product);
-  console.log(product, "PRODUCTTT");
   if (!ticket) return null;
 
   const description = ticket.description || "-";

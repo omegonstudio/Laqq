@@ -1,72 +1,70 @@
-export const convertQuotesState = (
-  state: "CONFIRMED" | "EXPIRED" | "PENDING" | "REJECTED" | "SENT"
-): string => {
+import { QuoteStateType, QuoteTypeEnum } from "@/types/api";
+
+export const convertQuotesState = (state: QuoteStateType): string => {
   switch (state) {
-    case "CONFIRMED":
+    case "confirmed":
       return "Confirmada";
-    case "EXPIRED":
+    case "expired":
       return "Expirada";
-    case "PENDING":
+    case "pending":
       return "Pendiente";
-    case "REJECTED":
+    case "rejected":
       return "Rechazada";
-    case "SENT":
+    case "sent":
       return "Enviada";
     default:
       return "Desconocido";
   }
 };
 
-export const convertQuotesTypes = (
-  type: "EQUIPMENT" | "FURNITURE" | "PROCESSED" | "SUPPLIES"
-): string => {
+export const convertQuotesTypes = (type: QuoteTypeEnum): string => {
   switch (type) {
-    case "EQUIPMENT":
+    case "equipment":
       return "Equipo";
-    case "FURNITURE":
+    case "furniture":
       return "Mobiliario";
-    case "PROCESSED":
+    case "processed":
       return "Procesados";
-    case "SUPPLIES":
+    case "supplies":
       return "Suministros";
+    case "standard":
+      return "Estándar";
+    case "express":
+      return "Exprés";
     default:
       return "Desconocido";
   }
 };
 // Primero, agrega estas funciones inversas (puedes ponerlas en el mismo archivo de utilidades)
-export const revertQuotesState = (
-  state: string
-): "CONFIRMED" | "EXPIRED" | "PENDING" | "REJECTED" | "SENT" => {
+export const revertQuotesState = (state: string): QuoteStateType => {
   switch (state) {
     case "Confirmada":
-      return "CONFIRMED";
+      return "confirmed";
     case "Expirada":
-      return "EXPIRED";
+      return "expired";
     case "Pendiente":
-      return "PENDING";
+      return "pending";
     case "Rechazada":
-      return "REJECTED";
+      return "rejected";
     case "Enviada":
-      return "SENT";
+      return "sent";
     default:
-      return "PENDING";
+      return "pending";
   }
 };
 
-export const revertQuotesTypes = (
-  type: string
-): "EQUIPMENT" | "FURNITURE" | "PROCESSED" | "SUPPLIES" => {
+export const revertQuotesTypes = (type: string): QuoteTypeEnum => {
   switch (type) {
     case "Equipo":
-      return "EQUIPMENT";
+      return "equipment";
     case "Mobiliario":
-      return "FURNITURE";
+      return "furniture";
     case "Procesados":
-      return "PROCESSED";
+      return "processed";
     case "Suministros":
-      return "SUPPLIES";
+      return "supplies";
     default:
-      return "SUPPLIES";
+      return "supplies";
   }
 };
 export type stateEnum = "closed" | "in_progress" | "new" | "responded";

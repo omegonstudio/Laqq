@@ -45,11 +45,13 @@ import InputField from "./InputField";
 import { fetchAllProducts } from "@/store/productSlice";
 import { useUserAdmins } from "@/hooks/useUsers";
 import { Textarea } from "../ui/textarea";
+import { quotesApi } from "@/lib/api/quotes";
+import { DialogDescription } from "@radix-ui/react-dialog";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  quote: QuoteRender | null;
+  quoteId: string;
 }
 
 interface EditableData {
@@ -60,9 +62,10 @@ interface EditableData {
   message?: string;
   created_at?: string;
   updated_at?: string;
+  observaciones: string;
 }
 
-const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
+const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   const dispatch = useAppDispatch();
   const { data: users, error } = useUserAdmins({
     page: 1,
@@ -72,12 +75,14 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
   const { list: products, loading: loadingProducts } = useAppSelector(
     (state) => state.products
   );
+
   const [newProducts, setNewProducts] = useState<
     (QuoteItemRender & { existing: boolean })[]
   >([]);
   const [edit, setEdit] = useState(false);
   const [userError, setUserError] = useState(false);
   const [formState, setFormState] = useState<EditableData | null>(null);
+  const [quote, setQuote] = useState<QuoteRender | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const calculateTotal = (): number => {
@@ -85,9 +90,17 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
       return total + parseFloat(item.subtotal || "0");
     }, 0);
   };
+  useEffect(() => {
+    const fetchQuoteData = async () => {
+      const quoteRequest = await dispatch(fetchQuote(quoteId)).unwrap();
+      setQuote(quoteRequest);
+    };
+    fetchQuoteData();
+  }, [dispatch, quoteId]);
 
   useEffect(() => {
     setTotal(calculateTotal());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newProducts]);
 
   useEffect(() => {
@@ -112,8 +125,10 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
           ? quote.items.map((item) => ({ ...item, existing: true }))
           : [],
         user: users.results.find((item) => item.id === quote.user) as UserData,
+        observaciones: quote.observaciones,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quote]);
 
   const quotesTypes = useAppSelector((state) => state.quotes.types);
@@ -128,7 +143,10 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
     return null;
   }
   const contact = quote.contact;
-
+  if (!quote) {
+    return;
+  }
+  console.log(formState.observaciones, "FORM STATE");
   const handleCancel = () => {
     setFormState({
       state: quote.state,
@@ -137,6 +155,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
         ? quote.items.map((item) => ({ ...item, existing: true }))
         : [],
       user: users.results.find((item) => item.id === quote.user) as UserData,
+      observaciones: "",
     });
     setEdit(false);
   };
@@ -198,7 +217,6 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
       },
     ]);
   };
-  console.log(formState, "ASAS");
   const handleSave = async () => {
     if (formState.user === null || formState.user === undefined) {
       toast({
@@ -225,6 +243,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
             user: formState.user.id,
             quote_type: formState.quote_type,
             state: formState.state,
+            observaciones: formState.observaciones,
           },
         })
       ).unwrap();
@@ -275,10 +294,10 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
 
       // 🔄 4️⃣ REFRESH TOTAL
       const updatedQuote = await dispatch(fetchQuote(quote.id)).unwrap();
-
+      console.log(updatedQuote, "UPDATED QUOTE");
       setFormState({
-        state: revertQuotesState(updatedQuote.state),
-        quote_type: revertQuotesTypes(updatedQuote.quote_type),
+        state: updatedQuote.state,
+        quote_type: updatedQuote.quote_type,
         items:
           updatedQuote.items?.map((item) => ({ ...item, existing: true })) ??
           [],
@@ -288,6 +307,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
         message: updatedQuote.message,
         created_at: updatedQuote.created_at,
         updated_at: updatedQuote.updated_at,
+        observaciones: updatedQuote.observaciones,
       });
 
       toast({ title: "Cotización actualizada correctamente" });
@@ -303,11 +323,35 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
       setIsLoading(false);
     }
   };
+
+  const handleSendClient = async () => {
+    setIsLoading(true);
+
+    try {
+      await handleSave(); // ⬅️ espera a que termine todo el flujo
+
+      const res = await quotesApi.sendClient(quote.id, {
+        contact: quote.contact,
+        contact_id: quote.contact.id,
+      });
+      toast({ title: "Correo enviado al cliente" });
+      console.log(res);
+    } catch (error) {
+      toast({ title: "Error al enviar el correo", variant: "destructive" });
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Cotización #{quote.quote_number}</DialogTitle>
+          <DialogDescription>
+            Información y detalle de la cotización.
+          </DialogDescription>
         </DialogHeader>
 
         {contact && (
@@ -355,7 +399,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
             <label>Estado</label>
             {edit ? (
               <Select
-                value={formState.state} // Valor real
+                value={formState.state || ""} // Valor real
                 onValueChange={(value: QuoteStateType) =>
                   setFormState((prev) =>
                     prev ? { ...prev, state: value } : null
@@ -367,8 +411,8 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
                 </SelectTrigger>
                 <SelectContent>
                   {quotesStates.map((state) => (
-                    <SelectItem key={state.id} value={state.name}>
-                      {convertQuotesState(state.name)}
+                    <SelectItem key={state.id} value={state.id}>
+                      {state.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -396,8 +440,8 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
                 </SelectTrigger>
                 <SelectContent>
                   {quotesTypes.map((type) => (
-                    <SelectItem key={type.id} value={type.name}>
-                      {convertQuotesTypes(type.name)}
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -548,6 +592,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
                     <div>
                       <label className="text-xs">Cantidad:</label>
                       <InputField
+                        aria-description="Cantidad"
                         type="number"
                         value={item.quantity}
                         min={0}
@@ -566,6 +611,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
                     <div>
                       <label className="text-xs">Precio:</label>
                       <InputField
+                        aria-description="Precio unitario del producto"
                         type="number"
                         value={item.unit_price}
                         min={0}
@@ -589,7 +635,16 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
           Total: ${total}
         </div>
         <label>Observaciones</label>
-        <Textarea />
+        <Textarea
+          aria-description="Observaciones de la cotización"
+          placeholder="Observaciones"
+          value={formState.observaciones}
+          onChange={(e) =>
+            setFormState((prev) =>
+              prev ? { ...prev, observaciones: e.target.value } : null
+            )
+          }
+        />
         {user?.is_superuser && (
           <div className="flex grid grid-cols-3 gap-20">
             <Button
@@ -605,7 +660,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleSave}
+              onClick={handleSendClient}
               disabled={isLoading}
             >
               {isLoading ? "Enviando al client..." : "Enviar al cliente"}

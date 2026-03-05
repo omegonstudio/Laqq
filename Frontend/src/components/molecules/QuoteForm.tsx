@@ -39,7 +39,7 @@ function QuoteForm() {
   const { items: itemsCart, clearCart } = useCart();
 
   useEffect(() => {
-    dispatch(fetchAllProducts({}));
+    dispatch(fetchAllProducts({ is_active: true }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
