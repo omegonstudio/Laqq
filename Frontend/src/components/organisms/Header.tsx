@@ -72,9 +72,9 @@ const Header = () => {
               <Logo variant="auto" className="h-8 md:h-10" showLink={false} />
             </a>
             {/* Search Section - Hidden on mobile */}
-            <div className="hidden lg:flex flex-1 items-center justify-center gap-3">
+            <div className="hidden lg:flex flex-1 items-center justify-center gap-3 ">
               <div
-                className={`flex items-start rounded-full px-4 py-2 w-full max-w-lg
+                className={`flex items-start rounded-full px-4 py-2 w-full max-w-lg 
                 }`}
               >
                 <SearchBar
@@ -112,7 +112,7 @@ const Header = () => {
             </div>
 
             {/* Desktop Icons */}
-            <div className="hidden md:flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-4 ">
               <button
                 onClick={() => setCartOpen(true)}
                 className="relative p-2 hover:bg-muted rounded-lg transition-colors"
@@ -203,69 +203,57 @@ const Header = () => {
               : "border-gray-200 bg-white"
           }`}
         >
-          <div className="container mx-auto flex items-center justify-between py-2 px-4 md:px-6">
+          <div className="container mx-auto flex items-center gap-5 justify-center py-2 px-4 md:px-6">
             {/* Logo in sticky mode */}
             {/* {scrolled && (
               <Logo variant="auto" className="h-8 md:h-10" showLink={false} />
             )} */}
 
             {/* Desktop Navigation */}
-            <div
-              className={`hidden md:flex items-center gap-2 text-sm font-medium`}
+
+            <NavDropdown />
+
+            <Link
+              to="/support"
+              className={`px-4 py-2 rounded-2xl text-sm font-medium border transition-colors ${
+                theme === "dark"
+                  ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
+                  : "border-orange-500 text-orange-600 hover:bg-orange-50"
+              }`}
             >
-              <NavDropdown />
-              {/* <Link
-                to="/quote"
-                className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
+              Servicio técnico
+            </Link>
+            <Select onValueChange={(value) => navigate(value)}>
+              <SelectTrigger
+                className={`w-[180px] text-sm rounded-2xl px-4 py-2 border transition-colors ${
                   theme === "dark"
-                    ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
-                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
+                    ? "bg-[#0a0a0a] border-gray-700 text-gray-200"
+                    : "bg-white border-gray-300 text-gray-700"
                 }`}
               >
-                Solicitud de cotización
-              </Link> */}
-              <Link
-                to="/support"
-                className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
-                  theme === "dark"
-                    ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
-                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
-                }`}
-              >
-                Servicio técnico
-              </Link>
-              <Select onValueChange={(value) => navigate(value)}>
-                <SelectTrigger
-                  className={`w-[180px] text-sm rounded-2xl px-4 py-2 border transition-colors ${
-                    theme === "dark"
-                      ? "bg-[#0a0a0a] border-gray-700 text-gray-200"
-                      : "bg-white border-gray-300 text-gray-700"
-                  }`}
-                >
-                  <SelectValue placeholder="NOSOTROS" />
-                </SelectTrigger>
+                <SelectValue placeholder="NOSOTROS" />
+              </SelectTrigger>
 
-                <SelectContent className="rounded-2xl">
-                  {navigateNosotros.map((n) => (
-                    <SelectItem
-                      key={n.path}
-                      className="rounded-xl"
-                      value={n.path}
-                    >
-                      {n.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Mobile Navigation Toggle */}
-            <div className={`flex md:hidden items-center `}>
-              <NavDropdown />
-            </div>
-
-            {/* Icons in sticky mode */}
+              <SelectContent className="rounded-2xl">
+                {navigateNosotros.map((n) => (
+                  <SelectItem
+                    key={n.path}
+                    className="rounded-xl"
+                    value={n.path}
+                  >
+                    {n.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+
+          {/* Mobile Navigation Toggle */}
+          <div className={`flex md:hidden items-center `}>
+            <NavDropdown />
+          </div>
+
+          {/* Icons in sticky mode */}
         </nav>
         {/* Mobile Menu */}
         <div
