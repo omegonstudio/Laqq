@@ -7,6 +7,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny
 
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
 from django.shortcuts import get_object_or_404
 from django.contrib.contenttypes.models import ContentType
 
@@ -57,6 +60,15 @@ class ProductViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'created_at', 'updated_at']
     ordering = ['-created_at']
 
+    @swagger_auto_schema(
+    operation_description="Sube un archivo y lo asocia al producto",
+    manual_parameters=[
+        openapi.Parameter('file', openapi.IN_FORM, type=openapi.TYPE_FILE, required=True),
+        openapi.Parameter('role', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+    ],
+    responses={201: AttachmentSerializer}
+)
+
     @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser], permission_classes=[IsAuthenticatedOrReadOnly])
     def upload_attachment(self, request, pk=None):
         """
@@ -96,6 +108,15 @@ class ProductViewSet(viewsets.ModelViewSet):
             product.save()
 
         return Response(AttachmentSerializer(att, context={'request': request}).data, status=status.HTTP_201_CREATED)
+
+    @swagger_auto_schema(
+    operation_description="Sube múltiples archivos y los asocia al producto",
+    manual_parameters=[
+        openapi.Parameter('files', openapi.IN_FORM, type=openapi.TYPE_FILE, required=True),
+        openapi.Parameter('role', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+    ],
+    responses={201: "Lista de attachments creados"}
+)
 
     @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser], permission_classes=[IsAuthenticatedOrReadOnly])
     def upload_attachments(self, request, pk=None):
@@ -287,6 +308,17 @@ class BulkUploadSerializer(serializers.Serializer):
 class ProductsBulkUploadAPIView(APIView):
     permission_classes = [IsAdminUser]
     parser_classes = [MultiPartParser, FormParser]
+
+    @swagger_auto_schema(
+        operation_description="Importar productos desde CSV",
+        manual_parameters=[
+            openapi.Parameter('csv_file', openapi.IN_FORM, type=openapi.TYPE_FILE, required=True),
+            openapi.Parameter('encoding', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+            openapi.Parameter('create_missing', openapi.IN_FORM, type=openapi.TYPE_BOOLEAN, required=False),
+            openapi.Parameter('skip_downloads', openapi.IN_FORM, type=openapi.TYPE_BOOLEAN, required=False),
+        ],
+        responses={200: "Resumen de importación"}
+    )   
 
     def post(self, request, format=None):
         serializer = BulkUploadSerializer(data=request.data)
