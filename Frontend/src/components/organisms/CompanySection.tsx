@@ -227,13 +227,18 @@ const CompanySection = () => {
             "velp.svg",
             "wiggens.svg",
           ].map((logo, index) => (
-            <div key={index} className="h-16 flex items-center justify-center">
-              <img
-                src={`/${logo}`}
-                alt={logo.replace(".svg", "")}
-                className="max-h-12 object-contain transition duration-300"
-              />
-            </div>
+            <div
+            key={index}
+            className="h-16 flex items-center justify-center 
+                       p-3 rounded-lg 
+                       dark:bg-white/90"
+          >
+            <img
+              src={`/${logo}`}
+              alt={logo.replace(".svg", "")}
+              className="max-h-10 object-contain transition duration-300"
+            />
+          </div>
           ))}
         </div>
       </div>
