@@ -291,7 +291,7 @@ DEFAULT_FROM_NAME = config('DEFAULT_FROM_NAME', default='LAQQ System')
 # Business Email Settings
 BUSINESS_EMAIL = config('BUSINESS_EMAIL', default='matias.desimone00@gmail.com')
 RESEND_API_KEY = config('RESEND_API_KEY', default='')
-BUSINESS_NAME = config('BUSINESS_NAME', default='LAQQ') 
+BUSINESS_NAME = config('BUSINESS_NAME', default='La Química Quirúrgica') 
 BUSINESS_PHONE = config('BUSINESS_PHONE', default='')
 BUSINESS_ADDRESS = config('BUSINESS_ADDRESS', default='')
 QUOTE_RESPONSE_TIME = config('QUOTE_RESPONSE_TIME', default='24-48 horas')
