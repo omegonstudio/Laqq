@@ -182,10 +182,10 @@ export default function SearchBar({
             <Search className="w-5 h-5 text-muted-foreground" />
           )}
         </div>
-        <Delete
+{/*         <Delete
           className="w-5 h-5 text-muted-foreground absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
           onClick={query.length > 0 ? clearSearch : null}
-        />
+        /> */}
       </div>
 
       {/* Dropdown with results */}
