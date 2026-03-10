@@ -243,6 +243,7 @@ class TicketPackageSerializer(serializers.Serializer):
     - contact.phone: Teléfono del contacto
     - contact.country: País del contacto
     - ticket.product: UUID del producto (si aplica)
+    - ticket.numero_de_serie: Número de serie del producto
     - ticket.priority: ID de la prioridad (default: "medium")
 
     EJEMPLO DE PAYLOAD MÍNIMO:
@@ -253,7 +254,8 @@ class TicketPackageSerializer(serializers.Serializer):
             "last_name": "Pérez"
         },
         "ticket": {
-            "description": "El equipo no enciende correctamente desde ayer"
+            "description": "El equipo no enciende correctamente desde ayer",
+            "numero_de_serie": "ABC123456"
         }
     }
     """
@@ -337,6 +339,7 @@ class TicketPackageSerializer(serializers.Serializer):
         ticket_create_data = {
             'contact': contact,
             'description': ticket_data['description'],
+            'numero_de_serie': ticket_data.get('numero_de_serie', ''),
         }
 
         # Producto (opcional)

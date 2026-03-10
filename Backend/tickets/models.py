@@ -45,6 +45,7 @@ class ServiceTicket(models.Model):
     # Información del producto
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, blank=True, null=True, related_name='tickets')
     product_name = models.CharField(max_length=120)  # Mantener para flexibilidad
+    numero_de_serie = models.CharField(max_length=255, default='')  # Número de serie del producto
 
     # Descripción del problema
     description = models.TextField()

@@ -258,10 +258,34 @@ class ProductSerializer(serializers.ModelSerializer):
                         except Exception:
                             pass
                     att.delete()
-        
+
         # Agregar nuevos archivos
         if files_to_add:
             self._process_attachments_files(product, files_to_add)
+
+    def validate(self, data):
+        """
+        Validación condicional: brand y category son obligatorios solo si is_active=True.
+        """
+        is_active = data.get('is_active', True)  # Default es True si no se especifica
+
+        # Si estamos actualizando, verificar el estado actual
+        if self.instance:
+            # En actualización, si no se especifica is_active, usar el valor actual
+            is_active = data.get('is_active', self.instance.is_active)
+
+        # Si el producto está activo, brand y category son obligatorios
+        if is_active:
+            if not data.get('brand'):
+                raise serializers.ValidationError({
+                    'brand_id': 'Brand is required for active products'
+                })
+            if not data.get('category'):
+                raise serializers.ValidationError({
+                    'category_id': 'Category is required for active products'
+                })
+
+        return data
 
     def create(self, validated_data):
         # handle both related_products (instances via PK) and related_product_codes
