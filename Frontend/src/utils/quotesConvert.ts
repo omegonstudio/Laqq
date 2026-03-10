@@ -1,7 +1,7 @@
 import { QuoteStateType, QuoteTypeEnum } from "@/types/api";
 
 export const convertQuotesState = (state: QuoteStateType): string => {
-  switch (state) {
+  switch (state.toLowerCase()) {
     case "confirmed":
       return "Confirmada";
     case "expired":
@@ -18,7 +18,7 @@ export const convertQuotesState = (state: QuoteStateType): string => {
 };
 
 export const convertQuotesTypes = (type: QuoteTypeEnum): string => {
-  switch (type) {
+  switch (type.toLowerCase()) {
     case "equipment":
       return "Equipo";
     case "furniture":

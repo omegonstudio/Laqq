@@ -118,7 +118,7 @@ const QuotesTable = () => {
       disabled: !user?.is_superuser, // Solo superusuarios pueden eliminar
     },
   ];
-
+  console.log(quotes, "AAAA QUOTES");
   const handleConfirmDelete = async () => {
     if (!previewQuote) return;
 

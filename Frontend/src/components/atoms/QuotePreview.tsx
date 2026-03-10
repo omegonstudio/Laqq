@@ -31,12 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  convertQuotesState,
-  convertQuotesTypes,
-  revertQuotesState,
-  revertQuotesTypes,
-} from "@/utils/quotesConvert";
+import { convertQuotesState, convertQuotesTypes } from "@/utils/quotesConvert";
 import { fetchUsers } from "@/store/usersSlice";
 import { toast } from "@/hooks/use-toast";
 import { ProductSearchCombobox } from "../molecules/ProductSearch";
@@ -93,6 +88,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   useEffect(() => {
     const fetchQuoteData = async () => {
       const quoteRequest = await dispatch(fetchQuote(quoteId)).unwrap();
+      console.log(quoteRequest, "AAAAA");
       setQuote(quoteRequest);
     };
     fetchQuoteData();
@@ -102,7 +98,6 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
     setTotal(calculateTotal());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newProducts]);
-
   useEffect(() => {
     if (!open) {
       setEdit(false);
@@ -119,8 +114,8 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
     if (quote) {
       setTotal(Number(quote.total_amount));
       setFormState({
-        state: revertQuotesState(quote.state), // Convertir de vuelta a valor real
-        quote_type: revertQuotesTypes(quote.quote_type), // Convertir de vuelta a valor real
+        state: quote.state, // Convertir de vuelta a valor real
+        quote_type: quote.quote_type, // Convertir de vuelta a valor real
         items: quote.items
           ? quote.items.map((item) => ({ ...item, existing: true }))
           : [],
@@ -135,9 +130,22 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   const quotesStates = useAppSelector((state) => state.quotes.states);
 
   useEffect(() => {
-    if (!formState) return;
-    setNewProducts(formState.items ?? []);
-  }, [formState]);
+    if (quote) {
+      const items = quote.items
+        ? quote.items.map((item) => ({ ...item, existing: true }))
+        : [];
+
+      setTotal(Number(quote.total_amount));
+      setFormState({
+        state: quote.state,
+        quote_type: quote.quote_type,
+        items,
+        user: users.results.find((item) => item.id === quote.user) as UserData,
+        observaciones: quote.observaciones,
+      });
+      setNewProducts(items); // ← inicializa aquí, una sola vez
+    }
+  }, [quote]);
 
   if (!quote || !formState) {
     return null;
@@ -146,7 +154,6 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   if (!quote) {
     return;
   }
-  console.log(formState.observaciones, "FORM STATE");
   const handleCancel = () => {
     setFormState({
       state: quote.state,
@@ -178,9 +185,12 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   };
   const updateItemQuantity = (index: number, quantity: number) => {
     setNewProducts((prev) =>
-      prev.map((item, i) =>
-        i === index ? { ...item, quantity: quantity < 0 ? 0 : quantity } : item
-      )
+      prev.map((item, i) => {
+        if (i !== index) return item;
+        const safeQty = quantity < 0 ? 0 : quantity;
+        const subtotal = (parseFloat(item.unit_price) * safeQty).toFixed(2);
+        return { ...item, quantity: safeQty, subtotal };
+      })
     );
   };
   const updateItemPrice = (index: number, value: string) => {
@@ -217,6 +227,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       },
     ]);
   };
+  console.log(quote);
   const handleSave = async () => {
     if (formState.user === null || formState.user === undefined) {
       toast({
