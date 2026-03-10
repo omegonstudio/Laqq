@@ -9,11 +9,11 @@ interface UploadFileProps {
   helpText?: string;
 }
 
-const ALLOWED_TYPES = ["image/jpeg", "image/png"];
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/svg+xml"];
 
 const UploadFile: React.FC<UploadFileProps> = ({
   onFileChange,
-  allowedTypes = ["image/jpeg", "image/png"],
+  allowedTypes = ["image/jpeg", "image/png", "image/svg+xml"],
   label = "Adjuntar Archivo (opcional)",
   helpText,
 }) => {
@@ -51,8 +51,11 @@ const UploadFile: React.FC<UploadFileProps> = ({
     const file = e.dataTransfer.files?.[0] ?? null;
     if (!file) return;
 
-    if (!allowedTypes.includes(file.type)) {
-      toast({
+    const isValidType =
+  allowedTypes.includes(file.type) ||
+  file.name.toLowerCase().endsWith(".svg");
+
+if (!isValidType) {      toast({
         title: getErrorMessage(),
         variant: "destructive",
       });
@@ -70,8 +73,11 @@ const UploadFile: React.FC<UploadFileProps> = ({
       return;
     }
 
-    if (!allowedTypes.includes(file.type)) {
-      toast({
+    const isValidType =
+  allowedTypes.includes(file.type) ||
+  file.name.toLowerCase().endsWith(".svg");
+
+if (!isValidType) {      toast({
         title: getErrorMessage(),
         variant: "destructive",
       });
