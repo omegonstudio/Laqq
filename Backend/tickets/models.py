@@ -43,9 +43,14 @@ class ServiceTicket(models.Model):
     contact = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name='tickets')
 
     # Información del producto
+    producto_laqq = models.BooleanField(default=True)  # True si es producto de Laqq, False si es externo
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, blank=True, null=True, related_name='tickets')
-    product_name = models.CharField(max_length=120)  # Mantener para flexibilidad
+    product_name = models.CharField(max_length=120, blank=True, default='')  # Mantener para flexibilidad
     numero_de_serie = models.CharField(max_length=255, default='')  # Número de serie del producto
+
+    # Campos para productos externos (cuando producto_laqq = False)
+    marca = models.CharField(max_length=255, blank=True, default='')  # Marca del producto externo
+    modelo = models.CharField(max_length=255, blank=True, default='')  # Modelo del producto externo
 
     # Descripción del problema
     description = models.TextField()

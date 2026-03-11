@@ -55,6 +55,9 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
         allow_null=True
     )
 
+    # producto_laqq con default=True para compatibilidad con tests existentes
+    producto_laqq = serializers.BooleanField(required=False, default=True)
+
     class Meta:
         model = ServiceTicket
         fields = '__all__'
@@ -85,9 +88,27 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Validaciones cruzadas de campos"""
-        # Si se proporciona un product, sincronizar product_name
-        if 'product' in data and data['product']:
-            data['product_name'] = data['product'].name
+        # Obtener producto_laqq (del data o de la instancia si existe, default True)
+        if self.instance:
+            # En update: usar el valor del data si está presente, sino el de la instancia
+            producto_laqq = data.get('producto_laqq', self.instance.producto_laqq)
+        else:
+            # En create: usar el valor del data si está presente, sino True (default del modelo)
+            producto_laqq = data.get('producto_laqq')
+            if producto_laqq is None:
+                producto_laqq = True
+
+        # Validación condicional según producto_laqq
+        if producto_laqq is False:  # Explicitly check for False
+            # Producto externo: marca y modelo son obligatorios
+            if not data.get('marca') and (not self.instance or not self.instance.marca):
+                raise serializers.ValidationError({'marca': 'Marca is required when producto_laqq is False'})
+            if not data.get('modelo') and (not self.instance or not self.instance.modelo):
+                raise serializers.ValidationError({'modelo': 'Modelo is required when producto_laqq is False'})
+        else:
+            # Producto Laqq: sincronizar product_name si hay product
+            if 'product' in data and data['product']:
+                data['product_name'] = data['product'].name
 
         return data
 
@@ -242,11 +263,14 @@ class TicketPackageSerializer(serializers.Serializer):
     - contact.company_name: Nombre de la empresa
     - contact.phone: Teléfono del contacto
     - contact.country: País del contacto
-    - ticket.product: UUID del producto (si aplica)
+    - ticket.producto_laqq: Boolean (default: true) - True si es producto Laqq, False si es externo
+    - ticket.product: UUID del producto (si producto_laqq=true)
     - ticket.numero_de_serie: Número de serie del producto
+    - ticket.marca: Marca del producto (OBLIGATORIO si producto_laqq=false)
+    - ticket.modelo: Modelo del producto (OBLIGATORIO si producto_laqq=false)
     - ticket.priority: ID de la prioridad (default: "medium")
 
-    EJEMPLO DE PAYLOAD MÍNIMO:
+    EJEMPLO DE PAYLOAD MÍNIMO (Producto Laqq):
     {
         "contact": {
             "email": "cliente@example.com",
@@ -255,7 +279,24 @@ class TicketPackageSerializer(serializers.Serializer):
         },
         "ticket": {
             "description": "El equipo no enciende correctamente desde ayer",
+            "producto_laqq": true,
             "numero_de_serie": "ABC123456"
+        }
+    }
+
+    EJEMPLO DE PAYLOAD (Producto Externo):
+    {
+        "contact": {
+            "email": "cliente@example.com",
+            "first_name": "Juan",
+            "last_name": "Pérez"
+        },
+        "ticket": {
+            "description": "El equipo presenta fallas en el motor",
+            "producto_laqq": false,
+            "marca": "Bosch",
+            "modelo": "XTR-500",
+            "numero_de_serie": "XYZ789"
         }
     }
     """
@@ -285,12 +326,23 @@ class TicketPackageSerializer(serializers.Serializer):
                 "Field 'description' is required in ticket data"
             )
 
-        # Validar product si está presente
-        if 'product' in value and value['product']:
-            if not Product.objects.filter(id=value['product']).exists():
-                raise serializers.ValidationError(
-                    f"Product with id '{value['product']}' does not exist"
-                )
+        # Obtener producto_laqq (default: True)
+        producto_laqq = value.get('producto_laqq', True)
+
+        # Validación condicional según producto_laqq
+        if not producto_laqq:
+            # Producto externo: marca y modelo son obligatorios
+            if not value.get('marca'):
+                raise serializers.ValidationError("Field 'marca' is required when producto_laqq is False")
+            if not value.get('modelo'):
+                raise serializers.ValidationError("Field 'modelo' is required when producto_laqq is False")
+        else:
+            # Producto Laqq: validar product si está presente
+            if 'product' in value and value['product']:
+                if not Product.objects.filter(id=value['product']).exists():
+                    raise serializers.ValidationError(
+                        f"Product with id '{value['product']}' does not exist"
+                    )
 
         # Validar priority si está presente
         if 'priority' in value and value['priority']:
@@ -340,15 +392,22 @@ class TicketPackageSerializer(serializers.Serializer):
             'contact': contact,
             'description': ticket_data['description'],
             'numero_de_serie': ticket_data.get('numero_de_serie', ''),
+            'producto_laqq': ticket_data.get('producto_laqq', True),
+            'marca': ticket_data.get('marca', ''),
+            'modelo': ticket_data.get('modelo', ''),
         }
 
-        # Producto (opcional)
-        if 'product' in ticket_data and ticket_data['product']:
-            product = Product.objects.get(id=ticket_data['product'])
-            ticket_create_data['product'] = product
-            ticket_create_data['product_name'] = product.name
+        # Producto (opcional, solo relevante si producto_laqq=True)
+        if ticket_data.get('producto_laqq', True):
+            if 'product' in ticket_data and ticket_data['product']:
+                product = Product.objects.get(id=ticket_data['product'])
+                ticket_create_data['product'] = product
+                ticket_create_data['product_name'] = product.name
+            else:
+                ticket_create_data['product_name'] = ticket_data.get('product_name', '')
         else:
-            ticket_create_data['product_name'] = ticket_data.get('product_name', '')
+            # Producto externo: usar marca y modelo
+            ticket_create_data['product_name'] = f"{ticket_data.get('marca', '')} {ticket_data.get('modelo', '')}".strip()
 
         # Prioridad (opcional, default 'medium')
         priority_id = ticket_data.get('priority', 'medium')
