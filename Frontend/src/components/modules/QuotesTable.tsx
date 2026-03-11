@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, FileText, Trash2 } from "lucide-react";
 import Table from "@/components/common/Table";
 import InputField from "@/components/atoms/InputField";
@@ -118,7 +118,7 @@ const QuotesTable = () => {
       disabled: !user?.is_superuser, // Solo superusuarios pueden eliminar
     },
   ];
-
+  console.log(quotes, "AAAA QUOTES");
   const handleConfirmDelete = async () => {
     if (!previewQuote) return;
 
@@ -169,7 +169,7 @@ const QuotesTable = () => {
             { value: "all", label: "Todos los tipos" },
             ...quotesTypes.map((item) => ({
               value: item.id,
-              label: convertQuotesTypes(item.name),
+              label: item.name,
             })),
           ]}
         />
@@ -180,21 +180,24 @@ const QuotesTable = () => {
             { value: "all", label: "Todos los estados" },
             ...quotesStates.map((item) => ({
               value: item.id,
-              label: convertQuotesState(item.name),
+              label: item.name,
             })),
           ]}
         />
       </div>
-      <QuotePreviewDialog
-        open={isModalEditOpen}
-        onOpenChange={(open) => {
-          setIsModalEditOpen(open);
-          if (!open) {
-            setPreviewQuote(null);
-          }
-        }}
-        quote={previewQuote}
-      />
+
+      {previewQuote && (
+        <QuotePreviewDialog
+          open={isModalEditOpen}
+          onOpenChange={(open) => {
+            setIsModalEditOpen(open);
+            if (!open) {
+              setPreviewQuote(null);
+            }
+          }}
+          quoteId={previewQuote.id}
+        />
+      )}
 
       <Table columns={columns} data={filteredQuotes} actions={actions} />
       <ModalDelete

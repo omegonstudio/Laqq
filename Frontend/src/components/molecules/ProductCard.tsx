@@ -23,25 +23,31 @@ const ProductCard = ({ product }: ProductCardProps) => {
   };
   return (
     <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-shadow">
-      <div className="aspect-square bg-muted rounded-xl mb-4 overflow-hidden">
-        <img
-          src={
-            product.image_url
-              ? product.image_url
-              : resolvedTheme === "dark"
-              ? placeholderImage
-              : placeholderImageDark
-          }          
-          alt={product.name}
-          className="w-full h-full object-contain p-4"
-        />
-      </div>
+        <div className="aspect-square bg-muted rounded-xl mb-4 overflow-hidden">
+          <Link to={`/product/${product.id}`}>
+            <img
+              src={
+                product.image_url
+                  ? product.image_url
+                  : resolvedTheme === "dark"
+                  ? placeholderImage
+                  : placeholderImageDark
+              }
+              alt={product.name}
+              className="w-full h-full object-contain p-4 cursor-pointer"
+            />
+          </Link>
+        </div>
 
       <Badge variant="primary" className="mb-2">
         {product.brand}
       </Badge>
 
-      <h3 className="text-lg font-bold mb-2 line-clamp-2">{product.name}</h3>
+      <Link to={`/product/${product.id}`}>
+        <h3 className="text-lg font-bold mb-2 line-clamp-2 hover:underline">
+          {product.name}
+        </h3>
+      </Link>
 
       <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
         {product.description}

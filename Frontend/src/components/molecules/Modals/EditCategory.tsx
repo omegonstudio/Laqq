@@ -25,6 +25,7 @@ import {
   fetchAllCategories,
   updateCategory,
 } from "@/store/categoriesSlice";
+import { DialogDescription } from "@radix-ui/react-dialog";
 
 interface CategoryFormState {
   id?: string;
@@ -256,6 +257,7 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
           <DialogTitle>
             {localState.id ? "Editar Categoría" : "Nueva Categoría"}
           </DialogTitle>
+          <DialogDescription>Edición de categorías</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -287,7 +289,7 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
             <Label htmlFor="description">Descripción</Label>
             <Input
               id="description"
-              value={localState.description}
+              value={localState.description ?? ""}
               onChange={(e) =>
                 setLocalState({ ...localState, description: e.target.value })
               }
@@ -322,12 +324,10 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
                       : ""
                   }
                 >
-                  <SelectValue placeholder="Sin categoría padre (raíz)" />
+                  <SelectValue placeholder="Sin categoría padre" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">
-                    Sin categoría padre (raíz)
-                  </SelectItem>
+                  <SelectItem value="none">Sin categoría padre</SelectItem>
 
                   {flatCategories.map((cat) => {
                     const disabled = isDisabled(cat);

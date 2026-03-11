@@ -69,6 +69,7 @@ export function ProductSearchCombobox({
             placeholder="Buscar producto..."
             value={searchValue}
             onValueChange={setSearchValue}
+            aria-description="Buscador de productos"
           />
           <CommandList className="max-h-[200px] overflow-y-auto">
             <CommandEmpty>No se encontraron productos.</CommandEmpty>

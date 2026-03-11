@@ -30,9 +30,7 @@ const contactInitialData: Contact = {
   country: "",
   state: "NEW",
   assigned_user: "",
-  created_at: "",
   message: "",
-  updated_at: "",
 };
 
 const ContactsABM = () => {

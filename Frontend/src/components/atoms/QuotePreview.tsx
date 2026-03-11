@@ -6,20 +6,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { updateQuote, updateQuoteItem } from "@/store/quotesSlice";
+import {
+  createQuoteItem,
+  deleteQuoteItem,
+  fetchQuote,
+  updateQuote,
+  updateQuoteItem,
+} from "@/store/quotesSlice";
 import {
   QuoteRender,
   QuoteItemRender,
-  QuoteUpdatePayload,
   QuoteStateType,
   QuoteTypeEnum,
   UserData,
 } from "@/types/api";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CopyIcon, PencilIcon } from "lucide-react";
+import { CopyIcon, PencilIcon, Plus, Trash2 } from "lucide-react";
 import Button from "./Button";
-import { Input } from "../ui/input";
 import {
   Select,
   SelectContent,
@@ -27,36 +31,73 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  convertQuotesState,
-  convertQuotesTypes,
-  revertQuotesState,
-  revertQuotesTypes,
-} from "@/utils/quotesConvert";
+import { convertQuotesState, convertQuotesTypes } from "@/utils/quotesConvert";
 import { fetchUsers } from "@/store/usersSlice";
 import { toast } from "@/hooks/use-toast";
+import { ProductSearchCombobox } from "../molecules/ProductSearch";
+import { Product } from "@/types/types";
+import InputField from "./InputField";
+import { fetchAllProducts } from "@/store/productSlice";
+import { useUserAdmins } from "@/hooks/useUsers";
+import { Textarea } from "../ui/textarea";
+import { quotesApi } from "@/lib/api/quotes";
+import { DialogDescription } from "@radix-ui/react-dialog";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  quote: QuoteRender | null;
+  quoteId: string;
 }
 
 interface EditableData {
-  state: QuoteStateType; // Valor REAL (no convertido)
-  quote_type: QuoteTypeEnum; // Valor REAL (no convertido)
-  items: QuoteItemRender[];
+  state: QuoteStateType;
+  quote_type: QuoteTypeEnum;
+  items: (QuoteItemRender & { existing: boolean })[];
   user: UserData;
+  message?: string;
+  created_at?: string;
+  updated_at?: string;
+  observaciones: string;
 }
 
-const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
+const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   const dispatch = useAppDispatch();
-  const { list: users } = useAppSelector((state) => state.users);
+  const { data: users, error } = useUserAdmins({
+    page: 1,
+    page_size: 50,
+  });
   const { user } = useAppSelector((state) => state.auth);
+  const { list: products, loading: loadingProducts } = useAppSelector(
+    (state) => state.products
+  );
 
+  const [newProducts, setNewProducts] = useState<
+    (QuoteItemRender & { existing: boolean })[]
+  >([]);
   const [edit, setEdit] = useState(false);
+  const [userError, setUserError] = useState(false);
   const [formState, setFormState] = useState<EditableData | null>(null);
+  const [quote, setQuote] = useState<QuoteRender | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [total, setTotal] = useState(0);
+  const calculateTotal = (): number => {
+    return newProducts.reduce((total, item) => {
+      return total + parseFloat(item.subtotal || "0");
+    }, 0);
+  };
+  useEffect(() => {
+    const fetchQuoteData = async () => {
+      const quoteRequest = await dispatch(fetchQuote(quoteId)).unwrap();
+      console.log(quoteRequest, "AAAAA");
+      setQuote(quoteRequest);
+    };
+    fetchQuoteData();
+  }, [dispatch, quoteId]);
+
+  useEffect(() => {
+    setTotal(calculateTotal());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newProducts]);
   useEffect(() => {
     if (!open) {
       setEdit(false);
@@ -66,112 +107,184 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
 
   useEffect(() => {
     dispatch(fetchUsers({ page: 1, page_size: 50 }));
+    dispatch(fetchAllProducts({}));
   }, [dispatch]);
 
   useEffect(() => {
     if (quote) {
+      setTotal(Number(quote.total_amount));
       setFormState({
-        state: revertQuotesState(quote.state), // Convertir de vuelta a valor real
-        quote_type: revertQuotesTypes(quote.quote_type), // Convertir de vuelta a valor real
-        items: quote.items ? [...quote.items] : [],
-        user: users.find((item) => item.id === quote.user) as UserData,
+        state: quote.state, // Convertir de vuelta a valor real
+        quote_type: quote.quote_type, // Convertir de vuelta a valor real
+        items: quote.items
+          ? quote.items.map((item) => ({ ...item, existing: true }))
+          : [],
+        user: users.results.find((item) => item.id === quote.user) as UserData,
+        observaciones: quote.observaciones,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quote]);
 
   const quotesTypes = useAppSelector((state) => state.quotes.types);
   const quotesStates = useAppSelector((state) => state.quotes.states);
 
+  useEffect(() => {
+    if (quote) {
+      const items = quote.items
+        ? quote.items.map((item) => ({ ...item, existing: true }))
+        : [];
+
+      setTotal(Number(quote.total_amount));
+      setFormState({
+        state: quote.state,
+        quote_type: quote.quote_type,
+        items,
+        user: users.results.find((item) => item.id === quote.user) as UserData,
+        observaciones: quote.observaciones,
+      });
+      setNewProducts(items); // ← inicializa aquí, una sola vez
+    }
+  }, [quote]);
+
   if (!quote || !formState) {
     return null;
   }
-
   const contact = quote.contact;
-
-  const handleUnitPriceChange = (itemId: string, newPrice: string) => {
-    setFormState((prev) => {
-      if (!prev) return null;
-
-      const updatedItems = prev.items.map((item) => {
-        if (item.id === itemId) {
-          const quantity = item.quantity;
-          const unitPrice = parseFloat(newPrice) || 0;
-          const subtotal = (quantity * unitPrice).toFixed(2);
-
-          return {
-            ...item,
-            unit_price: newPrice,
-            subtotal,
-          };
-        }
-        return item;
-      });
-
-      return {
-        ...prev,
-        items: updatedItems,
-      };
-    });
-  };
-
-  const calculateTotal = (): number => {
-    return formState.items.reduce((total, item) => {
-      return total + parseFloat(item.subtotal || "0");
-    }, 0);
-  };
-
+  if (!quote) {
+    return;
+  }
   const handleCancel = () => {
     setFormState({
       state: quote.state,
       quote_type: quote.quote_type,
-      items: quote.items ? [...quote.items] : [],
-      user: users.find((item) => item.id === quote.user) as UserData,
+      items: quote.items
+        ? quote.items.map((item) => ({ ...item, existing: true }))
+        : [],
+      user: users.results.find((item) => item.id === quote.user) as UserData,
+      observaciones: "",
     });
     setEdit(false);
   };
+  const getProductById = (productId: string) =>
+    products.find((p) => p.id === productId) ?? null;
 
+  const updateItemProduct = (index: number, product: Product | null) => {
+    setNewProducts((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? {
+              ...item,
+              product: product
+                ? { ...product, created_at: "", updated_at: "" }
+                : null,
+            }
+          : item
+      )
+    );
+  };
+  const updateItemQuantity = (index: number, quantity: number) => {
+    setNewProducts((prev) =>
+      prev.map((item, i) => {
+        if (i !== index) return item;
+        const safeQty = quantity < 0 ? 0 : quantity;
+        const subtotal = (parseFloat(item.unit_price) * safeQty).toFixed(2);
+        return { ...item, quantity: safeQty, subtotal };
+      })
+    );
+  };
+  const updateItemPrice = (index: number, value: string) => {
+    setNewProducts((prev) =>
+      prev.map((item, i) => {
+        if (i !== index) return item;
+
+        const unitPrice = parseFloat(value) || 0;
+        const subtotal = (unitPrice * item.quantity).toFixed(2);
+
+        return {
+          ...item,
+          unit_price: value,
+          subtotal,
+        };
+      })
+    );
+  };
+  const removeItem = (index: number) => {
+    setNewProducts((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const addItem = () => {
+    setNewProducts((prev) => [
+      ...prev,
+      {
+        id: `new-${Date.now()}`,
+        quote: quote.id,
+        product: null,
+        quantity: 1,
+        unit_price: "0",
+        subtotal: "0",
+        existing: false,
+      },
+    ]);
+  };
+  console.log(quote);
   const handleSave = async () => {
+    if (formState.user === null || formState.user === undefined) {
+      toast({
+        title: "El usuario es obligatorio",
+        variant: "destructive",
+      });
+      setUserError(true);
+      return;
+    }
+
     if (!formState || !contact) return;
 
     setIsLoading(true);
 
     try {
-      const quotePayload: QuoteUpdatePayload = {
-        contact: {
-          id: contact.id,
-          company_name: contact.company_name,
-          first_name: contact.first_name,
-          last_name: contact.last_name,
-          email: contact.email,
-          phone: contact.phone,
-          country: contact.country,
-          message: contact.message,
-          state: contact.state,
-          assigned_user: contact.assigned_user,
-        },
-        contact_id: contact.id,
-        message: quote.message,
-        total_amount: calculateTotal().toFixed(2),
-        user: formState.user.id,
-        quote_type: formState.quote_type, // Ya está en valor real
-        state: formState.state, // Ya está en valor real
-      };
-
+      // 1️⃣ Update quote
       await dispatch(
-        updateQuote({ id: quote.id, data: quotePayload })
+        updateQuote({
+          id: quote.id,
+          data: {
+            contact_id: contact.id,
+            message: quote.message,
+            total_amount: calculateTotal().toFixed(2),
+            user: formState.user.id,
+            quote_type: formState.quote_type,
+            state: formState.state,
+            observaciones: formState.observaciones,
+          },
+        })
       ).unwrap();
 
-      const itemsToUpdate = formState.items.filter((item, index) => {
-        const originalItem = quote.items?.[index];
-        return (
-          originalItem &&
-          (item.unit_price !== originalItem.unit_price ||
-            item.subtotal !== originalItem.subtotal)
-        );
-      });
+      const allItems = newProducts;
+      const existingItems = formState.items ?? [];
 
-      await Promise.all(
-        itemsToUpdate.map((item) =>
+      const itemsToCreate = allItems.filter((i) => i.id.startsWith("new-"));
+      const itemsToUpdate = allItems.filter(
+        (i) =>
+          !i.id.startsWith("new-") &&
+          existingItems.some((orig) => orig.id === i.id)
+      );
+      const itemsToDelete = existingItems.filter(
+        (orig) => !allItems.some((i) => i.id === orig.id)
+      );
+
+      await Promise.all([
+        ...itemsToCreate.map((item) =>
+          dispatch(
+            createQuoteItem({
+              quote: quote.id,
+              product: item.product.id,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              subtotal: item.subtotal,
+            })
+          ).unwrap()
+        ),
+        ...itemsToUpdate.map((item) =>
           dispatch(
             updateQuoteItem({
               id: item.id,
@@ -184,13 +297,35 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
               },
             })
           ).unwrap()
-        )
-      );
+        ),
+        ...itemsToDelete.map((item) =>
+          dispatch(deleteQuoteItem(item.id)).unwrap()
+        ),
+      ]);
+
+      // 🔄 4️⃣ REFRESH TOTAL
+      const updatedQuote = await dispatch(fetchQuote(quote.id)).unwrap();
+      console.log(updatedQuote, "UPDATED QUOTE");
+      setFormState({
+        state: updatedQuote.state,
+        quote_type: updatedQuote.quote_type,
+        items:
+          updatedQuote.items?.map((item) => ({ ...item, existing: true })) ??
+          [],
+        user:
+          users.results.find((u) => u.id === updatedQuote.user) ??
+          formState.user,
+        message: updatedQuote.message,
+        created_at: updatedQuote.created_at,
+        updated_at: updatedQuote.updated_at,
+        observaciones: updatedQuote.observaciones,
+      });
 
       toast({ title: "Cotización actualizada correctamente" });
       setEdit(false);
+      setUserError(false);
     } catch (error) {
-      console.error("Error al actualizar cotización:", error);
+      console.error(error);
       toast({
         title: "Error al actualizar la cotización",
         variant: "destructive",
@@ -199,11 +334,35 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
       setIsLoading(false);
     }
   };
+
+  const handleSendClient = async () => {
+    setIsLoading(true);
+
+    try {
+      await handleSave(); // ⬅️ espera a que termine todo el flujo
+
+      const res = await quotesApi.sendClient(quote.id, {
+        contact: quote.contact,
+        contact_id: quote.contact.id,
+      });
+      toast({ title: "Correo enviado al cliente" });
+      console.log(res);
+    } catch (error) {
+      toast({ title: "Error al enviar el correo", variant: "destructive" });
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Cotización #{quote.quote_number}</DialogTitle>
+          <DialogDescription>
+            Información y detalle de la cotización.
+          </DialogDescription>
         </DialogHeader>
 
         {contact && (
@@ -244,20 +403,14 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
         )}
         <p className="font-medium">Mensaje:</p>
         <div className="border rounded p-3">
-          {contact?.message ? (
-            <>
-              <p>{contact.message}</p>
-            </>
-          ) : (
-            <p className="text-muted-foreground">Sin mensaje</p>
-          )}
+          <p>{formState.message ?? "Sin mensaje"}</p>
         </div>
-        <div className="grid grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-3 gap-4 text-sm h-[4rem] m-h-fit">
           <div>
-            <p className="font-medium mb-1">Estado</p>
+            <label>Estado</label>
             {edit ? (
               <Select
-                value={formState.state} // Valor real
+                value={formState.state || ""} // Valor real
                 onValueChange={(value: QuoteStateType) =>
                   setFormState((prev) =>
                     prev ? { ...prev, state: value } : null
@@ -269,8 +422,8 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
                 </SelectTrigger>
                 <SelectContent>
                   {quotesStates.map((state) => (
-                    <SelectItem key={state.id} value={state.name}>
-                      {convertQuotesState(state.name)}
+                    <SelectItem key={state.id} value={state.id}>
+                      {state.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -283,7 +436,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
           </div>
 
           <div>
-            <p className="font-medium mb-1">Tipo</p>
+            <label>Tipo</label>
             {edit ? (
               <Select
                 value={formState.quote_type} // Valor real
@@ -298,8 +451,8 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
                 </SelectTrigger>
                 <SelectContent>
                   {quotesTypes.map((type) => (
-                    <SelectItem key={type.id} value={type.name}>
-                      {convertQuotesTypes(type.name)}
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -311,31 +464,41 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
             )}
           </div>
           <div>
-            <p className="font-medium mb-1">Usuario asignado</p>
+            <label>Usuario asignado</label>
             {edit ? (
-              <Select
-                value={formState?.user?.id ?? ""}
-                onValueChange={(userId) => {
-                  const selectedUser = users.find((u) => u.id === userId);
-                  if (!selectedUser) return;
+              <>
+                <Select
+                  value={formState?.user?.id ?? ""}
+                  onValueChange={(userId) => {
+                    const selectedUser = users.results.find(
+                      (u) => u.id === userId
+                    );
+                    if (!selectedUser) return;
 
-                  setFormState((prev) =>
-                    prev ? { ...prev, user: selectedUser } : null
-                  );
-                }}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Seleccionar usuario" />
-                </SelectTrigger>
+                    setFormState((prev) =>
+                      prev ? { ...prev, user: selectedUser } : null
+                    );
+                  }}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Seleccionar usuario" />
+                  </SelectTrigger>
 
-                <SelectContent>
-                  {users.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.first_name} {user.last_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <SelectContent>
+                    {users.results.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.first_name} {user.last_name} ({user.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {userError && (
+                  <p className="text-muted-foreground text-red-500">
+                    El usuario es obligatorio
+                  </p>
+                )}
+              </>
             ) : (
               <p className="text-muted-foreground">
                 {formState?.user
@@ -348,15 +511,29 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="font-medium mb-1">Creación</p>
-            <p className="text-muted-foreground">{quote.created_at}</p>
+            <p className="text-muted-foreground">{formState.created_at}</p>
           </div>
           <div>
             <p className="font-medium mb-1">Actualización</p>
-            <p className="text-muted-foreground">{quote.updated_at}</p>
+            <p className="text-muted-foreground">{formState.updated_at}</p>{" "}
           </div>
         </div>
-
-        {formState.items.length > 0 && (
+        <div className="space-y-3 flex items-center justify-between h-[3rem]">
+          <h3 className="text-lg font-semibold">Productos</h3>
+          {edit && (
+            <Button
+              type="button"
+              variant="ghost"
+              color="primary"
+              size="sm"
+              className="!mt-0"
+              onClick={addItem}
+            >
+              <Plus className="w-4 h-4 mr-1" /> Agregar Producto
+            </Button>
+          )}
+        </div>
+        {!edit && formState.items.length > 0 && (
           <div className="border rounded overflow-hidden">
             <table className="w-full text-xs">
               <thead className="bg-muted">
@@ -387,27 +564,11 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
                       {item.product.product_code}
                     </td>
                     <td className="p-2 text-center">{item.quantity}</td>
-                    <td className="p-2 text-center">
-                      {edit ? (
-                        <span className="inline-flex items-center justify-center gap-1">
-                          $
-                          <Input
-                            value={item.unit_price}
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            className="h-8 py-1 px-2 w-24 text-center text-xs"
-                            onChange={(e) =>
-                              handleUnitPriceChange(item.id, e.target.value)
-                            }
-                          />
-                        </span>
-                      ) : (
-                        `$${parseFloat(item.unit_price).toFixed(2)}`
-                      )}
+                    <td className="p-2 text-center whitespace-nowrap">
+                      {`$ ${parseFloat(item.unit_price).toFixed(2)}`}
                     </td>
-                    <td className="p-2 text-center font-medium">
-                      ${parseFloat(item.subtotal).toFixed(2)}
+                    <td className="p-2 text-center font-medium whitespace-nowrap">
+                      {`$ ${parseFloat(item.subtotal).toFixed(2)}`}
                     </td>
                   </tr>
                 ))}
@@ -416,14 +577,87 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
           </div>
         )}
 
+        {edit && (
+          <>
+            {newProducts.map((item, index) => {
+              const selectedProduct = item.product
+                ? getProductById(item.product.id)
+                : null;
+
+              return (
+                <div
+                  key={item.id ?? index}
+                  className="grid grid-cols-2 gap-2 items-end"
+                >
+                  {!item.existing ? (
+                    <ProductSearchCombobox
+                      products={products}
+                      selectedProduct={selectedProduct}
+                      onSelect={(product) => updateItemProduct(index, product)}
+                    />
+                  ) : (
+                    <p>{`${item.product?.name} (${item.product?.product_code})`}</p>
+                  )}
+
+                  <div className="flex items-end gap-2">
+                    <div>
+                      <label className="text-xs">Cantidad:</label>
+                      <InputField
+                        aria-description="Cantidad"
+                        type="number"
+                        value={item.quantity}
+                        min={0}
+                        onChange={(e) =>
+                          updateItemQuantity(
+                            index,
+                            e.target.value === "" ? 0 : Number(e.target.value)
+                          )
+                        }
+                        className={
+                          item.quantity === 0 ? "border-yellow-500" : ""
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs">Precio:</label>
+                      <InputField
+                        aria-description="Precio unitario del producto"
+                        type="number"
+                        value={item.unit_price}
+                        min={0}
+                        onChange={(e) => updateItemPrice(index, e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      className="bg-transparent text-red-600 hover:bg-red-600 hover:text-white"
+                      onClick={() => removeItem(index)}
+                    >
+                      <Trash2 size={20} />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+
         <div className="text-right text-lg font-semibold pt-2 border-t">
-          Total: $
-          {edit
-            ? calculateTotal().toFixed(2)
-            : parseFloat(quote.total_amount || "0").toFixed(2)}
+          Total: ${total}
         </div>
+        <label>Observaciones</label>
+        <Textarea
+          aria-description="Observaciones de la cotización"
+          placeholder="Observaciones"
+          value={formState.observaciones}
+          onChange={(e) =>
+            setFormState((prev) =>
+              prev ? { ...prev, observaciones: e.target.value } : null
+            )
+          }
+        />
         {user?.is_superuser && (
-          <div className="flex justify-between items-center pt-2">
+          <div className="flex grid grid-cols-3 gap-20">
             <Button
               variant={edit ? "secondary" : "primary"}
               size="sm"
@@ -434,6 +668,15 @@ const QuotePreviewDialog = ({ open, onOpenChange, quote }: Props) => {
               {edit ? "Cancelar" : "Editar"}
               {!edit && <PencilIcon size={15} />}
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSendClient}
+              disabled={isLoading}
+            >
+              {isLoading ? "Enviando al client..." : "Enviar al cliente"}
+            </Button>
+
             {edit && (
               <Button
                 variant="primary"

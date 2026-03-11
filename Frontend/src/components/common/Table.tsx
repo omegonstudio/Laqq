@@ -153,19 +153,23 @@ const Table = ({
             {paginatedData.length > 0 ? (
               paginatedData.map((row, idx) => (
                 <tr
-                  key={idx}
+                  key={`${row.id}-${idx}`}
                   className={cn(
                     "border-b border-border transition-colors hover:bg-muted/50",
                     idx % 2 === 0 ? "bg-background" : "bg-muted/20"
                   )}
                 >
                   {columns.map((column) => (
-                    <td className="px-4 py-3 text-sm text-foreground">
+                    <td
+                      className="px-4 py-3 text-sm text-foreground"
+                      key={column.key}
+                    >
                       {column.render
                         ? column.render(row[column.key], row)
                         : row[column.key]}
                     </td>
                   ))}
+
                   {actions && actions.length > 0 && (
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">

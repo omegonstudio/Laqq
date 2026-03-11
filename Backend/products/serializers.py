@@ -4,6 +4,8 @@ from django.contrib.contenttypes.models import ContentType
 from .models import Brand, Category, Product, ProductSpec, ProductRelation, ProductSpecification
 from attachments.models import Attachment
 from attachments.serializers import AttachmentSerializer
+from drf_yasg.utils import swagger_serializer_method
+from drf_yasg import openapi
 
 class BrandSerializer(serializers.ModelSerializer):
     logo_url = serializers.SerializerMethodField(read_only=True)
@@ -29,6 +31,8 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = '__all__'
+
+# Agregá esta clase ANTES de ProductSerializer
 
 class ProductSpecSerializer(serializers.ModelSerializer):
     class Meta:
@@ -64,6 +68,17 @@ class ProductRelationSerializer(serializers.ModelSerializer):
         model = ProductRelation
         fields = ['id', 'from_product', 'to_product', 'relation_type', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+class SwaggerFriendlyFileField(serializers.FileField):
+    """
+    FileField que drf-yasg puede introspeccionar sin explotar.
+    En runtime se comporta igual que FileField.
+    """
+    class Meta:
+        swagger_schema_fields = {
+            'type': openapi.TYPE_STRING,
+            'format': openapi.FORMAT_BINARY,
+        }
 
 class ProductSerializer(serializers.ModelSerializer):
     # Especificaciones FIJAS (campos predefinidos: volume, dimensions, etc.)
@@ -127,7 +142,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     # ✨ NUEVOS: Para manejar múltiples attachments en PUT/POST
     attachments_files = serializers.ListField(
-        child=serializers.FileField(),
+        child=serializers.UUIDField(),
         write_only=True,
         required=False,
         help_text='Lista de archivos a subir: [file1, file2, ...]'
@@ -152,6 +167,15 @@ class ProductSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'product_code': {'required': False, 'allow_blank': True}
         }
+        swagger_schema_fields = {
+        "properties": {
+            "attachments_files": {
+                "type": "array",
+                "items": {"type": "string", "format": "binary"},
+                "writeOnly": True,
+            }
+        }
+    }
 
     def get_related_products(self, obj):
         return [{

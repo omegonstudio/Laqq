@@ -69,6 +69,7 @@ const TicketForm = ({
   const { list: products } = useAppSelector((state) => state.products);
   const [disabled, setDisabled] = useState(true);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [serialNumber, setSeialNumber] = useState<string>("");
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -94,7 +95,6 @@ const TicketForm = ({
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -106,13 +106,23 @@ const TicketForm = ({
       });
       return;
     }
+    const payload: CreateTicketPayload = {
+      ...formData,
+      ticket: {
+        ...formData.ticket,
+        description: `${formData.ticket.description}\nNúmero de serie: ${
+          serialNumber || "N/A"
+        }`,
+      },
+    };
 
     try {
       setIsUploading(true);
 
-      // 1. Crear ticket SIN archivo
-      const ticket = await dispatch(createTicket(formData)).unwrap();
-      // 2. Si hay archivo, adjuntarlo al ticket
+      console.log(payload.ticket.description);
+
+      const ticket = await dispatch(createTicket(payload)).unwrap();
+
       if (selectedFile) {
         await ticketsApi.attachFileMultipart(ticket.ticket.id, {
           file: selectedFile,
@@ -120,6 +130,7 @@ const TicketForm = ({
           detail: "Archivo adjunto desde formulario de soporte",
         });
       }
+
       toast({
         title: "Ticket creado",
         description: "Tu solicitud fue registrada.",
@@ -144,6 +155,7 @@ const TicketForm = ({
 
   useEffect(() => {
     setFormData(ticketInitialState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -158,7 +170,7 @@ const TicketForm = ({
   }, [formData]);
 
   useEffect(() => {
-    dispatch(fetchAllProducts());
+    dispatch(fetchAllProducts({}));
   }, [dispatch]);
 
   const handleFile = (file: File | null) => {
@@ -197,6 +209,7 @@ const TicketForm = ({
   const resetForm = () => {
     setFormData(ticketInitialState);
     setSelectedFile(null);
+    setSeialNumber("");
     setFilePreview(null);
     setSelectedProduct(null);
   };
@@ -391,6 +404,11 @@ const TicketForm = ({
             />
           </div>
 
+          <InputField
+            value={serialNumber}
+            onChange={(e) => setSeialNumber(e.target.value)}
+            placeholder="Número de serie"
+          />
           <UploadFile
             onFileChange={handleFile}
             allowedTypes={["image/jpeg", "image/png", "application/pdf"]}

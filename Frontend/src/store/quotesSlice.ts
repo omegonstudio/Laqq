@@ -265,8 +265,23 @@ export const quotesSlice = createSlice({
         state.selectedLoading = true;
       })
       .addCase(fetchQuote.fulfilled, (state, action) => {
-        state.selectedLoading = false;
-        state.selected = action.payload;
+        const updated = action.payload;
+
+        // 1️⃣ Reemplazar el producto en la lista visible (tabla)
+        state.list = state.list.map((quote) =>
+          quote.id === updated.id ? updated : quote
+        );
+
+        // 2️⃣ Si estaba seleccionado, actualizarlo también
+        if (state.selected?.id === updated.id) {
+          state.selected = updated;
+        }
+
+        // state.selected = action.payload;
+
+        // state.list = state.list.map((q) =>
+        //   q.id === action.payload.id ? action.payload : q
+        // );
       });
 
     builder.addCase(createQuote.fulfilled, (state, action) => {

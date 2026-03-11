@@ -20,6 +20,7 @@ import {
 import { fetchUsers } from "@/store/usersSlice";
 import { ViewTicketModal } from "../molecules/Modals/ViewTicketService";
 import { useUserAdmins } from "@/hooks/useUsers";
+import { fetchAllProducts } from "@/store/productSlice";
 
 const TicketsABM = () => {
   // const [contacts] = useState<Contact[]>(mockContacts);
@@ -59,6 +60,7 @@ const TicketsABM = () => {
     dispatch(fetchTicketStates({}));
     dispatch(fetchTicketPriorities({}));
     dispatch(fetchUsers({}));
+    dispatch(fetchAllProducts({}));
   }, [dispatch]);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -212,7 +214,7 @@ const TicketsABM = () => {
             { value: "all", label: "Todos los estados" },
             ...states.map((item) => ({
               value: item.id,
-              label: convertStateTicket(item.name),
+              label: item.name,
             })),
           ]}
           value={statusFilter}

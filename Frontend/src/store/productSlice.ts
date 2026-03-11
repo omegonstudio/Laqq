@@ -22,20 +22,22 @@ interface FetchProductsParams {
 
 export const fetchAllProducts = createAsyncThunk(
   "products/fetchAllRecursive",
-  async (_, { rejectWithValue }) => {
+  async (params: FetchProductsParams | undefined, { rejectWithValue }) => {
     try {
       const allProducts: Product[] = [];
-      let page = 1;
-      const pageSize = 100;
+      let page = params?.page ?? 1;
+      const pageSize = params?.page_size ?? 100;
       let hasMore = true;
 
       while (hasMore) {
         const response = await productsApi.list({
+          ...params,
           page,
           page_size: pageSize,
         });
 
         allProducts.push(...response.results);
+
         hasMore = response.next !== null;
         page++;
       }

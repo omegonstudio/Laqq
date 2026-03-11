@@ -26,7 +26,7 @@ const BrandsGrid = () => {
                 <img
                   src={brand.logo_url}
                   alt={brand.name}
-                  className="max-h-12 w-auto object-contain"
+                  className="h-12 w-auto max-w-[120px] object-contain"
                 />
               ) : (
                 <span className="text-xl font-bold text-muted-foreground">

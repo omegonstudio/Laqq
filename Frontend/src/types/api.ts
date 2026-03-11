@@ -1,6 +1,7 @@
 import {
   Attachment,
   PaginatedResponse as BasePaginatedResponse,
+  Product,
 } from "./types";
 
 export type PaginatedResponse<T> = BasePaginatedResponse<T>;
@@ -43,8 +44,6 @@ export interface Contact {
   message: string | null;
   state: string;
   assigned_user: string | null;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface Message {
@@ -151,42 +150,21 @@ export interface RelatedProduct {
   brand?: string | null;
 }
 
-export interface Product {
-  id: string;
-  product_code: string;
-  name: string;
-  brand: string | null;
-  brand_id?: string;
-  category: string | null;
-  category_id?: string;
-  description: string | null;
-  image_attachment: string | null;
-  image?: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  specs: ProductSpec[];
-  specifications?: ProductSpec[]; // alias de backend
-  fixed_specs: ProductFixedSpec[];
-  related_product_ids?: string[];
-  related_product_codes?: string[];
-  related_products: RelatedProduct[];
-  related?: RelatedProduct[];
-}
-
 // =================== QUOTE ENUMS ===================
 
 export type QuoteStateType =
-  | "CONFIRMED"
-  | "EXPIRED"
-  | "PENDING"
-  | "REJECTED"
-  | "SENT";
+  | "confirmed"
+  | "expired"
+  | "pending"
+  | "rejected"
+  | "sent";
 export type QuoteTypeEnum =
-  | "EQUIPMENT"
-  | "FURNITURE"
-  | "PROCESSED"
-  | "SUPPLIES";
+  | "equipment"
+  | "furniture"
+  | "processed"
+  | "supplies"
+  | "standard"
+  | "express";
 
 // =================== QUOTE TYPES ===================
 
@@ -208,7 +186,7 @@ export interface Quote {
 export interface QuoteRender {
   id: string;
   quote_number: string;
-  contact: ContactInfo; // Objeto completo
+  contact: Contact; // Objeto completo
   contact_id: string;
   user: string | null;
   quote_type: QuoteTypeEnum;
@@ -218,6 +196,7 @@ export interface QuoteRender {
   created_at: string;
   updated_at: string;
   items: QuoteItemRender[]; // Items con productos completos
+  observaciones: string;
 }
 
 // =================== CONTACT TYPES ===================
@@ -272,15 +251,19 @@ export interface QuoteCreatePayload {
 
 // Para actualizar una cotización
 export interface QuoteUpdatePayload {
-  contact?: ContactInfo;
+  contact?: Contact;
   contact_id?: string;
   message?: string | null;
   total_amount?: string | null;
   user?: string | null;
   quote_type?: QuoteTypeEnum;
   state?: QuoteStateType;
+  observaciones: string;
 }
-
+export interface QuoteSendClient {
+  contact: Contact;
+  contact_id: string;
+}
 // Para crear items en bulk
 export interface QuoteItemBulkCreate {
   quote: string; // UUID
@@ -345,7 +328,7 @@ export interface ServiceTicket {
   product_name: string;
   description: string;
   state: "open" | "closed" | "in_progress" | "resolved";
-  priority: string;
+  priority: "urgent" | "high" | "medium" | "low";
   assigned_user: {
     id: string;
     userName: string;

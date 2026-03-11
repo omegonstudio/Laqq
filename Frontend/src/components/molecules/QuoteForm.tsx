@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import InputField from "../atoms/InputField";
 import Button from "../atoms/Button";
-import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { DeleteIcon, Plus, Trash2, X } from "lucide-react";
 import { QuoteFormState } from "@/types/api";
@@ -11,6 +10,7 @@ import { createQuoteFromForm } from "@/store/quotesSlice";
 import { ProductSearchCombobox } from "./ProductSearch";
 import { fetchAllProducts } from "@/store/productSlice";
 import { toast } from "@/hooks/use-toast";
+import { Product } from "@/types/types";
 
 const initialState: QuoteFormState = {
   contact: {
@@ -36,11 +36,13 @@ const initialState: QuoteFormState = {
 
 function QuoteForm() {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const { items: itemsCart, clearCart } = useCart();
+
   useEffect(() => {
-    dispatch(fetchAllProducts());
+    dispatch(fetchAllProducts({ is_active: true }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   const { list: products, loading: loadingProducts } = useAppSelector(
     (state) => state.products
   );
