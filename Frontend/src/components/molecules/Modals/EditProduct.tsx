@@ -44,6 +44,7 @@ import { toast } from "@/hooks/use-toast";
 import { productsApi } from "@/lib/api/products";
 import { Textarea } from "@/components/ui/textarea";
 import SelectCategories from "@/components/atoms/SelectCategories";
+import * as Tooltip from "@radix-ui/react-tooltip";
 
 interface ModalProductProps {
   isOpen: boolean;
@@ -152,7 +153,10 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     onClose(); // El useEffect se encargará de resetear el estado
   };
   const validation = useMemo(
-    () => validateProductForm(localState),
+    () =>
+      validateProductForm(localState, {
+        skipBrandAndCategory: !localState.is_active,
+      }),
     [localState]
   );
   // useEffect(() => {
@@ -796,6 +800,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           onChange={(e) =>
             setLocalState({ ...localState, description: e.target.value })
           }
+          placeholder="Descripción del producto"
         />
         <div className="flex gap-5">
           <div className="w-[50%]">

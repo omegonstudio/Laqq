@@ -118,10 +118,18 @@ export const formStateToUpdateRequest = (
     hasRealChanges = true;
   }
 
-  const initialBrand = initialData.brand_id || initialData.brand;
-  if (formState.brand !== initialBrand) {
-    updateRequest.brand_id = formState.brand;
-    hasRealChanges = true;
+  if (formState.is_active) {
+    const initialBrand = initialData.brand_id || initialData.brand;
+    if (formState.brand !== initialBrand) {
+      updateRequest.brand_id = formState.brand;
+      hasRealChanges = true;
+    }
+
+    const initialCategory = initialData.category_id || initialData.category;
+    if (formState.category !== initialCategory) {
+      updateRequest.category_id = formState.category;
+      hasRealChanges = true;
+    }
   }
   const initialAttachmentIds =
     initialData.attachments?.map((att) => att.id) || [];
@@ -134,12 +142,6 @@ export const formStateToUpdateRequest = (
 
   if (attachmentsChanged) {
     updateRequest.attachments = currentAttachmentIds;
-    hasRealChanges = true;
-  }
-
-  const initialCategory = initialData.category_id || initialData.category;
-  if (formState.category !== initialCategory) {
-    updateRequest.category_id = formState.category;
     hasRealChanges = true;
   }
 

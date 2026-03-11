@@ -206,7 +206,6 @@ const haveAttachmentsChanged = (
 
   return removed || added;
 };
-
 export const CreateProduct = async ({
   dispatch,
   formState,
@@ -216,11 +215,8 @@ export const CreateProduct = async ({
   formState: ProductFormState;
   attachmentId?: string | null;
 }): Promise<Product> => {
-  // ===== CREATE =====
   const payload: ProductCreateRequest = {
     image_attachment: attachmentId,
-    brand_id: formState.brand,
-    category_id: formState.category,
     attachments: formState.attachments,
     name: formState.name,
     description: formState.description,
@@ -228,6 +224,11 @@ export const CreateProduct = async ({
     is_active: formState.is_active,
     related_product_ids: formState.related.map((r) => r.id),
     is_featured: formState.is_featured,
+    // Solo incluir brand y category si el producto está activo
+    ...(formState.is_active && {
+      brand_id: formState.brand,
+      category_id: formState.category,
+    }),
   };
   return await dispatch(createProduct(payload)).unwrap();
 };
@@ -396,7 +397,8 @@ export const syncProductFixedSpecifications = async ({
 // };
 
 export const validateProductForm = (
-  formState: ProductFormState
+  formState: ProductFormState,
+  options?: { skipBrandAndCategory?: boolean }
 ): {
   isValid: boolean;
   errorMessage?: string;
@@ -407,19 +409,20 @@ export const validateProductForm = (
       errorMessage: "El nombre del producto es obligatorio",
     };
   }
+  if (!options?.skipBrandAndCategory) {
+    if (!formState.category) {
+      return {
+        isValid: false,
+        errorMessage: "Debes seleccionar una categoría",
+      };
+    }
 
-  if (!formState.category) {
-    return {
-      isValid: false,
-      errorMessage: "Debes seleccionar una categoría",
-    };
-  }
-
-  if (!formState.brand) {
-    return {
-      isValid: false,
-      errorMessage: "Debes seleccionar una marca",
-    };
+    if (!formState.brand) {
+      return {
+        isValid: false,
+        errorMessage: "Debes seleccionar una marca",
+      };
+    }
   }
 
   return { isValid: true };
