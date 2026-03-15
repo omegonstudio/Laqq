@@ -344,6 +344,10 @@ export interface ServiceTicket {
   updated_at: string;
   resolution_notes: string | null;
   attachments: Attachment[] | null;
+  marca: string | null;
+  modelo: string | null;
+  numero_de_serie: string | null;
+  producto_laqq: boolean;
 }
 
 export interface CreateTicketPayload {
@@ -365,6 +369,10 @@ export interface CreateTicketPayload {
     attachment?: string | null;
     priority: string | null;
     attachments?: string[] | null;
+    producto_laqq: boolean;
+    marca?: string | null;
+    modelo?: string | null;
+    numero_de_serie?: string | null;
   };
 }
 export interface TicketFormData {
@@ -391,6 +399,10 @@ export interface UpdateTicketPayload {
   priority?: string;
   assigned_user?: string | null;
   resolution_notes?: string | null;
+  marca?: string;
+  modelo?: string;
+  numero_de_serie?: string;
+  producto_laqq: boolean;
 }
 export interface TicketFormDataUpdate {
   product: string;

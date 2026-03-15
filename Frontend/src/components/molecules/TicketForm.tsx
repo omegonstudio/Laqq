@@ -18,6 +18,7 @@ import { createTicket } from "@/store/ticketsSlice";
 import { FileText, File as FileIcon } from "lucide-react";
 import { ticketsApi } from "@/lib/api/tickets";
 import { Textarea } from "../ui/textarea";
+import { Toggle } from "@/components/ui/toggle";
 
 interface TicketFormProps {
   onClose?: () => void;
@@ -43,6 +44,7 @@ const TicketForm = ({
   setIsTicketModalOpen,
   ticketInitialState = {
     ticket: {
+      producto_laqq: true,
       state: "open",
       product: "",
       description: "",
@@ -50,6 +52,9 @@ const TicketForm = ({
       attachment: null,
       attachments: [],
       priority: null,
+      marca: "",
+      modelo: "",
+      numero_de_serie: "",
     },
     contact: {
       first_name: "",
@@ -67,9 +72,7 @@ const TicketForm = ({
 
   const dispatch = useAppDispatch();
   const { list: products } = useAppSelector((state) => state.products);
-  const [disabled, setDisabled] = useState(true);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [serialNumber, setSeialNumber] = useState<string>("");
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -77,31 +80,54 @@ const TicketForm = ({
     if (!formData.contact.first_name.trim()) {
       newErrors.first_name = "El nombre es obligatorio.";
     }
+
     if (!formData.contact.last_name.trim()) {
       newErrors.last_name = "El apellido es obligatorio.";
     }
+
     if (!formData.contact.email.trim()) {
       newErrors.email = "El email es obligatorio.";
     } else if (!/\S+@\S+\.\S+/.test(formData.contact.email)) {
       newErrors.email = "El email no es válido.";
     }
-    if (!formData.ticket.product.trim()) {
-      newErrors.product = "El producto es obligatorio.";
+
+    if (formData.ticket.producto_laqq) {
+      if (!formData.ticket.product.trim()) {
+        newErrors.product = "El producto es obligatorio.";
+      }
+    }
+    if (!formData.ticket.producto_laqq) {
+      if (!formData.ticket.product_name.trim()) {
+        newErrors.product_name = "El nombre del producto es obligatorio.";
+      }
+      if (!formData.ticket.marca.trim()) {
+        newErrors.marca = "La marca es obligatoria.";
+      }
+      if (!formData.ticket.modelo.trim()) {
+        newErrors.modelo = "El modelo es obligatorio.";
+      }
+    }
+    if (!formData.ticket.numero_de_serie.trim()) {
+      newErrors.numero_de_serie = "El número de serie es obligatorio.";
     }
     if (!formData.ticket.description.trim()) {
       newErrors.description = "La descripción es obligatoria.";
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+
+    return newErrors;
   };
+  console.log(errors, "AASAS");
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const validationErrors = validateForm();
 
-    if (!validateForm()) {
+    if (Object.keys(validationErrors).length > 0) {
       toast({
         title: "Error",
-        description: "Por favor corrige los errores en el formulario.",
+        description: validationErrors[Object.keys(validationErrors)[0]],
         variant: "destructive",
       });
       return;
@@ -110,9 +136,6 @@ const TicketForm = ({
       ...formData,
       ticket: {
         ...formData.ticket,
-        description: `${formData.ticket.description}\nNúmero de serie: ${
-          serialNumber || "N/A"
-        }`,
       },
     };
 
@@ -159,17 +182,6 @@ const TicketForm = ({
   }, []);
 
   useEffect(() => {
-    const { contact, ticket } = formData;
-    const isFormValid =
-      contact.first_name.trim() !== "" &&
-      contact.last_name.trim() !== "" &&
-      contact.email.trim() !== "" &&
-      ticket.product.trim() !== "" &&
-      ticket.description.trim() !== "";
-    setDisabled(!isFormValid);
-  }, [formData]);
-
-  useEffect(() => {
     dispatch(fetchAllProducts({}));
   }, [dispatch]);
 
@@ -209,7 +221,6 @@ const TicketForm = ({
   const resetForm = () => {
     setFormData(ticketInitialState);
     setSelectedFile(null);
-    setSeialNumber("");
     setFilePreview(null);
     setSelectedProduct(null);
   };
@@ -313,7 +324,8 @@ const TicketForm = ({
 
   return (
     <Dialog open={isTicketModalOpen} onOpenChange={setIsTicketModalOpen}>
-      <DialogContent className="h-[90%] sm:w-full overflow-y-auto">
+      <DialogContent className="h-screen w-screen max-w-none md:h-[90vh] md:w-full md:max-w-[60vw] overflow-y-auto">
+        {" "}
         <DialogHeader>
           <DialogTitle>Crear Ticket de Soporte</DialogTitle>
         </DialogHeader>
@@ -328,6 +340,7 @@ const TicketForm = ({
                   contact: { ...formData.contact, first_name: e.target.value },
                 })
               }
+              error={errors.first_name}
               placeholder="Nombre"
             />
             <InputField
@@ -367,24 +380,109 @@ const TicketForm = ({
               placeholder="Teléfono asociado al ticket"
             />
           </div>
-          <div className="min-w-0">
+
+          <div className="min-w-0 flex justify-between items-end">
             <label className="block text-sm font-medium mb-2">
               Producto <span className="text-destructive">*</span>
             </label>
-            <div className="z-1000">
-              <ProductSearchCombobox
-                products={activeProducts}
-                selectedProduct={selectedProduct}
-                onSelect={handleProductSelect}
-                placeholder="Buscar producto por nombre o código"
-              />
-              {errors.product && (
-                <p className="text-sm text-destructive mt-1">
-                  {errors.product}
-                </p>
-              )}
-            </div>
+            <Toggle
+              pressed={formData.ticket.producto_laqq}
+              onPressedChange={(pressed) =>
+                setFormData({
+                  ...formData,
+                  ticket: { ...formData.ticket, producto_laqq: pressed },
+                })
+              }
+            >
+              {formData.ticket.producto_laqq
+                ? "Personalizar"
+                : "Seleccionar de catálogo"}
+            </Toggle>
           </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            {formData.ticket.producto_laqq ? (
+              <div className="gap-2 flex flex-col">
+                <label className="text-sm">Buscar producto</label>
+                <ProductSearchCombobox
+                  products={activeProducts}
+                  selectedProduct={selectedProduct}
+                  onSelect={handleProductSelect}
+                  placeholder="Buscar producto por nombre o código"
+                />
+                {errors.product && (
+                  <p className="text-sm text-red-500">{errors.product}</p>
+                )}
+              </div>
+            ) : (
+              <InputField
+                error={errors.product_name}
+                label="Nombre del producto"
+                value={formData.ticket.product_name}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    ticket: {
+                      ...formData.ticket,
+                      product_name: e.target.value,
+                    },
+                  })
+                }
+                placeholder="Nombre"
+              />
+            )}
+
+            <InputField
+              error={errors.numero_de_serie}
+              label="Número de serie"
+              value={formData.ticket.numero_de_serie}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  ticket: {
+                    ...formData.ticket,
+                    numero_de_serie: e.target.value,
+                  },
+                })
+              }
+              placeholder="Número de serie"
+            />
+            {!formData.ticket.producto_laqq && (
+              <>
+                <InputField
+                  error={errors.marca}
+                  label="Marca"
+                  value={formData.ticket.marca}
+                  placeholder="Marca"
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      ticket: {
+                        ...formData.ticket,
+                        marca: e.target.value,
+                      },
+                    })
+                  }
+                />
+                <InputField
+                  error={errors.modelo}
+                  label="Modelo"
+                  value={formData.ticket.modelo}
+                  placeholder="Modelo"
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      ticket: {
+                        ...formData.ticket,
+                        modelo: e.target.value,
+                      },
+                    })
+                  }
+                />
+              </>
+            )}
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-2">
               Descripción del Problema{" "}
@@ -404,11 +502,6 @@ const TicketForm = ({
             />
           </div>
 
-          <InputField
-            value={serialNumber}
-            onChange={(e) => setSeialNumber(e.target.value)}
-            placeholder="Número de serie"
-          />
           <UploadFile
             onFileChange={handleFile}
             allowedTypes={["image/jpeg", "image/png", "application/pdf"]}

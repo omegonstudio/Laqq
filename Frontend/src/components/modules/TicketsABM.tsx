@@ -5,7 +5,7 @@ import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { RootState } from "@/store";
-import { convertStateTicket, stateEnum } from "@/utils/quotesConvert";
+import { convertStateTicket } from "@/utils/quotesConvert";
 import { ServiceTicket } from "@/types/api";
 import { EditTicketsService } from "../molecules/Modals/editTicket";
 import { formatDate } from "@/utils/formatDate";
