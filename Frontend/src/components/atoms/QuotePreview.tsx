@@ -42,6 +42,7 @@ import { useUserAdmins } from "@/hooks/useUsers";
 import { Textarea } from "../ui/textarea";
 import { quotesApi } from "@/lib/api/quotes";
 import { DialogDescription } from "@radix-ui/react-dialog";
+import GeneralSpecificationsDialog from "../molecules/Modals/GeneralSpecificationsDialog";
 
 interface Props {
   open: boolean;
@@ -70,7 +71,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   const { list: products, loading: loadingProducts } = useAppSelector(
     (state) => state.products
   );
-
+  const [openSpecs, setOpenSpecs] = useState(false);
   const [newProducts, setNewProducts] = useState<
     (QuoteItemRender & { existing: boolean })[]
   >([]);
@@ -656,6 +657,20 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
             )
           }
         />
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-2"
+          onClick={() => setOpenSpecs(true)}
+        >
+          Especificaciones generales
+        </Button>
+
+        <GeneralSpecificationsDialog
+          open={openSpecs}
+          onOpenChange={setOpenSpecs}
+        />
+        
         {user?.is_superuser && (
           <div className="flex grid grid-cols-3 gap-20">
             <Button

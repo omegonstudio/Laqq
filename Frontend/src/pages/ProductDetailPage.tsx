@@ -137,6 +137,12 @@ const ProductDetailPage = () => {
     addToCart(product);
     navigate("/quote");
   };
+
+  useEffect(() => {
+    if (!hasSpecs && hasRelated && activeTab !== "related") {
+      setActiveTab("related");
+    }
+  }, [hasSpecs, hasRelated, activeTab]);
   return (
     <div className="py-16">
       <div className="container mx-auto px-4">
@@ -251,32 +257,35 @@ const ProductDetailPage = () => {
         {/* Solo mostrar esta sección si hay especificaciones o productos relacionados */}
         {showDetailsSection && (
           <div className="bg-card border border-border rounded-2xl p-8">
-            <div className="flex gap-4 mb-6 border-b border-border">
-              {hasSpecs && (
-                <button
-                  onClick={() => setActiveTab("details")}
-                  className={`px-4 py-2 font-medium transition-colors ${
-                    activeTab === "details"
-                      ? "text-primary border-b-2 border-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Especificaciones
-                </button>
-              )}
-              {hasRelated && (
-                <button
-                  onClick={() => setActiveTab("related")}
-                  className={`px-4 py-2 font-medium transition-colors ${
-                    activeTab === "related"
-                      ? "text-primary border-b-2 border-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Productos Relacionados
-                </button>
-              )}
-            </div>
+            {hasSpecs && hasRelated && (
+              <div className="flex gap-4 mb-6 border-b border-border">
+                {hasSpecs && (
+                  <button
+                    onClick={() => setActiveTab("details")}
+                    className={`px-4 py-2 font-medium transition-colors ${
+                      activeTab === "details"
+                        ? "text-primary border-b-2 border-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Especificaciones
+                  </button>
+                )}
+
+                {hasRelated && (
+                  <button
+                    onClick={() => setActiveTab("related")}
+                    className={`px-4 py-2 font-medium transition-colors ${
+                      activeTab === "related"
+                        ? "text-primary border-b-2 border-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Productos Relacionados
+                  </button>
+                )}
+              </div>
+            )}
 
             {activeTab === "details" && hasSpecs && (
               <div className="overflow-x-auto">
@@ -296,13 +305,22 @@ const ProductDetailPage = () => {
                         <td className="px-4 py-3 text-sm font-medium">
                           {spec.specification}
                         </td>
-                        <td className="px-4 py-3 text-sm">
+{/*                         <td className="px-4 py-3 text-sm">
                           {spec.specification === "link" ? (
                             <a href={spec.value} className="underline">
                               {spec.value}
                             </a>
                           ) : (
                             <td> {spec.value}</td>
+                          )}
+                        </td> */}
+                        <td className="px-4 py-3 text-sm">
+                          {spec.specification === "link" ? (
+                            <a href={spec.value} className="underline">
+                              {spec.value}
+                            </a>
+                          ) : (
+                            spec.value
                           )}
                         </td>
                       </tr>
