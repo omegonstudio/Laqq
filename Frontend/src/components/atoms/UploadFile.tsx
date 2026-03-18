@@ -9,11 +9,16 @@ interface UploadFileProps {
   helpText?: string;
 }
 
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/svg+xml"];
+const ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/svg+xml",
+  "application/pdf",
+];
 
 const UploadFile: React.FC<UploadFileProps> = ({
   onFileChange,
-  allowedTypes = ["image/jpeg", "image/png", "image/svg+xml"],
+  allowedTypes = ALLOWED_TYPES,
   label = "Adjuntar Archivo (opcional)",
   helpText,
 }) => {
@@ -52,8 +57,9 @@ const UploadFile: React.FC<UploadFileProps> = ({
     if (!file) return;
 
     const isValidType =
-  allowedTypes.includes(file.type) ||
-  file.name.toLowerCase().endsWith(".svg");
+    allowedTypes.includes(file.type) ||
+    file.name.toLowerCase().endsWith(".svg") ||
+    file.name.toLowerCase().endsWith(".pdf");
 
 if (!isValidType) {      toast({
         title: getErrorMessage(),
@@ -75,7 +81,8 @@ if (!isValidType) {      toast({
 
     const isValidType =
   allowedTypes.includes(file.type) ||
-  file.name.toLowerCase().endsWith(".svg");
+  file.name.toLowerCase().endsWith(".svg") ||
+  file.name.toLowerCase().endsWith(".pdf");
 
 if (!isValidType) {      toast({
         title: getErrorMessage(),
@@ -122,7 +129,7 @@ if (!isValidType) {      toast({
         <input
           ref={inputRef}
           type="file"
-          accept={allowedTypes.join(",")}
+          accept={allowedTypes.join(",") + ",.pdf,.svg"}
           className="hidden"
           onChange={handleFileChange}
         />
