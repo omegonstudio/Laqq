@@ -27,6 +27,21 @@ const ProductDetailPage = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const unifiedSpecs = unifyProductSpecs(product);
+  const relatedList = Array.isArray(product?.related)
+    ? product.related
+    : Array.isArray(product?.related_products)
+    ? product.related_products
+    : [];
+  const hasSpecs = unifiedSpecs.length > 0;
+  const hasRelated = relatedList.length > 0;
+
+  // Si no hay ninguna de las dos secciones, no mostrar el contenedor
+  const showDetailsSection = hasSpecs || hasRelated;
+  const addCuoteButton = (product) => {
+    addToCart(product);
+    navigate("/quote");
+  };
 
   useEffect(() => {
     if (id) {
@@ -38,7 +53,11 @@ const ProductDetailPage = () => {
       dispatch(clearSelected());
     };
   }, [id, dispatch]);
-
+  useEffect(() => {
+    if (!hasSpecs && hasRelated && activeTab !== "related") {
+      setActiveTab("related");
+    }
+  }, [hasSpecs, hasRelated, activeTab]);
   // Mostrar loading mientras carga
   if (selectedLoading) {
     return (
@@ -126,23 +145,7 @@ const ProductDetailPage = () => {
   };
 
   // Calcular especificaciones y productos relacionados
-  const unifiedSpecs = unifyProductSpecs(product);
-  const relatedList = product.related || product.related_products || [];
-  const hasSpecs = unifiedSpecs.length > 0;
-  const hasRelated = relatedList.length > 0;
 
-  // Si no hay ninguna de las dos secciones, no mostrar el contenedor
-  const showDetailsSection = hasSpecs || hasRelated;
-  const addCuoteButton = (product) => {
-    addToCart(product);
-    navigate("/quote");
-  };
-
-  useEffect(() => {
-    if (!hasSpecs && hasRelated && activeTab !== "related") {
-      setActiveTab("related");
-    }
-  }, [hasSpecs, hasRelated, activeTab]);
   return (
     <div className="py-16">
       <div className="container mx-auto px-4">
@@ -305,7 +308,7 @@ const ProductDetailPage = () => {
                         <td className="px-4 py-3 text-sm font-medium">
                           {spec.specification}
                         </td>
-{/*                         <td className="px-4 py-3 text-sm">
+                        {/*                         <td className="px-4 py-3 text-sm">
                           {spec.specification === "link" ? (
                             <a href={spec.value} className="underline">
                               {spec.value}
