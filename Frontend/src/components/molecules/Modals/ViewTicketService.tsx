@@ -32,10 +32,43 @@ export function ViewTicketModal({
   const MAX_CHARS = 200;
   const [expanded, setExpanded] = useState(false);
 
+  let productRender: {
+    name: string;
+    product_code: string;
+    category?: string;
+    brand: string;
+    numero_de_serie: string;
+    modelo?: string;
+  } = {
+    product_code: "",
+    name: "",
+    category: "",
+    brand: "",
+    numero_de_serie: "",
+    modelo: "",
+  };
+
   const { list } = useAppSelector((state) => state.products);
-  const product = list.find((item) => item.id === ticket?.product);
+
   if (!ticket) return null;
 
+  if (ticket.producto_laqq) {
+    const product = list.find((item) => item.id === ticket?.product);
+    productRender = {
+      ...product,
+      numero_de_serie: ticket.numero_de_serie || "-",
+    };
+  } else {
+    productRender = {
+      name: ticket.product_name || "-",
+      product_code: "No contiene",
+      brand: ticket.marca || "-",
+      numero_de_serie: ticket.numero_de_serie || "-",
+      modelo: ticket.modelo,
+    };
+  }
+
+  console.log(ticket, "SASA");
   const description = ticket.description || "-";
   const isLong = description.length > MAX_CHARS;
   const visibleText =
@@ -84,11 +117,14 @@ export function ViewTicketModal({
                 <Label className="text-lg font-semibold underline">
                   Producto:
                 </Label>
-                <div className="flex items-center gap-2 mt-2">
-                  <p>Nombre: {product.name || ticket.product || "-"}</p>
-                  <p>Código: {product.product_code || ticket.product || "-"}</p>
-                  <p>Categoría: {product.category || ticket.product || "-"}</p>
-                  <p>Categoría: {product.brand || ticket.product || "-"}</p>
+                <div className="grid gap-2 sm:grid-cols-2 mt-2">
+                  <p>Nombre: {productRender.name || "-"}</p>
+                  <p>Código: {productRender.product_code || "-"}</p>
+                  {productRender.category && (
+                    <p>Categoría: {productRender.category || "-"}</p>
+                  )}
+                  <p>Marca: {productRender.brand || "-"}</p>
+                  <p>Número de serie: {productRender.numero_de_serie || "-"}</p>
                 </div>
               </div>
             </div>

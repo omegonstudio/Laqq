@@ -24,7 +24,7 @@ const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const { totalItems } = useCart();
-  const { list: brands, loading } = useAppSelector((state) => state.brands);
+  const { list: brands } = useAppSelector((state) => state.brands);
   const [selectedBrand, setSelectedBrand] = useState("all");
 
   const handleViewAllResults = (query: string) => {
@@ -45,20 +45,40 @@ const Header = () => {
     const brand = brands.find((b) => b.id === selectedBrand);
     return brand?.name || "Todas las marcas";
   };
+
   const navigate = useNavigate();
+
+  /**
+   * Navega a una ruta y, si contiene un hash (#section),
+   * hace scroll suave al elemento correspondiente después del render.
+   */
+  const handleNavigate = (path: string) => {
+    navigate(path);
+
+    const hash = path.split("#")[1];
+
+    if (hash) {
+      setTimeout(() => {
+        const el = document.getElementById(hash);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 150);
+    }
+  };
+
+  // Orden fijo de las opciones del menú Nosotros
   const navigateNosotros: { name: string; path: string }[] = [
     { name: "Certificados", path: "/certificates" },
     { name: "Empresa", path: "/company" },
     { name: "Representaciones", path: "/company#representaciones" },
     { name: "Contacto", path: "/contact" },
   ];
+
   return (
     <>
-      {/* Spacer to prevent content jump */}
-
       <header className="w-full sticky top-0 z-50">
-        {" "}
-        {/* --- Top Bar (hides on scroll) --- */}
+        {/* --- Top Bar --- */}
         <div
           className={`w-full border-b
            ${
@@ -72,6 +92,7 @@ const Header = () => {
             <a href="/">
               <Logo variant="auto" className="h-8 md:h-10" showLink={false} />
             </a>
+
             {/* Search Section - Hidden on mobile */}
             <div className="hidden lg:flex flex-1 items-center justify-center gap-3 ">
               <div
@@ -196,24 +217,21 @@ const Header = () => {
             </div>
           </div>
         </div>
+
         {/* --- Bottom Navigation (sticky) --- */}
+        {/* Order: Equipamiento · Insumos · Procesos · Mobiliario | Servicio Técnico | Nosotros */}
         <nav
-          className={`border-b  ${
+          className={`border-b ${
             theme === "dark"
               ? "border-gray-800 bg-[#0a0a0a]"
               : "border-gray-200 bg-white"
           }`}
         >
           <div className="container mx-auto flex items-center gap-5 justify-center py-2 px-4 md:px-6">
-            {/* Logo in sticky mode */}
-            {/* {scrolled && (
-              <Logo variant="auto" className="h-8 md:h-10" showLink={false} />
-            )} */}
-
-            {/* Desktop Navigation */}
-
+            {/* Product categories: Equipamiento, Insumos, Procesos, Mobiliario (fixed order via display_order) */}
             <NavDropdown />
 
+            {/* Servicio Técnico — fixed link, always 5th */}
             <Link
               to="/support"
               className={`px-4 py-2 rounded-2xl text-sm font-medium border transition-colors ${
@@ -222,17 +240,19 @@ const Header = () => {
                   : "border-orange-500 text-orange-600 hover:bg-orange-50"
               }`}
             >
-              Servicio técnico
+              SERVICIO TÉCNICO
             </Link>
-            <Select onValueChange={(value) => navigate(value)}>
+
+            {/* Nosotros — always last */}
+            <Select onValueChange={(value) => handleNavigate(value)}>
               <SelectTrigger
-                className={`w-[180px] text-sm rounded-2xl px-4 py-2 border transition-colors ${
+                className={`w-auto text-sm rounded-2xl px-4 py-1 border transition-colors ${
                   theme === "dark"
                     ? "bg-[#0a0a0a] border-gray-700 text-gray-200"
                     : "bg-white border-gray-300 text-gray-700"
                 }`}
               >
-                <SelectValue placeholder="NOSOTROS" />
+                <SelectValue placeholder="NOSOTROS"  />
               </SelectTrigger>
 
               <SelectContent className="rounded-2xl">
@@ -242,20 +262,14 @@ const Header = () => {
                     className="rounded-xl"
                     value={n.path}
                   >
-                    {n.name}
+                    {n.name.toUpperCase()}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-
-          {/* Mobile Navigation Toggle */}
-          <div className={`flex md:hidden items-center `}>
-            <NavDropdown />
-          </div>
-
-          {/* Icons in sticky mode */}
         </nav>
+
         {/* Mobile Menu */}
         <div
           className={`md:hidden border-b transition-all duration-300 overflow-hidden ${
@@ -306,7 +320,24 @@ const Header = () => {
 
             {/* Navigation links on mobile */}
             <div className="flex flex-col gap-2">
-              <Select onValueChange={(value) => navigate(value)}>
+              {/* Product categories on mobile */}
+              <NavDropdown />
+
+              {/* Servicio Técnico */}
+              <Link
+                to="/support"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`px-4 py-3 rounded-md text-sm font-medium border text-center transition-colors ${
+                  theme === "dark"
+                    ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
+                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
+                }`}
+              >
+                SERVICIO TÉCNICO
+              </Link>
+
+              {/* Nosotros */}
+              <Select onValueChange={(value) => handleNavigate(value)}>
                 <SelectTrigger
                   className={`w-[180px] text-sm rounded-2xl px-4 py-2 border transition-colors ${
                     theme === "dark"
@@ -314,7 +345,7 @@ const Header = () => {
                       : "bg-white border-gray-300 text-gray-700"
                   }`}
                 >
-                  <SelectValue placeholder="NOSOTROS" />
+                  <SelectValue placeholder="Nosotros" />
                 </SelectTrigger>
 
                 <SelectContent className="rounded-2xl">
@@ -329,17 +360,6 @@ const Header = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <Link
-                to="/support"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`px-4 py-3 rounded-md text-sm font-medium border text-center transition-colors ${
-                  theme === "dark"
-                    ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
-                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
-                }`}
-              >
-                Servicio técnico
-              </Link>
             </div>
 
             {/* User actions on mobile */}

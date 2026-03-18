@@ -66,6 +66,10 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
       attachment: null,
       attachments: [],
       priority: null,
+      numero_de_serie: "",
+      marca: "",
+      modelo: "",
+      producto_laqq: true,
     },
     contact: {
       first_name: tickets[0].contact.first_name,

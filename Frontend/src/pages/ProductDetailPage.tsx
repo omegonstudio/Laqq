@@ -27,6 +27,21 @@ const ProductDetailPage = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const unifiedSpecs = unifyProductSpecs(product);
+  const relatedList = Array.isArray(product?.related)
+    ? product.related
+    : Array.isArray(product?.related_products)
+    ? product.related_products
+    : [];
+  const hasSpecs = unifiedSpecs.length > 0;
+  const hasRelated = relatedList.length > 0;
+
+  // Si no hay ninguna de las dos secciones, no mostrar el contenedor
+  const showDetailsSection = hasSpecs || hasRelated;
+  const addCuoteButton = (product) => {
+    addToCart(product);
+    navigate("/quote");
+  };
 
   useEffect(() => {
     if (id) {
@@ -38,7 +53,11 @@ const ProductDetailPage = () => {
       dispatch(clearSelected());
     };
   }, [id, dispatch]);
-
+  useEffect(() => {
+    if (!hasSpecs && hasRelated && activeTab !== "related") {
+      setActiveTab("related");
+    }
+  }, [hasSpecs, hasRelated, activeTab]);
   // Mostrar loading mientras carga
   if (selectedLoading) {
     return (
@@ -126,17 +145,7 @@ const ProductDetailPage = () => {
   };
 
   // Calcular especificaciones y productos relacionados
-  const unifiedSpecs = unifyProductSpecs(product);
-  const relatedList = product.related || product.related_products || [];
-  const hasSpecs = unifiedSpecs.length > 0;
-  const hasRelated = relatedList.length > 0;
 
-  // Si no hay ninguna de las dos secciones, no mostrar el contenedor
-  const showDetailsSection = hasSpecs || hasRelated;
-  const addCuoteButton = (product) => {
-    addToCart(product);
-    navigate("/quote");
-  };
   return (
     <div className="py-16">
       <div className="container mx-auto px-4">
@@ -251,32 +260,35 @@ const ProductDetailPage = () => {
         {/* Solo mostrar esta sección si hay especificaciones o productos relacionados */}
         {showDetailsSection && (
           <div className="bg-card border border-border rounded-2xl p-8">
-            <div className="flex gap-4 mb-6 border-b border-border">
-              {hasSpecs && (
-                <button
-                  onClick={() => setActiveTab("details")}
-                  className={`px-4 py-2 font-medium transition-colors ${
-                    activeTab === "details"
-                      ? "text-primary border-b-2 border-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Especificaciones
-                </button>
-              )}
-              {hasRelated && (
-                <button
-                  onClick={() => setActiveTab("related")}
-                  className={`px-4 py-2 font-medium transition-colors ${
-                    activeTab === "related"
-                      ? "text-primary border-b-2 border-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Productos Relacionados
-                </button>
-              )}
-            </div>
+            {hasSpecs && hasRelated && (
+              <div className="flex gap-4 mb-6 border-b border-border">
+                {hasSpecs && (
+                  <button
+                    onClick={() => setActiveTab("details")}
+                    className={`px-4 py-2 font-medium transition-colors ${
+                      activeTab === "details"
+                        ? "text-primary border-b-2 border-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Especificaciones
+                  </button>
+                )}
+
+                {hasRelated && (
+                  <button
+                    onClick={() => setActiveTab("related")}
+                    className={`px-4 py-2 font-medium transition-colors ${
+                      activeTab === "related"
+                        ? "text-primary border-b-2 border-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Productos Relacionados
+                  </button>
+                )}
+              </div>
+            )}
 
             {activeTab === "details" && hasSpecs && (
               <div className="overflow-x-auto">
@@ -296,13 +308,22 @@ const ProductDetailPage = () => {
                         <td className="px-4 py-3 text-sm font-medium">
                           {spec.specification}
                         </td>
-                        <td className="px-4 py-3 text-sm">
+                        {/*                         <td className="px-4 py-3 text-sm">
                           {spec.specification === "link" ? (
                             <a href={spec.value} className="underline">
                               {spec.value}
                             </a>
                           ) : (
                             <td> {spec.value}</td>
+                          )}
+                        </td> */}
+                        <td className="px-4 py-3 text-sm">
+                          {spec.specification === "link" ? (
+                            <a href={spec.value} className="underline">
+                              {spec.value}
+                            </a>
+                          ) : (
+                            spec.value
                           )}
                         </td>
                       </tr>

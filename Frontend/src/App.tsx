@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/components/auth/useAuth";
 import { CartProvider } from "@/contexts/CartContext";
 import ScrollToTop from "@/components/common/ScrollToTop";
+import ScrollToHash from "@/components/common/ScrollToHash";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
@@ -60,6 +61,7 @@ const App = () => {
           <CartProvider>
             <BrowserRouter>
               <ScrollToTop />
+              <ScrollToHash />
               <Routes>
                 <Route path="/tickets" element={<PageTicket />} />
                 {/* Public routes */}

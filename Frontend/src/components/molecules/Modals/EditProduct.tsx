@@ -74,6 +74,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     type: "existing" | "new";
     id?: string; // Para imágenes existentes, guardamos el ID
     file?: File; // Para imágenes nuevas, guardamos el archivo
+    fileType?: string; // MIME type del archivo (e.g. "application/pdf")
   }> | null>(null);
 
   const [selectedRelated, setSelectedRelated] = useState<string>("");
@@ -104,6 +105,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             url: att.url,
             type: "existing",
             id: att.id,
+            fileType: att.url?.toLowerCase().endsWith(".pdf") ? "application/pdf" : undefined,
           })) || null
         );
       }
@@ -577,8 +579,8 @@ const ModalProduct: React.FC<ModalProductProps> = ({
 
       setCarrouselPreview((prev) =>
         prev
-          ? [...prev, { url: base64, type: "new", file }]
-          : [{ url: base64, type: "new", file }]
+          ? [...prev, { url: base64, type: "new", file, fileType: file.type }]
+          : [{ url: base64, type: "new", file, fileType: file.type }]
       );
     };
 
@@ -1036,11 +1038,17 @@ const ModalProduct: React.FC<ModalProductProps> = ({
                   key={item.type === "existing" ? item.id : index}
                   className="relative inline-block mt-2 w-32 h-32"
                 >
-                  <img
-                    src={item.url}
-                    alt="Preview"
-                    className="w-32 h-32 object-cover rounded-lg border-2 border-gray-100"
-                  />
+                  {item.fileType === "application/pdf" || item.url?.toLowerCase().endsWith(".pdf") ? (
+                    <div className="flex items-center justify-center w-32 h-32 rounded-lg border bg-gray-100 text-sm font-medium text-gray-500">
+                      PDF
+                    </div>
+                  ) : (
+                    <img
+                      src={item.url}
+                      alt="Preview"
+                      className="w-32 h-32 object-cover rounded-lg border-2 border-gray-100"
+                    />
+                  )}
                   {/* Opcional: Mostrar un indicador del tipo de imagen */}
                   {item.type === "existing" && (
                     <span className="absolute top-0 left-0 bg-blue-500 text-white text-xs px-1 rounded">
