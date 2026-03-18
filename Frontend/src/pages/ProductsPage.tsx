@@ -112,39 +112,15 @@ const ProductsPage = () => {
   const activeBrand = brands.find((b) => b.id === activeBrandId);
   const activeCategory = categories.find((b) => b.id === activeCategoryId);
 
-  // Determinar título dinámico
-  const getTitle = () => {
-    if (activeCategory && activeBrand) {
-      return `${activeCategory.name} - ${activeBrand.name}`;
-    }
-    if (activeCategory) {
-      return activeCategory.name;
-    }
-    if (activeBrand) {
-      return activeBrand.name;
-    }
-    if (search) {
-      return `Resultados de "${search}"`;
-    }
-    return "Catálogo de Productos";
-  };
-
-  const getSubtitle = () => {
-    if (activeCategory || activeBrand || search) {
-      return `${filteredProducts.length} producto${filteredProducts.length !== 1 ? 's' : ''} encontrado${filteredProducts.length !== 1 ? 's' : ''}`;
-    }
-    return "Explora nuestra amplia selección de equipos y material de laboratorio";
-  };
-
   return (
     <div className="py-16">
       <div className="container mx-auto px-4">
         <div className="max-w-3xl mx-auto text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4 transition-all duration-300">
-            {getTitle()}
+          <h1 className="text-4xl font-bold mb-4">
+            Catálogo de Productos
           </h1>
-          <p className="text-xl text-muted-foreground mb-8 transition-all duration-300">
-            {getSubtitle()}
+          <p className="text-xl text-muted-foreground mb-8">
+            Explora nuestra amplia selección de equipos y material de laboratorio
           </p>
           <SearchBar
             debounceMs={300}

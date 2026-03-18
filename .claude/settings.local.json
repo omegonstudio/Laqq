@@ -6,7 +6,21 @@
       "Bash(python manage.py test:*)",
       "Bash(cat:*)",
       "Bash(ls:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(python manage.py runserver:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm install)",
+      "Bash(docker-compose:*)",
+      "Bash(docker logs:*)",
+      "Bash(curl:*)",
+      "Bash(timeout /t 1)",
+      "Bash(set LOAD_SEED_DATA=false)",
+      "Bash(ping:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []
