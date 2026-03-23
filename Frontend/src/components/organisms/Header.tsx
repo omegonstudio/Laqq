@@ -252,7 +252,7 @@ const Header = () => {
                     : "bg-white border-gray-300 text-gray-700"
                 }`}
               >
-                <SelectValue placeholder="NOSOTROS"  />
+                <SelectValue placeholder="NOSOTROS" />
               </SelectTrigger>
 
               <SelectContent className="rounded-2xl">

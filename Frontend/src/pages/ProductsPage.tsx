@@ -3,10 +3,11 @@ import ProductGrid from "@/components/organisms/ProductGrid";
 import SearchBar from "@/components/molecules/SearchBar";
 import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchProducts } from "@/store/productSlice";
+import { fetchAllProducts, fetchProducts } from "@/store/productSlice";
 import { useProductFilters } from "@/hooks/useFilters";
 import { fetchAllBrands, fetchBrands } from "@/store/brandSlice";
 import { fetchAllCategories, fetchCategories } from "@/store/categoriesSlice";
+import NavDropdown from "@/components/molecules/NavDropdown";
 
 const ProductsPage = () => {
   const { searchParams, setFilter, clearBrand, clearCategory } =
@@ -23,12 +24,12 @@ const ProductsPage = () => {
   const { list: categories } = useAppSelector((state) => state.categories);
 
   const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+
   const [currentPage, setCurrentPage] = useState(1);
 
   // Cargar primera página
   useEffect(() => {
-    dispatch(fetchProducts({ page: 1, page_size: 9, is_active: true }));
+    // dispatch(fetchProducts({ page: 1, page_size: 9, is_active: true }));
     setCurrentPage(1);
     dispatch(fetchAllBrands());
     dispatch(fetchAllCategories());
@@ -48,38 +49,26 @@ const ProductsPage = () => {
         const newProducts = products.filter((p) => !existingIds.has(p.id));
         return [...prev, ...newProducts];
       });
-    }
+    } else setAllProducts([]); // Si no hay productos, limpiar (ej: al cambiar filtros)
   }, [products, currentPage]);
 
   // Aplicar filtros locales
   useEffect(() => {
+    // dispatch(fetchAllProducts({ is_active: true }));
     const search = searchParams.get("search");
     const category = searchParams.get("category");
     const brand = searchParams.get("brand");
 
-    let filtered = allProducts;
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchLower) ||
-          (p.brand || "").toLowerCase().includes(searchLower) ||
-          (p.description || "").toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (category) {
-      filtered = filtered.filter((p) => p.category_id === category);
-    }
-
-    if (brand) {
-      const brandObj = brands.find((b) => b.id === brand);
-      filtered = filtered.filter((p) => p.brand === brandObj?.name);
-    }
-
-    setFilteredProducts(filtered);
-  }, [searchParams, allProducts, brands]);
+    // let filtered = allProducts;
+    dispatch(
+      fetchAllProducts({
+        is_active: true,
+        brand: brand ?? undefined,
+        category: category ?? undefined,
+        search: search ?? undefined,
+      })
+    );
+  }, [searchParams]);
 
   // Handler para "Ver más"
   const handleLoadMore = () => {
@@ -120,12 +109,15 @@ const ProductsPage = () => {
             Explora nuestra amplia selección de equipos y material de
             laboratorio
           </p>
-          <SearchBar
-            debounceMs={300}
-            maxResults={10}
-            value={search}
-            onViewAllResults={(q) => setFilter("search", q)}
-          />
+          <div className="w-full flex flex-col justify-center items-center gap-5">
+            <SearchBar
+              debounceMs={300}
+              maxResults={10}
+              value={search}
+              onViewAllResults={(q) => setFilter("search", q)}
+            />
+            <NavDropdown />
+          </div>
           <div className="flex justify-between">
             {/* Mostrar filtro activo */}
             {activeBrand && (
@@ -165,7 +157,7 @@ const ProductsPage = () => {
       </div>
 
       <ProductGrid
-        products={filteredProducts}
+        products={allProducts}
         hasMore={hasMore}
         onLoadMore={handleLoadMore}
         loading={loading}
