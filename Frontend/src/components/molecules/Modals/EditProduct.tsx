@@ -53,6 +53,52 @@ interface ModalProductProps {
   isNew: boolean;
 }
 
+const parseApiError = (error: unknown): string => {
+  if (!error) return "Error desconocido";
+
+  // Si ya es un string legible
+  if (typeof error === "string") return error;
+
+  // Si es un Error de JS
+  if (error instanceof Error) {
+    // Intentar parsear el mensaje como JSON (algunos interceptores lo serializan)
+    try {
+      const parsed = JSON.parse(error.message);
+      return parseApiError(parsed);
+    } catch {
+      return error.message;
+    }
+  }
+
+  // Si es un objeto (respuesta JSON del backend)
+  if (typeof error === "object") {
+    const obj = error as Record<string, unknown>;
+
+    // Campos con mensajes directos de DRF
+    const priorityFields = ["detail", "non_field_errors", "message"];
+    for (const field of priorityFields) {
+      if (obj[field]) {
+        const val = obj[field];
+        if (Array.isArray(val)) return val[0] as string;
+        if (typeof val === "string") return val;
+      }
+    }
+
+    // Errores de campos específicos: { brand_id: ["Brand is required..."] }
+    const fieldMessages: string[] = [];
+    for (const [key, val] of Object.entries(obj)) {
+      if (Array.isArray(val)) {
+        fieldMessages.push(`${key}: ${val[0]}`);
+      } else if (typeof val === "string") {
+        fieldMessages.push(`${key}: ${val}`);
+      }
+    }
+    if (fieldMessages.length > 0) return fieldMessages.join(" | ");
+  }
+
+  return "Error inesperado al guardar";
+};
+
 const ModalProduct: React.FC<ModalProductProps> = ({
   isOpen,
   onClose,
@@ -63,28 +109,27 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   const { list: categories } = useAppSelector((state) => state.categories);
   const { list: products } = useAppSelector((state) => state.products);
   const { list: brands } = useAppSelector((state) => state.brands);
-  // Estado local con tipo específico para formulario
+
   const [localState, setLocalState] = useState<ProductFormState>(
     getEmptyProductFormState()
   );
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  // Cambia la definición del estado para incluir tipo y metadata
   const [carrouselPreview, setCarrouselPreview] = useState<Array<{
     url: string;
     type: "existing" | "new";
-    id?: string; // Para imágenes existentes, guardamos el ID
-    file?: File; // Para imágenes nuevas, guardamos el archivo
-    fileType?: string; // MIME type del archivo (e.g. "application/pdf")
+    id?: string;
+    file?: File;
+    fileType?: string;
   }> | null>(null);
 
   const [selectedRelated, setSelectedRelated] = useState<string>("");
   const [carrouselDeleteIds, setCarrouselDeleteIds] = useState<string[]>([]);
+
   // ============================================
   // EFFECTS
   // ============================================
   useEffect(() => {
     if (!isNew && initialData) {
-      // Convertir Product a ProductFormState
       const formState = productToFormState(initialData);
       setLocalState({
         ...formState,
@@ -92,10 +137,8 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           ...att,
           role: att.role as Attachment["role"],
         })),
-
         attachments_files: [],
       });
-      // Si hay imagen, cargar preview (asumiendo que es UUID)
       if (initialData.image_url) {
         setImagePreview(initialData.image_url);
       }
@@ -105,7 +148,9 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             url: att.url,
             type: "existing",
             id: att.id,
-            fileType: att.url?.toLowerCase().endsWith(".pdf") ? "application/pdf" : undefined,
+            fileType: att.url?.toLowerCase().endsWith(".pdf")
+              ? "application/pdf"
+              : undefined,
           })) || null
         );
       }
@@ -124,9 +169,8 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     if (!isOpen) {
       setImagePreview(null);
       setSelectedRelated("");
-      setCarrouselDeleteIds([]); // ← Limpiar eliminaciones pendientes
+      setCarrouselDeleteIds([]);
 
-      // ✅ Restaurar al estado inicial
       if (initialData) {
         const formState = productToFormState(initialData);
         setLocalState(formState);
@@ -140,13 +184,14 @@ const ModalProduct: React.FC<ModalProductProps> = ({
               value: "",
               unit: "",
               is_visible: true,
-              product: initialData.id,
+              product: initialData?.id,
             },
           ],
         });
       }
     }
   }, [isOpen, initialData]);
+
   // ============================================
   // HANDLERS
   // ============================================
@@ -165,29 +210,16 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   // }, [initialData, localState]);
 
   const haveAttachmentsChanged = (
-    existing: Attachment[] = [], // Attachments existentes actuales (después de eliminaciones)
-    initial: Attachment[] = [], // Attachments originales de la BD
-    newFiles: File[] = [] // Archivos nuevos agregados
+    existing: Attachment[] = [],
+    initial: Attachment[] = [],
+    newFiles: File[] = []
   ): boolean => {
-    // 1. Verificar si se eliminaron attachments
     const initialIds = initial.map((a) => a.id).sort();
     const currentIds = existing.map((a) => a.id).sort();
-
     const removed = JSON.stringify(initialIds) !== JSON.stringify(currentIds);
-    if (removed) {
-      return true;
-    }
-
-    // 2. Verificar si se agregaron archivos nuevos
-    const added = newFiles.length > 0;
-    if (added) {
-      return true;
-    }
-    // 3. Verificar si hay IDs en carrouselDeleteIds (por si acaso)
-    const hasPendingDeletions = carrouselDeleteIds.length > 0;
-    if (hasPendingDeletions) {
-      return true;
-    }
+    if (removed) return true;
+    if (newFiles.length > 0) return true;
+    if (carrouselDeleteIds.length > 0) return true;
     return false;
   };
 
@@ -198,14 +230,11 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       initialData,
       undefined
     );
-
     const productChanged = hasProductChanges(productUpdate);
-
     const specsChanged = haveSpecsChanged(
       localState.specs,
       initialData.specs || initialData.specifications || []
     );
-
     const fixedSpecsChanged = haveFixedSpecsChanged(
       localState.fixed_specs,
       initialData.fixed_specs
@@ -213,11 +242,10 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     const imageChanged =
       localState.image_file !== null ||
       localState.image_attachment_id !== initialData.image_attachment;
-
     const attachmentsChanged = haveAttachmentsChanged(
-      localState.attachments_existing ?? [], // Attachments existentes actuales
-      initialData.attachments ?? [], // Attachments originales
-      localState.attachments_files ?? [] // Archivos nuevos
+      localState.attachments_existing ?? [],
+      initialData.attachments ?? [],
+      localState.attachments_files ?? []
     );
     return (
       productChanged ||
@@ -227,7 +255,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       attachmentsChanged
     );
   }, [localState, initialData, carrouselDeleteIds]);
-
   // ✅ Botón habilitado solo si: formulario válido Y (es nuevo O tiene cambios)
   const isSaveEnabled = useMemo(() => {
     return validation.isValid && (!initialData || hasChanges);
@@ -238,9 +265,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       const initialImage = initialData?.image_attachment ?? null;
       const currentImage = localState.image_file ?? null;
 
-      // ============================================
-      // VALIDACIÓN: Campos obligatorios
-      // ============================================
       if (!validation.isValid) {
         toast({
           title: validation.errorMessage || "Formulario inválido",
@@ -249,9 +273,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         return;
       }
 
-      // ============================================
-      // VALIDACIÓN: Filtrar specs vacías
-      // ============================================
       const cleanedSpecs: ProductSpec[] = cleanSpecsForSync(
         localState.specs || []
       );
@@ -266,7 +287,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         try {
           let attachmentId: string | null = localState.image_attachment_id;
 
-          // Subir imagen principal si existe
           if (currentImage) {
             const attachment = await attachmentsApi.create({
               file: currentImage,
@@ -276,7 +296,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             attachmentId = attachment.id;
           }
 
-          // Crear producto
           product = await CreateProduct({
             dispatch,
             formState: {
@@ -286,25 +305,19 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             attachmentId: attachmentId,
           });
 
-          // Subir imágenes del carrusel (si las hay)
           if (carrouselPreview?.length > 0) {
             const newImages = carrouselPreview.filter(
               (item) => item.type === "new"
             );
-
             if (newImages.length > 0) {
               try {
                 const formData = new FormData();
                 newImages.forEach((item) => {
-                  if (item.file) {
-                    formData.append("files", item.file);
-                  }
+                  if (item.file) formData.append("files", item.file);
                 });
                 formData.append("role", "image");
-
                 await productsApi.uploadAttachments(product.id, formData);
               } catch (carruselError) {
-                // Error al subir imágenes del carrusel - NO impide cerrar el modal
                 console.error(
                   "Error subiendo imágenes del carrusel:",
                   carruselError
@@ -312,13 +325,12 @@ const ModalProduct: React.FC<ModalProductProps> = ({
                 toast({
                   title:
                     "Producto creado pero hubo un error al subir algunas imágenes",
-                  variant: "destructive", // Asumiendo que tienes variante warning
+                  variant: "destructive",
                 });
               }
             }
           }
 
-          // Sincronizar especificaciones
           try {
             await syncProductSpecifications({
               dispatch,
@@ -335,7 +347,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             });
           }
 
-          // Sincronizar fixed specs
           try {
             if (
               localState.fixed_specs.length === 0 &&
@@ -361,20 +372,15 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             });
           }
 
-          // Refrescar datos
           dispatch(refreshProductEverywhere(product.id));
           toast({ title: "Producto creado exitosamente" });
         } catch (createError) {
-          // Error CRÍTICO: No se pudo crear el producto
           console.error("Error creando producto:", createError);
           toast({
-            title:
-              createError instanceof Error
-                ? createError.message
-                : "Error al crear el producto",
+            title: parseApiError(createError),
             variant: "destructive",
           });
-          return; // No cerramos el modal
+          return;
         }
       } else {
         // ========== EDITAR PRODUCTO ==========
@@ -390,28 +396,22 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           let attachmentId: string | null | undefined =
             localState.image_attachment_id;
 
-          // 1. GESTIÓN DE CARRUSEL (operaciones no críticas)
+          // 1. GESTIÓN DE CARRUSEL
           try {
-            // Subir nuevas imágenes del carrusel
             if (carrouselPreview?.length > 0) {
               const newImages = carrouselPreview.filter(
                 (item) => item.type === "new"
               );
-
               if (newImages.length > 0) {
                 const formData = new FormData();
                 newImages.forEach((item) => {
-                  if (item.file) {
-                    formData.append("files", item.file);
-                  }
+                  if (item.file) formData.append("files", item.file);
                 });
                 formData.append("role", "image");
-
                 await productsApi.uploadAttachments(initialData.id, formData);
               }
             }
 
-            // Eliminar imágenes del carrusel
             if (carrouselDeleteIds.length > 0) {
               await Promise.all(
                 carrouselDeleteIds.map(async (item) => {
@@ -422,7 +422,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
                       `Error eliminando attachment ${item}:`,
                       deleteError
                     );
-                    // Continuamos con las demás eliminaciones
                   }
                 })
               );
@@ -464,14 +463,10 @@ const ModalProduct: React.FC<ModalProductProps> = ({
               title: "Error al actualizar la imagen principal",
               variant: "destructive",
             });
-            // Continuamos con attachmentId original
           }
 
-          // 3. ACTUALIZAR PRODUCTO (operación crítica)
-          const updatedFormState = {
-            ...localState,
-            specs: cleanedSpecs,
-          };
+          // 3. ACTUALIZAR PRODUCTO
+          const updatedFormState = { ...localState, specs: cleanedSpecs };
 
           product = await saveProductEntity({
             dispatch,
@@ -480,7 +475,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             attachmentId: attachmentId,
           });
 
-          // 4. Sincronizar especificaciones (operaciones secundarias)
+          // 4. Sincronizar specs
           try {
             await syncProductSpecifications({
               dispatch,
@@ -513,50 +508,36 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             });
           }
 
-          // Refrescar datos
           dispatch(refreshProductEverywhere(initialData.id));
           toast({ title: "Producto actualizado exitosamente" });
         } catch (updateError) {
-          // Error CRÍTICO: No se pudo actualizar el producto
           console.error("Error actualizando producto:", updateError);
           toast({
-            title:
-              updateError instanceof Error
-                ? updateError.message
-                : "Error al actualizar el producto",
+            title: parseApiError(updateError),
             variant: "destructive",
           });
-          return; // No cerramos el modal
+          return;
         }
       }
 
-      // ✅ CERRAR MODAL SOLO SI TODO SALIÓ BIEN (o al menos el producto se creó/actualizó)
       onClose();
     } catch (error: unknown) {
-      // Error inesperado (catch general)
       console.error("Error inesperado:", error);
       toast({
-        title:
-          error instanceof Error
-            ? error.message
-            : "Error inesperado al guardar",
+        title: parseApiError(error),
         variant: "destructive",
       });
-      // No cerramos el modal en caso de error inesperado
     }
   };
+
   const handleFile = (selectedFile: File | null) => {
     if (selectedFile) {
       const reader = new FileReader();
-
       reader.onloadend = () => {
         const base64String = reader.result as string;
         setLocalState({ ...localState, image_file: selectedFile });
-
-        // Usar la misma base64 para el preview
         setImagePreview(base64String);
       };
-
       reader.readAsDataURL(selectedFile);
     } else {
       setLocalState({ ...localState, image_file: null });
@@ -566,24 +547,19 @@ const ModalProduct: React.FC<ModalProductProps> = ({
 
   const handleCarouselFile = (file: File | null) => {
     if (!file) return;
-
     const reader = new FileReader();
-
     reader.onloadend = () => {
       const base64 = reader.result as string;
-
       setLocalState((prev) => ({
         ...prev,
         attachments_files: [...(prev.attachments_files || []), file],
       }));
-
       setCarrouselPreview((prev) =>
         prev
           ? [...prev, { url: base64, type: "new", file, fileType: file.type }]
           : [{ url: base64, type: "new", file, fileType: file.type }]
       );
     };
-
     reader.readAsDataURL(file);
   };
   const handleRemoveImage = () => {
@@ -594,15 +570,12 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     });
     setImagePreview(null);
   };
+
   const handleRemoveCarouselItem = (index: number) => {
-    // Obtener el item a eliminar
     const itemToRemove = carrouselPreview?.[index];
 
     if (itemToRemove?.type === "existing" && itemToRemove.id) {
-      // Si es una imagen existente, agregar su ID a carrouselDeleteIds
       setCarrouselDeleteIds((prev) => [...prev, itemToRemove.id!]);
-
-      // IMPORTANTE: Actualizar attachments_existing para eliminar esta imagen
       setLocalState((prev) => ({
         ...prev,
         attachments_existing:
@@ -617,14 +590,10 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       attachments_files:
         itemToRemove?.type === "new"
           ? prev.attachments_files?.filter((_, i) => {
-              const newFilesCount =
-                carrouselPreview?.filter((item) => item.type === "new")
-                  .length || 0;
               const newFilesIndex =
                 carrouselPreview
                   ?.slice(0, index)
                   .filter((item) => item.type === "new").length || 0;
-
               return i !== newFilesIndex;
             })
           : prev.attachments_files,
@@ -634,25 +603,21 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       prev ? prev.filter((_, i) => i !== index) : null
     );
   };
+
   const handleCategoryChange = (e: string) => {
     setLocalState({ ...localState, category: e });
   };
 
   const handleRelatedChange = (selectedId: string) => {
     if (!selectedId) return;
-
     const currentRelated = localState.related || [];
     const alreadyExists = currentRelated.some((rel) => rel.id === selectedId);
-
     if (alreadyExists) {
       setSelectedRelated("");
       return;
     }
-
     const selectedProduct = products.find((p) => p.id === selectedId);
-
     if (!selectedProduct) return;
-
     setLocalState({
       ...localState,
       related: [
@@ -665,7 +630,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         },
       ],
     });
-
     setSelectedRelated("");
   };
 
@@ -682,26 +646,21 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     value: string | boolean
   ) => {
     const updatedSpecs = localState.specs.map((spec, i) => {
-      if (i === index) {
-        return { ...spec, [field]: value };
-      }
+      if (i === index) return { ...spec, [field]: value };
       return spec;
     });
-
     setLocalState({ ...localState, specs: updatedSpecs });
   };
+
   const handleFixedSpecChange = (
     index: number,
     field: keyof ProductFixedSpec,
     value: string
   ) => {
     const updatedSpecs = localState.fixed_specs.map((spec, i) => {
-      if (i === index) {
-        return { ...spec, [field]: value };
-      }
+      if (i === index) return { ...spec, [field]: value };
       return spec;
     });
-
     setLocalState({ ...localState, fixed_specs: updatedSpecs });
   };
 
@@ -729,12 +688,9 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   };
 
   const handleRemoveFixedSpec = () => {
-    setLocalState({
-      ...localState,
-      fixed_specs: [],
-    });
+    setLocalState({ ...localState, fixed_specs: [] });
   };
-  // Filtrar productos disponibles
+
   const availableProducts = products.filter((prod) => {
     if (localState.id && prod.id === localState.id) return false;
     const currentRelated = localState.related || [];
@@ -746,7 +702,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       onClose={onClose}
       title={localState.id ? "Editar Producto" : "Nuevo Producto"}
       size="xl"
-      //clasName="max-w-4xl"
     >
       <div className="space-y-4">
         <div className="flex gap-5 items-end">
@@ -772,10 +727,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             <Toggle
               pressed={localState.is_active}
               onPressedChange={(pressed) =>
-                setLocalState({
-                  ...localState,
-                  is_active: pressed,
-                })
+                setLocalState({ ...localState, is_active: pressed })
               }
             >
               {localState.is_active ? "Activo" : "Inactivo"}
@@ -788,10 +740,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
               type="checkbox"
               checked={localState.is_featured !== false}
               onChange={(e) =>
-                setLocalState({
-                  ...localState,
-                  is_featured: e.target.checked,
-                })
+                setLocalState({ ...localState, is_featured: e.target.checked })
               }
             />
             Destacar
@@ -812,21 +761,21 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             />
           </div>
           <div className="w-[50%]">
-            <label className="text-sm font-medium">Marca</label>
-
+            <label className="text-sm font-medium">
+              Marca
+              {localState.is_active && (
+                <span className="text-red-500 ml-1">*</span>
+              )}
+            </label>
             <Select
               value={localState.brand || ""}
               onValueChange={(value) =>
-                setLocalState((prev) => ({
-                  ...prev,
-                  brand: value,
-                }))
+                setLocalState((prev) => ({ ...prev, brand: value }))
               }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona una marca" />
               </SelectTrigger>
-
               <SelectContent>
                 {brands.map((brand) => (
                   <SelectItem key={brand.id} value={brand.id}>
@@ -837,22 +786,20 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             </Select>
           </div>
         </div>
-        {/* ✅ Select de productos relacionados + Lista de seleccionados */}
+
+        {/* Productos relacionados */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Productos relacionados</label>
-
           <Select
             value={selectedRelated || ""}
             onValueChange={(value) => {
               if (!value) return;
-
               handleRelatedChange(value);
             }}
           >
             <SelectTrigger>
               <SelectValue placeholder="Agregar producto relacionado" />
             </SelectTrigger>
-
             <SelectContent>
               {availableProducts.map((prod) => (
                 <SelectItem key={prod.id} value={prod.id}>
@@ -861,8 +808,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
               ))}
             </SelectContent>
           </Select>
-
-          {/* Lista de productos relacionados seleccionados */}
           {localState.related && localState.related.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
               {localState.related.map((rel) => (
@@ -883,6 +828,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             </div>
           )}
         </div>
+
         <br />
         <label>Especificaciones del producto:</label>
         {localState.fixed_specs.map((s, index) => (
@@ -938,15 +884,9 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             >
               Eliminar especificaciones
             </Button>
-            {/* <InputField
-              label="Adicionales"
-              value={s.additional_specs}
-              onChange={(e) =>
-                handleFixedSpecChange(index, "additional_specs", e.target.value)
-              }
-            /> */}
           </div>
         ))}
+
         <div className="space-y-3">
           {localState.specs.map((s, index) => (
             <div
@@ -1001,8 +941,8 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             Agregar especificación
           </Button>
         </div>
-        <br></br>
-        {/* ✅ Upload de imagen con preview */}
+
+        <br />
         <div className="grid grid-cols-2 gap-20">
           <div>
             <span className="mb-2 block text-lg font-medium">
@@ -1038,7 +978,8 @@ const ModalProduct: React.FC<ModalProductProps> = ({
                   key={item.type === "existing" ? item.id : index}
                   className="relative inline-block mt-2 w-32 h-32"
                 >
-                  {item.fileType === "application/pdf" || item.url?.toLowerCase().endsWith(".pdf") ? (
+                  {item.fileType === "application/pdf" ||
+                  item.url?.toLowerCase().endsWith(".pdf") ? (
                     <div className="flex items-center justify-center w-32 h-32 rounded-lg border bg-gray-100 text-sm font-medium text-gray-500">
                       PDF
                     </div>
@@ -1049,7 +990,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
                       className="w-32 h-32 object-cover rounded-lg border-2 border-gray-100"
                     />
                   )}
-                  {/* Opcional: Mostrar un indicador del tipo de imagen */}
                   {item.type === "existing" && (
                     <span className="absolute top-0 left-0 bg-blue-500 text-white text-xs px-1 rounded">
                       DB
@@ -1067,8 +1007,8 @@ const ModalProduct: React.FC<ModalProductProps> = ({
               ))}
             </div>
           </div>
-          {/* Preview de la imagen */}
         </div>
+
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={handleCancel}>
             Cancelar
