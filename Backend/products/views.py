@@ -22,6 +22,7 @@ from .serializers import (
     ProductSpecificationSerializer,
 )
 from .permissions import IsReadOnlyOrAdmin
+from .filters import ProductFilter  # Importar el filtro personalizado
 
 from attachments.serializers import AttachmentSerializer
 from attachments.models import Attachment
@@ -55,7 +56,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [IsReadOnlyOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['brand', 'category', 'is_active', 'is_featured']
+    # Usar el filtro personalizado en lugar de filterset_fields
+    filterset_class = ProductFilter
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'created_at', 'updated_at']
     ordering = ['-created_at']
@@ -270,13 +272,111 @@ class ProductViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
 class ProductSpecViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar las especificaciones fijas de productos (variantes).
+
+    IMPORTANTE: Este ViewSet permite que un producto tenga MÚLTIPLES fixed_specs,
+    lo que permite manejar variantes del mismo producto (ej: diferentes tamaños/volúmenes).
+
+    El frontend recibirá TODAS las variantes en el campo 'fixed_specs' del producto
+    como un array, permitiendo mostrarlas en tabs o selectores según sea necesario.
+    """
     queryset = ProductSpec.objects.all()
     serializer_class = ProductSpecSerializer
+    permission_classes = [AllowAny]  # Agregar permiso explícito
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['product', 'code']
     search_fields = ['code', 'volume', 'dimensions']
     ordering_fields = ['code', 'created_at']
     ordering = ['-created_at']
+
+    @action(detail=False, methods=['post'], url_path='bulk-create')
+    def bulk_create(self, request):
+        """
+        Crear múltiples variantes (fixed_specs) para un producto de una sola vez.
+
+        ENDPOINT: POST /api/products/specs/bulk-create/
+
+        Payload esperado:
+        {
+            "product": "uuid-del-producto",
+            "specs": [
+                {
+                    "code": "PROD-001-250ML",
+                    "volume": "250ml",
+                    "dimensions": "10x5x5cm",
+                    "cap": "Rosca"
+                },
+                {
+                    "code": "PROD-001-500ML",
+                    "volume": "500ml",
+                    "dimensions": "15x7x7cm",
+                    "cap": "Rosca"
+                }
+            ]
+        }
+
+        Respuesta exitosa (201):
+        {
+            "message": "3 specs created successfully",
+            "specs": [array de specs creadas]
+        }
+        """
+        product_id = request.data.get('product')
+        specs_data = request.data.get('specs', [])
+
+        if not product_id:
+            return Response(
+                {'error': 'Product ID is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not specs_data:
+            return Response(
+                {'error': 'At least one spec is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response(
+                {'error': 'Product not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        created_specs = []
+        errors = []
+
+        for spec_data in specs_data:
+            spec_data['product'] = product_id
+            serializer = ProductSpecSerializer(data=spec_data)
+
+            if serializer.is_valid():
+                created_specs.append(serializer.save())
+            else:
+                errors.append({
+                    'data': spec_data,
+                    'errors': serializer.errors
+                })
+
+        if errors:
+            return Response(
+                {
+                    'message': f'{len(created_specs)} specs created, {len(errors)} failed',
+                    'created': ProductSpecSerializer(created_specs, many=True).data,
+                    'errors': errors
+                },
+                status=status.HTTP_207_MULTI_STATUS
+            )
+
+        return Response(
+            {
+                'message': f'{len(created_specs)} specs created successfully',
+                'specs': ProductSpecSerializer(created_specs, many=True).data
+            },
+            status=status.HTTP_201_CREATED
+        )
 
 
 class ProductSpecificationViewSet(viewsets.ModelViewSet):

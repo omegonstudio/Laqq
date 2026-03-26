@@ -12,6 +12,8 @@ const ProductsPage = () => {
   const { searchParams, setFilter, clearBrand, clearCategory } =
     useProductFilters();
   const search = searchParams.get("search") ?? "";
+  const category = searchParams.get("category");
+  const brand = searchParams.get("brand");
 
   const dispatch = useAppDispatch();
   const {
@@ -23,17 +25,43 @@ const ProductsPage = () => {
   const { list: categories } = useAppSelector((state) => state.categories);
 
   const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Cargar primera página
+  // Cargar categorías y marcas al montar el componente
   useEffect(() => {
-    dispatch(fetchProducts({ page: 1, page_size: 9, is_active: true }));
-    setCurrentPage(1);
     dispatch(fetchAllBrands());
     dispatch(fetchAllCategories());
-    setAllProducts([]); // Resetear al montar
   }, [dispatch]);
+
+  // Cargar productos cuando cambian los filtros
+  useEffect(() => {
+    // Construir parámetros de filtrado para el backend
+    const params: any = {
+      page: 1,
+      page_size: 9,
+      is_active: true,
+    };
+
+    // Agregar búsqueda si existe
+    if (search) {
+      params.search = search;
+    }
+
+    // Usar category_recursive para filtrado recursivo de categorías
+    if (category) {
+      params.category_recursive = category;
+    }
+
+    // Agregar marca si existe
+    if (brand) {
+      params.brand = brand;
+    }
+
+    // Realizar la búsqueda con los filtros aplicados
+    dispatch(fetchProducts(params));
+    setCurrentPage(1);
+    setAllProducts([]); // Resetear productos acumulados
+  }, [dispatch, search, category, brand]);
 
   // Acumular productos cuando llegan nuevos
   useEffect(() => {
@@ -51,41 +79,31 @@ const ProductsPage = () => {
     }
   }, [products, currentPage]);
 
-  // Aplicar filtros locales
-  useEffect(() => {
-    const search = searchParams.get("search");
-    const category = searchParams.get("category");
-    const brand = searchParams.get("brand");
-
-    let filtered = allProducts;
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchLower) ||
-          (p.brand || "").toLowerCase().includes(searchLower) ||
-          (p.description || "").toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (category) {
-      filtered = filtered.filter((p) => p.category_id === category);
-    }
-
-    if (brand) {
-      const brandObj = brands.find((b) => b.id === brand);
-      filtered = filtered.filter((p) => p.brand === brandObj?.name);
-    }
-
-    setFilteredProducts(filtered);
-  }, [searchParams, allProducts, brands]);
-
   // Handler para "Ver más"
   const handleLoadMore = () => {
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
-    dispatch(fetchProducts({ page: nextPage, page_size: 9 }));
+
+    // Construir parámetros con filtros actuales para la siguiente página
+    const params: any = {
+      page: nextPage,
+      page_size: 9,
+      is_active: true,
+    };
+
+    if (search) {
+      params.search = search;
+    }
+
+    if (category) {
+      params.category_recursive = category;
+    }
+
+    if (brand) {
+      params.brand = brand;
+    }
+
+    dispatch(fetchProducts(params));
   };
 
   // Determinar si hay más páginas
@@ -93,17 +111,10 @@ const ProductsPage = () => {
 
   const clearFilterBrand = () => {
     clearBrand();
-    // Opcional: recargar desde la página 1
-    setCurrentPage(1);
-    dispatch(fetchProducts({ page: 1, page_size: 9 }));
-    setAllProducts([]);
   };
+
   const clearFilterCategory = () => {
     clearCategory();
-    // Opcional: recargar desde la página 1
-    setCurrentPage(1);
-    dispatch(fetchProducts({ page: 1, page_size: 9 }));
-    setAllProducts([]);
   };
 
   // Obtener nombre de la marca activa
@@ -167,7 +178,7 @@ const ProductsPage = () => {
       </div>
 
       <ProductGrid
-        products={filteredProducts}
+        products={allProducts}
         hasMore={hasMore}
         onLoadMore={handleLoadMore}
         loading={loading}
