@@ -1,8 +1,8 @@
 from rest_framework import serializers
 from .models import QuoteType, QuoteState, Quote, QuoteItem
 from contacts.models import Contact, ContactState
-from products.models import Product
-from products.serializers import ProductSerializer
+from products.models import Product, ProductSpecification
+from products.serializers import ProductSerializer, ProductSpecificationSerializer
 from contacts.serializers import ContactSerializer
 import logging
 
@@ -56,10 +56,11 @@ class QuoteItemSerializer(serializers.ModelSerializer):
 
 class QuoteItemDetailSerializer(serializers.ModelSerializer):
     """
-    Serializer para QuoteItem que incluye todos los detalles del producto.
+    Serializer para QuoteItem que incluye todos los detalles del producto y su variante.
     Usado en respuestas donde se necesita información completa del producto.
     """
     product = ProductSerializer(read_only=True)
+    fixed_spec = ProductSpecificationSerializer(read_only=True)
 
     class Meta:
         model = QuoteItem
@@ -344,6 +345,13 @@ class QuotePackageSerializer(serializers.Serializer):
                     f"Product with id '{item['product']}' does not exist"
                 )
 
+            # Validar fixed_spec si está presente
+            if 'fixed_spec' in item and item['fixed_spec'] is not None:
+                if not ProductSpecification.objects.filter(id=item['fixed_spec']).exists():
+                    raise serializers.ValidationError(
+                        f"ProductSpecification with id '{item['fixed_spec']}' does not exist"
+                    )
+
             # Validar quantity
             if item['quantity'] <= 0:
                 raise serializers.ValidationError(
@@ -461,6 +469,15 @@ class QuotePackageSerializer(serializers.Serializer):
                 product = Product.objects.get(id=item_data['product'])
                 quantity = item_data['quantity']
                 unit_price = item_data.get('unit_price')
+                fixed_spec_id = item_data.get('fixed_spec')
+
+                # Obtener la fixed_spec si se proporcionó
+                fixed_spec = None
+                if fixed_spec_id:
+                    try:
+                        fixed_spec = ProductSpecification.objects.get(id=fixed_spec_id)
+                    except ProductSpecification.DoesNotExist:
+                        logger.warning(f"ProductSpecification {fixed_spec_id} not found")
 
                 # Si no se proporciona unit_price, usar el del producto
                 if unit_price is None:
@@ -473,13 +490,14 @@ class QuotePackageSerializer(serializers.Serializer):
                 quote_item = QuoteItem.objects.create(
                     quote=quote,
                     product=product,
+                    fixed_spec=fixed_spec,
                     quantity=quantity,
                     unit_price=unit_price,
                     subtotal=subtotal
                 )
                 created_items.append(quote_item)
                 total_amount += subtotal
-                logger.info(f"QuoteItem created for product {product.id}, quantity: {quantity}")
+                logger.info(f"QuoteItem created for product {product.id}, fixed_spec: {fixed_spec_id}, quantity: {quantity}")
 
             # 4. Actualizar el total de la cotización
             quote.total_amount = total_amount

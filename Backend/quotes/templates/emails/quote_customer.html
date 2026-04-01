@@ -186,6 +186,11 @@
                 {% for item in items %}
                 <li>
                     <div class="item-name">{{ item.product.name }}</div>
+                    {% if item.fixed_spec %}
+                    <div class="item-quantity" style="color: #666; font-size: 13px; margin-top: 2px;">
+                        Variante: {{ item.fixed_spec.key }}: {{ item.fixed_spec.value }}{% if item.fixed_spec.unit %} {{ item.fixed_spec.unit }}{% endif %}
+                    </div>
+                    {% endif %}
                     <div class="item-quantity">
                         Cantidad: {{ item.quantity }} unidad{{ item.quantity|pluralize:"es" }}
                         {% if item.product.product_code %} | Código: {{ item.product.product_code }}{% endif %}

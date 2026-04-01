@@ -212,6 +212,13 @@
                     <tr>
                         <td>
                             <div class="product-name">{{ item.product.name }}</div>
+                            {% if item.fixed_spec %}
+                            <div class="product-specs">
+                                <span class="spec-item" style="color: #FF6B00; font-weight: 600;">
+                                    <strong>Variante:</strong> {{ item.fixed_spec.key }}: {{ item.fixed_spec.value }}{% if item.fixed_spec.unit %} {{ item.fixed_spec.unit }}{% endif %}
+                                </span>
+                            </div>
+                            {% endif %}
                             {% if item.product.fixed_specs.exists or item.product.dynamic_specifications.exists %}
                             <div class="product-specs">
                                 {% for spec in item.product.fixed_specs.all %}
