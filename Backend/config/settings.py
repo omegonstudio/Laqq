@@ -118,6 +118,11 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD', default='postgres'),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
+        # Connection pooling configuration
+        'CONN_MAX_AGE': config('CONN_MAX_AGE', default=60, cast=int),  # Keep connections for 60s
+        'OPTIONS': {
+            'connect_timeout': 10,
+        }
     }
 }
 
