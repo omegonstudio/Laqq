@@ -1,8 +1,8 @@
 from rest_framework import serializers
 from .models import QuoteType, QuoteState, Quote, QuoteItem
 from contacts.models import Contact, ContactState
-from products.models import Product, ProductSpecification
-from products.serializers import ProductSerializer, ProductSpecificationSerializer
+from products.models import Product, ProductSpec
+from products.serializers import ProductSerializer, ProductSpecSerializer
 from contacts.serializers import ContactSerializer
 import logging
 
@@ -60,7 +60,7 @@ class QuoteItemDetailSerializer(serializers.ModelSerializer):
     Usado en respuestas donde se necesita información completa del producto.
     """
     product = ProductSerializer(read_only=True)
-    fixed_spec = ProductSpecificationSerializer(read_only=True)
+    fixed_spec = ProductSpecSerializer(read_only=True)
 
     class Meta:
         model = QuoteItem
@@ -347,9 +347,9 @@ class QuotePackageSerializer(serializers.Serializer):
 
             # Validar fixed_spec si está presente
             if 'fixed_spec' in item and item['fixed_spec'] is not None:
-                if not ProductSpecification.objects.filter(id=item['fixed_spec']).exists():
+                if not ProductSpec.objects.filter(id=item['fixed_spec']).exists():
                     raise serializers.ValidationError(
-                        f"ProductSpecification with id '{item['fixed_spec']}' does not exist"
+                        f"ProductSpec (variante) with id '{item['fixed_spec']}' does not exist"
                     )
 
             # Validar quantity
@@ -475,9 +475,9 @@ class QuotePackageSerializer(serializers.Serializer):
                 fixed_spec = None
                 if fixed_spec_id:
                     try:
-                        fixed_spec = ProductSpecification.objects.get(id=fixed_spec_id)
-                    except ProductSpecification.DoesNotExist:
-                        logger.warning(f"ProductSpecification {fixed_spec_id} not found")
+                        fixed_spec = ProductSpec.objects.get(id=fixed_spec_id)
+                    except ProductSpec.DoesNotExist:
+                        logger.warning(f"ProductSpec {fixed_spec_id} not found")
 
                 # Si no se proporciona unit_price, usar el del producto
                 if unit_price is None:
