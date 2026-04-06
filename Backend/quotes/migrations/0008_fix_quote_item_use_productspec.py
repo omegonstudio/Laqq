@@ -10,21 +10,38 @@ def check_and_add_field(apps, schema_editor):
     Esto previene errores cuando la columna ya existe en producción.
     """
     from django.db import connection
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_name='quotes_quoteitem' AND column_name='fixed_spec_id';
-        """)
-        exists = cursor.fetchone()
 
-        if not exists:
-            # Solo crear la columna si no existe
+    # Detectar el motor de base de datos
+    db_vendor = connection.vendor
+
+    with connection.cursor() as cursor:
+        if db_vendor == 'postgresql':
+            # PostgreSQL: usar information_schema
             cursor.execute("""
-                ALTER TABLE quotes_quoteitem
-                ADD COLUMN fixed_spec_id UUID NULL
-                REFERENCES products_productspec(id) ON DELETE SET NULL;
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name='quotes_quoteitem' AND column_name='fixed_spec_id';
             """)
+            exists = cursor.fetchone()
+
+            if not exists:
+                cursor.execute("""
+                    ALTER TABLE quotes_quoteitem
+                    ADD COLUMN fixed_spec_id UUID NULL
+                    REFERENCES products_productspec(id) ON DELETE SET NULL;
+                """)
+        elif db_vendor == 'sqlite':
+            # SQLite: usar PRAGMA table_info
+            cursor.execute("PRAGMA table_info(quotes_quoteitem);")
+            columns = cursor.fetchall()
+            column_names = [col[1] for col in columns]
+
+            if 'fixed_spec_id' not in column_names:
+                cursor.execute("""
+                    ALTER TABLE quotes_quoteitem
+                    ADD COLUMN fixed_spec_id CHAR(32) NULL
+                    REFERENCES products_productspec(id) ON DELETE SET NULL;
+                """)
 
 
 class Migration(migrations.Migration):
