@@ -4,39 +4,6 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
-def add_field_if_not_exists(apps, schema_editor):
-    """
-    Agrega el campo fixed_spec solo si no existe.
-    Usa schema_editor para compatibilidad con todos los motores de BD.
-    """
-    from django.db import connection
-    from django.db.utils import ProgrammingError, OperationalError
-
-    QuoteItem = apps.get_model('quotes', 'QuoteItem')
-    ProductSpec = apps.get_model('products', 'ProductSpec')
-
-    # Crear el field que queremos agregar
-    field = models.ForeignKey(
-        ProductSpec,
-        on_delete=models.SET_NULL,
-        blank=True,
-        null=True,
-        related_name='quote_items'
-    )
-    field.set_attributes_from_name('fixed_spec')
-
-    # Intentar agregar el campo
-    try:
-        schema_editor.add_field(QuoteItem, field)
-    except (ProgrammingError, OperationalError) as e:
-        # Si la columna ya existe (error en producción), ignorar
-        if 'already exists' in str(e) or 'duplicate column' in str(e).lower():
-            pass
-        else:
-            # Si es otro error, re-lanzarlo
-            raise
-
-
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -45,5 +12,15 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(add_field_if_not_exists, migrations.RunPython.noop),
+        migrations.AddField(
+            model_name='quoteitem',
+            name='fixed_spec',
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name='quote_items',
+                to='products.productspec'
+            ),
+        ),
     ]
