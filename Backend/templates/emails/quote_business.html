@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Cotización #{{ quote_number }}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #007bff;
+            margin: 0 0 10px 0;
+            font-size: 28px;
+        }
+        .quote-number {
+            font-size: 16px;
+            color: #666;
+            font-weight: normal;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 8px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .info-item {
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .info-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .products-table th {
+            background-color: #007bff;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+        .products-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
+        .products-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        .product-name {
+            font-weight: 500;
+            color: #333;
+        }
+        .product-specs {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+        .spec-item {
+            display: inline-block;
+            margin-right: 15px;
+            white-space: nowrap;
+        }
+        .total-row {
+            font-weight: bold;
+            background-color: #f8f9fa;
+        }
+        .total-row td {
+            padding: 15px 12px;
+            border-bottom: none;
+            font-size: 16px;
+        }
+        .message-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 4px;
+        }
+        .message-title {
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 8px;
+        }
+        .message-content {
+            color: #856404;
+            font-size: 14px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+        @media (max-width: 600px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            .products-table {
+                font-size: 12px;
+            }
+            .products-table th,
+            .products-table td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Nueva Cotización</h1>
+            <div class="quote-number">Número de cotización: #{{ quote_number }}</div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Información del Cliente</div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Empresa</div>
+                    <div class="info-value">{{ contact.company_name|default:"No especificada" }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Contacto</div>
+                    <div class="info-value">{{ contact.first_name }} {{ contact.last_name }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Email</div>
+                    <div class="info-value">{{ contact.email }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Teléfono</div>
+                    <div class="info-value">{{ contact.phone|default:"No especificado" }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">País</div>
+                    <div class="info-value">{{ contact.country|default:"No especificado" }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Fecha de solicitud</div>
+                    <div class="info-value">{{ created_at|date:"d/m/Y H:i" }}</div>
+                </div>
+            </div>
+        </div>
+
+        {% if message %}
+        <div class="section">
+            <div class="message-box">
+                <div class="message-title">Mensaje del cliente:</div>
+                <div class="message-content">{{ message }}</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="section">
+            <div class="section-title">Productos Cotizados</div>
+            <table class="products-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40%">Producto</th>
+                        <th style="width: 15%">Código</th>
+                        <th style="width: 15%">Cantidad</th>
+                        <th style="width: 15%">Precio Unit.</th>
+                        <th style="width: 15%">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>
+                            <div class="product-name">{{ item.product.name }}</div>
+                            {% if item.fixed_spec %}
+                            <div class="product-specs">
+                                <span class="spec-item" style="color: #FF6B00; font-weight: 600;">
+                                    <strong>Variante:</strong> {{ item.fixed_spec.key }}: {{ item.fixed_spec.value }}{% if item.fixed_spec.unit %} {{ item.fixed_spec.unit }}{% endif %}
+                                </span>
+                            </div>
+                            {% endif %}
+                            {% if item.product.fixed_specs.exists or item.product.dynamic_specifications.exists %}
+                            <div class="product-specs">
+                                {% for spec in item.product.fixed_specs.all %}
+                                    {% if spec.volume %}<span class="spec-item"><strong>Vol:</strong> {{ spec.volume }}</span>{% endif %}
+                                    {% if spec.dimensions %}<span class="spec-item"><strong>Dim:</strong> {{ spec.dimensions }}</span>{% endif %}
+                                    {% if spec.cap %}<span class="spec-item"><strong>Tapa:</strong> {{ spec.cap }}</span>{% endif %}
+                                {% endfor %}
+                                {% for spec in item.product.dynamic_specifications.all %}
+                                    {% if spec.is_visible %}
+                                    <span class="spec-item"><strong>{{ spec.key }}:</strong> {{ spec.value }}{% if spec.unit %} {{ spec.unit }}{% endif %}</span>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            {% if item.product.brand %}
+                            <div class="product-specs">
+                                <strong>Marca:</strong> {{ item.product.brand.name }}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.product.product_code }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>${{ item.unit_price|floatformat:2 }}</td>
+                        <td>${{ item.subtotal|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="total-row">
+                        <td colspan="4" style="text-align: right;">TOTAL:</td>
+                        <td>${{ total_amount|floatformat:2 }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            <p>Este es un correo automático del sistema de cotizaciones de {{ business_name }}.</p>
+            <p>Por favor, responda este correo o contacte directamente al cliente para dar seguimiento a la cotización.</p>
+        </div>
+    </div>
+</body>
+</html>

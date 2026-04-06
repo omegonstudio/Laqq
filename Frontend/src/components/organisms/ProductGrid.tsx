@@ -26,28 +26,42 @@ const ProductGrid = ({
         )}
 
         {products.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-xl text-muted-foreground">
-              No se encontraron productos
-            </p>
+          <div className="text-center py-16 animate-in fade-in zoom-in-50">
+            <div className="inline-block p-8 rounded-2xl bg-muted/50 border-2 border-dashed border-border">
+              <p className="text-2xl font-semibold text-muted-foreground mb-2">
+                No se encontraron productos
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Intenta ajustar los filtros de búsqueda
+              </p>
+            </div>
           </div>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+              {products.map((product, index) => (
+                <div
+                  key={product.id}
+                  className="animate-in fade-in slide-in-from-bottom-4"
+                  style={{
+                    animationDelay: `${index * 50}ms`,
+                    animationFillMode: "backwards",
+                  }}
+                >
+                  <ProductCard product={product} />
+                </div>
               ))}
             </div>
 
             {/* Botón "Ver más" */}
             {hasMore && onLoadMore && (
-              <div className="flex justify-center mt-12">
+              <div className="flex justify-center mt-12 animate-in fade-in slide-in-from-bottom-2">
                 <Button
                   variant="outline"
                   size="lg"
                   onClick={onLoadMore}
                   disabled={loading}
-                  className="min-w-[200px] bg-primary"
+                  className="min-w-[200px] bg-primary hover:scale-105 transition-transform duration-300"
                 >
                   {loading ? (
                     <>

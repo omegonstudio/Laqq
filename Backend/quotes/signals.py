@@ -11,7 +11,12 @@ logger = logging.getLogger(__name__)
 @receiver(post_save, sender=Quote)
 def send_quote_notification(sender, instance, created, **kwargs):
     """
-    Enviar notificación por email cuando se crea o actualiza una cotización
+    Enviar notificación por email cuando se crea una cotización
+
+    IMPORTANTE: Los emails de actualización se desactivaron automáticamente.
+    Ahora solo se envían emails cuando:
+    1. Se crea una nueva cotización (automático)
+    2. El vendedor envía manualmente la cotización actualizada desde el backoffice
     """
     # No enviar emails durante tests
     if getattr(settings, 'TESTING', False):
@@ -20,13 +25,13 @@ def send_quote_notification(sender, instance, created, **kwargs):
     # Evitar recursión: solo enviar si no viene de un guardado interno
     if kwargs.get('raw', False):
         return
-    
+
     # Desconectar el signal temporalmente para evitar recursión
     post_save.disconnect(send_quote_notification, sender=Quote)
-    
+
     try:
         if created:
-            # Nueva cotización
+            # Nueva cotización - SÍ enviamos emails automáticamente
             try:
                 results = send_quote_created_email(instance)
 
@@ -47,23 +52,15 @@ def send_quote_notification(sender, instance, created, **kwargs):
             except Exception as e:
                 logger.exception("Error al enviar emails para cotizacion #%s: %s", instance.quote_number, e)
         else:
-            # Cotización actualizada
-            try:
-                results = send_quote_updated_email(instance)
+            # Cotización actualizada - NO enviamos emails automáticamente
+            # Los emails de actualización solo se envían manualmente desde el backoffice
+            # usando el endpoint /api/quotes/list/{id}/send-updated/
+            logger.info(
+                "Cotización #%s actualizada. No se envían emails automáticos. "
+                "Use el botón 'Enviar' en el backoffice para notificar al cliente.",
+                instance.quote_number
+            )
 
-                if results['business']:
-                    logger.info("Email de actualizacion enviado al negocio para cotizacion #%s", instance.quote_number)
-
-                if results['customer']:
-                    logger.info("Email de actualizacion enviado al cliente para cotizacion #%s", instance.quote_number)
-
-                if results['errors']:
-                    for error in results['errors']:
-                        logger.error("Error en email de actualizacion: %s", error)
-
-            except Exception as e:
-                logger.exception("Error al enviar emails de actualizacion para cotizacion #%s: %s", instance.quote_number, e)
-                
     finally:
         # Reconectar el signal
         post_save.connect(send_quote_notification, sender=Quote)

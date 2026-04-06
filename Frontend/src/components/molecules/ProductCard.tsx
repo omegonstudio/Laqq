@@ -22,8 +22,8 @@ const ProductCard = ({ product }: ProductCardProps) => {
     addToCart(product);
   };
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-shadow">
-        <div className="aspect-square bg-muted rounded-xl mb-4 overflow-hidden">
+    <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-xl hover:scale-[1.02] hover:border-primary/50 transition-all duration-300 group">
+        <div className="aspect-square bg-muted rounded-xl mb-4 overflow-hidden relative">
           <Link to={`/product/${product.id}`}>
             <img
               src={
@@ -34,7 +34,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
                   : placeholderImageDark
               }
               alt={product.name}
-              className="w-full h-full object-contain p-4 cursor-pointer"
+              className="w-full h-full object-contain p-4 cursor-pointer transition-transform duration-300 group-hover:scale-110"
             />
           </Link>
         </div>

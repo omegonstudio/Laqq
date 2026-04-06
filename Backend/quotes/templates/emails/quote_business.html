@@ -205,6 +205,9 @@
                     <tr>
                         <td>
                             <strong>{{ item.product.name }}</strong>
+                            {% if item.fixed_spec %}
+                            <br><small style="color: #FF6B00;">Variante: {{ item.fixed_spec.key }}: {{ item.fixed_spec.value }}{% if item.fixed_spec.unit %} {{ item.fixed_spec.unit }}{% endif %}</small>
+                            {% endif %}
                             {% if item.product.brand %}
                             <br><small style="color: #666;">{{ item.product.brand.name }}</small>
                             {% endif %}

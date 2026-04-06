@@ -188,19 +188,23 @@ def seed_products(brands, categories):
     productos = []
 
     for name in product_names:
-        obj, created = Product.objects.get_or_create(
-            name=name,
-            defaults={
-                "id": uuid.uuid4(),
-                "brand": random.choice(brands),
-                "category": random.choice(categories),
-                "description": f"Descripción de {name}",
-                "is_active": True,
-            }
-        )
-        productos.append(obj)
+        # Check if product already exists (handle multiple objects case)
+        existing = Product.objects.filter(name=name).first()
+        if existing:
+            print(f"↳ Product '{name}' already exists")
+            productos.append(existing)
+        else:
+            obj = Product.objects.create(
+                name=name,
+                brand=random.choice(brands),
+                category=random.choice(categories),
+                description=f"Descripción de {name}",
+                is_active=True,
+            )
+            print(f"↳ Product '{name}' created")
+            productos.append(obj)
 
-    print("✔ Products created")
+    print("✔ Products seeded")
 
     return productos
 

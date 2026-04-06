@@ -6,9 +6,11 @@ import MenuItem from "../atoms/MenuItems";
 import { ChevronDown } from "lucide-react";
 
 const NavDropdown = () => {
-  const { setFilter } = useProductFilters();
+  const { setFilter, searchParams } = useProductFilters();
   const { list: categories } = useAppSelector((state) => state.categories);
   const menuItems = buildCategories(categories);
+
+  const activeCategoryId = searchParams.get("category");
 
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
   const [isMobile, setIsMobile] = useState(false);
@@ -53,7 +55,11 @@ const NavDropdown = () => {
           >
             {/* TRIGGER */}
             <button
-              className="px-3 lg:px-5 h-9 rounded-full border border-border text-xs lg:text-sm uppercase flex items-center gap-1 lg:gap-1.5 whitespace-nowrap"
+              className={`px-3 lg:px-5 h-9 rounded-full border text-xs lg:text-sm uppercase flex items-center gap-1 lg:gap-1.5 whitespace-nowrap transition-all duration-300 ${
+                activeCategoryId === item.id
+                  ? "border-primary bg-primary text-primary-foreground shadow-md scale-105"
+                  : "border-border hover:border-primary/50 hover:bg-primary/5"
+              }`}
               onClick={() => setFilter("category", item.id)}
             >
               {item.name}
