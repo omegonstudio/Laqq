@@ -16,7 +16,9 @@ import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
 import { Attachment } from "@/types/types";
 
 const ProductDetailPage = () => {
-  const [activeTab, setActiveTab] = useState<"details" | "related">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "related" | "spects">(
+    "details"
+  );
   const { addToCart } = useCart();
   const { id } = useParams();
   const {
@@ -33,11 +35,15 @@ const ProductDetailPage = () => {
     : Array.isArray(product?.related_products)
     ? product.related_products
     : [];
-  const hasSpecs = unifiedSpecs.length > 0;
+  // Reemplazá estas variables al inicio del componente:
+  const hasFixedSpecs =
+    Array.isArray(product?.fixed_specs) && product.fixed_specs.length > 0;
+  const hasSpecs = Array.isArray(product?.specs) && product.specs.length > 0;
   const hasRelated = relatedList.length > 0;
+  const showDetailsSection = hasFixedSpecs || hasSpecs || hasRelated;
 
   // Si no hay ninguna de las dos secciones, no mostrar el contenedor
-  const showDetailsSection = hasSpecs || hasRelated;
+
   const addCuoteButton = (product) => {
     addToCart(product);
     navigate("/quote");
@@ -54,10 +60,12 @@ const ProductDetailPage = () => {
     };
   }, [id, dispatch]);
   useEffect(() => {
-    if (!hasSpecs && hasRelated && activeTab !== "related") {
+    if (!hasFixedSpecs && hasSpecs) {
+      setActiveTab("spects");
+    } else if (!hasFixedSpecs && !hasSpecs && hasRelated) {
       setActiveTab("related");
     }
-  }, [hasSpecs, hasRelated, activeTab]);
+  }, [hasFixedSpecs, hasSpecs, hasRelated]);
   // Mostrar loading mientras carga
   if (selectedLoading) {
     return (
@@ -145,7 +153,7 @@ const ProductDetailPage = () => {
   };
 
   // Calcular especificaciones y productos relacionados
-
+  console.log(product);
   return (
     <div className="py-16">
       <div className="container mx-auto px-4">
@@ -260,71 +268,105 @@ const ProductDetailPage = () => {
         {/* Solo mostrar esta sección si hay especificaciones o productos relacionados */}
         {showDetailsSection && (
           <div className="bg-card border border-border rounded-2xl p-8">
-            {hasSpecs && hasRelated && (
-              <div className="flex gap-4 mb-6 border-b border-border">
-                {hasSpecs && (
-                  <button
-                    onClick={() => setActiveTab("details")}
-                    className={`px-4 py-2 font-medium transition-colors ${
-                      activeTab === "details"
-                        ? "text-primary border-b-2 border-primary"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Especificaciones
-                  </button>
-                )}
+            {/* Tab Bar */}
+            <div className="flex gap-4 mb-6 border-b border-border">
+              {hasFixedSpecs && (
+                <button
+                  onClick={() => setActiveTab("details")}
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    activeTab === "details"
+                      ? "text-primary border-b-2 border-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Variantes del producto
+                </button>
+              )}
 
-                {hasRelated && (
-                  <button
-                    onClick={() => setActiveTab("related")}
-                    className={`px-4 py-2 font-medium transition-colors ${
-                      activeTab === "related"
-                        ? "text-primary border-b-2 border-primary"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Productos Relacionados
-                  </button>
-                )}
-              </div>
-            )}
+              {hasSpecs && (
+                <button
+                  onClick={() => setActiveTab("spects")}
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    activeTab === "spects"
+                      ? "text-primary border-b-2 border-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Detalles Técnicos
+                </button>
+              )}
 
-            {activeTab === "details" && hasSpecs && (
+              {hasRelated && (
+                <button
+                  onClick={() => setActiveTab("related")}
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    activeTab === "related"
+                      ? "text-primary border-b-2 border-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Productos Relacionados
+                </button>
+              )}
+            </div>
+
+            {/* Tab: fixed_specs */}
+            {activeTab === "details" && hasFixedSpecs && (
               <div className="overflow-x-auto">
                 <table className="w-full border border-border rounded-xl overflow-hidden">
                   <thead className="bg-primary/10">
                     <tr>
+                      <th className="px-4 py-3 text-left font-bold">Código</th>
+                      <th className="px-4 py-3 text-left font-bold">Volumen</th>
                       <th className="px-4 py-3 text-left font-bold">
-                        Especificación
+                        Dimensiones
                       </th>
-                      <th className="px-4 py-3 text-left font-bold">Valor</th>
+                      <th className="px-4 py-3 text-left font-bold">Tapa</th>
+                      <th className="px-4 py-3 text-left font-bold">Salida</th>
+                      <th className="px-4 py-3 text-left font-bold">
+                        Precisión
+                      </th>
+                      <th className="px-4 py-3 text-left font-bold">
+                        Exactitud
+                      </th>
+                      <th className="px-4 py-3 text-left font-bold">
+                        Agregar al carrito
+                      </th>
                     </tr>
                   </thead>
-
                   <tbody>
-                    {unifiedSpecs.map((spec, index) => (
+                    {product.fixed_specs.map((spec, index) => (
                       <tr key={index} className="border-t border-border">
                         <td className="px-4 py-3 text-sm font-medium">
-                          {spec.specification}
+                          {spec.code}
                         </td>
-                        {/*                         <td className="px-4 py-3 text-sm">
-                          {spec.specification === "link" ? (
-                            <a href={spec.value} className="underline">
-                              {spec.value}
-                            </a>
-                          ) : (
-                            <td> {spec.value}</td>
-                          )}
-                        </td> */}
-                        <td className="px-4 py-3 text-sm">
-                          {spec.specification === "link" ? (
-                            <a href={spec.value} className="underline">
-                              {spec.value}
-                            </a>
-                          ) : (
-                            spec.value
-                          )}
+                        <td className="px-4 py-3 text-sm font-medium">
+                          {spec.volume}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium">
+                          {spec.dimensions}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium">
+                          {spec.cap}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium">
+                          {spec.outlet}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium">
+                          {spec.precision}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium">
+                          {spec.accuracy}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium">
+                          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <input
+                              type="checkbox"
+                              checked={false}
+                              onChange={(e) => console.log("aa")}
+                            />
+                            Agregar
+                          </label>
                         </td>
                       </tr>
                     ))}
@@ -333,6 +375,37 @@ const ProductDetailPage = () => {
               </div>
             )}
 
+            {/* Tab: specs */}
+            {activeTab === "spects" && hasSpecs && (
+              <div className="overflow-x-auto">
+                <table className="w-full border border-border rounded-xl overflow-hidden">
+                  <thead className="bg-primary/10">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-bold">Nombre</th>
+                      <th className="px-4 py-3 text-left font-bold">Valor</th>
+                      <th className="px-4 py-3 text-left font-bold">Unidad</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {product.specs.map((spec, index) => (
+                      <tr key={index} className="border-t border-border">
+                        <td className="px-4 py-3 text-sm font-medium">
+                          {spec.key}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium">
+                          {spec.value}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium">
+                          {spec.unit}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Tab: related */}
             {activeTab === "related" && hasRelated && (
               <div className="space-y-4">
                 {relatedList.map((item, index) => (

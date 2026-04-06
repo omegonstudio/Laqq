@@ -105,7 +105,9 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             url: att.url,
             type: "existing",
             id: att.id,
-            fileType: att.url?.toLowerCase().endsWith(".pdf") ? "application/pdf" : undefined,
+            fileType: att.url?.toLowerCase().endsWith(".pdf")
+              ? "application/pdf"
+              : undefined,
           })) || null
         );
       }
@@ -720,7 +722,23 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       ],
     });
   };
-
+  const handleAddFixedSpec = () => {
+    setLocalState({
+      ...localState,
+      fixed_specs: [
+        ...localState.fixed_specs,
+        {
+          code: "",
+          volume: "",
+          dimensions: "",
+          cap: "",
+          outlet: "",
+          accuracy: "",
+          product: localState.id,
+        },
+      ],
+    });
+  };
   const handleRemoveSpec = (index: number) => {
     setLocalState((prev) => ({
       ...prev,
@@ -931,13 +949,15 @@ const ModalProduct: React.FC<ModalProductProps> = ({
                 }
               />
             </div>
+
             <Button
               variant="ghost"
               onClick={() => handleRemoveFixedSpec()}
               className="text-red-500 hover:text-red-600 border"
             >
-              Eliminar especificaciones
+              Eliminar variante
             </Button>
+
             {/* <InputField
               label="Adicionales"
               value={s.additional_specs}
@@ -947,6 +967,13 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             /> */}
           </div>
         ))}
+        <Button
+          variant="ghost"
+          onClick={() => handleAddFixedSpec()}
+          className="text-white hover:text-red-600 border"
+        >
+          Agregar variante del producto
+        </Button>
         <div className="space-y-3">
           {localState.specs.map((s, index) => (
             <div
@@ -1038,7 +1065,8 @@ const ModalProduct: React.FC<ModalProductProps> = ({
                   key={item.type === "existing" ? item.id : index}
                   className="relative inline-block mt-2 w-32 h-32"
                 >
-                  {item.fileType === "application/pdf" || item.url?.toLowerCase().endsWith(".pdf") ? (
+                  {item.fileType === "application/pdf" ||
+                  item.url?.toLowerCase().endsWith(".pdf") ? (
                     <div className="flex items-center justify-center w-32 h-32 rounded-lg border bg-gray-100 text-sm font-medium text-gray-500">
                       PDF
                     </div>
