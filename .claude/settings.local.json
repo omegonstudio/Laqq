@@ -20,7 +20,12 @@
       "Bash(set LOAD_SEED_DATA=false)",
       "Bash(ping:*)",
       "Bash(netstat:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(python manage.py makemigrations:*)",
+      "Bash(docker exec:*)",
+      "Bash(del Backendquotesmigrations0008_add_fixed_spec_to_quote_item.py)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)"
     ],
     "deny": [],
     "ask": []
