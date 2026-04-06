@@ -19,6 +19,7 @@ import {
   QuoteStateType,
   QuoteTypeEnum,
   UserData,
+  ProductFixedSpec,
 } from "@/types/api";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -89,7 +90,6 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   useEffect(() => {
     const fetchQuoteData = async () => {
       const quoteRequest = await dispatch(fetchQuote(quoteId)).unwrap();
-      console.log(quoteRequest, "AAAAA");
       setQuote(quoteRequest);
     };
     fetchQuoteData();
@@ -179,6 +179,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
               product: product
                 ? { ...product, created_at: "", updated_at: "" }
                 : null,
+              fixed_spec: null, // 👈 RESET obligatorio
             }
           : item
       )
@@ -225,10 +226,22 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         unit_price: "0",
         subtotal: "0",
         existing: false,
+        fixed_spec: null,
       },
     ]);
   };
-  console.log(quote);
+  const updateItemSpec = (index: number, spec: ProductFixedSpec | null) => {
+    setNewProducts((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? {
+              ...item,
+              fixed_spec: spec,
+            }
+          : item
+      )
+    );
+  };
   const handleSave = async () => {
     if (formState.user === null || formState.user === undefined) {
       toast({
@@ -282,6 +295,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
               quantity: item.quantity,
               unit_price: item.unit_price,
               subtotal: item.subtotal,
+              fixed_spec: item.fixed_spec?.id,
             })
           ).unwrap()
         ),
@@ -295,6 +309,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                 quantity: item.quantity,
                 unit_price: item.unit_price,
                 subtotal: item.subtotal,
+                fixed_spec: item.fixed_spec?.id,
               },
             })
           ).unwrap()
@@ -355,7 +370,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       setIsLoading(false);
     }
   };
-
+  console.log(quote.items[0].fixed_spec, "FIXED SPECS");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -542,6 +557,9 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                   <th className="text-center p-2 w-1/4 font-medium">
                     Producto
                   </th>
+                  <th className="text-center p-2 w-1/4 font-medium">
+                    Variedad (Código)
+                  </th>
                   <th className="text-center p-2 w-1/4 font-medium">Código</th>
                   <th className="text-center p-2 w-1/4 font-medium">Cant.</th>
                   <th className="text-center p-2 w-1/4 font-medium">
@@ -561,6 +579,10 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                     }`}
                   >
                     <td className="p-2 text-center">{item.product.name}</td>
+                    <td className="p-2 text-center">
+                      {item.fixed_spec !== null &&
+                        (item.fixed_spec.code || "aaa")}
+                    </td>
                     <td className="p-2 text-center">
                       {item.product.product_code}
                     </td>
@@ -591,13 +613,43 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                   className="grid grid-cols-2 gap-2 items-end"
                 >
                   {!item.existing ? (
-                    <ProductSearchCombobox
-                      products={products}
-                      selectedProduct={selectedProduct}
-                      onSelect={(product) => updateItemProduct(index, product)}
-                    />
+                    <div className="flex flex-col gap-5">
+                      <ProductSearchCombobox
+                        products={products}
+                        selectedProduct={selectedProduct}
+                        onSelect={(product) =>
+                          updateItemProduct(index, product)
+                        }
+                      />
+                      {selectedProduct && (
+                        <Select
+                          value={item.fixed_spec?.id || ""}
+                          onValueChange={(value) => {
+                            const spec = selectedProduct.fixed_specs.find(
+                              (s) => s.id === value
+                            );
+                            updateItemSpec(index, spec || null);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar variedad" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {selectedProduct.fixed_specs.map((spec) => (
+                              <SelectItem key={spec.id} value={spec.id}>
+                                {spec.code}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
                   ) : (
-                    <p>{`${item.product?.name} (${item.product?.product_code})`}</p>
+                    <p>{`${item.product?.name} (${item.product?.product_code})${
+                      item.fixed_spec !== null
+                        ? ` Variedad : ${item.fixed_spec?.code}`
+                        : ""
+                    }`}</p>
                   )}
 
                   <div className="flex items-end gap-2">
@@ -670,7 +722,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
           open={openSpecs}
           onOpenChange={setOpenSpecs}
         />
-        
+
         {user?.is_superuser && (
           <div className="flex grid grid-cols-3 gap-20">
             <Button
