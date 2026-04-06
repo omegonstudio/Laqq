@@ -4,44 +4,37 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
-def check_and_add_field(apps, schema_editor):
+def add_field_if_not_exists(apps, schema_editor):
     """
     Agrega el campo fixed_spec solo si no existe.
-    Esto previene errores cuando la columna ya existe en producción.
+    Usa schema_editor para compatibilidad con todos los motores de BD.
     """
     from django.db import connection
+    from django.db.utils import ProgrammingError, OperationalError
 
-    # Detectar el motor de base de datos
-    db_vendor = connection.vendor
+    QuoteItem = apps.get_model('quotes', 'QuoteItem')
+    ProductSpec = apps.get_model('products', 'ProductSpec')
 
-    with connection.cursor() as cursor:
-        if db_vendor == 'postgresql':
-            # PostgreSQL: usar information_schema
-            cursor.execute("""
-                SELECT column_name
-                FROM information_schema.columns
-                WHERE table_name='quotes_quoteitem' AND column_name='fixed_spec_id';
-            """)
-            exists = cursor.fetchone()
+    # Crear el field que queremos agregar
+    field = models.ForeignKey(
+        ProductSpec,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='quote_items'
+    )
+    field.set_attributes_from_name('fixed_spec')
 
-            if not exists:
-                cursor.execute("""
-                    ALTER TABLE quotes_quoteitem
-                    ADD COLUMN fixed_spec_id UUID NULL
-                    REFERENCES products_productspec(id) ON DELETE SET NULL;
-                """)
-        elif db_vendor == 'sqlite':
-            # SQLite: usar PRAGMA table_info
-            cursor.execute("PRAGMA table_info(quotes_quoteitem);")
-            columns = cursor.fetchall()
-            column_names = [col[1] for col in columns]
-
-            if 'fixed_spec_id' not in column_names:
-                cursor.execute("""
-                    ALTER TABLE quotes_quoteitem
-                    ADD COLUMN fixed_spec_id CHAR(32) NULL
-                    REFERENCES products_productspec(id) ON DELETE SET NULL;
-                """)
+    # Intentar agregar el campo
+    try:
+        schema_editor.add_field(QuoteItem, field)
+    except (ProgrammingError, OperationalError) as e:
+        # Si la columna ya existe (error en producción), ignorar
+        if 'already exists' in str(e) or 'duplicate column' in str(e).lower():
+            pass
+        else:
+            # Si es otro error, re-lanzarlo
+            raise
 
 
 class Migration(migrations.Migration):
@@ -52,5 +45,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(check_and_add_field, migrations.RunPython.noop),
+        migrations.RunPython(add_field_if_not_exists, migrations.RunPython.noop),
     ]
