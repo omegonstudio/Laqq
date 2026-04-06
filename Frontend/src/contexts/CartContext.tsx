@@ -3,6 +3,9 @@ import { Product } from "@/types/types";
 
 interface CartItem extends Product {
   quantity: number;
+  variantCode?: string;
+  variantSpecId?: string; // UUID del fixed_spec para el payload
+  variantSpec?: object;
 }
 
 interface CartContextType {
@@ -12,13 +15,43 @@ interface CartContextType {
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   totalItems: number;
+  addVariantToCart: (
+    product: Product,
+    variantSpec: object,
+    variantCode: string
+  ) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
-
+  const addVariantToCart = (
+    product: Product,
+    variantSpec: object & { id: string },
+    variantCode: string
+  ) => {
+    const uniqueId = `${product.id}-${variantCode}`;
+    setItems((prev) => {
+      const existingItem = prev.find((item) => item.id === uniqueId);
+      if (existingItem) {
+        return prev.map((item) =>
+          item.id === uniqueId ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [
+        ...prev,
+        {
+          ...product,
+          id: uniqueId,
+          quantity: 1,
+          variantCode,
+          variantSpecId: variantSpec.id, // UUID real del spec
+          variantSpec,
+        },
+      ];
+    });
+  };
   const addToCart = (product: Product) => {
     setItems((prev) => {
       const existingItem = prev.find((item) => item.id === product.id);
@@ -62,6 +95,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         updateQuantity,
         clearCart,
         totalItems,
+        addVariantToCart,
       }}
     >
       {children}

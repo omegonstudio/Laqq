@@ -56,11 +56,19 @@ function QuoteForm() {
     if (itemsCart.length > 0) {
       setFormState((prev) => ({
         ...prev,
-        items: itemsCart.map((item) => ({
-          product: item.id,
-          quantity: item.quantity,
-          unit_price: "0",
-        })),
+        items: itemsCart.map((item) => {
+          // Si es variante, el id real del producto está antes del guión
+          const productId = item.variantCode
+            ? item.id.replace(`-${item.variantCode}`, "")
+            : item.id;
+
+          return {
+            product: productId, // UUID del producto
+            quantity: item.quantity,
+            unit_price: "0",
+            fixed_spec: item.variantSpecId ?? "", // UUID del fixed_spec
+          };
+        }),
       }));
     }
   }, [itemsCart]);
@@ -74,6 +82,8 @@ function QuoteForm() {
           product: "",
           quantity: 1,
           unit_price: "0",
+
+          fixed_spec: "",
         },
       ],
     }));

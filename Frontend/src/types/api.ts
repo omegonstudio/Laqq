@@ -284,6 +284,7 @@ export interface QuoteFormState {
     product: string; // UUID
     quantity: number;
     unit_price?: string;
+    fixed_spec: string;
   }>;
 }
 

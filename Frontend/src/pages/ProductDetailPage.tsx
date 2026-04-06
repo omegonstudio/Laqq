@@ -19,17 +19,17 @@ const ProductDetailPage = () => {
   const [activeTab, setActiveTab] = useState<"details" | "related" | "spects">(
     "details"
   );
-  const { addToCart } = useCart();
+  const { addToCart, addVariantToCart } = useCart();
   const { id } = useParams();
   const {
     selected: product,
     selectedLoading,
     selectedError,
   } = useAppSelector((state) => state.products);
+
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const unifiedSpecs = unifyProductSpecs(product);
   const relatedList = Array.isArray(product?.related)
     ? product.related
     : Array.isArray(product?.related_products)
@@ -41,7 +41,17 @@ const ProductDetailPage = () => {
   const hasSpecs = Array.isArray(product?.specs) && product.specs.length > 0;
   const hasRelated = relatedList.length > 0;
   const showDetailsSection = hasFixedSpecs || hasSpecs || hasRelated;
+  // Agregar este estado al componente (junto a los otros useState)
+  const [selectedSpecIds, setSelectedSpecIds] = useState<string[]>([]);
 
+  // Función para toggle de selección
+  const toggleSpecSelection = (specId: string) => {
+    setSelectedSpecIds((prev) =>
+      prev.includes(specId)
+        ? prev.filter((id) => id !== specId)
+        : [...prev, specId]
+    );
+  };
   // Si no hay ninguna de las dos secciones, no mostrar el contenedor
 
   const addCuoteButton = (product) => {
@@ -244,10 +254,30 @@ const ProductDetailPage = () => {
               <Button
                 size="lg"
                 className="flex items-center justify-center gap-2"
-                onClick={() => addToCart(product)}
+                onClick={() => {
+                  if (hasFixedSpecs && selectedSpecIds.length > 0) {
+                    // Agregar cada variante seleccionada al carrito
+                    selectedSpecIds.forEach((specCode) => {
+                      const spec = product.fixed_specs.find(
+                        (s) => s.code === specCode
+                      );
+                      if (spec) addVariantToCart(product, spec, specCode); // spec debe tener spec.id
+                    });
+                    setSelectedSpecIds([]); // limpiar selección
+                  } else {
+                    addToCart(product); // fallback si no hay variantes
+                  }
+                }}
+                disabled={hasFixedSpecs && selectedSpecIds.length === 0}
               >
                 <ShoppingCart size={20} />
-                Agregar al Carrito
+                {hasFixedSpecs
+                  ? `Agregar ${
+                      selectedSpecIds.length > 0
+                        ? `(${selectedSpecIds.length})`
+                        : ""
+                    }`
+                  : "Agregar al Carrito"}
               </Button>
               {/* <Link to="/quote"> */}
               <Button
@@ -362,8 +392,8 @@ const ProductDetailPage = () => {
                           <label className="flex items-center gap-2 text-sm text-muted-foreground">
                             <input
                               type="checkbox"
-                              checked={false}
-                              onChange={(e) => console.log("aa")}
+                              checked={selectedSpecIds.includes(spec.code)}
+                              onChange={() => toggleSpecSelection(spec.code)}
                             />
                             Agregar
                           </label>
