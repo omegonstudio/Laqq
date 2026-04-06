@@ -119,30 +119,30 @@ export const formStateToUpdateRequest = (
   // Detectar activacion: inactivo -> activo.
   // En ese caso hay que mandar brand/category aunque el valor no haya cambiado,
   // porque mientras estaba inactivo no se incluian en el request.
+
   const activationChange = !initialData.is_active && formState.is_active;
+  const productIsOrWillBeActive = formState.is_active;
 
   const initialBrand = initialData.brand_id || initialData.brand;
-  // Enviar brand si tiene valor Y (cambio O el producto se acaba de activar).
-  // No importa si is_active es true o false: si hay valor y cambio, se manda.
-  if (
-    formState.brand &&
-    (formState.brand !== initialBrand || activationChange)
-  ) {
-    console.log("entra");
-    updateRequest.brand_id = formState.brand;
+  if (formState.brand !== initialBrand || activationChange) {
     hasRealChanges = true;
   }
-
-  const initialCategory = initialData.category_id || initialData.category;
-  // Enviar category si tiene valor Y (cambio O el producto se acaba de activar)
-  if (
-    formState.category &&
-    (formState.category !== initialCategory || activationChange)
-  ) {
-    updateRequest.category_id = formState.category;
-    hasRealChanges = true;
+  // Siempre enviar brand_id y category_id si el producto está activo
+  if (productIsOrWillBeActive) {
+    if (formState.brand) updateRequest.brand_id = formState.brand;
+    if (formState.category) updateRequest.category_id = formState.category;
+  } else {
+    // Inactivo: solo enviar si cambió
+    const initialCategory = initialData.category_id || initialData.category;
+    if (formState.brand && formState.brand !== initialBrand) {
+      updateRequest.brand_id = formState.brand;
+      hasRealChanges = true;
+    }
+    if (formState.category && formState.category !== initialCategory) {
+      updateRequest.category_id = formState.category;
+      hasRealChanges = true;
+    }
   }
-
   const initialAttachmentIds =
     initialData.attachments?.map((att) => att.id) || [];
   const currentAttachmentIds = formState.attachments || [];
@@ -210,18 +210,16 @@ export const haveSpecsChanged = (
   );
 };
 
+// CORRECTO ✅
 export const haveFixedSpecsChanged = (
   current: ProductFixedSpec[],
   initial: ProductFixedSpec[] = []
 ): boolean => {
   const normalizedCurrent = normalizeFixedSpecs(current);
   const normalizedInitial = normalizeFixedSpecs(initial);
-  const areEqual =
-    JSON.stringify(normalizedCurrent) !== JSON.stringify(normalizedInitial);
-  const codeValid = current[0]?.code?.length > 0 ? true : false;
-  if (areEqual) {
-    return codeValid;
-  }
+  return (
+    JSON.stringify(normalizedCurrent) !== JSON.stringify(normalizedInitial)
+  );
 };
 
 export const hasProductChanges = (updateRequest: ProductUpdateRequest) =>

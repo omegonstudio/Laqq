@@ -679,32 +679,24 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       ],
     });
   };
-  const handleAddFixedSpec = () => {
-    setLocalState({
-      ...localState,
-      fixed_specs: [
-        ...localState.fixed_specs,
-        {
-          code: "",
-          volume: "",
-          dimensions: "",
-          cap: "",
-          outlet: "",
-          accuracy: "",
-          product: localState.id,
-        },
-      ],
-    });
-  };
+
   const handleRemoveSpec = (index: number) => {
     setLocalState((prev) => ({
       ...prev,
       specs: prev.specs.filter((_, i) => i !== index),
     }));
   };
-
-  const handleRemoveFixedSpec = () => {
-    setLocalState({ ...localState, fixed_specs: [] });
+  const handleAddFixedSpec = () => {
+    setLocalState((prev) => ({
+      ...prev,
+      fixed_specs: [...prev.fixed_specs, { ...fixedSpecInitialData }],
+    }));
+  };
+  const handleRemoveFixedSpec = (index: number) => {
+    setLocalState((prev) => ({
+      ...prev,
+      fixed_specs: prev.fixed_specs.filter((_, i) => i !== index),
+    }));
   };
 
   const availableProducts = products.filter((prod) => {
@@ -846,9 +838,18 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         </div>
 
         <br />
-        <label>Especificaciones del producto:</label>
+        <div className="flex items-center justify-between">
+          <label>Especificaciones del producto:</label>
+          <Button variant="outline" onClick={handleAddFixedSpec}>
+            Agregar variante
+          </Button>
+        </div>
+
         {localState.fixed_specs.map((s, index) => (
-          <div key={s.id || index} className="flex flex-col gap-5 items-end">
+          <div
+            key={s.id || index}
+            className="border border-border rounded-lg p-3 space-y-2"
+          >
             <div className="grid grid-cols-3 gap-2 w-full">
               <InputField
                 label="Código"
@@ -893,14 +894,15 @@ const ModalProduct: React.FC<ModalProductProps> = ({
                 }
               />
             </div>
-
-            <Button
-              variant="ghost"
-              onClick={() => handleRemoveFixedSpec()}
-              className="text-red-500 hover:text-red-600 border"
-            >
-              Eliminar variante
-            </Button>
+            <div className="flex justify-end">
+              <Button
+                variant="ghost"
+                onClick={() => handleRemoveFixedSpec(index)}
+                className="text-red-500 hover:text-red-600 border"
+              >
+                Eliminar variante
+              </Button>
+            </div>
           </div>
         ))}
 
