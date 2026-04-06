@@ -4,6 +4,29 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
+def check_and_add_field(apps, schema_editor):
+    """
+    Agrega el campo fixed_spec solo si no existe.
+    Esto previene errores cuando la columna ya existe en producción.
+    """
+    from django.db import connection
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name='quotes_quoteitem' AND column_name='fixed_spec_id';
+        """)
+        exists = cursor.fetchone()
+
+        if not exists:
+            # Solo crear la columna si no existe
+            cursor.execute("""
+                ALTER TABLE quotes_quoteitem
+                ADD COLUMN fixed_spec_id UUID NULL
+                REFERENCES products_productspec(id) ON DELETE SET NULL;
+            """)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -12,9 +35,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='quoteitem',
-            name='fixed_spec',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='quote_items', to='products.productspec'),
-        ),
+        migrations.RunPython(check_and_add_field, migrations.RunPython.noop),
     ]
