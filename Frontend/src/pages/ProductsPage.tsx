@@ -164,6 +164,7 @@ const ProductsPage = () => {
             />
             <NavDropdown />
           </div>
+          <br></br>
           <div className="flex justify-between">
             {/* Mostrar filtro activo */}
             {activeBrand && (
@@ -184,6 +185,7 @@ const ProductsPage = () => {
                 </div>
               </div>
             )}
+
             {activeCategory && (
               <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
                 <span className="text-sm text-muted-foreground">

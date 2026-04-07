@@ -2,15 +2,21 @@ import { useEffect, useState } from "react";
 import InputField from "../atoms/InputField";
 import Button from "../atoms/Button";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { DeleteIcon, Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { QuoteFormState } from "@/types/api";
 import { useCart } from "@/contexts/CartContext";
-import { useNavigate } from "react-router-dom";
 import { createQuoteFromForm } from "@/store/quotesSlice";
 import { ProductSearchCombobox } from "./ProductSearch";
 import { fetchAllProducts } from "@/store/productSlice";
 import { toast } from "@/hooks/use-toast";
 import { Product } from "@/types/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@radix-ui/react-select";
 
 const initialState: QuoteFormState = {
   contact: {
@@ -100,13 +106,32 @@ function QuoteForm() {
     products.find((p) => p.id === productId) ?? null;
 
   const updateItemProduct = (index: number, product: Product | null) => {
+    const autoSpec =
+      product?.fixed_specs?.length === 1 ? product.fixed_specs[0] : null;
+
     setFormState((prev) => ({
       ...prev,
       items: prev.items.map((item, i) =>
-        i === index ? { ...item, product: product?.id ?? "" } : item
+        i === index
+          ? {
+              ...item,
+              product: product?.id ?? "",
+              fixed_spec: autoSpec?.id ?? "", // 👈 clave
+            }
+          : item
       ),
     }));
   };
+  const updateItemSpec = (index: number, specId: string) => {
+    setFormState((prev) => ({
+      ...prev,
+      items: prev.items.map((item, i) =>
+        i === index ? { ...item, fixed_spec: specId } : item
+      ),
+    }));
+  };
+
+  console.log(formState, "aaaaaaaaa");
 
   const updateItemQuantity = (index: number, quantity: number) => {
     setFormState((prev) => ({
@@ -255,17 +280,57 @@ function QuoteForm() {
         </div>
         {formState.items.map((item, index) => {
           const selectedProduct = getProductById(item.product);
-          return (
-            <div key={index} className="flex gap-2 grid grid-cols-2">
-              <ProductSearchCombobox
-                products={products}
-                selectedProduct={selectedProduct}
-                onSelect={(product) => updateItemProduct(index, product)}
-              />
+          const specs = selectedProduct?.fixed_specs ?? [];
+          const specsCount = specs.length;
 
-              <div className="flex items-center gap-2">
+          return (
+            <div key={index} className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-2">
+                <ProductSearchCombobox
+                  products={products}
+                  selectedProduct={selectedProduct}
+                  onSelect={(product) => updateItemProduct(index, product)}
+                />
+                {/* 🔹 VARIANTES */}
+                {specsCount === 0 && null}
+
+                {specsCount === 1 && (
+                  <p className="text-xs text-muted-foreground">
+                    Variedad:{" "}
+                    <span className="font-medium">{specs[0].code}</span>
+                  </p>
+                )}
+
+                {specsCount > 1 && (
+                  <Select
+                    value={item.fixed_spec || ""}
+                    onValueChange={(value) => updateItemSpec(index, value)}
+                  >
+                    <SelectTrigger className="h-10 w-full border rounded-md">
+                      <SelectValue placeholder="Seleccionar variedad" />
+                    </SelectTrigger>
+
+                    <SelectContent
+                      position="popper"
+                      className="w-[--radix-select-trigger-width] border rounded-md bg-background"
+                    >
+                      {specs.map((spec) => (
+                        <SelectItem
+                          key={spec.id}
+                          value={spec.id}
+                          className="text-center"
+                        >
+                          {spec.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* 🔹 CANTIDAD + DELETE */}
+              </div>
+              <div className="flex items-start gap-2">
                 <div className="w-[80%]">
-                  {" "}
                   <InputField
                     type="number"
                     value={item.quantity}
@@ -273,8 +338,6 @@ function QuoteForm() {
                     placeholder="1"
                     onChange={(e) => {
                       const value = e.target.value;
-                      // Si el campo está vacío, pasamos 0
-                      // Esto permite borrar completamente el input
                       updateItemQuantity(
                         index,
                         value === "" ? 0 : Number(value)
@@ -286,6 +349,7 @@ function QuoteForm() {
                     <span className="text-xs text-yellow-600">Mínimo 1</span>
                   )}
                 </div>
+
                 <Button
                   className="bg-transparent text-red-600 hover:bg-red-600 hover:text-white"
                   onClick={() => removeItem(index)}

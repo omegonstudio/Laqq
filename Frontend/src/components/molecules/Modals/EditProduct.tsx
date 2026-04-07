@@ -839,7 +839,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
 
         <br />
         <div className="flex items-center justify-between">
-          <label>Especificaciones del producto:</label>
+          <label className="text-xl font-bold">Variantes del producto:</label>
           <Button variant="outline" onClick={handleAddFixedSpec}>
             Agregar variante
           </Button>
@@ -908,56 +908,59 @@ const ModalProduct: React.FC<ModalProductProps> = ({
 
         <div className="space-y-3">
           {localState.specs.map((s, index) => (
-            <div
-              key={s.id || index}
-              className="border border-border rounded-lg p-3 space-y-2"
-            >
-              <div className="grid md:grid-cols-3 gap-2">
-                <InputField
-                  label="Nombre"
-                  value={s.key || ""}
-                  onChange={(e) =>
-                    handleSpecChange(index, "key", e.target.value)
-                  }
-                />
-                <InputField
-                  label="Valor"
-                  value={s.value || ""}
-                  onChange={(e) =>
-                    handleSpecChange(index, "value", e.target.value)
-                  }
-                />
-                <InputField
-                  label="Unidad (opcional)"
-                  value={s.unit || ""}
-                  onChange={(e) =>
-                    handleSpecChange(index, "unit", e.target.value)
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={s.is_visible !== false}
+            <>
+              <label className="text-xl font-bold">Detalles técnicos:</label>
+              <div
+                key={s.id || index}
+                className="border border-border rounded-lg p-3 space-y-2"
+              >
+                <div className="grid md:grid-cols-3 gap-2">
+                  <InputField
+                    label="Nombre"
+                    value={s.key || ""}
                     onChange={(e) =>
-                      handleSpecChange(index, "is_visible", e.target.checked)
+                      handleSpecChange(index, "key", e.target.value)
                     }
                   />
-                  Visualizar
-                </label>
-                <Button
-                  variant="ghost"
-                  onClick={() => handleRemoveSpec(index)}
-                  className="text-red-500 hover:text-red-600"
-                >
-                  Eliminar
-                </Button>
+                  <InputField
+                    label="Valor"
+                    value={s.value || ""}
+                    onChange={(e) =>
+                      handleSpecChange(index, "value", e.target.value)
+                    }
+                  />
+                  <InputField
+                    label="Unidad (opcional)"
+                    value={s.unit || ""}
+                    onChange={(e) =>
+                      handleSpecChange(index, "unit", e.target.value)
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={s.is_visible !== false}
+                      onChange={(e) =>
+                        handleSpecChange(index, "is_visible", e.target.checked)
+                      }
+                    />
+                    Visualizar
+                  </label>
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleRemoveSpec(index)}
+                    className="text-red-500 hover:text-red-600"
+                  >
+                    Eliminar
+                  </Button>
+                </div>
               </div>
-            </div>
+            </>
           ))}
           <Button variant="outline" onClick={handleAddSpec}>
-            Agregar especificación
+            Agrega más detalles técnicos
           </Button>
         </div>
 

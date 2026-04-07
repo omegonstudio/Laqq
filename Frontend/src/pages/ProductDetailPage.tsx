@@ -14,6 +14,7 @@ import { clearSelected, fetchProduct } from "@/store/productSlice";
 import { unifyProductSpecs } from "@/components/atoms/specsTable";
 import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
 import { Attachment } from "@/types/types";
+import { Toggle } from "@radix-ui/react-toggle";
 
 const ProductDetailPage = () => {
   const [activeTab, setActiveTab] = useState<"details" | "related" | "spects">(
@@ -325,19 +326,6 @@ const ProductDetailPage = () => {
                   Detalles Técnicos
                 </button>
               )}
-
-              {hasRelated && (
-                <button
-                  onClick={() => setActiveTab("related")}
-                  className={`px-4 py-2 font-medium transition-colors ${
-                    activeTab === "related"
-                      ? "text-primary border-b-2 border-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Productos Relacionados
-                </button>
-              )}
             </div>
 
             {/* Tab: fixed_specs */}
@@ -389,14 +377,25 @@ const ProductDetailPage = () => {
                           {spec.accuracy}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
-                          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <input
-                              type="checkbox"
-                              checked={selectedSpecIds.includes(spec.code)}
-                              onChange={() => toggleSpecSelection(spec.code)}
-                            />
-                            Agregar
-                          </label>
+                          <Toggle
+                            pressed={selectedSpecIds.includes(spec.code)}
+                            onPressedChange={() =>
+                              toggleSpecSelection(spec.code)
+                            }
+                            className={`
+                            px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                            border flex items-center justify-center gap-1
+                            ${
+                              selectedSpecIds.includes(spec.code)
+                                ? "bg-primary text-white border-primary shadow-sm"
+                                : "bg-transparent border-primary text-primary border-border hover:bg-muted hover:text-foreground"
+                            }
+                          `}
+                          >
+                            {selectedSpecIds.includes(spec.code)
+                              ? "✓ Quitar"
+                              : "+ Agregar"}
+                          </Toggle>
                         </td>
                       </tr>
                     ))}
@@ -434,33 +433,34 @@ const ProductDetailPage = () => {
                 </table>
               </div>
             )}
-
-            {/* Tab: related */}
-            {activeTab === "related" && hasRelated && (
-              <div className="space-y-4">
-                {relatedList.map((item, index) => (
-                  <div
-                    key={index}
-                    onClick={() => navigate(`/product/${item.id}`)}
-                    className="border border-border rounded-xl p-4 hover:bg-muted/30 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <Badge variant="secondary" className="mb-2">
-                          {item.brand || "Relacionado"}
-                        </Badge>
-                        <h3 className="font-bold mb-1">{item.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Código: {item.product_code}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
+        <br />
+        <div className="space-y-4 bg-muted/30 border p-6 rounded-sm">
+          <label className="text-2xl text-center font-bold">
+            Productos relacionados
+          </label>
+          <br />
+          {relatedList.map((item, index) => (
+            <div
+              key={index}
+              onClick={() => navigate(`/product/${item.id}`)}
+              className="border border-border rounded-xl p-4 hover:bg-muted/30 transition-colors cursor-pointer"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <Badge variant="secondary" className="mb-2">
+                    {item.brand || "Relacionado"}
+                  </Badge>
+                  <h3 className="font-bold mb-1">{item.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Código: {item.product_code}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

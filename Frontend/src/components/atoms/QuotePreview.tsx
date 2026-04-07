@@ -76,17 +76,20 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   const [newProducts, setNewProducts] = useState<
     (QuoteItemRender & { existing: boolean })[]
   >([]);
+
   const [edit, setEdit] = useState(false);
   const [userError, setUserError] = useState(false);
   const [formState, setFormState] = useState<EditableData | null>(null);
   const [quote, setQuote] = useState<QuoteRender | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [total, setTotal] = useState(0);
+
   const calculateTotal = (): number => {
     return newProducts.reduce((total, item) => {
       return total + parseFloat(item.subtotal || "0");
     }, 0);
   };
+
   useEffect(() => {
     const fetchQuoteData = async () => {
       const quoteRequest = await dispatch(fetchQuote(quoteId)).unwrap();
@@ -99,6 +102,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
     setTotal(calculateTotal());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newProducts]);
+
   useEffect(() => {
     if (!open) {
       setEdit(false);
@@ -115,8 +119,8 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
     if (quote) {
       setTotal(Number(quote.total_amount));
       setFormState({
-        state: quote.state, // Convertir de vuelta a valor real
-        quote_type: quote.quote_type, // Convertir de vuelta a valor real
+        state: quote.state,
+        quote_type: quote.quote_type,
         items: quote.items
           ? quote.items.map((item) => ({ ...item, existing: true }))
           : [],
@@ -144,17 +148,20 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         user: users.results.find((item) => item.id === quote.user) as UserData,
         observaciones: quote.observaciones,
       });
-      setNewProducts(items); // ← inicializa aquí, una sola vez
+      setNewProducts(items);
     }
   }, [quote]);
 
   if (!quote || !formState) {
     return null;
   }
+
   const contact = quote.contact;
+
   if (!quote) {
     return;
   }
+
   const handleCancel = () => {
     setFormState({
       state: quote.state,
@@ -167,10 +174,15 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
     });
     setEdit(false);
   };
+
   const getProductById = (productId: string) =>
     products.find((p) => p.id === productId) ?? null;
 
+  // ✅ CAMBIO: auto-asigna fixed_spec si el producto tiene exactamente 1
   const updateItemProduct = (index: number, product: Product | null) => {
+    const autoSpec =
+      product?.fixed_specs?.length === 1 ? product.fixed_specs[0] : null;
+
     setNewProducts((prev) =>
       prev.map((item, i) =>
         i === index
@@ -179,12 +191,13 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
               product: product
                 ? { ...product, created_at: "", updated_at: "" }
                 : null,
-              fixed_spec: null, // 👈 RESET obligatorio
+              fixed_spec: autoSpec,
             }
           : item
       )
     );
   };
+
   const updateItemQuantity = (index: number, quantity: number) => {
     setNewProducts((prev) =>
       prev.map((item, i) => {
@@ -195,22 +208,18 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       })
     );
   };
+
   const updateItemPrice = (index: number, value: string) => {
     setNewProducts((prev) =>
       prev.map((item, i) => {
         if (i !== index) return item;
-
         const unitPrice = parseFloat(value) || 0;
         const subtotal = (unitPrice * item.quantity).toFixed(2);
-
-        return {
-          ...item,
-          unit_price: value,
-          subtotal,
-        };
+        return { ...item, unit_price: value, subtotal };
       })
     );
   };
+
   const removeItem = (index: number) => {
     setNewProducts((prev) => prev.filter((_, i) => i !== index));
   };
@@ -230,18 +239,15 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       },
     ]);
   };
+
   const updateItemSpec = (index: number, spec: ProductFixedSpec | null) => {
     setNewProducts((prev) =>
       prev.map((item, i) =>
-        i === index
-          ? {
-              ...item,
-              fixed_spec: spec,
-            }
-          : item
+        i === index ? { ...item, fixed_spec: spec } : item
       )
     );
   };
+
   const handleSave = async () => {
     if (formState.user === null || formState.user === undefined) {
       toast({
@@ -257,7 +263,6 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
     setIsLoading(true);
 
     try {
-      // 1️⃣ Update quote
       await dispatch(
         updateQuote({
           id: quote.id,
@@ -319,9 +324,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         ),
       ]);
 
-      // 🔄 4️⃣ REFRESH TOTAL
       const updatedQuote = await dispatch(fetchQuote(quote.id)).unwrap();
-      console.log(updatedQuote, "UPDATED QUOTE");
       setFormState({
         state: updatedQuote.state,
         quote_type: updatedQuote.quote_type,
@@ -353,10 +356,8 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
 
   const handleSendClient = async () => {
     setIsLoading(true);
-
     try {
-      await handleSave(); // ⬅️ espera a que termine todo el flujo
-
+      await handleSave();
       const res = await quotesApi.sendClient(quote.id, {
         contact: quote.contact,
         contact_id: quote.contact.id,
@@ -370,7 +371,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       setIsLoading(false);
     }
   };
-  console.log(quote.items[0].fixed_spec, "FIXED SPECS");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -417,23 +418,25 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
             </div>
           </div>
         )}
+
         <p className="font-medium">Mensaje:</p>
         <div className="border rounded p-3">
           <p>{formState.message ?? "Sin mensaje"}</p>
         </div>
+
         <div className="grid grid-cols-3 gap-4 text-sm h-[4rem] m-h-fit">
           <div>
             <label>Estado</label>
             {edit ? (
               <Select
-                value={formState.state || ""} // Valor real
+                value={formState.state || ""}
                 onValueChange={(value: QuoteStateType) =>
                   setFormState((prev) =>
                     prev ? { ...prev, state: value } : null
                   )
                 }
               >
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-9 ">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -455,7 +458,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
             <label>Tipo</label>
             {edit ? (
               <Select
-                value={formState.quote_type} // Valor real
+                value={formState.quote_type}
                 onValueChange={(value: QuoteTypeEnum) =>
                   setFormState((prev) =>
                     prev ? { ...prev, quote_type: value } : null
@@ -479,6 +482,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
               </p>
             )}
           </div>
+
           <div>
             <label>Usuario asignado</label>
             {edit ? (
@@ -490,7 +494,6 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                       (u) => u.id === userId
                     );
                     if (!selectedUser) return;
-
                     setFormState((prev) =>
                       prev ? { ...prev, user: selectedUser } : null
                     );
@@ -499,7 +502,6 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                   <SelectTrigger className="h-9">
                     <SelectValue placeholder="Seleccionar usuario" />
                   </SelectTrigger>
-
                   <SelectContent>
                     {users.results.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
@@ -508,7 +510,6 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                     ))}
                   </SelectContent>
                 </Select>
-
                 {userError && (
                   <p className="text-muted-foreground text-red-500">
                     El usuario es obligatorio
@@ -524,6 +525,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
             )}
           </div>
         </div>
+
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="font-medium mb-1">Creación</p>
@@ -531,9 +533,10 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
           </div>
           <div>
             <p className="font-medium mb-1">Actualización</p>
-            <p className="text-muted-foreground">{formState.updated_at}</p>{" "}
+            <p className="text-muted-foreground">{formState.updated_at}</p>
           </div>
         </div>
+
         <div className="space-y-3 flex items-center justify-between h-[3rem]">
           <h3 className="text-lg font-semibold">Productos</h3>
           {edit && (
@@ -549,6 +552,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
             </Button>
           )}
         </div>
+
         {!edit && formState.items.length > 0 && (
           <div className="border rounded overflow-hidden">
             <table className="w-full text-xs">
@@ -607,6 +611,9 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                 ? getProductById(item.product.id)
                 : null;
 
+              // ✅ CAMBIO: cantidad de specs del producto seleccionado
+              const specsCount = selectedProduct?.fixed_specs?.length ?? 0;
+
               return (
                 <div
                   key={item.id ?? index}
@@ -621,11 +628,25 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                           updateItemProduct(index, product)
                         }
                       />
-                      {selectedProduct && (
+
+                      {/* ✅ CAMBIO: lógica condicional según cantidad de specs */}
+                      {specsCount === 0 && null}
+
+                      {specsCount === 1 && (
+                        <p className="text-xs text-muted-foreground">
+                          Variedad:{" "}
+                          <span className="font-medium">
+                            {item.fixed_spec?.code ??
+                              selectedProduct?.fixed_specs[0].code}
+                          </span>
+                        </p>
+                      )}
+
+                      {specsCount > 1 && (
                         <Select
                           value={item.fixed_spec?.id || ""}
                           onValueChange={(value) => {
-                            const spec = selectedProduct.fixed_specs.find(
+                            const spec = selectedProduct?.fixed_specs.find(
                               (s) => s.id === value
                             );
                             updateItemSpec(index, spec || null);
@@ -635,7 +656,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                             <SelectValue placeholder="Seleccionar variedad" />
                           </SelectTrigger>
                           <SelectContent>
-                            {selectedProduct.fixed_specs.map((spec) => (
+                            {selectedProduct?.fixed_specs.map((spec) => (
                               <SelectItem key={spec.id} value={spec.id}>
                                 {spec.code}
                               </SelectItem>
@@ -647,7 +668,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                   ) : (
                     <p>{`${item.product?.name} (${item.product?.product_code})${
                       item.fixed_spec !== null
-                        ? ` Variedad : ${item.fixed_spec?.code}`
+                        ? ` Variedad: ${item.fixed_spec?.code}`
                         : ""
                     }`}</p>
                   )}
@@ -682,6 +703,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                         onChange={(e) => updateItemPrice(index, e.target.value)}
                       />
                     </div>
+
                     <Button
                       className="bg-transparent text-red-600 hover:bg-red-600 hover:text-white"
                       onClick={() => removeItem(index)}
@@ -698,6 +720,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         <div className="text-right text-lg font-semibold pt-2 border-t">
           Total: ${total}
         </div>
+
         <label>Observaciones</label>
         <Textarea
           aria-description="Observaciones de la cotización"
@@ -709,6 +732,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
             )
           }
         />
+
         <Button
           type="button"
           variant="outline"
@@ -735,13 +759,14 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
               {edit ? "Cancelar" : "Editar"}
               {!edit && <PencilIcon size={15} />}
             </Button>
+
             <Button
               variant="outline"
               size="sm"
               onClick={handleSendClient}
               disabled={isLoading}
             >
-              {isLoading ? "Enviando al client..." : "Enviar al cliente"}
+              {isLoading ? "Enviando al cliente..." : "Enviar al cliente"}
             </Button>
 
             {edit && (
