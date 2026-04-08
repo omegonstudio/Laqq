@@ -888,6 +888,13 @@ const ModalProduct: React.FC<ModalProductProps> = ({
               />
               <InputField
                 label="Precisión"
+                value={s.precision}
+                onChange={(e) =>
+                  handleFixedSpecChange(index, "precision", e.target.value)
+                }
+              />
+              <InputField
+                label="Exactitud"
                 value={s.accuracy}
                 onChange={(e) =>
                   handleFixedSpecChange(index, "accuracy", e.target.value)
