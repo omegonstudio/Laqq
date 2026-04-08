@@ -186,7 +186,15 @@ function QuoteForm() {
     }
 
     try {
-      const result = await dispatch(createQuoteFromForm(formState)).unwrap();
+      const result = await dispatch(
+        createQuoteFromForm({
+          ...formState,
+          items: formState.items.map(({ fixed_spec, ...item }) => ({
+            ...item,
+            ...(fixed_spec ? { fixed_spec } : {}), // ⬅️ solo incluir si tiene valor
+          })),
+        })
+      ).unwrap();
 
       toast({ title: "Cotización creada exitosamente" });
 
