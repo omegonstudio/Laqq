@@ -7,7 +7,6 @@ import { useCart } from "@/contexts/CartContext";
 import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
 import placeholderImageDark from "@/assets/laqq_marca_color_pos.svg";
 import { useTheme } from "next-themes";
-import Logo from "@/components/atoms/Logo";
 import { useNavigate } from "react-router-dom";
 
 interface ProductCardProps {

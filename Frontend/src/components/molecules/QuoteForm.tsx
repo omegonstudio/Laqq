@@ -58,26 +58,34 @@ function QuoteForm() {
   const [formState, setFormState] = useState<QuoteFormState>(initialState);
 
   // Sincronizar items del carrito con el formulario
+  // Sincronizar items del carrito con el formulario
+  // ✅ Agregar `products` como dependencia para re-sincronizar cuando carguen
   useEffect(() => {
-    if (itemsCart.length > 0) {
-      setFormState((prev) => ({
-        ...prev,
-        items: itemsCart.map((item) => {
-          // Si es variante, el id real del producto está antes del guión
-          const productId = item.variantCode
-            ? item.id.replace(`-${item.variantCode}`, "")
-            : item.id;
+    if (itemsCart.length === 0) return;
+    if (products.length === 0) return; // ⬅️ esperar a que carguen los productos
 
-          return {
-            product: productId, // UUID del producto
-            quantity: item.quantity,
-            unit_price: "0",
-            fixed_spec: item.variantSpecId ?? "", // UUID del fixed_spec
-          };
-        }),
-      }));
-    }
-  }, [itemsCart]);
+    setFormState((prev) => ({
+      ...prev,
+      items: itemsCart.map((item) => {
+        const productId = item.variantCode
+          ? item.id.replace(`-${item.variantCode}`, "")
+          : item.id;
+
+        // ⬅️ Resolver el fixed_spec desde los productos ya cargados
+        const product = products.find((p) => p.id === productId);
+        const specId =
+          item.variantSpecId ??
+          (product?.fixed_specs?.length === 1 ? product.fixed_specs[0].id : "");
+
+        return {
+          product: productId,
+          quantity: item.quantity,
+          unit_price: "0",
+          fixed_spec: specId ?? "",
+        };
+      }),
+    }));
+  }, [itemsCart, products]); // ⬅️ añadir products
 
   const addItem = () => {
     setFormState((prev) => ({
@@ -193,7 +201,7 @@ function QuoteForm() {
       });
     }
   };
-
+  console.log(formState, "estado del formulario");
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Información del contacto */}
@@ -295,36 +303,31 @@ function QuoteForm() {
                 {specsCount === 0 && null}
 
                 {specsCount === 1 && (
-                  <p className="text-xs text-muted-foreground">
-                    Variedad:{" "}
+                  <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-muted/40 text-sm">
+                    <span className="text-muted-foreground">Variedad:</span>
                     <span className="font-medium">{specs[0].code}</span>
-                  </p>
+                    {/* Indicador visual de que está seleccionada */}
+                    <span className="ml-auto text-xs text-green-600 font-medium">
+                      ✓ Seleccionada
+                    </span>
+                  </div>
                 )}
 
                 {specsCount > 1 && (
-                  <Select
+                  <select
                     value={item.fixed_spec || ""}
-                    onValueChange={(value) => updateItemSpec(index, value)}
+                    onChange={(e) => updateItemSpec(index, e.target.value)}
+                    className="h-10 w-full border rounded-md px-3 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                   >
-                    <SelectTrigger className="h-10 w-full border rounded-md">
-                      <SelectValue placeholder="Seleccionar variedad" />
-                    </SelectTrigger>
-
-                    <SelectContent
-                      position="popper"
-                      className="w-[--radix-select-trigger-width] border rounded-md bg-background"
-                    >
-                      {specs.map((spec) => (
-                        <SelectItem
-                          key={spec.id}
-                          value={spec.id}
-                          className="text-center"
-                        >
-                          {spec.code}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <option value="" disabled>
+                      Seleccionar variedad
+                    </option>
+                    {specs.map((spec) => (
+                      <option key={spec.id} value={spec.id}>
+                        {spec.code}
+                      </option>
+                    ))}
+                  </select>
                 )}
 
                 {/* 🔹 CANTIDAD + DELETE */}
