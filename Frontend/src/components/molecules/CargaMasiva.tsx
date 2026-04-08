@@ -69,7 +69,7 @@ const CargaMasivaProducts = () => {
         {/* === TEMPLATE === */}
         {!result && (
           <a
-            href="/productos.xlsx"
+            href="/TablaCargaMasiva.xlsx"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 text-primary cursor-pointer mb-4"
