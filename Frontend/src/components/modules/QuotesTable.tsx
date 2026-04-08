@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Eye, FileText, Trash2 } from "lucide-react";
+import { Edit2, Eye, FileText, Trash2 } from "lucide-react";
 import Table from "@/components/common/Table";
 import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
@@ -98,8 +98,8 @@ const QuotesTable = () => {
 
   const actions = [
     {
-      icon: <Eye size={16} />,
-      label: "Ver",
+      icon: <Edit2 size={16} />,
+      label: "Ver / Editar",
       onClick: handleEdit,
     },
     {
