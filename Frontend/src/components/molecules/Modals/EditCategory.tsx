@@ -99,9 +99,10 @@ const validateCategoryForm = (formState: CategoryFormState): FormErrors => {
   if (!formState.name.trim()) {
     errors.name = "El nombre de la categoría es obligatorio";
   }
-
-  if (formState.parent === undefined || formState.parent === null) {
-    errors.parent = "Es obligatorio seleccionar una categoría padre";
+  if (formState.level !== 0) {
+    if (formState.parent === undefined || formState.parent === null) {
+      errors.parent = "Es obligatorio seleccionar una categoría padre";
+    }
   }
 
   if (formState.display_order < 0) {
@@ -139,7 +140,7 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
   );
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Set<string>>(new Set());
-
+  console.log(errors, "asas");
   const menuItems = buildCategories(categories);
   const flatCategories = flattenCategories(menuItems);
 
@@ -330,7 +331,7 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
                   <SelectItem value="none">Sin categoría padre</SelectItem>
 
                   {flatCategories.map((cat) => {
-                    const disabled = isDisabled(cat);
+                    const disabled = isDisabled(cat) || cat.level >= 3;
 
                     return (
                       <SelectItem

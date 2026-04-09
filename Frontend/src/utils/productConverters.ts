@@ -33,8 +33,8 @@ export const sanitizeFixedSpecs = (
     .map((spec) => ({
       id: spec.id,
       product: spec.product,
-      code: spec.code?.trim() || null, // ✅ Consistente con los demás
-      volume: spec.volume?.trim() || null, // ✅ Trim strings también
+      code: spec.code?.trim() || null,
+      volume: spec.volume?.trim() || null,
       dimensions: spec.dimensions?.trim() || null,
       cap: spec.cap?.trim() || null,
       outlet: spec.outlet?.trim() || null,
@@ -45,7 +45,6 @@ export const sanitizeFixedSpecs = (
     }))
     .filter(
       (spec) =>
-        // ✅ Filtrar solo si tiene ID o algún campo con valor real
         spec.id ||
         spec.code ||
         spec.volume ||
@@ -54,7 +53,6 @@ export const sanitizeFixedSpecs = (
         spec.outlet ||
         spec.accuracy ||
         spec.precision
-      // spec.additional_specs
     );
 };
 /**
@@ -73,8 +71,8 @@ export const productToFormState = (product: Product): ProductFormState => {
     category: product.category_id || product.category || "",
     description: product.description || "",
     product_code: product.product_code || "",
-    image_file: null, // ← nunca viene del backend
-    image_attachment_id: product.image_attachment, // UUID
+    image_file: null,
+    image_attachment_id: product.image_attachment,
     is_featured: product.is_featured || false,
     is_active: product.is_active,
     specs: sanitizeSpecs(product.specs || product.specifications || []),
@@ -111,22 +109,36 @@ export const formStateToUpdateRequest = (
   attachmentId?: string | null
 ): ProductUpdateRequest => {
   const updateRequest: Partial<ProductUpdateRequest> = {};
-  let hasRealChanges = false; // ← Bandera para rastrear cambios
+  let hasRealChanges = false;
 
   // Comparar name
   if (formState.name !== initialData.name) {
     hasRealChanges = true;
   }
 
-  if (formState.is_active) {
-    const initialBrand = initialData.brand_id || initialData.brand;
-    if (formState.brand !== initialBrand) {
+  // Detectar activacion: inactivo -> activo.
+  // En ese caso hay que mandar brand/category aunque el valor no haya cambiado,
+  // porque mientras estaba inactivo no se incluian en el request.
+
+  const activationChange = !initialData.is_active && formState.is_active;
+  const productIsOrWillBeActive = formState.is_active;
+
+  const initialBrand = initialData.brand_id || initialData.brand;
+  if (formState.brand !== initialBrand || activationChange) {
+    hasRealChanges = true;
+  }
+  // Siempre enviar brand_id y category_id si el producto está activo
+  if (productIsOrWillBeActive) {
+    if (formState.brand) updateRequest.brand_id = formState.brand;
+    if (formState.category) updateRequest.category_id = formState.category;
+  } else {
+    // Inactivo: solo enviar si cambió
+    const initialCategory = initialData.category_id || initialData.category;
+    if (formState.brand && formState.brand !== initialBrand) {
       updateRequest.brand_id = formState.brand;
       hasRealChanges = true;
     }
-
-    const initialCategory = initialData.category_id || initialData.category;
-    if (formState.category !== initialCategory) {
+    if (formState.category && formState.category !== initialCategory) {
       updateRequest.category_id = formState.category;
       hasRealChanges = true;
     }
@@ -135,7 +147,6 @@ export const formStateToUpdateRequest = (
     initialData.attachments?.map((att) => att.id) || [];
   const currentAttachmentIds = formState.attachments || [];
 
-  // Verificar si los attachments han cambiado (porque se agregaron o eliminaron imágenes)
   const attachmentsChanged =
     JSON.stringify([...initialAttachmentIds].sort()) !==
     JSON.stringify([...currentAttachmentIds].sort());
@@ -177,12 +188,9 @@ export const formStateToUpdateRequest = (
     updateRequest.related_product_ids = currentRelatedIds;
     hasRealChanges = true;
   }
+
   updateRequest.name = formState.name;
 
-  // ✅ SIEMPRE incluir name (requerido por backend)
-  // updateRequest.name = formState.name;
-
-  // ✅ Si no hubo cambios reales, retornar objeto vacío para que hasProductChanges sea false
   if (!hasRealChanges) {
     return {} as ProductUpdateRequest;
   }
@@ -202,19 +210,16 @@ export const haveSpecsChanged = (
   );
 };
 
+// CORRECTO ✅
 export const haveFixedSpecsChanged = (
   current: ProductFixedSpec[],
   initial: ProductFixedSpec[] = []
 ): boolean => {
   const normalizedCurrent = normalizeFixedSpecs(current);
   const normalizedInitial = normalizeFixedSpecs(initial);
-  const areEqual =
-    JSON.stringify(normalizedCurrent) !== JSON.stringify(normalizedInitial);
-  const codeValid = current[0]?.code?.length > 0 ? true : false;
-  if (areEqual) {
-    return codeValid;
-  }
-  // return areEqual;
+  return (
+    JSON.stringify(normalizedCurrent) !== JSON.stringify(normalizedInitial)
+  );
 };
 
 export const hasProductChanges = (updateRequest: ProductUpdateRequest) =>

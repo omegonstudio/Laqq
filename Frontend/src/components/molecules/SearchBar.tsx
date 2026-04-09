@@ -4,6 +4,7 @@ import { Product } from "@/types/types";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "@/store/hooks";
 import { useProductFilters } from "@/hooks/useFilters";
+import { productsApi } from "@/lib/api/products";
 
 interface SearchBarWithResultsProps {
   debounceMs?: number;
@@ -55,19 +56,10 @@ export default function SearchBar({
     if (!hasUserInteracted) return;
 
     if (debouncedQuery.trim()) {
-      const searchLower = debouncedQuery.toLowerCase();
-      const filtered = products
-        .filter(
-          (p) =>
-            p.name.toLowerCase().includes(searchLower) ||
-            (p.product_code || "").toLowerCase().includes(searchLower) ||
-            (p.brand || "").toLowerCase().includes(searchLower) ||
-            (p.description || "").toLowerCase().includes(searchLower) ||
-            (p.category || "").toLowerCase().includes(searchLower)
-        )
-        .slice(0, maxResults);
+      productsApi.list({ search: debouncedQuery }).then((response) => {
+        setFilteredProducts(response.results);
+      });
 
-      setFilteredProducts(filtered);
       setIsOpen(true);
     } else {
       setFilteredProducts([]);
@@ -182,7 +174,7 @@ export default function SearchBar({
             <Search className="w-5 h-5 text-muted-foreground" />
           )}
         </div>
-{/*         <Delete
+        {/*         <Delete
           className="w-5 h-5 text-muted-foreground absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
           onClick={query.length > 0 ? clearSearch : null}
         /> */}

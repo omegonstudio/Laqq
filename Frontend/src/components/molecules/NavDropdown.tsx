@@ -1,27 +1,44 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { useProductFilters } from "@/hooks/useFilters";
 import { useAppSelector } from "@/store/hooks";
 import { buildCategories } from "@/utils/data/categories";
-import { useEffect, useState } from "react";
-import MenuItem from "../atoms/MenuItems";
+import { CategoryUI } from "@/types/types";
 import { ChevronDown } from "lucide-react";
 
-const NavDropdown = () => {
-  const { setFilter, searchParams } = useProductFilters();
+const MAX_HEIGHT = "max-h-[300px]";
+
+export default function NavDropdown() {
+  const { setFilter } = useProductFilters();
   const { list: categories } = useAppSelector((state) => state.categories);
   const menuItems = buildCategories(categories);
-
-  const activeCategoryId = searchParams.get("category");
-
-  const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
   const [isMobile, setIsMobile] = useState(false);
-
-  // Detect mobile screen
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+  const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
+
+  // Guarda el path activo (nivel 0 → nivel 3)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [activeRoot, setActiveRoot] = useState<any | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [activePath, setActivePath] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleHover = (level: number, item: any) => {
+    setActivePath((prev) => {
+      const next = [...prev.slice(0, level), item];
+      return next;
+    });
+  };
+
+  const handleClick = (id: string) => {
+    setFilter("category", id);
+    setActivePath([]);
+  };
 
   const open = (id: string) => setOpenMap((prev) => ({ ...prev, [id]: true }));
 
@@ -32,7 +49,6 @@ const NavDropdown = () => {
     setOpenMap((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const closeAll = () => setOpenMap({});
-
   const handleCategoryClick = (item: (typeof menuItems)[0]) => {
     if (isMobile && item.subcategories.length > 0) {
       toggle(item.id);
@@ -41,55 +57,80 @@ const NavDropdown = () => {
       closeAll();
     }
   };
+  const getColumnItems = (level: number) => {
+    if (level === 0) return menuItems;
+    return activePath[level - 1]?.subcategories || [];
+  };
 
   return (
     <>
-      {/* Desktop Navigation */}
-      <div className="hidden md:flex gap-2 lg:gap-4">
-        {menuItems.map((item) => (
-          <div
-            key={item.id}
-            className="relative"
-            onMouseEnter={() => open(item.id)}
-            onMouseLeave={() => close(item.id)}
-          >
-            {/* TRIGGER */}
-            <button
-              className={`px-3 lg:px-5 h-9 rounded-full border text-xs lg:text-sm uppercase flex items-center gap-1 lg:gap-1.5 whitespace-nowrap transition-all duration-300 ${
-                activeCategoryId === item.id
-                  ? "border-primary bg-primary text-primary-foreground shadow-md scale-105"
-                  : "border-border hover:border-primary/50 hover:bg-primary/5"
-              }`}
-              onClick={() => setFilter("category", item.id)}
-            >
-              {item.name}
-              {item.subcategories.length > 0 && (
-                <ChevronDown className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-              )}
-            </button>
+      <div className="relative hidden md:block">
+        <div className="flex gap-2">
+          {menuItems.map((item) => {
+            const isActive = activeRoot?.id === item.id;
+            const hasChildren = item.subcategories?.length > 0;
 
-            {/* PANEL */}
-            {openMap[item.id] && item.subcategories.length > 0 && (
-              <div className="absolute top-full left-0 bg-card border border-border rounded-2xl shadow-lg min-w-[240px] z-50 pt-2">
-                <div className="p-2 space-y-1">
-                  {item.subcategories.map((sub) => (
-                    <MenuItem
-                      key={sub.id}
-                      item={sub}
-                      open={open}
-                      close={close}
-                      openMap={openMap}
-                      setFilter={setFilter}
+            return (
+              <div
+                key={item.id}
+                className="relative"
+                onMouseEnter={() => {
+                  if (!hasChildren) return;
+                  setActiveRoot(item);
+                  setActivePath([item]);
+                }}
+                onMouseLeave={(e) => {
+                  // Si el mouse sigue dentro del mismo contenedor (por ejemplo entrando al panel), no cerrar
+                  if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+
+                  setActiveRoot(null);
+                  setActivePath([]);
+                }}
+              >
+                {/* BOTÓN */}
+                <button
+                  className="px-4 h-9 rounded-full border text-sm flex items-center gap-1"
+                  onClick={() => handleClick(item.id)}
+                >
+                  <span>{item.name}</span>
+
+                  {hasChildren && <ChevronDown className="w-3 h-3" />}
+                </button>
+
+                {/* PANEL SOLO PARA ESTE BOTÓN */}
+                {isActive && hasChildren && (
+                  <div className="absolute top-full left-0 mt-2 bg-card border rounded-xl shadow-lg z-50 flex">
+                    {/* NIVEL 1 */}
+                    <Column
+                      items={item.subcategories}
+                      level={1}
+                      onHover={handleHover}
+                      onClick={handleClick}
                     />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
 
-      {/* Mobile Navigation */}
+                    {/* NIVELES SIGUIENTES */}
+                    {activePath.slice(1).map((sub, index) => {
+                      if (!sub.subcategories?.length) return null;
+
+                      return (
+                        <Column
+                          key={sub.id}
+                          items={sub.subcategories}
+                          level={index + 2}
+                          onHover={handleHover}
+                          onClick={handleClick}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* PANEL MULTI-COLUMNA */}
+      </div>
       <div className="flex md:hidden">
         <div className="flex flex-wrap gap-2 justify-center">
           {menuItems.map((item) => (
@@ -156,9 +197,7 @@ const NavDropdown = () => {
       )}
     </>
   );
-};
-
-// Mobile-specific MenuItem component
+}
 interface MobileMenuItemProps {
   item: {
     id: string;
@@ -226,5 +265,23 @@ const MobileMenuItem = ({
     </div>
   );
 };
-
-export default NavDropdown;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Column = ({ items, level, onHover, onClick }: any) => {
+  return (
+    <div className="min-w-[220px] border-r last:border-r-0">
+      <div className="p-2 max-h-[300px] overflow-y-auto">
+        {items.map((item: CategoryUI) => (
+          <div
+            key={item.id}
+            onMouseEnter={() => onHover(level, item)}
+            onClick={() => onClick(item.id)}
+            className="px-3 py-2 text-sm rounded-md hover:bg-muted cursor-pointer flex justify-between"
+          >
+            <span>{item.name}</span>
+            {item.subcategories?.length > 0 && "›"}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};

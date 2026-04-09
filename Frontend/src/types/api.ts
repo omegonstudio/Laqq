@@ -224,6 +224,7 @@ export interface QuoteItem {
   quantity: number;
   unit_price: string; // Decimal como string
   subtotal: string; // Decimal como string
+  fixed_spec?: string;
 }
 
 // Para LEER (GET)
@@ -234,6 +235,7 @@ export interface QuoteItemRender {
   quantity: number;
   unit_price: string;
   subtotal: string;
+  fixed_spec: ProductFixedSpec;
 }
 
 // =================== PAYLOAD TYPES ===================
@@ -284,6 +286,7 @@ export interface QuoteFormState {
     product: string; // UUID
     quantity: number;
     unit_price?: string;
+    fixed_spec?: string;
   }>;
 }
 

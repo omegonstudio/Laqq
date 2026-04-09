@@ -197,7 +197,12 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
     fileobj: objeto tipo UploadedFile o file-like. Se detecta la extensión por fileobj.name si está disponible.
     Retorna un dict resumen con contadores y errores.
     CSV/Excel debe contener columnas (recomendadas):
-      product_code, name, brand, category_level_0, category_level_1, category_level_2, description, image_name, is_active, related_product_codes, spec_code, volume, dimensions, cap, outlet, accuracy, precision, additional_specs
+      product_code, name, brand, category_level_0, category_level_1, category_level_2, description, image_name, is_active, related_product_codes, is_variant, spec_code, volume, dimensions, cap, outlet, accuracy, precision, additional_specs
+
+    is_variant:
+      - false/0/vacío: Crea o actualiza un Product. Si ya existe un Product con ese product_code, se lanza error.
+      - true/1: NO crea Product, solo crea un ProductSpec. Requiere que exista un Product con ese product_code.
+
     Categorías:
       - category_level_0: obligatorio si hay categoría. Solo acepta: insumos, procesos, equipos, mobiliario
       - category_level_1: opcional, se crea si no existe
@@ -235,18 +240,42 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
     if not rows:
         return {'error': 'Archivo vacío o sin filas'}
 
-    # agrupar por product_code (permitiendo product_code vacío -> se agrupa por nombre)
-    products_data = {}
+    # Separar filas en productos y variantes
+    product_rows = []  # filas con is_variant=false o vacío
+    variant_rows = []  # filas con is_variant=true
     errors = []
+
     for idx, row in enumerate(rows, start=2):
-        # Las claves pueden venir con espacios o mayúsculas en Excel; normalizamos utilizando las claves originales
-        # Convertimos todas las claves a lower_snake para mayor tolerancia (opcional)
-        # Aquí asumimos que el CSV/Excel usa las mismas cabeceras que antes.
+        is_variant = parse_bool(row.get('is_variant', ''))
+        product_code = (row.get('product_code') or row.get('product code') or '').strip()
+
+        if is_variant:
+            # Es una variante, requiere product_code
+            if not product_code:
+                errors.append({'row': idx, 'error': 'is_variant=true requiere product_code para encontrar el producto padre'})
+                continue
+            variant_rows.append((idx, row))
+        else:
+            # Es un producto
+            if not product_code and not (row.get('name') or '').strip():
+                errors.append({'row': idx, 'error': 'Falta product_code y name'})
+                continue
+            product_rows.append((idx, row))
+
+    # Agrupar productos por product_code
+    products_data = {}
+    for idx, row in product_rows:
         code = (row.get('product_code') or row.get('product code') or '').strip()
         key = code or (row.get('name') or '').strip()
-        if not key:
-            errors.append({'row': idx, 'error': 'Falta product_code y name'})
+
+        # Validar que no haya productos duplicados con el mismo product_code
+        if code and key in products_data:
+            errors.append({
+                'row': idx,
+                'error': f'Product con product_code "{code}" duplicado. Solo puede haber un producto con is_variant=false por product_code.'
+            })
             continue
+
         products_data.setdefault(key, {'rows': [], 'first_row': row}).get('rows').append((idx, row))
 
     summary = {
@@ -257,6 +286,7 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
         'updated_products': 0,
         'created_specs': 0,
         'updated_specs': 0,
+        'created_variants': 0,
         'created_relations': 0,
         'errors': errors,
     }
@@ -369,7 +399,76 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
         except Exception as e:
             summary['errors'].append({'product': product_key, 'error': str(e)})
 
-    # segunda pasada: relaciones (usando el campo related_product_codes en la primera fila)
+    # segunda pasada: procesar variantes (is_variant=true)
+    for lineno, variant_row in variant_rows:
+        try:
+            product_code = (variant_row.get('product_code') or '').strip()
+            spec_code = (variant_row.get('spec_code') or '').strip()
+
+            if not spec_code:
+                summary['errors'].append({
+                    'row': lineno,
+                    'error': f'Variante requiere spec_code para identificarla'
+                })
+                continue
+
+            # Buscar el producto padre por product_code
+            parent_product = None
+
+            # Primero buscar en productos recién creados/actualizados
+            for key, prod in created_product_map.items():
+                if prod.product_code == product_code:
+                    parent_product = prod
+                    break
+
+            # Si no lo encuentra, buscar en la base de datos
+            if not parent_product:
+                try:
+                    parent_product = Product.objects.get(product_code=product_code)
+                except Product.DoesNotExist:
+                    summary['errors'].append({
+                        'row': lineno,
+                        'error': f'Producto padre con product_code "{product_code}" no encontrado. Las variantes requieren un producto existente con is_variant=false.'
+                    })
+                    continue
+
+            # Crear la variante (ProductSpec)
+            defaults = {
+                'volume': (variant_row.get('volume') or '').strip() or None,
+                'dimensions': (variant_row.get('dimensions') or '').strip() or None,
+                'cap': (variant_row.get('cap') or '').strip() or None,
+                'outlet': (variant_row.get('outlet') or '').strip() or None,
+                'accuracy': (variant_row.get('accuracy') or '').strip() or None,
+                'precision': (variant_row.get('precision') or '').strip() or None,
+                'additional_specs': None
+            }
+
+            additional = variant_row.get('additional_specs')
+            if additional:
+                try:
+                    defaults['additional_specs'] = json.loads(additional)
+                except Exception:
+                    defaults['additional_specs'] = additional
+
+            # Upsert: buscar por product + code y actualizar o crear
+            variant_spec, created_variant = ProductSpec.objects.update_or_create(
+                product=parent_product,
+                code=spec_code,
+                defaults=defaults
+            )
+
+            if created_variant:
+                summary['created_variants'] += 1
+            else:
+                summary['updated_specs'] += 1
+
+        except Exception as e:
+            summary['errors'].append({
+                'row': lineno,
+                'error': f'Error procesando variante: {str(e)}'
+            })
+
+    # tercera pasada: relaciones (usando el campo related_product_codes en la primera fila)
     for product_key, product in created_product_map.items():
         first_row = products_data[product_key]['first_row']
         related_codes_field = (first_row.get('related_product_codes') or '').strip()

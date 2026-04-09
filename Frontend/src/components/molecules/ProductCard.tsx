@@ -7,37 +7,57 @@ import { useCart } from "@/contexts/CartContext";
 import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
 import placeholderImageDark from "@/assets/laqq_marca_color_pos.svg";
 import { useTheme } from "next-themes";
-import Logo from "@/components/atoms/Logo";
+import { useNavigate } from "react-router-dom";
 
 interface ProductCardProps {
   product: Product;
 }
 
 const ProductCard = ({ product }: ProductCardProps) => {
-  const { addToCart } = useCart();
+  const { addToCart, addVariantToCart } = useCart();
   const { resolvedTheme } = useTheme();
+  const navigate = useNavigate();
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
-    addToCart(product);
+
+    const specs = product.fixed_specs ?? [];
+    const specsCount = specs.length;
+
+    // 🔹 Sin variantes
+    if (specsCount === 0) {
+      addToCart(product);
+      return;
+    }
+
+    // 🔹 Una sola variante → agregar directamente
+    if (specsCount === 1) {
+      const spec = specs[0];
+
+      addVariantToCart(product, spec, spec.code);
+      return;
+    }
+
+    // 🔹 Más de una → ir al detalle
+    navigate(`/product/${product.id}`);
   };
   return (
     <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-xl hover:scale-[1.02] hover:border-primary/50 transition-all duration-300 group">
-        <div className="aspect-square bg-muted rounded-xl mb-4 overflow-hidden relative">
-          <Link to={`/product/${product.id}`}>
-            <img
-              src={
-                product.image_url
-                  ? product.image_url
-                  : resolvedTheme === "dark"
-                  ? placeholderImage
-                  : placeholderImageDark
-              }
-              alt={product.name}
-              className="w-full h-full object-contain p-4 cursor-pointer transition-transform duration-300 group-hover:scale-110"
-            />
-          </Link>
-        </div>
+      <div className="aspect-square bg-muted rounded-xl mb-4 overflow-hidden relative">
+        <Link to={`/product/${product.id}`}>
+          <img
+            src={
+              product.image_url
+                ? product.image_url
+                : resolvedTheme === "dark"
+                ? placeholderImage
+                : placeholderImageDark
+            }
+            alt={product.name}
+            className="w-full h-full object-contain p-4 cursor-pointer transition-transform duration-300 group-hover:scale-110"
+          />
+        </Link>
+      </div>
 
       <Badge variant="primary" className="mb-2">
         {product.brand}

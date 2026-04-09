@@ -345,12 +345,19 @@ class QuotePackageSerializer(serializers.Serializer):
                     f"Product with id '{item['product']}' does not exist"
                 )
 
-            # Validar fixed_spec si está presente
-            if 'fixed_spec' in item and item['fixed_spec'] is not None:
-                if not ProductSpec.objects.filter(id=item['fixed_spec']).exists():
-                    raise serializers.ValidationError(
-                        f"ProductSpec (variante) with id '{item['fixed_spec']}' does not exist"
+            # Validar fixed_spec si está presente (ignorar strings vacíos)
+            if 'fixed_spec' in item and item['fixed_spec']:
+                # Si fixed_spec es un string vacío, lo consideramos como None
+                if isinstance(item['fixed_spec'], str) and not item['fixed_spec'].strip():
+                    item['fixed_spec'] = None
+                # Si la variante no existe, loggeamos warning pero continuamos (será None en create)
+                elif not ProductSpec.objects.filter(id=item['fixed_spec']).exists():
+                    logger.warning(
+                        f"ProductSpec (variante) with id '{item['fixed_spec']}' does not exist. "
+                        f"Item will be created without variant."
                     )
+                    # No lanzar error, solo convertir a None para que continúe
+                    item['fixed_spec'] = None
 
             # Validar quantity
             if item['quantity'] <= 0:
@@ -470,6 +477,10 @@ class QuotePackageSerializer(serializers.Serializer):
                 quantity = item_data['quantity']
                 unit_price = item_data.get('unit_price')
                 fixed_spec_id = item_data.get('fixed_spec')
+
+                # Normalizar fixed_spec_id: strings vacíos a None
+                if isinstance(fixed_spec_id, str) and not fixed_spec_id.strip():
+                    fixed_spec_id = None
 
                 # Obtener la fixed_spec si se proporcionó
                 fixed_spec = None
