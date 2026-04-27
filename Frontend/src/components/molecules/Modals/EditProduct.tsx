@@ -869,7 +869,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             </div>
 
             <br />
-            <div className="flex items-center justify-between">
+            {/* <div className="flex items-center justify-between">
               <label className="text-xl font-bold">
                 Variantes del producto:
               </label>
@@ -1005,7 +1005,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
               <Button variant="outline" onClick={handleAddSpec}>
                 Agrega más detalles técnicos
               </Button>
-            </div>
+            </div> */}
 
             <br />
             <div className="grid grid-cols-2 gap-20">
