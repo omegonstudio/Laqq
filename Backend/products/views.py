@@ -13,25 +13,24 @@ from drf_yasg import openapi
 from django.shortcuts import get_object_or_404
 from django.contrib.contenttypes.models import ContentType
 
-from .models import Brand, Category, Product, ProductSpec, ProductSpecification
+from .models import Brand, Category, Product, ProductVariant, TechnicalSpec
 from .serializers import (
     BrandSerializer,
     CategorySerializer,
     ProductSerializer,
-    ProductSpecSerializer,
-    ProductSpecificationSerializer,
+    ProductVariantSerializer,
+    TechnicalSpecSerializer,
 )
 from .permissions import IsReadOnlyOrAdmin
-from .filters import ProductFilter  # Importar el filtro personalizado
+from .filters import ProductFilter
 
 from attachments.serializers import AttachmentSerializer
 from attachments.models import Attachment
 
-# Existing viewsets retained
 class BrandViewSet(viewsets.ModelViewSet):
     queryset = Brand.objects.all()
     serializer_class = BrandSerializer
-    permission_classes = [AllowAny]    
+    permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['name']
     search_fields = ['name', 'description']
@@ -51,42 +50,33 @@ class CategoryViewSet(viewsets.ModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all().prefetch_related(
         'from_relations__to_product__brand',
-        'dynamic_specifications'
+        'technical_specs',
+        'variants',
     )
     serializer_class = ProductSerializer
     permission_classes = [IsReadOnlyOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    # Usar el filtro personalizado en lugar de filterset_fields
     filterset_class = ProductFilter
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'created_at', 'updated_at']
     ordering = ['-created_at']
 
     @swagger_auto_schema(
-    operation_description="Sube un archivo y lo asocia al producto",
-    manual_parameters=[
-        openapi.Parameter('file', openapi.IN_FORM, type=openapi.TYPE_FILE, required=True),
-        openapi.Parameter('role', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
-    ],
-    responses={201: AttachmentSerializer}
-)
-
+        operation_description="Sube un archivo y lo asocia al producto",
+        manual_parameters=[
+            openapi.Parameter('file', openapi.IN_FORM, type=openapi.TYPE_FILE, required=True),
+            openapi.Parameter('role', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+        ],
+        responses={201: AttachmentSerializer}
+    )
     @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser], permission_classes=[IsAuthenticatedOrReadOnly])
     def upload_attachment(self, request, pk=None):
-        """
-        Sube un archivo y lo asocia al producto.
-        Campos esperados en multipart:
-          - file: el archivo (requerido)
-          - role: opcional ('image'|'manual'|'datasheet'|'other'), si no se pasa se infiere por MIME
-        Retorna el attachment creado usando AttachmentSerializer (incluye url).
-        """
         product = get_object_or_404(Product, pk=pk)
         file_obj = request.FILES.get('file')
         if not file_obj:
             return Response({'detail': 'file field is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         role = request.data.get('role')
-        # inferir role por mime si no se especifica
         if not role:
             if file_obj.content_type and file_obj.content_type.startswith('image/'):
                 role = 'image'
@@ -104,7 +94,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         att = serializer.save(created_by=request.user if request.user and request.user.is_authenticated else None)
 
-        # Si es el primer attachment de tipo imagen y el producto no tiene imagen principal
         if role == 'image' and not product.image_attachment:
             product.image_attachment = att
             product.save()
@@ -112,30 +101,15 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(AttachmentSerializer(att, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
     @swagger_auto_schema(
-    operation_description="Sube múltiples archivos y los asocia al producto",
-    manual_parameters=[
-        openapi.Parameter('files', openapi.IN_FORM, type=openapi.TYPE_FILE, required=True),
-        openapi.Parameter('role', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
-    ],
-    responses={201: "Lista de attachments creados"}
-)
-
+        operation_description="Sube múltiples archivos y los asocia al producto",
+        manual_parameters=[
+            openapi.Parameter('files', openapi.IN_FORM, type=openapi.TYPE_FILE, required=True),
+            openapi.Parameter('role', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+        ],
+        responses={201: "Lista de attachments creados"}
+    )
     @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser], permission_classes=[IsAuthenticatedOrReadOnly])
     def upload_attachments(self, request, pk=None):
-        """
-        Sube MÚLTIPLES archivos y los asocia al producto.
-        Campos esperados en multipart:
-          - files: los archivos (requerido - múltiples)
-          - role: opcional ('image'|'manual'|'datasheet'|'other'), aplica a todos
-
-        Ejemplo:
-            POST /products/{id}/upload_attachments/
-            Content-Type: multipart/form-data
-            files: [file1, file2, file3...]
-            role: 'image'
-
-        Retorna lista de attachments creados.
-        """
         product = get_object_or_404(Product, pk=pk)
         files = request.FILES.getlist('files')
 
@@ -151,7 +125,6 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         for file_obj in files:
             try:
-                # Inferir role por MIME si no se especificó
                 current_role = role
                 if current_role == 'other' and file_obj.content_type:
                     if file_obj.content_type.startswith('image/'):
@@ -159,7 +132,6 @@ class ProductViewSet(viewsets.ModelViewSet):
                     elif 'pdf' in file_obj.content_type:
                         current_role = 'manual'
 
-                # Crear attachment
                 product_ct = ContentType.objects.get_for_model(Product)
                 attachment = Attachment.objects.create(
                     file=file_obj,
@@ -167,12 +139,11 @@ class ProductViewSet(viewsets.ModelViewSet):
                     content_type_str=file_obj.content_type or 'application/octet-stream',
                     content_type=product_ct,
                     object_id=product.id,
-                    attachable_type='product',  # legacy
-                    attachable_id=product.id,  # legacy
+                    attachable_type='product',
+                    attachable_id=product.id,
                     created_by=request.user if request.user and request.user.is_authenticated else None
                 )
 
-                # Si es el primer attachment de tipo imagen y el producto no tiene imagen principal
                 if current_role == 'image' and not product.image_attachment and len(attachments_created) == 0:
                     product.image_attachment = attachment
                     product.save()
@@ -194,38 +165,27 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['delete'], url_path='attachments/(?P<attachment_id>[^/.]+)', permission_classes=[IsAuthenticatedOrReadOnly])
     def delete_attachment(self, request, pk=None, attachment_id=None):
-        """
-        Elimina un attachment específico de un producto.
-
-        Ejemplo:
-            DELETE /products/{product_id}/attachments/{attachment_id}/
-        """
         product = get_object_or_404(Product, pk=pk)
 
         try:
-            # Buscar el attachment
             attachment = Attachment.objects.get(
                 id=attachment_id,
                 attachable_type='product',
                 attachable_id=product.id
             )
 
-            # Guardar info antes de eliminar
             file_name = attachment.file_name
 
-            # Si es la imagen principal del producto, quitarla
             if product.image_attachment and product.image_attachment.id == attachment.id:
                 product.image_attachment = None
                 product.save()
 
-            # Eliminar el archivo físico si existe
             if attachment.file:
                 try:
                     attachment.file.delete()
                 except Exception:
                     pass
 
-            # Eliminar el registro
             attachment.delete()
 
             return Response({
@@ -246,17 +206,8 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticatedOrReadOnly])
     def list_attachments(self, request, pk=None):
-        """
-        Lista todos los attachments de un producto.
-
-        Ejemplo:
-            GET /products/{id}/list_attachments/
-
-        Nota: Los attachments también se incluyen automáticamente en el serializer del producto.
-        """
         product = get_object_or_404(Product, pk=pk)
 
-        # Buscar todos los attachments del producto
         attachments = Attachment.objects.filter(
             attachable_type='product',
             attachable_id=product.id
@@ -271,59 +222,41 @@ class ProductViewSet(viewsets.ModelViewSet):
             'attachments': serializer.data
         }, status=status.HTTP_200_OK)
 
-class ProductSpecViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet para gestionar las especificaciones fijas de productos (variantes).
 
-    IMPORTANTE: Este ViewSet permite que un producto tenga MÚLTIPLES fixed_specs,
-    lo que permite manejar variantes del mismo producto (ej: diferentes tamaños/volúmenes).
-
-    El frontend recibirá TODAS las variantes en el campo 'fixed_specs' del producto
-    como un array, permitiendo mostrarlas en tabs o selectores según sea necesario.
+class ProductVariantViewSet(viewsets.ModelViewSet):
     """
-    queryset = ProductSpec.objects.all()
-    serializer_class = ProductSpecSerializer
-    permission_classes = [AllowAny]  # Agregar permiso explícito
+    ViewSet para gestionar las variantes de productos.
+
+    Cada variante hereda los atributos del producto padre (brand, category, etc.)
+    y puede tener sus propias TechnicalSpecs dinámicas.
+    """
+    queryset = ProductVariant.objects.all().prefetch_related('technical_specs')
+    serializer_class = ProductVariantSerializer
+    permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['product', 'code']
-    search_fields = ['code', 'volume', 'dimensions']
+    search_fields = ['code', 'name', 'dimensions']
     ordering_fields = ['code', 'created_at']
     ordering = ['-created_at']
 
     @action(detail=False, methods=['post'], url_path='bulk-create')
     def bulk_create(self, request):
         """
-        Crear múltiples variantes (fixed_specs) para un producto de una sola vez.
+        Crear múltiples variantes para un producto de una sola vez.
 
-        ENDPOINT: POST /api/products/specs/bulk-create/
+        ENDPOINT: POST /api/products/variants/bulk-create/
 
         Payload esperado:
         {
             "product": "uuid-del-producto",
-            "specs": [
-                {
-                    "code": "PROD-001-250ML",
-                    "volume": "250ml",
-                    "dimensions": "10x5x5cm",
-                    "cap": "Rosca"
-                },
-                {
-                    "code": "PROD-001-500ML",
-                    "volume": "500ml",
-                    "dimensions": "15x7x7cm",
-                    "cap": "Rosca"
-                }
+            "variants": [
+                {"code": "PROD-001-A", "name": "Versión A", "dimensions": "10x5x5cm"},
+                {"code": "PROD-001-B", "name": "Versión B", "dimensions": "15x7x7cm"}
             ]
-        }
-
-        Respuesta exitosa (201):
-        {
-            "message": "3 specs created successfully",
-            "specs": [array de specs creadas]
         }
         """
         product_id = request.data.get('product')
-        specs_data = request.data.get('specs', [])
+        variants_data = request.data.get('variants', [])
 
         if not product_id:
             return Response(
@@ -331,9 +264,9 @@ class ProductSpecViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if not specs_data:
+        if not variants_data:
             return Response(
-                {'error': 'At least one spec is required'},
+                {'error': 'At least one variant is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -345,26 +278,26 @@ class ProductSpecViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        created_specs = []
+        created_variants = []
         errors = []
 
-        for spec_data in specs_data:
-            spec_data['product'] = product_id
-            serializer = ProductSpecSerializer(data=spec_data)
+        for variant_data in variants_data:
+            variant_data['product'] = product_id
+            serializer = ProductVariantSerializer(data=variant_data)
 
             if serializer.is_valid():
-                created_specs.append(serializer.save())
+                created_variants.append(serializer.save())
             else:
                 errors.append({
-                    'data': spec_data,
+                    'data': variant_data,
                     'errors': serializer.errors
                 })
 
         if errors:
             return Response(
                 {
-                    'message': f'{len(created_specs)} specs created, {len(errors)} failed',
-                    'created': ProductSpecSerializer(created_specs, many=True).data,
+                    'message': f'{len(created_variants)} variants created, {len(errors)} failed',
+                    'created': ProductVariantSerializer(created_variants, many=True).data,
                     'errors': errors
                 },
                 status=status.HTTP_207_MULTI_STATUS
@@ -372,22 +305,23 @@ class ProductSpecViewSet(viewsets.ModelViewSet):
 
         return Response(
             {
-                'message': f'{len(created_specs)} specs created successfully',
-                'specs': ProductSpecSerializer(created_specs, many=True).data
+                'message': f'{len(created_variants)} variants created successfully',
+                'variants': ProductVariantSerializer(created_variants, many=True).data
             },
             status=status.HTTP_201_CREATED
         )
 
 
-class ProductSpecificationViewSet(viewsets.ModelViewSet):
-    queryset = ProductSpecification.objects.all()
-    serializer_class = ProductSpecificationSerializer
+class TechnicalSpecViewSet(viewsets.ModelViewSet):
+    queryset = TechnicalSpec.objects.all()
+    serializer_class = TechnicalSpecSerializer
     permission_classes = [IsReadOnlyOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['product', 'is_visible']
+    filterset_fields = ['is_visible']
     search_fields = ['key', 'value', 'unit']
     ordering_fields = ['display_order', 'created_at', 'updated_at']
     ordering = ['display_order', 'created_at']
+
 
 # -------------------
 # Bulk upload API
@@ -418,8 +352,7 @@ class ProductsBulkUploadAPIView(APIView):
             openapi.Parameter('skip_downloads', openapi.IN_FORM, type=openapi.TYPE_BOOLEAN, required=False),
         ],
         responses={200: "Resumen de importación"}
-    )   
-
+    )
     def post(self, request, format=None):
         serializer = BulkUploadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

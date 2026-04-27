@@ -18,7 +18,7 @@ django.setup()
 
 from users.models import User, UserType, UserState
 from contacts.models import Contact, ContactState, Message as ContactMessage
-from products.models import Brand, Category, Product, ProductSpec, ProductRelation
+from products.models import Brand, Category, Product, ProductVariant, ProductRelation
 from accessories.models import Accessory, ProductAccessory
 from attachments.models import Attachment
 from notes.models import Note, NoteType, NoteState
@@ -209,16 +209,16 @@ def seed_products(brands, categories):
     return productos
 
 
-def seed_product_specs(products):
-    print("Seeding ProductSpecs...")
+def seed_product_variants(products):
+    print("Seeding ProductVariants...")
 
     for p in products:
-        ProductSpec.objects.get_or_create(
+        ProductVariant.objects.get_or_create(
             product=p,
             code="STD",
             defaults={
                 "id": uuid.uuid4(),
-                "volume": "500ml",
+                "name": "Estándar",
                 "dimensions": "10x10cm",
             }
         )
@@ -405,7 +405,7 @@ def run():
     brands = seed_brands()
     categories = seed_categories()
     products = seed_products(brands, categories)
-    seed_product_specs(products)
+    seed_product_variants(products)
     seed_product_relations(products)
 
     seed_accessories(products)

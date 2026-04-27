@@ -3,8 +3,8 @@ from .views import (
     BrandViewSet,
     CategoryViewSet,
     ProductViewSet,
-    ProductSpecViewSet,
-    ProductSpecificationViewSet,
+    ProductVariantViewSet,
+    TechnicalSpecViewSet,
     ProductsBulkUploadAPIView,
 )
 from django.urls import path, include
@@ -13,8 +13,8 @@ router = DefaultRouter()
 router.register(r'list', ProductViewSet, basename='product')
 router.register(r'brands', BrandViewSet)
 router.register(r'categories', CategoryViewSet)
-router.register(r'specs', ProductSpecViewSet)
-router.register(r'specifications', ProductSpecificationViewSet, basename='product-specification')
+router.register(r'variants', ProductVariantViewSet, basename='product-variant')
+router.register(r'technical-specs', TechnicalSpecViewSet, basename='technical-spec')
 
 urlpatterns = [
     path('bulk-upload/', ProductsBulkUploadAPIView.as_view(), name='products-bulk-upload'),

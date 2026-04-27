@@ -61,7 +61,7 @@ class QuoteItem(models.Model):
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
     quote = models.ForeignKey(Quote, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    fixed_spec = models.ForeignKey('products.ProductSpec', on_delete=models.SET_NULL, blank=True, null=True, related_name='quote_items')
+    variant = models.ForeignKey('products.ProductVariant', on_delete=models.SET_NULL, blank=True, null=True, related_name='quote_items')
     quantity = models.PositiveIntegerField(default=1)
     unit_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
     subtotal = models.DecimalField(max_digits=14, decimal_places=2, blank=True, null=True)

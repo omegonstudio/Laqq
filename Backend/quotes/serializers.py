@@ -1,8 +1,8 @@
 from rest_framework import serializers
 from .models import QuoteType, QuoteState, Quote, QuoteItem
 from contacts.models import Contact, ContactState
-from products.models import Product, ProductSpec
-from products.serializers import ProductSerializer, ProductSpecSerializer
+from products.models import Product, ProductVariant
+from products.serializers import ProductSerializer, ProductVariantSerializer
 from contacts.serializers import ContactSerializer
 import logging
 
@@ -39,7 +39,6 @@ class QuoteItemSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        # Auto-calculate subtotal if not provided
         if 'subtotal' not in validated_data or validated_data['subtotal'] is None:
             quantity = validated_data.get('quantity', 1)
             unit_price = validated_data.get('unit_price', 0) or 0
@@ -47,7 +46,6 @@ class QuoteItemSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        # Auto-calculate subtotal if not provided
         if 'subtotal' not in validated_data or validated_data['subtotal'] is None:
             quantity = validated_data.get('quantity', instance.quantity)
             unit_price = validated_data.get('unit_price', instance.unit_price) or 0
@@ -60,7 +58,7 @@ class QuoteItemDetailSerializer(serializers.ModelSerializer):
     Usado en respuestas donde se necesita información completa del producto.
     """
     product = ProductSerializer(read_only=True)
-    fixed_spec = ProductSpecSerializer(read_only=True)
+    variant = ProductVariantSerializer(read_only=True)
 
     class Meta:
         model = QuoteItem
@@ -71,7 +69,6 @@ class QuoteSerializer(serializers.ModelSerializer):
     Serializer estándar para Quote con detalles completos de contact y products.
     Usado en endpoints de listado y detalle de cotizaciones.
     """
-    # Incluir detalles completos del contacto
     contact = ContactSerializer(read_only=True)
     contact_id = serializers.PrimaryKeyRelatedField(
         queryset=Contact.objects.all(),
@@ -80,7 +77,6 @@ class QuoteSerializer(serializers.ModelSerializer):
         required=True
     )
 
-    # Incluir items con detalles completos de productos
     items = QuoteItemDetailSerializer(many=True, read_only=True, source='quoteitem_set')
 
     class Meta:
@@ -108,21 +104,15 @@ class BulkQuoteItemSerializer(serializers.Serializer):
     data = serializers.ListField(child=serializers.DictField())
 
     def validate_data(self, value):
-        """Validar cada item en el array"""
         for item in value:
             item_id = item.get('id')
 
-            # Si tiene ID, es actualización - validar solo los campos presentes
             if item_id:
-                # Validar que el ID existe
                 if not QuoteItem.objects.filter(id=item_id).exists():
                     raise serializers.ValidationError(
                         f"QuoteItem with id {item_id} does not exist"
                     )
-                # Para actualización, no son requeridos quote y product
-                pass
             else:
-                # Si no tiene ID, es creación - validar campos requeridos
                 if 'quote' not in item:
                     raise serializers.ValidationError(
                         "Field 'quote' is required for creating new items"
@@ -132,14 +122,12 @@ class BulkQuoteItemSerializer(serializers.Serializer):
                         "Field 'product' is required for creating new items"
                     )
 
-            # Validar quantity si está presente
             quantity = item.get('quantity')
             if quantity is not None and quantity <= 0:
                 raise serializers.ValidationError(
                     "Quantity must be greater than 0"
                 )
 
-            # Validar unit_price si está presente
             unit_price = item.get('unit_price')
             if unit_price is not None and float(unit_price) < 0:
                 raise serializers.ValidationError(
@@ -157,7 +145,6 @@ class BulkQuoteItemSerializer(serializers.Serializer):
         updated_items = []
 
         for item_data in items_data:
-            # Auto-calculate subtotal if not provided
             quantity = item_data.get('quantity', 1)
             unit_price = item_data.get('unit_price', 0)
             if unit_price is None:
@@ -168,30 +155,29 @@ class BulkQuoteItemSerializer(serializers.Serializer):
             if 'subtotal' not in item_data or item_data['subtotal'] is None:
                 item_data['subtotal'] = quantity * unit_price
 
-            # Si tiene ID, actualizar; si no, crear
             item_id = item_data.pop('id', None)
 
             if item_id:
-                # Actualizar item existente
                 item = QuoteItem.objects.get(id=item_id)
 
-                # Solo actualizar campos proporcionados
                 for key, value in item_data.items():
-                    # Convertir foreign keys de string a instancia
                     if key == 'quote' and isinstance(value, str):
                         value = Quote.objects.get(id=value)
                     elif key == 'product' and isinstance(value, str):
                         value = Product.objects.get(id=value)
+                    elif key == 'variant' and isinstance(value, str):
+                        value = ProductVariant.objects.get(id=value)
 
                     setattr(item, key, value)
                 item.save()
                 updated_items.append(item)
             else:
-                # Crear nuevo item - convertir FKs
                 if 'quote' in item_data and isinstance(item_data['quote'], str):
                     item_data['quote'] = Quote.objects.get(id=item_data['quote'])
                 if 'product' in item_data and isinstance(item_data['product'], str):
                     item_data['product'] = Product.objects.get(id=item_data['product'])
+                if 'variant' in item_data and isinstance(item_data['variant'], str):
+                    item_data['variant'] = ProductVariant.objects.get(id=item_data['variant'])
 
                 item = QuoteItem.objects.create(**item_data)
                 created_items.append(item)
@@ -199,9 +185,6 @@ class BulkQuoteItemSerializer(serializers.Serializer):
         return {'created': created_items, 'updated': updated_items}
 
     def to_representation(self, instance):
-        """
-        Retorna la lista de items creados y actualizados serializados.
-        """
         if isinstance(instance, dict):
             return {
                 'created': QuoteItemSerializer(instance.get('created', []), many=True).data,
@@ -237,55 +220,15 @@ class QuotePackageSerializer(serializers.Serializer):
     - quote.state: ID del estado de la cotización (default: "pending")
     - quote.user: UUID del usuario asignado
     - quote.message: Mensaje de la cotización
-    - items[].unit_price: Precio unitario (si no se proporciona, usa el precio del producto)
+    - items[].unit_price: Precio unitario
+    - items[].variant: UUID de la variante del producto (opcional)
     - items: Array de items (puede estar vacío o no incluirse)
-
-    EJEMPLO DE PAYLOAD MÍNIMO (con defaults):
-    {
-        "contact": {
-            "email": "cliente@example.com",
-            "first_name": "Juan",
-            "last_name": "Pérez"
-        },
-        "quote": {}
-    }
-
-    EJEMPLO DE PAYLOAD COMPLETO:
-    {
-        "contact": {
-            "email": "cliente@example.com",
-            "first_name": "Juan",
-            "last_name": "Pérez",
-            "company_name": "Empresa SA",
-            "phone": "+1234567890",
-            "country": "Argentina",
-            "message": "Cliente interesado en productos"
-        },
-        "quote": {
-            "quote_type": "standard",
-            "state": "pending",
-            "user": "uuid-del-usuario",
-            "message": "Cotización para proyecto especial"
-        },
-        "items": [
-            {
-                "product": "uuid-producto-1",
-                "quantity": 2,
-                "unit_price": "100.50"
-            },
-            {
-                "product": "uuid-producto-2",
-                "quantity": 1
-            }
-        ]
-    }
     """
     contact = serializers.DictField()
     quote = serializers.DictField()
     items = serializers.ListField(child=serializers.DictField(), required=False, allow_empty=True)
 
     def validate_contact(self, value):
-        """Validar datos del contacto"""
         required_fields = ['email', 'first_name', 'last_name']
         for field in required_fields:
             if field not in value or not value[field]:
@@ -293,7 +236,6 @@ class QuotePackageSerializer(serializers.Serializer):
                     f"Field '{field}' is required in contact data"
                 )
 
-        # Validar formato de email
         import re
         email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         if not re.match(email_regex, value['email']):
@@ -302,20 +244,12 @@ class QuotePackageSerializer(serializers.Serializer):
         return value
 
     def validate_quote(self, value):
-        """Validar datos de la cotización
-
-        quote_type y state son opcionales - si se omiten, usan defaults del modelo:
-        - quote_type: 'standard'
-        - state: 'pending'
-        """
-        # Validar quote_type si está presente
         if 'quote_type' in value and value['quote_type'] is not None:
             if not QuoteType.objects.filter(id=value['quote_type']).exists():
                 raise serializers.ValidationError(
                     f"QuoteType with id '{value['quote_type']}' does not exist"
                 )
 
-        # Validar state si está presente
         if 'state' in value and value['state'] is not None:
             if not QuoteState.objects.filter(id=value['state']).exists():
                 raise serializers.ValidationError(
@@ -325,7 +259,6 @@ class QuotePackageSerializer(serializers.Serializer):
         return value
 
     def validate_items(self, value):
-        """Validar items de la cotización"""
         if not value:
             return value
 
@@ -339,33 +272,27 @@ class QuotePackageSerializer(serializers.Serializer):
                     "Field 'quantity' is required for each item"
                 )
 
-            # Validar que el producto existe
             if not Product.objects.filter(id=item['product']).exists():
                 raise serializers.ValidationError(
                     f"Product with id '{item['product']}' does not exist"
                 )
 
-            # Validar fixed_spec si está presente (ignorar strings vacíos)
-            if 'fixed_spec' in item and item['fixed_spec']:
-                # Si fixed_spec es un string vacío, lo consideramos como None
-                if isinstance(item['fixed_spec'], str) and not item['fixed_spec'].strip():
-                    item['fixed_spec'] = None
-                # Si la variante no existe, loggeamos warning pero continuamos (será None en create)
-                elif not ProductSpec.objects.filter(id=item['fixed_spec']).exists():
+            # Validar variant si está presente (ignorar strings vacíos)
+            if 'variant' in item and item['variant']:
+                if isinstance(item['variant'], str) and not item['variant'].strip():
+                    item['variant'] = None
+                elif not ProductVariant.objects.filter(id=item['variant']).exists():
                     logger.warning(
-                        f"ProductSpec (variante) with id '{item['fixed_spec']}' does not exist. "
+                        f"ProductVariant with id '{item['variant']}' does not exist. "
                         f"Item will be created without variant."
                     )
-                    # No lanzar error, solo convertir a None para que continúe
-                    item['fixed_spec'] = None
+                    item['variant'] = None
 
-            # Validar quantity
             if item['quantity'] <= 0:
                 raise serializers.ValidationError(
                     "Quantity must be greater than 0"
                 )
 
-            # Validar unit_price si está presente
             if 'unit_price' in item and item['unit_price'] is not None:
                 if float(item['unit_price']) < 0:
                     raise serializers.ValidationError(
@@ -375,9 +302,6 @@ class QuotePackageSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
-        """
-        Crear o buscar contacto, y crear la cotización con sus items
-        """
         contact_data = validated_data['contact']
         quote_data = validated_data['quote']
         items_data = validated_data.get('items', [])
@@ -392,8 +316,6 @@ class QuotePackageSerializer(serializers.Serializer):
         if contact:
             logger.info(f"Contact found with email/phone {email}/{phone}: {contact.id}")
         else:
-            # Crear nuevo contacto
-            # Buscar un estado por defecto o usar el primero disponible
             default_state = ContactState.objects.filter(id='new').first()
             if not default_state:
                 default_state = ContactState.objects.first()
@@ -422,7 +344,6 @@ class QuotePackageSerializer(serializers.Serializer):
             'message': quote_data.get('message', '')
         }
 
-        # Resolver quote_type
         if 'quote_type' in quote_data and quote_data['quote_type']:
             quote_type = QuoteType.objects.filter(id=quote_data['quote_type']).first()
             if not quote_type:
@@ -431,7 +352,6 @@ class QuotePackageSerializer(serializers.Serializer):
                 )
             quote_create_data['quote_type'] = quote_type
         else:
-            # Usar el primero disponible como fallback
             default_quote_type = QuoteType.objects.first()
             if not default_quote_type:
                 raise serializers.ValidationError(
@@ -440,7 +360,6 @@ class QuotePackageSerializer(serializers.Serializer):
             quote_create_data['quote_type'] = default_quote_type
             logger.warning("No quote_type provided, using default: %s", default_quote_type.id)
 
-        # Resolver state
         if 'state' in quote_data and quote_data['state']:
             quote_state = QuoteState.objects.filter(id=quote_data['state']).first()
             if not quote_state:
@@ -449,7 +368,6 @@ class QuotePackageSerializer(serializers.Serializer):
                 )
             quote_create_data['state'] = quote_state
         else:
-            # Usar el primero disponible como fallback
             default_quote_state = QuoteState.objects.first()
             if not default_quote_state:
                 raise serializers.ValidationError(
@@ -458,7 +376,6 @@ class QuotePackageSerializer(serializers.Serializer):
             quote_create_data['state'] = default_quote_state
             logger.warning("No state provided, using default: %s", default_quote_state.id)
 
-        # Disconnect signal before creating quote so email is not sent before items exist
         from django.db.models.signals import post_save
         from .signals import send_quote_notification
         from .emails import send_quote_created_email as _send_quote_created_email
@@ -476,21 +393,18 @@ class QuotePackageSerializer(serializers.Serializer):
                 product = Product.objects.get(id=item_data['product'])
                 quantity = item_data['quantity']
                 unit_price = item_data.get('unit_price')
-                fixed_spec_id = item_data.get('fixed_spec')
+                variant_id = item_data.get('variant')
 
-                # Normalizar fixed_spec_id: strings vacíos a None
-                if isinstance(fixed_spec_id, str) and not fixed_spec_id.strip():
-                    fixed_spec_id = None
+                if isinstance(variant_id, str) and not variant_id.strip():
+                    variant_id = None
 
-                # Obtener la fixed_spec si se proporcionó
-                fixed_spec = None
-                if fixed_spec_id:
+                variant = None
+                if variant_id:
                     try:
-                        fixed_spec = ProductSpec.objects.get(id=fixed_spec_id)
-                    except ProductSpec.DoesNotExist:
-                        logger.warning(f"ProductSpec {fixed_spec_id} not found")
+                        variant = ProductVariant.objects.get(id=variant_id)
+                    except ProductVariant.DoesNotExist:
+                        logger.warning(f"ProductVariant {variant_id} not found")
 
-                # Si no se proporciona unit_price, usar el del producto
                 if unit_price is None:
                     unit_price = product.price if hasattr(product, 'price') else 0
                 else:
@@ -501,14 +415,14 @@ class QuotePackageSerializer(serializers.Serializer):
                 quote_item = QuoteItem.objects.create(
                     quote=quote,
                     product=product,
-                    fixed_spec=fixed_spec,
+                    variant=variant,
                     quantity=quantity,
                     unit_price=unit_price,
                     subtotal=subtotal
                 )
                 created_items.append(quote_item)
                 total_amount += subtotal
-                logger.info(f"QuoteItem created for product {product.id}, fixed_spec: {fixed_spec_id}, quantity: {quantity}")
+                logger.info(f"QuoteItem created for product {product.id}, variant: {variant_id}, quantity: {quantity}")
 
             # 4. Actualizar el total de la cotización
             quote.total_amount = total_amount
@@ -517,7 +431,6 @@ class QuotePackageSerializer(serializers.Serializer):
         finally:
             post_save.connect(send_quote_notification, sender=Quote)
 
-        # Send created email now that all items exist in the DB
         try:
             results = _send_quote_created_email(quote)
             if results['business']:
@@ -541,13 +454,6 @@ class QuotePackageSerializer(serializers.Serializer):
         }
 
     def to_representation(self, instance):
-        """
-        Retornar la representación serializada del resultado con todas las propiedades.
-        - contact: Incluye todas las propiedades del contacto
-        - quote: Incluye todas las propiedades de la cotización
-        - items: Incluye todas las propiedades de los items Y todos los detalles de cada producto
-        """
-        # Pasar el contexto de request para URLs absolutas en attachments e imágenes
         context = {'request': self.context.get('request')}
 
         return {

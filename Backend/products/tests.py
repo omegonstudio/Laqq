@@ -2,7 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from django.contrib.auth import get_user_model
-from .models import Brand, Category, Product, ProductSpec
+from .models import Brand, Category, Product, ProductVariant
 from attachments.models import Attachment
 from users.models import UserType
 
@@ -59,7 +59,6 @@ class BrandAPITestCase(APITestCase):
         """Verificar que logo_url se devuelve cuando hay logo_attachment"""
         from django.core.files.uploadedfile import SimpleUploadedFile
 
-        # Create an attachment for the brand logo
         test_file = SimpleUploadedFile(
             'brand-logo.png',
             b'fake image content',
@@ -74,21 +73,17 @@ class BrandAPITestCase(APITestCase):
             attachable_id=self.brand.id
         )
 
-        # Assign logo to brand
         self.brand.logo_attachment = attachment
         self.brand.save()
 
-        # Fetch brand via API
         response = self.client.get(f'/products/brands/{self.brand.id}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone(response.data['logo_url'])
         self.assertIn('logo_url', response.data)
-        # Verify it's a URL string
         self.assertTrue(isinstance(response.data['logo_url'], str))
 
     def test_delete_brand_sets_products_brand_to_null(self):
         """Verificar que al borrar una marca, los productos quedan con brand=None"""
-        # Create a product with this brand
         category = Category.objects.create(name='Test Category')
         product = Product.objects.create(
             name='Product with Brand',
@@ -96,10 +91,8 @@ class BrandAPITestCase(APITestCase):
             category=category
         )
 
-        # Delete the brand
         self.brand.delete()
 
-        # Verify product still exists but brand is None
         product.refresh_from_db()
         self.assertIsNone(product.brand)
         self.assertEqual(Product.objects.count(), 1)
@@ -129,10 +122,8 @@ class CategoryAPITestCase(APITestCase):
 
     def test_create_category_with_level(self):
         """Crear categoría con nivel específico (usando parent para auto-calcular)"""
-        # Create parent first
         parent = Category.objects.create(name='Parent Category', display_order=1)
 
-        # Create child with parent - level should auto-calculate to 1
         data = {
             'name': 'Subcategory Level 1',
             'parent': parent.id,
@@ -141,42 +132,25 @@ class CategoryAPITestCase(APITestCase):
         response = self.client.post('/products/categories/', data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['level'], 1)
-        # Verify in database
         category = Category.objects.get(name='Subcategory Level 1')
         self.assertEqual(category.level, 1)
 
     def test_category_hierarchy_levels(self):
         """Verificar niveles en jerarquía de categorías"""
-        # Create parent category (level 0)
         parent = Category.objects.create(name='Parent Category', level=0)
+        child = Category.objects.create(name='Child Category', parent=parent, level=1)
+        grandchild = Category.objects.create(name='Grandchild Category', parent=child, level=2)
 
-        # Create child category (level 1)
-        child = Category.objects.create(
-            name='Child Category',
-            parent=parent,
-            level=1
-        )
-
-        # Create grandchild category (level 2)
-        grandchild = Category.objects.create(
-            name='Grandchild Category',
-            parent=child,
-            level=2
-        )
-
-        # Verify parent has no parent and level 0
         response = self.client.get(f'/products/categories/{parent.id}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['level'], 0)
         self.assertIsNone(response.data['parent'])
 
-        # Verify child has parent and level 1
         response = self.client.get(f'/products/categories/{child.id}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['level'], 1)
         self.assertEqual(str(response.data['parent']), str(parent.id))
 
-        # Verify grandchild has parent and level 2
         response = self.client.get(f'/products/categories/{grandchild.id}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['level'], 2)
@@ -184,34 +158,28 @@ class CategoryAPITestCase(APITestCase):
 
     def test_auto_calculate_level_without_parent(self):
         """Verificar que level se auto-calcula como 0 cuando no hay parent"""
-        # Create category without parent (no level specified)
         category = Category.objects.create(name='Root Category', display_order=1)
         self.assertEqual(category.level, 0)
 
     def test_auto_calculate_level_with_parent(self):
         """Verificar que level se auto-calcula basándose en el parent"""
-        # Create parent (level 0)
         parent = Category.objects.create(name='Parent', display_order=1)
         self.assertEqual(parent.level, 0)
 
-        # Create child WITHOUT specifying level - should auto-calculate to 1
         child = Category.objects.create(name='Child', parent=parent, display_order=2)
         self.assertEqual(child.level, 1)
 
-        # Create grandchild WITHOUT specifying level - should auto-calculate to 2
         grandchild = Category.objects.create(name='Grandchild', parent=child, display_order=3)
         self.assertEqual(grandchild.level, 2)
 
     def test_auto_calculate_level_via_api(self):
         """Verificar que level se auto-calcula al crear categoría via API"""
-        # Create parent via API
         parent_data = {'name': 'API Parent', 'display_order': 1}
         parent_response = self.client.post('/products/categories/', parent_data)
         self.assertEqual(parent_response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(parent_response.data['level'], 0)
         parent_id = parent_response.data['id']
 
-        # Create child via API WITHOUT sending level - should auto-calculate
         child_data = {
             'name': 'API Child',
             'parent': parent_id,
@@ -223,7 +191,6 @@ class CategoryAPITestCase(APITestCase):
 
     def test_delete_category_sets_products_category_to_null(self):
         """Verificar que al borrar una categoría, los productos quedan con category=None"""
-        # Create a product with this category
         brand = Brand.objects.create(name='Test Brand')
         product = Product.objects.create(
             name='Product with Category',
@@ -231,10 +198,8 @@ class CategoryAPITestCase(APITestCase):
             category=self.category
         )
 
-        # Delete the category
         self.category.delete()
 
-        # Verify product still exists but category is None
         product.refresh_from_db()
         self.assertIsNone(product.category)
         self.assertEqual(Product.objects.count(), 1)
@@ -264,7 +229,6 @@ class ProductAPITestCase(APITestCase):
         response = self.client.get('/products/list/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
-        # Verify pagination metadata
         self.assertIn('count', response.data)
         self.assertIn('next', response.data)
         self.assertIn('previous', response.data)
@@ -286,7 +250,6 @@ class ProductAPITestCase(APITestCase):
         response = self.client.post('/products/list/', data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Product.objects.count(), 2)
-        # Verify brand and category are returned as names, not IDs
         self.assertEqual(response.data['brand'], self.brand.name)
         self.assertEqual(response.data['category'], self.category.name)
 
@@ -316,7 +279,6 @@ class ProductAPITestCase(APITestCase):
 
     def test_filter_featured_products(self):
         """Filtrar solo productos destacados"""
-        # Create a featured product
         Product.objects.create(
             name='Featured Product',
             brand=self.brand,
@@ -324,7 +286,6 @@ class ProductAPITestCase(APITestCase):
             is_active=True,
             is_featured=True
         )
-        # Create a non-featured product
         Product.objects.create(
             name='Regular Product',
             brand=self.brand,
@@ -338,8 +299,8 @@ class ProductAPITestCase(APITestCase):
         self.assertEqual(response.data['results'][0]['name'], 'Featured Product')
 
 
-class ProductSpecAPITestCase(APITestCase):
-    """Tests para el CRUD de Especificaciones de productos (variantes)"""
+class ProductVariantAPITestCase(APITestCase):
+    """Tests para el CRUD de Variantes de productos"""
 
     def setUp(self):
         self.client = APIClient()
@@ -352,31 +313,33 @@ class ProductSpecAPITestCase(APITestCase):
             brand=self.brand,
             category=self.category
         )
-        self.spec = ProductSpec.objects.create(
+        self.variant = ProductVariant.objects.create(
             product=self.product,
             code='TEST-001',
-            volume='100ml'
+            name='Variante A',
+            dimensions='10x5cm'
         )
 
-    def test_list_specs(self):
-        """Listar todas las especificaciones/variantes de productos"""
-        response = self.client.get('/products/specs/')
+    def test_list_variants(self):
+        """Listar todas las variantes de productos"""
+        response = self.client.get('/products/variants/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
-    def test_create_spec(self):
-        """Crear una nueva especificación con código y volumen"""
+    def test_create_variant(self):
+        """Crear una nueva variante con código y nombre"""
         data = {
             'product': self.product.id,
             'code': 'TEST-002',
-            'volume': '200ml'
+            'name': 'Variante B',
+            'dimensions': '15x7cm'
         }
-        response = self.client.post('/products/specs/', data)
+        response = self.client.post('/products/variants/', data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(ProductSpec.objects.count(), 2)
+        self.assertEqual(ProductVariant.objects.count(), 2)
 
     def test_filter_by_product(self):
-        """Filtrar especificaciones por producto específico"""
-        response = self.client.get(f'/products/specs/?product={self.product.id}')
+        """Filtrar variantes por producto específico"""
+        response = self.client.get(f'/products/variants/?product={self.product.id}')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)

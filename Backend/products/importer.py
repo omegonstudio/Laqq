@@ -15,7 +15,7 @@ try:
 except Exception:
     openpyxl = None
 
-from .models import Brand, Category, Product, ProductSpec, ProductRelation
+from .models import Brand, Category, Product, ProductVariant, ProductRelation
 from attachments.models import Attachment
 from integrations.http import HttpClient
 from integrations.http.errors import HttpClientConfigError, HttpClientError, HttpClientResponseError
@@ -197,11 +197,11 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
     fileobj: objeto tipo UploadedFile o file-like. Se detecta la extensión por fileobj.name si está disponible.
     Retorna un dict resumen con contadores y errores.
     CSV/Excel debe contener columnas (recomendadas):
-      product_code, name, brand, category_level_0, category_level_1, category_level_2, description, image_name, is_active, related_product_codes, is_variant, spec_code, volume, dimensions, cap, outlet, accuracy, precision, additional_specs
+      product_code, name, brand, category_level_0, category_level_1, category_level_2, description, image_name, is_active, related_product_codes, is_variant, variant_code, variant_name, dimensions
 
     is_variant:
       - false/0/vacío: Crea o actualiza un Product. Si ya existe un Product con ese product_code, se lanza error.
-      - true/1: NO crea Product, solo crea un ProductSpec. Requiere que exista un Product con ese product_code.
+      - true/1: NO crea Product, solo crea un ProductVariant. Requiere que exista un Product con ese product_code.
 
     Categorías:
       - category_level_0: obligatorio si hay categoría. Solo acepta: insumos, procesos, equipos, mobiliario
@@ -360,33 +360,19 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
 
                 created_product_map[product_key] = product
 
-                # specs (puede haber varias filas)
+                # variantes inline (filas de producto que traen variant_code)
                 for lineno, spec_row in rows_for_product:
-                    spec_code = (spec_row.get('spec_code') or '').strip()
-                    if not spec_code:
-                        # si no existe spec_code, omitimos (evita crear specs sin clave)
+                    variant_code = (spec_row.get('variant_code') or spec_row.get('spec_code') or '').strip()
+                    if not variant_code:
                         continue
                     try:
                         defaults = {
-                            'volume': spec_row.get('volume') or None,
+                            'name': (spec_row.get('variant_name') or '').strip(),
                             'dimensions': spec_row.get('dimensions') or None,
-                            'cap': spec_row.get('cap') or None,
-                            'outlet': spec_row.get('outlet') or None,
-                            'accuracy': spec_row.get('accuracy') or None,
-                            'precision': spec_row.get('precision') or None,
-                            'additional_specs': None
                         }
-                        additional = spec_row.get('additional_specs')
-                        if additional:
-                            try:
-                                defaults['additional_specs'] = json.loads(additional)
-                            except Exception:
-                                defaults['additional_specs'] = additional
-
-                        # Upsert: buscar por product + code y actualizar o crear
-                        obj, created_spec = ProductSpec.objects.update_or_create(
+                        obj, created_spec = ProductVariant.objects.update_or_create(
                             product=product,
-                            code=spec_code,
+                            code=variant_code,
                             defaults=defaults
                         )
                         if created_spec:
@@ -394,7 +380,7 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                         else:
                             summary['updated_specs'] += 1
                     except Exception as e:
-                        summary['errors'].append({'row': lineno, 'error': f"Error creando/actualizando spec para {product_key}: {e}"})
+                        summary['errors'].append({'row': lineno, 'error': f"Error creando/actualizando variante para {product_key}: {e}"})
 
         except Exception as e:
             summary['errors'].append({'product': product_key, 'error': str(e)})
@@ -403,25 +389,23 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
     for lineno, variant_row in variant_rows:
         try:
             product_code = (variant_row.get('product_code') or '').strip()
-            spec_code = (variant_row.get('spec_code') or '').strip()
+            variant_code = (variant_row.get('variant_code') or variant_row.get('spec_code') or '').strip()
 
-            if not spec_code:
+            if not variant_code:
                 summary['errors'].append({
                     'row': lineno,
-                    'error': f'Variante requiere spec_code para identificarla'
+                    'error': f'Variante requiere variant_code para identificarla'
                 })
                 continue
 
             # Buscar el producto padre por product_code
             parent_product = None
 
-            # Primero buscar en productos recién creados/actualizados
             for key, prod in created_product_map.items():
                 if prod.product_code == product_code:
                     parent_product = prod
                     break
 
-            # Si no lo encuentra, buscar en la base de datos
             if not parent_product:
                 try:
                     parent_product = Product.objects.get(product_code=product_code)
@@ -432,28 +416,14 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                     })
                     continue
 
-            # Crear la variante (ProductSpec)
             defaults = {
-                'volume': (variant_row.get('volume') or '').strip() or None,
+                'name': (variant_row.get('variant_name') or '').strip(),
                 'dimensions': (variant_row.get('dimensions') or '').strip() or None,
-                'cap': (variant_row.get('cap') or '').strip() or None,
-                'outlet': (variant_row.get('outlet') or '').strip() or None,
-                'accuracy': (variant_row.get('accuracy') or '').strip() or None,
-                'precision': (variant_row.get('precision') or '').strip() or None,
-                'additional_specs': None
             }
 
-            additional = variant_row.get('additional_specs')
-            if additional:
-                try:
-                    defaults['additional_specs'] = json.loads(additional)
-                except Exception:
-                    defaults['additional_specs'] = additional
-
-            # Upsert: buscar por product + code y actualizar o crear
-            variant_spec, created_variant = ProductSpec.objects.update_or_create(
+            variant_obj, created_variant = ProductVariant.objects.update_or_create(
                 product=parent_product,
-                code=spec_code,
+                code=variant_code,
                 defaults=defaults
             )
 

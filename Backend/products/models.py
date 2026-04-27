@@ -25,7 +25,6 @@ class Category(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
-        """Auto-calcular level basándose en el parent"""
         if self.parent:
             self.level = self.parent.level + 1
         else:
@@ -45,12 +44,17 @@ class Product(models.Model):
         default=False,
         help_text='Marcar como producto destacado para mostrar en sección especial'
     )
-    # Many-to-many self relation via ProductRelation
     related_products = models.ManyToManyField(
         'self',
         through='ProductRelation',
         symmetrical=False,
         related_name='related_to_products',
+        blank=True
+    )
+    technical_specs = models.ManyToManyField(
+        'TechnicalSpec',
+        through='ProductTechnicalSpec',
+        related_name='products',
         blank=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -59,13 +63,11 @@ class Product(models.Model):
     def _generate_product_code(self):
         base = slugify(self.name)[:48] or str(uuid.uuid4())[:12]
         candidate = base
-        # add suffix until unique
         while Product.objects.filter(product_code=candidate).exists():
             candidate = f"{base}-{uuid.uuid4().hex[:6]}"
         return candidate
 
     def save(self, *args, **kwargs):
-        # ensure product_code exists
         if not getattr(self, 'product_code', None):
             self.product_code = self._generate_product_code()
         super().save(*args, **kwargs)
@@ -76,12 +78,12 @@ class Product(models.Model):
 class ProductRelation(models.Model):
     """
     Tabla intermedia que conecta un producto con otro como 'relacionado'.
-    Es dirigida: from_product -> to_product. Puedes agregar campos (relation_type, order).
+    Es dirigida: from_product -> to_product.
     """
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
     from_product = models.ForeignKey(Product, related_name='from_relations', on_delete=models.CASCADE)
     to_product = models.ForeignKey(Product, related_name='to_relations', on_delete=models.CASCADE)
-    relation_type = models.CharField(max_length=50, blank=True, null=True)  # opcional
+    relation_type = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -91,41 +93,41 @@ class ProductRelation(models.Model):
             models.Index(fields=['to_product']),
         ]
 
-class ProductSpec(models.Model):
+class ProductVariant(models.Model):
+    """
+    Variante de un producto (ej: distintos tamaños, presentaciones).
+    Hereda los atributos del Product padre (brand, category, description, etc.)
+    y puede tener sus propias TechnicalSpecs dinámicas.
+    """
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='fixed_specs')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
     code = models.CharField(max_length=120)
-    volume = models.CharField(max_length=100, blank=True, null=True)
+    name = models.CharField(max_length=255, blank=True, default='')
     dimensions = models.CharField(max_length=100, blank=True, null=True)
-    cap = models.CharField(max_length=100, blank=True, null=True)
-    outlet = models.CharField(max_length=100, blank=True, null=True)
-    accuracy = models.CharField(max_length=100, blank=True, null=True)
-    precision = models.CharField(max_length=100, blank=True, null=True)
-    additional_specs = models.JSONField(blank=True, null=True)
+    technical_specs = models.ManyToManyField(
+        'TechnicalSpec',
+        through='VariantTechnicalSpec',
+        related_name='product_variants',
+        blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # Evita duplicados por producto+code a nivel DB
         constraints = [
-            models.UniqueConstraint(fields=['product', 'code'], name='unique_product_spec_per_product_code')
+            models.UniqueConstraint(fields=['product', 'code'], name='unique_variant_per_product_code')
         ]
 
     def __str__(self):
         return f"{self.product} - {self.code}"
 
 
-class ProductSpecification(models.Model):
+class TechnicalSpec(models.Model):
     """
-    Especificaciones dinámicas para productos.
-    Permite agregar especificaciones clave-valor flexibles sin modificar el esquema.
+    Especificación técnica dinámica (clave-valor).
+    Puede asociarse a un Product via ProductTechnicalSpec
+    o a un ProductVariant via VariantTechnicalSpec.
     """
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
-    product = models.ForeignKey(
-        Product,
-        on_delete=models.CASCADE,
-        related_name='dynamic_specifications',
-        help_text='Producto al que pertenece esta especificación'
-    )
     key = models.CharField(
         max_length=100,
         help_text='Nombre de la especificación (ej: Voltaje, Material, Temperatura)'
@@ -151,12 +153,47 @@ class ProductSpecification(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = 'Especificación Dinámica'
-        verbose_name_plural = 'Especificaciones Dinámicas'
+        verbose_name = 'Especificación Técnica'
+        verbose_name_plural = 'Especificaciones Técnicas'
         ordering = ['display_order', 'key']
-        indexes = [
-            models.Index(fields=['product', 'display_order']),
-        ]
 
     def __str__(self):
-        return f"{self.product.name} - {self.key}: {self.value}"
+        return f"{self.key}: {self.value}"
+
+
+class ProductTechnicalSpec(models.Model):
+    """Tabla intermedia: Product ↔ TechnicalSpec"""
+    id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='product_technical_specs'
+    )
+    technical_spec = models.ForeignKey(
+        TechnicalSpec,
+        on_delete=models.CASCADE,
+        related_name='product_links'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('product', 'technical_spec')
+
+
+class VariantTechnicalSpec(models.Model):
+    """Tabla intermedia: ProductVariant ↔ TechnicalSpec"""
+    id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
+    variant = models.ForeignKey(
+        ProductVariant,
+        on_delete=models.CASCADE,
+        related_name='variant_technical_specs'
+    )
+    technical_spec = models.ForeignKey(
+        TechnicalSpec,
+        on_delete=models.CASCADE,
+        related_name='variant_links'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('variant', 'technical_spec')

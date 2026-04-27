@@ -6,12 +6,17 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.middleware.csrf import get_token
 from django.utils.safestring import mark_safe
+from django import forms
 
-from .models import Brand, Category, Product, ProductSpec, ProductRelation, ProductSpecification
+from .models import (
+    Brand, Category, Product, ProductVariant, ProductRelation,
+    TechnicalSpec, ProductTechnicalSpec, VariantTechnicalSpec,
+)
 from .forms import CSVUploadForm
 from .importer import import_products_csv
 
 from attachments.models import Attachment
+
 
 class ProductRelationInline(admin.TabularInline):
     model = ProductRelation
@@ -21,20 +26,134 @@ class ProductRelationInline(admin.TabularInline):
     verbose_name_plural = "Productos Relacionados"
 
 
-class ProductSpecificationInline(admin.TabularInline):
-    model = ProductSpecification
+class TechnicalSpecInlineForm(forms.ModelForm):
+    """
+    Formulario que permite crear/editar TechnicalSpec directamente
+    desde el inline del Product o ProductVariant.
+    """
+    key = forms.CharField(max_length=100, label='Clave')
+    value = forms.CharField(widget=forms.Textarea(attrs={'rows': 2}), label='Valor')
+    unit = forms.CharField(max_length=20, required=False, label='Unidad')
+    display_order = forms.IntegerField(initial=0, label='Orden')
+    is_visible = forms.BooleanField(initial=True, required=False, label='Visible')
+
+    class Meta:
+        model = ProductTechnicalSpec
+        fields = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            try:
+                ts = self.instance.technical_spec
+                self.fields['key'].initial = ts.key
+                self.fields['value'].initial = ts.value
+                self.fields['unit'].initial = ts.unit
+                self.fields['display_order'].initial = ts.display_order
+                self.fields['is_visible'].initial = ts.is_visible
+            except Exception:
+                pass
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        key = self.cleaned_data.get('key', '')
+        value = self.cleaned_data.get('value', '')
+        unit = self.cleaned_data.get('unit', '')
+        display_order = self.cleaned_data.get('display_order', 0)
+        is_visible = self.cleaned_data.get('is_visible', True)
+
+        if instance.pk and getattr(instance, 'technical_spec_id', None):
+            ts = instance.technical_spec
+            ts.key = key
+            ts.value = value
+            ts.unit = unit
+            ts.display_order = display_order
+            ts.is_visible = is_visible
+            ts.save()
+        else:
+            ts = TechnicalSpec.objects.create(
+                key=key, value=value, unit=unit,
+                display_order=display_order, is_visible=is_visible
+            )
+            instance.technical_spec = ts
+
+        if commit:
+            instance.save()
+        return instance
+
+
+class VariantTechnicalSpecInlineForm(forms.ModelForm):
+    """Mismo patrón que TechnicalSpecInlineForm pero para VariantTechnicalSpec."""
+    key = forms.CharField(max_length=100, label='Clave')
+    value = forms.CharField(widget=forms.Textarea(attrs={'rows': 2}), label='Valor')
+    unit = forms.CharField(max_length=20, required=False, label='Unidad')
+    display_order = forms.IntegerField(initial=0, label='Orden')
+    is_visible = forms.BooleanField(initial=True, required=False, label='Visible')
+
+    class Meta:
+        model = VariantTechnicalSpec
+        fields = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            try:
+                ts = self.instance.technical_spec
+                self.fields['key'].initial = ts.key
+                self.fields['value'].initial = ts.value
+                self.fields['unit'].initial = ts.unit
+                self.fields['display_order'].initial = ts.display_order
+                self.fields['is_visible'].initial = ts.is_visible
+            except Exception:
+                pass
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        key = self.cleaned_data.get('key', '')
+        value = self.cleaned_data.get('value', '')
+        unit = self.cleaned_data.get('unit', '')
+        display_order = self.cleaned_data.get('display_order', 0)
+        is_visible = self.cleaned_data.get('is_visible', True)
+
+        if instance.pk and getattr(instance, 'technical_spec_id', None):
+            ts = instance.technical_spec
+            ts.key = key
+            ts.value = value
+            ts.unit = unit
+            ts.display_order = display_order
+            ts.is_visible = is_visible
+            ts.save()
+        else:
+            ts = TechnicalSpec.objects.create(
+                key=key, value=value, unit=unit,
+                display_order=display_order, is_visible=is_visible
+            )
+            instance.technical_spec = ts
+
+        if commit:
+            instance.save()
+        return instance
+
+
+class ProductTechnicalSpecInline(admin.TabularInline):
+    model = ProductTechnicalSpec
+    form = TechnicalSpecInlineForm
     extra = 1
     fields = ['key', 'value', 'unit', 'display_order', 'is_visible']
-    ordering = ['display_order', 'key']
-    verbose_name = "Especificación Dinámica"
-    verbose_name_plural = "Especificaciones Dinámicas"
+    verbose_name = "Especificación Técnica"
+    verbose_name_plural = "Especificaciones Técnicas"
+
+
+class VariantTechnicalSpecInline(admin.TabularInline):
+    model = VariantTechnicalSpec
+    form = VariantTechnicalSpecInlineForm
+    extra = 1
+    fields = ['key', 'value', 'unit', 'display_order', 'is_visible']
+    verbose_name = "Especificación Técnica"
+    verbose_name_plural = "Especificaciones Técnicas"
 
 
 class AttachmentInline(GenericTabularInline):
-    """
-    Inline para gestionar múltiples attachments de un producto.
-    Funciona como las Especificaciones Dinámicas con tabla + botón "Agregar otro/a".
-    """
     model = Attachment
     extra = 1
     fields = ['file', 'role', 'file_name', 'size_bytes', 'created_at']
@@ -43,12 +162,20 @@ class AttachmentInline(GenericTabularInline):
     verbose_name = "Archivo Adjunto"
     verbose_name_plural = "Archivos Adjuntos"
 
-    # Configurar campos de la relación genérica (usa los nuevos campos)
     ct_field = 'content_type'
     ct_fk_field = 'object_id'
 
-    # Excluir campos que se setean automáticamente
     exclude = ['created_by', 'content_type_str', 'attachable_type', 'attachable_id']
+
+
+class ProductVariantInline(admin.TabularInline):
+    model = ProductVariant
+    extra = 1
+    fields = ['code', 'name', 'dimensions']
+    verbose_name = "Variante"
+    verbose_name_plural = "Variantes"
+    show_change_link = True
+
 
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
@@ -66,18 +193,16 @@ class CategoryAdmin(admin.ModelAdmin):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = ['product_code', 'name', 'brand', 'category', 'is_active', 'is_featured', 'created_at']
-    inlines = [ProductSpecificationInline, AttachmentInline, ProductRelationInline]
+    inlines = [ProductVariantInline, ProductTechnicalSpecInline, AttachmentInline, ProductRelationInline]
     search_fields = ['product_code', 'name', 'description']
     list_filter = ['brand', 'category', 'is_active', 'is_featured']
     ordering = ['-created_at']
 
     change_list_template = "admin/products/change_list.html"
 
-    # Ocultar el campo image_attachment del formulario (ahora se gestiona via inline)
     exclude = ['image_attachment']
 
     def get_urls(self):
-        """Solo mantener la URL para bulk upload CSV"""
         urls = super().get_urls()
         my_urls = [
             path('bulk-upload/', self.admin_site.admin_view(self.bulk_upload_view), name='products_bulk_upload'),
@@ -85,10 +210,6 @@ class ProductAdmin(admin.ModelAdmin):
         return my_urls + urls
 
     def bulk_upload_view(self, request):
-        """
-        Vista admin para subir CSV. Si la petición es AJAX (X-Requested-With),
-        devuelve JsonResponse con el resumen o con el error.
-        """
         is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
         try:
@@ -130,19 +251,15 @@ class ProductAdmin(admin.ModelAdmin):
                     context['traceback'] = tb
                 return render(request, 'admin/products/import_products.html', context)
 
-        # GET
         form = CSVUploadForm()
         return render(request, 'admin/products/import_products.html', {'form': form})
 
     def save_formset(self, request, form, formset, change):
-        """Setear created_by y campos legacy automáticamente al guardar attachments"""
         instances = formset.save(commit=False)
         for instance in instances:
-            # Solo procesar si es un Attachment
             if isinstance(instance, Attachment):
                 if not instance.created_by:
                     instance.created_by = request.user if request.user.is_authenticated else None
-                # Poblar campos legacy para compatibilidad con serializers
                 if not instance.attachable_type:
                     instance.attachable_type = 'product'
                 if not instance.attachable_id and instance.object_id:
@@ -150,9 +267,19 @@ class ProductAdmin(admin.ModelAdmin):
             instance.save()
         formset.save_m2m()
 
-@admin.register(ProductSpec)
-class ProductSpecAdmin(admin.ModelAdmin):
-    list_display = ['code', 'product', 'volume', 'dimensions', 'created_at']
-    search_fields = ['code', 'volume']
+
+@admin.register(ProductVariant)
+class ProductVariantAdmin(admin.ModelAdmin):
+    list_display = ['code', 'name', 'product', 'dimensions', 'created_at']
+    search_fields = ['code', 'name', 'dimensions']
     list_filter = ['product']
     ordering = ['-created_at']
+    inlines = [VariantTechnicalSpecInline]
+
+
+@admin.register(TechnicalSpec)
+class TechnicalSpecAdmin(admin.ModelAdmin):
+    list_display = ['key', 'value', 'unit', 'display_order', 'is_visible', 'created_at']
+    search_fields = ['key', 'value']
+    list_filter = ['is_visible']
+    ordering = ['display_order', 'key']
