@@ -44,7 +44,10 @@ import { toast } from "@/hooks/use-toast";
 import { productsApi } from "@/lib/api/products";
 import { Textarea } from "@/components/ui/textarea";
 import SelectCategories from "@/components/atoms/SelectCategories";
-import * as Tooltip from "@radix-ui/react-tooltip";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ProductVariantsTable, {
+  type ProductVariantsData,
+} from "@/components/molecules/ProductVariantsTable";
 
 interface ModalProductProps {
   isOpen: boolean;
@@ -124,6 +127,14 @@ const ModalProduct: React.FC<ModalProductProps> = ({
 
   const [selectedRelated, setSelectedRelated] = useState<string>("");
   const [carrouselDeleteIds, setCarrouselDeleteIds] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<string>("general");
+  const [variantsData, setVariantsData] = useState<ProductVariantsData | null>(
+    null
+  );
+
+  const handleVariantsChange = (data: ProductVariantsData) => {
+    setVariantsData(data);
+  };
 
   // ============================================
   // EFFECTS
@@ -170,6 +181,8 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       setImagePreview(null);
       setSelectedRelated("");
       setCarrouselDeleteIds([]);
+      setActiveTab("general");
+      setVariantsData(null);
 
       if (initialData) {
         const formState = productToFormState(initialData);
@@ -711,334 +724,374 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       title={localState.id ? "Editar Producto" : "Nuevo Producto"}
       size="xl"
     >
-      <div className="space-y-4">
-        <div className="flex gap-5 items-end">
-          <InputField
-            label="Nombre"
-            value={localState.name}
-            onChange={(e) =>
-              setLocalState({ ...localState, name: e.target.value })
-            }
-          />
-          <InputField
-            label="Código de Producto"
-            value={localState.product_code}
-            onChange={(e) => {
-              const valueWithoutSpaces = e.target.value.replace(/\s+/g, "");
-              setLocalState({
-                ...localState,
-                product_code: valueWithoutSpaces,
-              });
-            }}
-          />
-          <div className="min-w-[10%] flex justify-end">
-            <Toggle
-              pressed={localState.is_active}
-              onPressedChange={(pressed) =>
-                setLocalState({ ...localState, is_active: pressed })
-              }
-            >
-              {localState.is_active ? "Activo" : "Inactivo"}
-            </Toggle>
-          </div>
-        </div>
-        <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 text-lg text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={localState.is_featured !== false}
-              onChange={(e) =>
-                setLocalState({ ...localState, is_featured: e.target.checked })
-              }
-            />
-            Destacar
-          </label>
-        </div>
-        <Textarea
-          value={localState.description}
-          onChange={(e) =>
-            setLocalState({ ...localState, description: e.target.value })
-          }
-          placeholder="Descripción del producto"
-        />
-        <div className="flex gap-5">
-          <div className="w-[50%]">
-            <SelectCategories
-              editProductModal
-              onChange={handleCategoryChange}
-            />
-          </div>
-          <div className="w-[50%]">
-            <label className="text-sm font-medium">
-              Marca
-              {localState.is_active && (
-                <span className="text-red-500 ml-1">*</span>
-              )}
-            </label>
-            <Select
-              value={localState.brand || ""}
-              onValueChange={(value) =>
-                setLocalState((prev) => ({ ...prev, brand: value }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona una marca" />
-              </SelectTrigger>
-              <SelectContent>
-                {brands.map((brand) => (
-                  <SelectItem key={brand.id} value={brand.id}>
-                    {brand.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="mb-4 w-full">
+          <TabsTrigger value="general" className="flex-1">
+            General
+          </TabsTrigger>
+          <TabsTrigger value="variedades" className="flex-1">
+            Tabla de Variedades
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Productos relacionados */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Productos relacionados</label>
-          <Select
-            value={selectedRelated || ""}
-            onValueChange={(value) => {
-              if (!value) return;
-              handleRelatedChange(value);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Agregar producto relacionado" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableProducts.map((prod) => (
-                <SelectItem key={prod.id} value={prod.id}>
-                  {prod.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {localState.related && localState.related.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {localState.related.map((rel) => (
-                <div
-                  key={rel.id}
-                  className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full text-sm"
+        {/* Tab: General (contenido original) */}
+        <TabsContent value="general">
+          <div className="space-y-4">
+            <div className="flex gap-5 items-end">
+              <InputField
+                label="Nombre"
+                value={localState.name}
+                onChange={(e) =>
+                  setLocalState({ ...localState, name: e.target.value })
+                }
+              />
+              <InputField
+                label="Código de Producto"
+                value={localState.product_code}
+                onChange={(e) => {
+                  const valueWithoutSpaces = e.target.value.replace(/\s+/g, "");
+                  setLocalState({
+                    ...localState,
+                    product_code: valueWithoutSpaces,
+                  });
+                }}
+              />
+              <div className="min-w-[10%] flex justify-end">
+                <Toggle
+                  pressed={localState.is_active}
+                  onPressedChange={(pressed) =>
+                    setLocalState({ ...localState, is_active: pressed })
+                  }
                 >
-                  <span>{rel.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveRelated(rel.id)}
-                    className="text-red-500 hover:text-red-700 font-bold"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+                  {localState.is_active ? "Activo" : "Inactivo"}
+                </Toggle>
+              </div>
             </div>
-          )}
-        </div>
-
-        <br />
-        <div className="flex items-center justify-between">
-          <label className="text-xl font-bold">Variantes del producto:</label>
-          <Button variant="outline" onClick={handleAddFixedSpec}>
-            Agregar variante
-          </Button>
-        </div>
-
-        {localState.fixed_specs.map((s, index) => (
-          <div
-            key={s.id || index}
-            className="border border-border rounded-lg p-3 space-y-2"
-          >
-            <div className="grid grid-cols-3 gap-2 w-full">
-              <InputField
-                label="Código"
-                value={s.code}
-                onChange={(e) =>
-                  handleFixedSpecChange(index, "code", e.target.value)
-                }
-              />
-              <InputField
-                label="Volumen"
-                value={s.volume}
-                onChange={(e) =>
-                  handleFixedSpecChange(index, "volume", e.target.value)
-                }
-              />
-              <InputField
-                label="Dimensiones"
-                value={s.dimensions}
-                onChange={(e) =>
-                  handleFixedSpecChange(index, "dimensions", e.target.value)
-                }
-              />
-              <InputField
-                label="Tapa"
-                value={s.cap}
-                onChange={(e) =>
-                  handleFixedSpecChange(index, "cap", e.target.value)
-                }
-              />
-              <InputField
-                label="Salida"
-                value={s.outlet}
-                onChange={(e) =>
-                  handleFixedSpecChange(index, "outlet", e.target.value)
-                }
-              />
-              <InputField
-                label="Precisión"
-                value={s.precision}
-                onChange={(e) =>
-                  handleFixedSpecChange(index, "precision", e.target.value)
-                }
-              />
-              <InputField
-                label="Exactitud"
-                value={s.accuracy}
-                onChange={(e) =>
-                  handleFixedSpecChange(index, "accuracy", e.target.value)
-                }
-              />
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-lg text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={localState.is_featured !== false}
+                  onChange={(e) =>
+                    setLocalState({
+                      ...localState,
+                      is_featured: e.target.checked,
+                    })
+                  }
+                />
+                Destacar
+              </label>
             </div>
-            <div className="flex justify-end">
-              <Button
-                variant="ghost"
-                onClick={() => handleRemoveFixedSpec(index)}
-                className="text-red-500 hover:text-red-600 border"
+            <Textarea
+              value={localState.description}
+              onChange={(e) =>
+                setLocalState({ ...localState, description: e.target.value })
+              }
+              placeholder="Descripción del producto"
+            />
+            <div className="flex gap-5">
+              <div className="w-[50%]">
+                <SelectCategories
+                  editProductModal
+                  onChange={handleCategoryChange}
+                  value={localState.category}
+                />
+              </div>
+              <div className="w-[50%]">
+                <label className="text-sm font-medium">
+                  Marca
+                  {localState.is_active && (
+                    <span className="text-red-500 ml-1">*</span>
+                  )}
+                </label>
+                <Select
+                  value={localState.brand || ""}
+                  onValueChange={(value) =>
+                    setLocalState((prev) => ({ ...prev, brand: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona una marca" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {brands.map((brand) => (
+                      <SelectItem key={brand.id} value={brand.id}>
+                        {brand.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Productos relacionados */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Productos relacionados
+              </label>
+              <Select
+                value={selectedRelated || ""}
+                onValueChange={(value) => {
+                  if (!value) return;
+                  handleRelatedChange(value);
+                }}
               >
-                Eliminar variante
+                <SelectTrigger>
+                  <SelectValue placeholder="Agregar producto relacionado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProducts.map((prod) => (
+                    <SelectItem key={prod.id} value={prod.id}>
+                      {prod.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {localState.related && localState.related.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {localState.related.map((rel) => (
+                    <div
+                      key={rel.id}
+                      className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full text-sm"
+                    >
+                      <span>{rel.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveRelated(rel.id)}
+                        className="text-red-500 hover:text-red-700 font-bold"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <br />
+            <div className="flex items-center justify-between">
+              <label className="text-xl font-bold">
+                Variantes del producto:
+              </label>
+              <Button variant="outline" onClick={handleAddFixedSpec}>
+                Agregar variante
               </Button>
             </div>
-          </div>
-        ))}
 
-        <div className="space-y-3">
-          {localState.specs.map((s, index) => (
-            <>
-              <label className="text-xl font-bold">Detalles técnicos:</label>
+            {localState.fixed_specs.map((s, index) => (
               <div
                 key={s.id || index}
                 className="border border-border rounded-lg p-3 space-y-2"
               >
-                <div className="grid md:grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2 w-full">
                   <InputField
-                    label="Nombre"
-                    value={s.key || ""}
+                    label="Código"
+                    value={s.code}
                     onChange={(e) =>
-                      handleSpecChange(index, "key", e.target.value)
+                      handleFixedSpecChange(index, "code", e.target.value)
                     }
                   />
                   <InputField
-                    label="Valor"
-                    value={s.value || ""}
+                    label="Volumen"
+                    value={s.volume}
                     onChange={(e) =>
-                      handleSpecChange(index, "value", e.target.value)
+                      handleFixedSpecChange(index, "volume", e.target.value)
                     }
                   />
                   <InputField
-                    label="Unidad (opcional)"
-                    value={s.unit || ""}
+                    label="Dimensiones"
+                    value={s.dimensions}
                     onChange={(e) =>
-                      handleSpecChange(index, "unit", e.target.value)
+                      handleFixedSpecChange(index, "dimensions", e.target.value)
+                    }
+                  />
+                  <InputField
+                    label="Tapa"
+                    value={s.cap}
+                    onChange={(e) =>
+                      handleFixedSpecChange(index, "cap", e.target.value)
+                    }
+                  />
+                  <InputField
+                    label="Salida"
+                    value={s.outlet}
+                    onChange={(e) =>
+                      handleFixedSpecChange(index, "outlet", e.target.value)
+                    }
+                  />
+                  <InputField
+                    label="Precisión"
+                    value={s.precision}
+                    onChange={(e) =>
+                      handleFixedSpecChange(index, "precision", e.target.value)
+                    }
+                  />
+                  <InputField
+                    label="Exactitud"
+                    value={s.accuracy}
+                    onChange={(e) =>
+                      handleFixedSpecChange(index, "accuracy", e.target.value)
                     }
                   />
                 </div>
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      checked={s.is_visible !== false}
-                      onChange={(e) =>
-                        handleSpecChange(index, "is_visible", e.target.checked)
-                      }
-                    />
-                    Visualizar
-                  </label>
+                <div className="flex justify-end">
                   <Button
                     variant="ghost"
-                    onClick={() => handleRemoveSpec(index)}
-                    className="text-red-500 hover:text-red-600"
+                    onClick={() => handleRemoveFixedSpec(index)}
+                    className="text-red-500 hover:text-red-600 border"
                   >
-                    Eliminar
+                    Eliminar variante
                   </Button>
                 </div>
               </div>
-            </>
-          ))}
-          <Button variant="outline" onClick={handleAddSpec}>
-            Agrega más detalles técnicos
-          </Button>
-        </div>
+            ))}
 
-        <br />
-        <div className="grid grid-cols-2 gap-20">
-          <div>
-            <span className="mb-2 block text-lg font-medium">
-              Imágen de portada
-            </span>
-            <UploadFile onFileChange={handleFile} />
-            {imagePreview && (
-              <div className="relative inline-block mt-2 w-32 h-32">
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  className="w-32 h-32 object-cover rounded-lg border-2 border-gray-100"
-                />
-                <button
-                  type="button"
-                  onClick={handleRemoveImage}
-                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
-                  title="Eliminar imagen"
-                >
-                  ×
-                </button>
-              </div>
-            )}
-          </div>
-          <div>
-            <span className="mb-2 block text-lg font-medium">
-              Carrousel de archivos
-            </span>
-            <UploadFile onFileChange={handleCarouselFile} />
-            <div className="grid grid-cols-3 gap-2">
-              {carrouselPreview?.map((item, index) => (
-                <div
-                  key={item.type === "existing" ? item.id : index}
-                  className="relative inline-block mt-2 w-32 h-32"
-                >
-                  {item.fileType === "application/pdf" ||
-                  item.url?.toLowerCase().endsWith(".pdf") ? (
-                    <div className="flex items-center justify-center w-32 h-32 rounded-lg border bg-gray-100 text-sm font-medium text-gray-500">
-                      PDF
+            <div className="space-y-3">
+              {localState.specs.map((s, index) => (
+                <div key={s.id || index}>
+                  <label className="text-xl font-bold">
+                    Detalles técnicos:
+                  </label>
+                  <div className="border border-border rounded-lg p-3 space-y-2 mt-2">
+                    <div className="grid md:grid-cols-3 gap-2">
+                      <InputField
+                        label="Nombre"
+                        value={s.key || ""}
+                        onChange={(e) =>
+                          handleSpecChange(index, "key", e.target.value)
+                        }
+                      />
+                      <InputField
+                        label="Valor"
+                        value={s.value || ""}
+                        onChange={(e) =>
+                          handleSpecChange(index, "value", e.target.value)
+                        }
+                      />
+                      <InputField
+                        label="Unidad (opcional)"
+                        value={s.unit || ""}
+                        onChange={(e) =>
+                          handleSpecChange(index, "unit", e.target.value)
+                        }
+                      />
                     </div>
-                  ) : (
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <input
+                          type="checkbox"
+                          checked={s.is_visible !== false}
+                          onChange={(e) =>
+                            handleSpecChange(
+                              index,
+                              "is_visible",
+                              e.target.checked
+                            )
+                          }
+                        />
+                        Visualizar
+                      </label>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleRemoveSpec(index)}
+                        className="text-red-500 hover:text-red-600"
+                      >
+                        Eliminar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <Button variant="outline" onClick={handleAddSpec}>
+                Agrega más detalles técnicos
+              </Button>
+            </div>
+
+            <br />
+            <div className="grid grid-cols-2 gap-20">
+              <div>
+                <span className="mb-2 block text-lg font-medium">
+                  Imágen de portada
+                </span>
+                <UploadFile onFileChange={handleFile} />
+                {imagePreview && (
+                  <div className="relative inline-block mt-2 w-32 h-32">
                     <img
-                      src={item.url}
+                      src={imagePreview}
                       alt="Preview"
                       className="w-32 h-32 object-cover rounded-lg border-2 border-gray-100"
                     />
-                  )}
-                  {item.type === "existing" && (
-                    <span className="absolute top-0 left-0 bg-blue-500 text-white text-xs px-1 rounded">
-                      DB
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveCarouselItem(index)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
-                    title="Eliminar imagen"
-                  >
-                    ×
-                  </button>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
+                      title="Eliminar imagen"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div>
+                <span className="mb-2 block text-lg font-medium">
+                  Carrousel de archivos
+                </span>
+                <UploadFile onFileChange={handleCarouselFile} />
+                <div className="grid grid-cols-3 gap-2">
+                  {carrouselPreview?.map((item, index) => (
+                    <div
+                      key={item.type === "existing" ? item.id : index}
+                      className="relative inline-block mt-2 w-32 h-32"
+                    >
+                      {item.fileType === "application/pdf" ||
+                      item.url?.toLowerCase().endsWith(".pdf") ? (
+                        <div className="flex items-center justify-center w-32 h-32 rounded-lg border bg-gray-100 text-sm font-medium text-gray-500">
+                          PDF
+                        </div>
+                      ) : (
+                        <img
+                          src={item.url}
+                          alt="Preview"
+                          className="w-32 h-32 object-cover rounded-lg border-2 border-gray-100"
+                        />
+                      )}
+                      {item.type === "existing" && (
+                        <span className="absolute top-0 left-0 bg-blue-500 text-white text-xs px-1 rounded">
+                          DB
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCarouselItem(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
+                        title="Eliminar imagen"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
           </div>
-        </div>
+        </TabsContent>
 
-        <div className="flex justify-end gap-2">
+        {/* Tab: Tabla de Variedades (nueva funcionalidad) */}
+        <TabsContent value="variedades">
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Crea una tabla dinámica para definir las variedades del producto.
+              Puedes agregar columnas personalizadas y filas para cada variedad.
+            </p>
+            <ProductVariantsTable
+              onChange={handleVariantsChange}
+              initialData={variantsData ?? undefined}
+            />
+          </div>
+        </TabsContent>
+
+        {/* Botones de acción (siempre visibles) */}
+        <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-border">
           <Button variant="outline" onClick={handleCancel}>
             Cancelar
           </Button>
@@ -1050,7 +1103,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             Guardar
           </Button>
         </div>
-      </div>
+      </Tabs>
     </Modal>
   );
 };

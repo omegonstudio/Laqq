@@ -124,23 +124,27 @@ export const formStateToUpdateRequest = (
   const productIsOrWillBeActive = formState.is_active;
 
   const initialBrand = initialData.brand_id || initialData.brand;
+  const initialCategory = initialData.category_id || initialData.category;
+
   if (formState.brand !== initialBrand || activationChange) {
     hasRealChanges = true;
   }
+
+  if (formState.category !== initialCategory || activationChange) {
+    hasRealChanges = true;
+  }
+
   // Siempre enviar brand_id y category_id si el producto está activo
   if (productIsOrWillBeActive) {
     if (formState.brand) updateRequest.brand_id = formState.brand;
     if (formState.category) updateRequest.category_id = formState.category;
   } else {
     // Inactivo: solo enviar si cambió
-    const initialCategory = initialData.category_id || initialData.category;
     if (formState.brand && formState.brand !== initialBrand) {
       updateRequest.brand_id = formState.brand;
-      hasRealChanges = true;
     }
     if (formState.category && formState.category !== initialCategory) {
       updateRequest.category_id = formState.category;
-      hasRealChanges = true;
     }
   }
   const initialAttachmentIds =
