@@ -317,10 +317,9 @@ class TechnicalSpecViewSet(viewsets.ModelViewSet):
     serializer_class = TechnicalSpecSerializer
     permission_classes = [IsReadOnlyOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['is_visible']
-    search_fields = ['key', 'value', 'unit']
-    ordering_fields = ['display_order', 'created_at', 'updated_at']
-    ordering = ['display_order', 'created_at']
+    search_fields = ['key', 'value']
+    ordering_fields = ['key', 'created_at', 'updated_at']
+    ordering = ['key']
 
 
 # -------------------

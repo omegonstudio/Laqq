@@ -38,16 +38,7 @@ class TechnicalSpecSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TechnicalSpec
-        fields = [
-            'id',
-            'key',
-            'value',
-            'unit',
-            'display_order',
-            'is_visible',
-            'created_at',
-            'updated_at',
-        ]
+        fields = ['id', 'key', 'value', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
 
 
@@ -288,11 +279,10 @@ class ProductSerializer(serializers.ModelSerializer):
             self._create_relations_by_codes(product, related_codes)
 
         if specs_data:
-            for order, spec in enumerate(specs_data):
+            for spec in specs_data:
                 spec.pop('id', None)
                 spec.pop('product', None)
-                display_order = spec.pop('display_order', order)
-                tech_spec = TechnicalSpec.objects.create(display_order=display_order, **spec)
+                tech_spec = TechnicalSpec.objects.create(**spec)
                 ProductTechnicalSpec.objects.create(product=product, technical_spec=tech_spec)
 
         if attachments_files or attachments_existing is not None:
@@ -329,11 +319,10 @@ class ProductSerializer(serializers.ModelSerializer):
             }
             kept_ids = set()
 
-            for order, spec in enumerate(specs_data):
+            for spec in specs_data:
                 spec_id = spec.pop('id', None)
                 spec.pop('product', None)
-                display_order = spec.pop('display_order', order)
-                payload = {**spec, 'display_order': display_order}
+                payload = {k: v for k, v in spec.items() if k in ('key', 'value')}
 
                 if spec_id and str(spec_id) in existing_links:
                     TechnicalSpec.objects.filter(id=spec_id).update(**payload)

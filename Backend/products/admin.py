@@ -33,9 +33,6 @@ class TechnicalSpecInlineForm(forms.ModelForm):
     """
     key = forms.CharField(max_length=100, label='Clave')
     value = forms.CharField(widget=forms.Textarea(attrs={'rows': 2}), label='Valor')
-    unit = forms.CharField(max_length=20, required=False, label='Unidad')
-    display_order = forms.IntegerField(initial=0, label='Orden')
-    is_visible = forms.BooleanField(initial=True, required=False, label='Visible')
 
     class Meta:
         model = ProductTechnicalSpec
@@ -48,9 +45,6 @@ class TechnicalSpecInlineForm(forms.ModelForm):
                 ts = self.instance.technical_spec
                 self.fields['key'].initial = ts.key
                 self.fields['value'].initial = ts.value
-                self.fields['unit'].initial = ts.unit
-                self.fields['display_order'].initial = ts.display_order
-                self.fields['is_visible'].initial = ts.is_visible
             except Exception:
                 pass
 
@@ -58,23 +52,14 @@ class TechnicalSpecInlineForm(forms.ModelForm):
         instance = super().save(commit=False)
         key = self.cleaned_data.get('key', '')
         value = self.cleaned_data.get('value', '')
-        unit = self.cleaned_data.get('unit', '')
-        display_order = self.cleaned_data.get('display_order', 0)
-        is_visible = self.cleaned_data.get('is_visible', True)
 
         if instance.pk and getattr(instance, 'technical_spec_id', None):
             ts = instance.technical_spec
             ts.key = key
             ts.value = value
-            ts.unit = unit
-            ts.display_order = display_order
-            ts.is_visible = is_visible
             ts.save()
         else:
-            ts = TechnicalSpec.objects.create(
-                key=key, value=value, unit=unit,
-                display_order=display_order, is_visible=is_visible
-            )
+            ts = TechnicalSpec.objects.create(key=key, value=value)
             instance.technical_spec = ts
 
         if commit:
@@ -86,9 +71,6 @@ class VariantTechnicalSpecInlineForm(forms.ModelForm):
     """Mismo patrón que TechnicalSpecInlineForm pero para VariantTechnicalSpec."""
     key = forms.CharField(max_length=100, label='Clave')
     value = forms.CharField(widget=forms.Textarea(attrs={'rows': 2}), label='Valor')
-    unit = forms.CharField(max_length=20, required=False, label='Unidad')
-    display_order = forms.IntegerField(initial=0, label='Orden')
-    is_visible = forms.BooleanField(initial=True, required=False, label='Visible')
 
     class Meta:
         model = VariantTechnicalSpec
@@ -101,9 +83,6 @@ class VariantTechnicalSpecInlineForm(forms.ModelForm):
                 ts = self.instance.technical_spec
                 self.fields['key'].initial = ts.key
                 self.fields['value'].initial = ts.value
-                self.fields['unit'].initial = ts.unit
-                self.fields['display_order'].initial = ts.display_order
-                self.fields['is_visible'].initial = ts.is_visible
             except Exception:
                 pass
 
@@ -111,23 +90,14 @@ class VariantTechnicalSpecInlineForm(forms.ModelForm):
         instance = super().save(commit=False)
         key = self.cleaned_data.get('key', '')
         value = self.cleaned_data.get('value', '')
-        unit = self.cleaned_data.get('unit', '')
-        display_order = self.cleaned_data.get('display_order', 0)
-        is_visible = self.cleaned_data.get('is_visible', True)
 
         if instance.pk and getattr(instance, 'technical_spec_id', None):
             ts = instance.technical_spec
             ts.key = key
             ts.value = value
-            ts.unit = unit
-            ts.display_order = display_order
-            ts.is_visible = is_visible
             ts.save()
         else:
-            ts = TechnicalSpec.objects.create(
-                key=key, value=value, unit=unit,
-                display_order=display_order, is_visible=is_visible
-            )
+            ts = TechnicalSpec.objects.create(key=key, value=value)
             instance.technical_spec = ts
 
         if commit:
@@ -139,7 +109,7 @@ class ProductTechnicalSpecInline(admin.TabularInline):
     model = ProductTechnicalSpec
     form = TechnicalSpecInlineForm
     extra = 1
-    fields = ['key', 'value', 'unit', 'display_order', 'is_visible']
+    fields = ['key', 'value']
     verbose_name = "Especificación Técnica"
     verbose_name_plural = "Especificaciones Técnicas"
 
@@ -148,7 +118,7 @@ class VariantTechnicalSpecInline(admin.TabularInline):
     model = VariantTechnicalSpec
     form = VariantTechnicalSpecInlineForm
     extra = 1
-    fields = ['key', 'value', 'unit', 'display_order', 'is_visible']
+    fields = ['key', 'value']
     verbose_name = "Especificación Técnica"
     verbose_name_plural = "Especificaciones Técnicas"
 
@@ -279,7 +249,6 @@ class ProductVariantAdmin(admin.ModelAdmin):
 
 @admin.register(TechnicalSpec)
 class TechnicalSpecAdmin(admin.ModelAdmin):
-    list_display = ['key', 'value', 'unit', 'display_order', 'is_visible', 'created_at']
+    list_display = ['key', 'value', 'created_at']
     search_fields = ['key', 'value']
-    list_filter = ['is_visible']
-    ordering = ['display_order', 'key']
+    ordering = ['key']

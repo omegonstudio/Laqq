@@ -128,34 +128,15 @@ class TechnicalSpec(models.Model):
     o a un ProductVariant via VariantTechnicalSpec.
     """
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
-    key = models.CharField(
-        max_length=100,
-        help_text='Nombre de la especificación (ej: Voltaje, Material, Temperatura)'
-    )
-    value = models.TextField(
-        help_text='Valor de la especificación (ej: 220V, Acero inoxidable)'
-    )
-    unit = models.CharField(
-        max_length=20,
-        blank=True,
-        default='',
-        help_text='Unidad de medida opcional (ej: V, °C, ml, kg)'
-    )
-    display_order = models.IntegerField(
-        default=0,
-        help_text='Orden de visualización (menor número = primero)'
-    )
-    is_visible = models.BooleanField(
-        default=True,
-        help_text='Mostrar esta especificación en el frontend'
-    )
+    key = models.CharField(max_length=100)
+    value = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'Especificación Técnica'
         verbose_name_plural = 'Especificaciones Técnicas'
-        ordering = ['display_order', 'key']
+        ordering = ['key']
 
     def __str__(self):
         return f"{self.key}: {self.value}"
