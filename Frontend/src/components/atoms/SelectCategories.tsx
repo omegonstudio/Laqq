@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CategoryUI } from "@/types/types";
 import {
   Select,
@@ -48,11 +48,13 @@ const flattenCategories = (
 interface SelectCategoriesProps {
   editProductModal: boolean;
   onChange: (categoryId: string | undefined) => void;
+  value?: string;
 }
 
 const SelectCategories: React.FC<SelectCategoriesProps> = ({
   editProductModal,
   onChange,
+  value,
 }) => {
   const { list: categories } = useAppSelector(
     (state: RootState) => state.categories
@@ -63,11 +65,19 @@ const SelectCategories: React.FC<SelectCategoriesProps> = ({
   const [localState, setLocalState] = useState<CategoryFormState>({
     id: undefined,
     name: "",
-    parent: undefined,
+    parent: value,
     display_order: 0,
     description: "",
     level: 0,
   });
+
+  useEffect(() => {
+    setLocalState((prev) => ({
+      ...prev,
+      parent: value,
+    }));
+  }, [value]);
+
   const isDisabled = (cat: FlatCategory) => {
     if (cat.id === localState.id) return true;
     if (cat.id === localState.parent) return false;
