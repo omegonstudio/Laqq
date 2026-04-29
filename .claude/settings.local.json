@@ -25,7 +25,8 @@
       "Bash(docker exec:*)",
       "Bash(del Backendquotesmigrations0008_add_fixed_spec_to_quote_item.py)",
       "Bash(git pull:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(venv/Scripts/python.exe manage.py test quotes products --verbosity=0)"
     ],
     "deny": [],
     "ask": []
