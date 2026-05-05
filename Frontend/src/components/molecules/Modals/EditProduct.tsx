@@ -1,13 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Button from "@/components/atoms/Button";
 import InputField from "@/components/atoms/InputField";
-import {
-  Attachment,
-  Product,
-  ProductFixedSpec,
-  ProductFormState,
-  ProductSpec,
-} from "@/types/types";
+import { Attachment, Product, ProductFormState } from "@/types/types";
 import {
   Select,
   SelectContent,
@@ -23,20 +17,12 @@ import {
   getEmptyProductFormState,
   formStateToUpdateRequest,
   hasProductChanges,
-  haveSpecsChanged,
-  haveFixedSpecsChanged,
 } from "@/utils/productConverters";
 import {
-  cleanFixedSpecsForSync,
-  cleanSpecsForSync,
-  saveProductEntity,
-  syncProductFixedSpecifications,
-  syncProductSpecifications,
   validateProductForm,
-  fixedSpecInitialData,
   CreateProduct,
+  saveProductEntity,
 } from "@/utils/productSaveFlow";
-import { deleteFixedSpec } from "@/store/fixedSpecsSlice";
 import { attachmentsApi } from "@/lib/api/attachments";
 import { Toggle } from "@/components/ui/toggle";
 import { refreshProductEverywhere } from "@/store/productSlice";
@@ -45,9 +31,8 @@ import { productsApi } from "@/lib/api/products";
 import { Textarea } from "@/components/ui/textarea";
 import SelectCategories from "@/components/atoms/SelectCategories";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ProductVariantsTable, {
-  type ProductVariantsData,
-} from "@/components/molecules/ProductVariantsTable";
+import ProductVariantsTable from "@/components/molecules/ProductVariantsTable";
+import type { Variants } from "@/components/molecules/ProductVariantsTable";
 
 interface ModalProductProps {
   isOpen: boolean;
@@ -128,12 +113,10 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   const [selectedRelated, setSelectedRelated] = useState<string>("");
   const [carrouselDeleteIds, setCarrouselDeleteIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>("general");
-  const [variantsData, setVariantsData] = useState<ProductVariantsData | null>(
-    null
-  );
+  const [variants, setVariants] = useState<Variants[]>([]);
 
-  const handleVariantsChange = (data: ProductVariantsData) => {
-    setVariantsData(data);
+  const handleVariantsChange = (data: Variants[]) => {
+    setVariants(data);
   };
 
   // ============================================
@@ -142,6 +125,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   useEffect(() => {
     if (!isNew && initialData) {
       const formState = productToFormState(initialData);
+      setVariants(initialData.variants ?? []);
       setLocalState({
         ...formState,
         attachments_existing: (initialData.attachments ?? []).map((att) => ({
@@ -182,7 +166,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       setSelectedRelated("");
       setCarrouselDeleteIds([]);
       setActiveTab("general");
-      setVariantsData(null);
+      setVariants(initialData?.variants ?? []);
 
       if (initialData) {
         const formState = productToFormState(initialData);
@@ -190,16 +174,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       } else {
         setLocalState({
           ...getEmptyProductFormState(),
-          fixed_specs: [fixedSpecInitialData],
-          specs: [
-            {
-              key: "",
-              value: "",
-              unit: "",
-              is_visible: true,
-              product: initialData?.id,
-            },
-          ],
         });
       }
     }
@@ -238,37 +212,33 @@ const ModalProduct: React.FC<ModalProductProps> = ({
 
   const hasChanges = useMemo(() => {
     if (!initialData) return true;
+
     const productUpdate = formStateToUpdateRequest(
       localState,
       initialData,
       undefined
     );
+
     const productChanged = hasProductChanges(productUpdate);
-    const specsChanged = haveSpecsChanged(
-      localState.specs,
-      initialData.specs || initialData.specifications || []
-    );
-    const fixedSpecsChanged = haveFixedSpecsChanged(
-      localState.fixed_specs,
-      initialData.fixed_specs
-    );
+
     const imageChanged =
       localState.image_file !== null ||
       localState.image_attachment_id !== initialData.image_attachment;
+
     const attachmentsChanged = haveAttachmentsChanged(
       localState.attachments_existing ?? [],
       initialData.attachments ?? [],
       localState.attachments_files ?? []
     );
+
+    const variantsChanged =
+      JSON.stringify(variants) !== JSON.stringify(initialData?.variants ?? []);
+
     return (
-      productChanged ||
-      specsChanged ||
-      fixedSpecsChanged ||
-      imageChanged ||
-      attachmentsChanged
+      productChanged || imageChanged || attachmentsChanged || variantsChanged
     );
-  }, [localState, initialData, carrouselDeleteIds]);
-  // ✅ Botón habilitado solo si: formulario válido Y (es nuevo O tiene cambios)
+  }, [localState, initialData, carrouselDeleteIds, variants]);
+
   const isSaveEnabled = useMemo(() => {
     return validation.isValid && (!initialData || hasChanges);
   }, [validation.isValid, initialData, hasChanges]);
@@ -285,13 +255,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         });
         return;
       }
-
-      const cleanedSpecs: ProductSpec[] = cleanSpecsForSync(
-        localState.specs || []
-      );
-      const cleanedFixedSpecs = cleanFixedSpecsForSync(
-        localState.fixed_specs || []
-      );
 
       let product: Product;
 
@@ -313,7 +276,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             dispatch,
             formState: {
               ...localState,
-              specs: cleanedSpecs,
             },
             attachmentId: attachmentId,
           });
@@ -342,47 +304,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
                 });
               }
             }
-          }
-
-          try {
-            await syncProductSpecifications({
-              dispatch,
-              productId: product.id,
-              nextSpecs: cleanedSpecs,
-              initialSpecs: initialData?.specs || [],
-            });
-          } catch (specsError) {
-            console.error("Error sincronizando especificaciones:", specsError);
-            toast({
-              title:
-                "Producto creado pero hubo un error con las especificaciones",
-              variant: "destructive",
-            });
-          }
-
-          try {
-            if (
-              localState.fixed_specs.length === 0 &&
-              product.fixed_specs?.[0]?.id
-            ) {
-              await dispatch(
-                deleteFixedSpec(product.fixed_specs[0].id)
-              ).unwrap();
-            } else {
-              await syncProductFixedSpecifications({
-                dispatch,
-                productId: product.id,
-                nextSpecs: cleanedFixedSpecs,
-                initialSpecs: initialData?.fixed_specs || [],
-              });
-            }
-          } catch (fixedSpecsError) {
-            console.error("Error sincronizando fixed specs:", fixedSpecsError);
-            toast({
-              title:
-                "Producto creado pero hubo un error con las especificaciones fijas",
-              variant: "destructive",
-            });
           }
 
           dispatch(refreshProductEverywhere(product.id));
@@ -479,7 +400,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           }
 
           // 3. ACTUALIZAR PRODUCTO
-          const updatedFormState = { ...localState, specs: cleanedSpecs };
+          const updatedFormState = { ...localState };
 
           product = await saveProductEntity({
             dispatch,
@@ -489,37 +410,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           });
 
           // 4. Sincronizar specs
-          try {
-            await syncProductSpecifications({
-              dispatch,
-              productId: product.id,
-              nextSpecs: cleanedSpecs,
-              initialSpecs: initialData.specs,
-            });
-          } catch (specsError) {
-            console.error("Error sincronizando especificaciones:", specsError);
-            toast({
-              title:
-                "Producto actualizado pero hubo un error con las especificaciones",
-              variant: "destructive",
-            });
-          }
-
-          try {
-            await syncProductFixedSpecifications({
-              dispatch,
-              productId: product.id,
-              nextSpecs: cleanedFixedSpecs,
-              initialSpecs: initialData.fixed_specs,
-            });
-          } catch (fixedSpecsError) {
-            console.error("Error sincronizando fixed specs:", fixedSpecsError);
-            toast({
-              title:
-                "Producto actualizado pero hubo un error con las especificaciones fijas",
-              variant: "destructive",
-            });
-          }
 
           dispatch(refreshProductEverywhere(initialData.id));
           toast({ title: "Producto actualizado exitosamente" });
@@ -651,65 +541,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       ...localState,
       related: (localState.related || []).filter((rel) => rel.id !== relatedId),
     });
-  };
-
-  const handleSpecChange = (
-    index: number,
-    field: keyof ProductSpec,
-    value: string | boolean
-  ) => {
-    const updatedSpecs = localState.specs.map((spec, i) => {
-      if (i === index) return { ...spec, [field]: value };
-      return spec;
-    });
-    setLocalState({ ...localState, specs: updatedSpecs });
-  };
-
-  const handleFixedSpecChange = (
-    index: number,
-    field: keyof ProductFixedSpec,
-    value: string
-  ) => {
-    const updatedSpecs = localState.fixed_specs.map((spec, i) => {
-      if (i === index) return { ...spec, [field]: value };
-      return spec;
-    });
-    setLocalState({ ...localState, fixed_specs: updatedSpecs });
-  };
-
-  const handleAddSpec = () => {
-    setLocalState({
-      ...localState,
-      specs: [
-        ...localState.specs,
-        {
-          key: "",
-          value: "",
-          unit: "",
-          is_visible: true,
-          product: localState.id,
-        },
-      ],
-    });
-  };
-
-  const handleRemoveSpec = (index: number) => {
-    setLocalState((prev) => ({
-      ...prev,
-      specs: prev.specs.filter((_, i) => i !== index),
-    }));
-  };
-  const handleAddFixedSpec = () => {
-    setLocalState((prev) => ({
-      ...prev,
-      fixed_specs: [...prev.fixed_specs, { ...fixedSpecInitialData }],
-    }));
-  };
-  const handleRemoveFixedSpec = (index: number) => {
-    setLocalState((prev) => ({
-      ...prev,
-      fixed_specs: prev.fixed_specs.filter((_, i) => i !== index),
-    }));
   };
 
   const availableProducts = products.filter((prod) => {
@@ -869,143 +700,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             </div>
 
             <br />
-            {/* <div className="flex items-center justify-between">
-              <label className="text-xl font-bold">
-                Variantes del producto:
-              </label>
-              <Button variant="outline" onClick={handleAddFixedSpec}>
-                Agregar variante
-              </Button>
-            </div>
-
-            {localState.fixed_specs.map((s, index) => (
-              <div
-                key={s.id || index}
-                className="border border-border rounded-lg p-3 space-y-2"
-              >
-                <div className="grid grid-cols-3 gap-2 w-full">
-                  <InputField
-                    label="Código"
-                    value={s.code}
-                    onChange={(e) =>
-                      handleFixedSpecChange(index, "code", e.target.value)
-                    }
-                  />
-                  <InputField
-                    label="Volumen"
-                    value={s.volume}
-                    onChange={(e) =>
-                      handleFixedSpecChange(index, "volume", e.target.value)
-                    }
-                  />
-                  <InputField
-                    label="Dimensiones"
-                    value={s.dimensions}
-                    onChange={(e) =>
-                      handleFixedSpecChange(index, "dimensions", e.target.value)
-                    }
-                  />
-                  <InputField
-                    label="Tapa"
-                    value={s.cap}
-                    onChange={(e) =>
-                      handleFixedSpecChange(index, "cap", e.target.value)
-                    }
-                  />
-                  <InputField
-                    label="Salida"
-                    value={s.outlet}
-                    onChange={(e) =>
-                      handleFixedSpecChange(index, "outlet", e.target.value)
-                    }
-                  />
-                  <InputField
-                    label="Precisión"
-                    value={s.precision}
-                    onChange={(e) =>
-                      handleFixedSpecChange(index, "precision", e.target.value)
-                    }
-                  />
-                  <InputField
-                    label="Exactitud"
-                    value={s.accuracy}
-                    onChange={(e) =>
-                      handleFixedSpecChange(index, "accuracy", e.target.value)
-                    }
-                  />
-                </div>
-                <div className="flex justify-end">
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleRemoveFixedSpec(index)}
-                    className="text-red-500 hover:text-red-600 border"
-                  >
-                    Eliminar variante
-                  </Button>
-                </div>
-              </div>
-            ))}
-
-            <div className="space-y-3">
-              {localState.specs.map((s, index) => (
-                <div key={s.id || index}>
-                  <label className="text-xl font-bold">
-                    Detalles técnicos:
-                  </label>
-                  <div className="border border-border rounded-lg p-3 space-y-2 mt-2">
-                    <div className="grid md:grid-cols-3 gap-2">
-                      <InputField
-                        label="Nombre"
-                        value={s.key || ""}
-                        onChange={(e) =>
-                          handleSpecChange(index, "key", e.target.value)
-                        }
-                      />
-                      <InputField
-                        label="Valor"
-                        value={s.value || ""}
-                        onChange={(e) =>
-                          handleSpecChange(index, "value", e.target.value)
-                        }
-                      />
-                      <InputField
-                        label="Unidad (opcional)"
-                        value={s.unit || ""}
-                        onChange={(e) =>
-                          handleSpecChange(index, "unit", e.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <input
-                          type="checkbox"
-                          checked={s.is_visible !== false}
-                          onChange={(e) =>
-                            handleSpecChange(
-                              index,
-                              "is_visible",
-                              e.target.checked
-                            )
-                          }
-                        />
-                        Visualizar
-                      </label>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleRemoveSpec(index)}
-                        className="text-red-500 hover:text-red-600"
-                      >
-                        Eliminar
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <Button variant="outline" onClick={handleAddSpec}>
-                Agrega más detalles técnicos
-              </Button>
-            </div> */}
 
             <br />
             <div className="grid grid-cols-2 gap-20">
@@ -1085,7 +779,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             </p>
             <ProductVariantsTable
               onChange={handleVariantsChange}
-              initialData={variantsData ?? undefined}
+              initialData={variants}
             />
           </div>
         </TabsContent>
