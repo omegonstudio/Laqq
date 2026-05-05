@@ -6,9 +6,8 @@ import {
   PaginatedResponse,
   Product,
   ProductCreateRequest,
-  ProductFixedSpec,
-  ProductSpec,
   ProductUpdateRequest,
+  Variants,
 } from "@/types/types";
 import { api } from "./client";
 import { cleanParams, QueryParams } from "./utils";
@@ -24,8 +23,8 @@ export interface PaginationParams {
 
 export interface ProductListParams extends PaginationParams {
   brand?: string;
-  category?: string;  // Filtrado exacto (solo productos de esta categoría)
-  category_recursive?: string;  // Filtrado recursivo (incluye subcategorías)
+  category?: string; // Filtrado exacto (solo productos de esta categoría)
+  category_recursive?: string; // Filtrado recursivo (incluye subcategorías)
   is_active?: boolean;
 }
 
@@ -114,44 +113,25 @@ export const productsApi = {
     api.patch<Category>(`${BASE}/categories/${id}/`, data),
   removeCategory: (id: string) => api.delete<void>(`${BASE}/categories/${id}/`),
   deleteCategory: (id: string) => api.delete<void>(`${BASE}/categories/${id}/`),
+  //VARIANTES
 
   // Specs
-  listSpecs: (params?: PaginationParams) =>
-    api.get<PaginatedResponse<ProductSpec>>(
-      `${BASE}/specifications/`,
+  listVariants: (params?: PaginationParams) =>
+    api.get<PaginatedResponse<Variants>>(
+      `${BASE}/variants/`,
       cleanParams(params as QueryParams)
     ),
-  getSpec: (id: string) =>
-    api.get<ProductSpec>(`${BASE}/specifications/${id}/`),
-  retrieveSpec: (id: string) =>
-    api.get<ProductSpec>(`${BASE}/specifications/${id}/`),
-  createSpec: (data: Partial<ProductSpec>) =>
-    api.post<ProductSpec>(`${BASE}/specifications/`, data),
-  updateSpec: (id: string, data: Partial<ProductSpec>) =>
-    api.put<ProductSpec>(`${BASE}/specifications/${id}/`, data),
-  patchSpec: (id: string, data: Partial<ProductSpec>) =>
-    api.patch<ProductSpec>(`${BASE}/specifications/${id}/`, data),
-  removeSpec: (id: string) => api.delete<void>(`${BASE}/specifications/${id}/`),
-  deleteSpec: (id: string) => api.delete<void>(`${BASE}/specifications/${id}/`),
-
-  // Specs
-  listFixedSpecs: (params?: PaginationParams) =>
-    api.get<PaginatedResponse<ProductFixedSpec>>(
-      `${BASE}/specifications/`,
-      cleanParams(params as QueryParams)
-    ),
-  getFixedSpec: (id: string) =>
-    api.get<ProductFixedSpec>(`${BASE}/specs/${id}/`),
-  retrieveFixedSpec: (id: string) =>
-    api.get<ProductFixedSpec>(`${BASE}/specs/${id}/`),
-  createFixedSpec: (data: Partial<ProductFixedSpec>) =>
-    api.post<ProductFixedSpec>(`${BASE}/specs/`, data),
-  updateFixedSpec: (id: string, data: Partial<ProductFixedSpec>) =>
-    api.put<ProductFixedSpec>(`${BASE}/specs/${id}/`, data),
-  patchFixedSpec: (id: string, data: Partial<ProductFixedSpec>) =>
-    api.patch<ProductFixedSpec>(`${BASE}/specs/${id}/`, data),
-  removeFixedSpec: (id: string) => api.delete<void>(`${BASE}/specs/${id}/`),
-  deleteFixedSpec: (id: string) => api.delete<void>(`${BASE}/specs/${id}/`),
+  getVariants: (id: string) => api.get<Variants>(`${BASE}/variants/${id}/`),
+  retrieveVariants: (id: string) =>
+    api.get<Variants>(`${BASE}/variants/${id}/`),
+  createVariants: (data: Partial<Variants>) =>
+    api.post<Variants>(`${BASE}/variants/`, data),
+  updateVariants: (id: string, data: Partial<Variants>) =>
+    api.put<Variants>(`${BASE}/variants/${id}/`, data),
+  patchVariants: (id: string, data: Partial<Variants>) =>
+    api.patch<Variants>(`${BASE}/variants/${id}/`, data),
+  removeVariants: (id: string) => api.delete<void>(`${BASE}/variants/${id}/`),
+  deleteVariants: (id: string) => api.delete<void>(`${BASE}/variants/${id}/`),
 
   // Bulk upload (multipart)
   bulkUploadProducts: (formData: FormData) =>

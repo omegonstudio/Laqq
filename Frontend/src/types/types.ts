@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-empty-object-type */
 // types/product.types.ts
 
 import { Contact } from "./api";
@@ -15,15 +14,30 @@ export interface PaginationInfo {
   current_page: number;
   total_pages: number;
 }
-export interface ProductSpec {
+// export interface ProductSpec {
+//   id?: string;
+//   product: string; // UUID del producto al que pertenece
+//   key: string;
+//   value: string;
+//   unit?: string;
+//   display_order?: number;
+//   is_visible?: boolean;
+// }
+export interface TecnicalSpecs {
   id?: string;
-  product: string; // UUID del producto al que pertenece
   key: string;
   value: string;
-  unit?: string;
-  display_order?: number;
-  is_visible?: boolean;
 }
+
+export interface Variants {
+  code: string;
+  name: string;
+  id?: string;
+  product: string;
+  dimensions?: string;
+  tecnical_specs?: TecnicalSpecs[];
+}
+
 export interface BulkUploadResponse {
   created_brands: number;
   created_categories: number;
@@ -39,19 +53,19 @@ export interface BulkUploadResponse {
   }[];
 }
 
-export interface ProductFixedSpec {
-  id?: string;
-  product: string;
-  code: string;
-  volume?: string | null;
-  dimensions?: string | null;
-  cap?: string | null;
-  outlet?: string | null;
-  accuracy?: string | null;
-  precision?: string | null;
-  additional_specs?: Record<string, unknown> | string | null;
-  created_at?: string;
-}
+// export interface ProductFixedSpec {
+//   id?: string;
+//   product: string;
+//   code: string;
+//   volume?: string | null;
+//   dimensions?: string | null;
+//   cap?: string | null;
+//   outlet?: string | null;
+//   accuracy?: string | null;
+//   precision?: string | null;
+//   additional_specs?: Record<string, unknown> | string | null;
+//   created_at?: string;
+// }
 
 export interface RelatedProduct {
   id: string;
@@ -77,13 +91,12 @@ export interface Product {
   image_attachment: string | null; // UUID del Attachment
   image?: string | null; // Solo para mocks/frontend
   is_active: boolean;
-  specs: ProductSpec[]; // Especificaciones dinámicas
-  specifications?: ProductSpec[]; // Alias de backend
-  fixed_specs: ProductFixedSpec[]; // Especificaciones fijas opcionales
+  //specifications?: ProductSpec[]; // Alias de backend
   related?: RelatedProduct[]; // Alias de productos relacionados
   image_url: string | null; // URL de la imagen
   related_products?: RelatedProduct[]; // Campo original del backend
   attachments: Attachment[];
+  variants: Variants[];
 }
 
 // ============================================
@@ -126,17 +139,13 @@ export interface ProductFormState {
   /** Attachment actual asociado (UUID) */
   image_attachment_id: string | null;
   is_active: boolean;
-  specs: ProductSpec[]; // Objetos completos para editar
   related: RelatedProduct[]; // Objetos completos para mostrar
-  fixed_specs: ProductFixedSpec[]; // Especificaciones fijas opcionales
+  variants: Variants[]; // Especificaciones técnicas dinámicas
 }
 
 // ============================================
 // SPEC - Para enviar al backend
 // ============================================
-export interface ProductSpecCreateRequest extends ProductSpec {}
-export interface ProductSpecUpdateRequest
-  extends Partial<ProductSpecCreateRequest> {}
 
 export interface Category {
   id: string;

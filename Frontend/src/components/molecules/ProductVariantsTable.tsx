@@ -1,218 +1,359 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+// ============================
+// TYPES
+// ============================
+
+export interface TecnicalSpecs {
+  id?: string;
+  key: string;
+  value: string;
+}
+
+export interface Variants {
+  id?: string;
+  code: string;
+  name: string;
+  product: string;
+  tecnical_specs?: TecnicalSpecs[];
+}
 
 export interface VariantColumn {
   id: string;
   name: string;
 }
 
-export interface VariantRow {
+interface VariantRow {
   id: string;
-  values: Record<string, string>;
-}
-
-export interface ProductVariantsData {
-  columns: VariantColumn[];
-  rows: VariantRow[];
+  code: string;
+  name: string;
+  tecnical_specs: TecnicalSpecs[];
 }
 
 interface ProductVariantsTableProps {
-  onChange?: (data: ProductVariantsData) => void;
-  initialData?: ProductVariantsData;
+  onChange?: (variants: Variants[]) => void;
+  initialData?: Variants[];
 }
+
+// ============================
+// HELPERS
+// ============================
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
-const defaultColumns: VariantColumn[] = [
-  { id: generateId(), name: "Código" },
-  { id: generateId(), name: "Volumen" },
-  { id: generateId(), name: "Precio" },
-];
+// Construye columnas desde variantes iniciales
+const extractColumns = (variants: Variants[]): VariantColumn[] => {
+  const keys = new Set<string>();
+
+  variants.forEach((v) => {
+    v.tecnical_specs?.forEach((s) => {
+      if (s.key) keys.add(s.key);
+    });
+  });
+
+  return Array.from(keys).map((key) => ({
+    id: generateId(),
+    name: key,
+  }));
+};
+
+// Convierte variants → rows
+const variantsToRows = (
+  variants: Variants[],
+  columns: VariantColumn[]
+): VariantRow[] => {
+  return variants.map((v) => ({
+    id: v.id || generateId(),
+    code: v.code || "",
+    name: v.name || "",
+    tecnical_specs: columns.map((col) => {
+      const found = v.tecnical_specs?.find((s) => s.key === col.name);
+      return {
+        key: col.name,
+        value: found?.value || "",
+        id: found?.id,
+      };
+    }),
+  }));
+};
+
+// ============================
+// COMPONENT
+// ============================
 
 const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
   onChange,
   initialData,
 }) => {
-  const [columns, setColumns] = useState<VariantColumn[]>(
-    initialData?.columns ?? defaultColumns
-  );
+  const initialColumns =
+    initialData && initialData.length > 0 ? extractColumns(initialData) : [];
+
+  const [columns, setColumns] = useState<VariantColumn[]>(initialColumns);
+
   const [rows, setRows] = useState<VariantRow[]>(
-    initialData?.rows ?? [{ id: generateId(), values: {} }]
+    initialData && initialData.length > 0
+      ? variantsToRows(initialData, initialColumns)
+      : [
+          {
+            id: generateId(),
+            code: "",
+            name: "",
+            tecnical_specs: [],
+          },
+        ]
   );
 
+  // ============================
+  // SYNC con parent
+  // ============================
+
   const notifyChange = useCallback(
-    (newColumns: VariantColumn[], newRows: VariantRow[]) => {
-      onChange?.({ columns: newColumns, rows: newRows });
+    (cols: VariantColumn[], rows: VariantRow[]) => {
+      const variants: Variants[] = rows.map((row) => ({
+        id: row.id,
+        code: row.code,
+        name: row.name,
+        product: "", // lo setea el padre
+        tecnical_specs: row.tecnical_specs.filter((s) => s.key && s.value),
+      }));
+
+      onChange?.(variants);
     },
     [onChange]
   );
+
+  useEffect(() => {
+    notifyChange(columns, rows);
+  }, [columns, rows]);
+
+  // ============================
+  // HELPERS
+  // ============================
+
+  const syncSpecsWithColumns = (
+    rows: VariantRow[],
+    columns: VariantColumn[]
+  ): VariantRow[] => {
+    return rows.map((row) => {
+      const map = new Map(row.tecnical_specs.map((s) => [s.key, s]));
+
+      return {
+        ...row,
+        tecnical_specs: columns.map((col) => ({
+          key: col.name,
+          value: map.get(col.name)?.value || "",
+          id: map.get(col.name)?.id,
+        })),
+      };
+    });
+  };
+
+  // ============================
+  // COLUMN HANDLERS
+  // ============================
 
   const handleAddColumn = () => {
     const newColumn: VariantColumn = {
       id: generateId(),
       name: `Columna ${columns.length + 1}`,
     };
+
     const newColumns = [...columns, newColumn];
+    const newRows = syncSpecsWithColumns(rows, newColumns);
+
     setColumns(newColumns);
-    notifyChange(newColumns, rows);
+    setRows(newRows);
   };
 
   const handleRemoveColumn = (columnId: string) => {
-    if (columns.length <= 1) return;
-    const newColumns = columns.filter((col) => col.id !== columnId);
-    const newRows = rows.map((row) => {
-      const { [columnId]: _, ...restValues } = row.values;
-      return { ...row, values: restValues };
-    });
+    const col = columns.find((c) => c.id === columnId);
+    if (!col) return;
+
+    const newColumns = columns.filter((c) => c.id !== columnId);
+
+    const newRows = rows.map((row) => ({
+      ...row,
+      tecnical_specs: row.tecnical_specs.filter((s) => s.key !== col.name),
+    }));
+
     setColumns(newColumns);
     setRows(newRows);
-    notifyChange(newColumns, newRows);
   };
 
   const handleColumnNameChange = (columnId: string, newName: string) => {
+    const old = columns.find((c) => c.id === columnId);
+    if (!old) return;
+
     const newColumns = columns.map((col) =>
       col.id === columnId ? { ...col, name: newName } : col
     );
+
+    const newRows = rows.map((row) => ({
+      ...row,
+      tecnical_specs: row.tecnical_specs.map((spec) =>
+        spec.key === old.name ? { ...spec, key: newName } : spec
+      ),
+    }));
+
     setColumns(newColumns);
-    notifyChange(newColumns, rows);
+    setRows(newRows);
   };
 
+  // ============================
+  // ROW HANDLERS
+  // ============================
+
   const handleAddRow = () => {
-    const newRow: VariantRow = { id: generateId(), values: {} };
-    const newRows = [...rows, newRow];
-    setRows(newRows);
-    notifyChange(columns, newRows);
+    const newRow: VariantRow = {
+      id: generateId(),
+      code: "",
+      name: "",
+      tecnical_specs: columns.map((col) => ({
+        key: col.name,
+        value: "",
+      })),
+    };
+
+    setRows([...rows, newRow]);
   };
 
   const handleRemoveRow = (rowId: string) => {
     if (rows.length <= 1) return;
-    const newRows = rows.filter((row) => row.id !== rowId);
-    setRows(newRows);
-    notifyChange(columns, newRows);
+    setRows(rows.filter((r) => r.id !== rowId));
   };
 
-  const handleCellChange = (rowId: string, columnId: string, value: string) => {
-    const newRows = rows.map((row) =>
-      row.id === rowId
-        ? { ...row, values: { ...row.values, [columnId]: value } }
-        : row
+  const handleRowChange = (
+    rowId: string,
+    field: "code" | "name",
+    value: string
+  ) => {
+    setRows(
+      rows.map((row) => (row.id === rowId ? { ...row, [field]: value } : row))
     );
-    setRows(newRows);
-    notifyChange(columns, newRows);
   };
+
+  const handleSpecChange = (
+    rowId: string,
+    columnName: string,
+    value: string
+  ) => {
+    setRows(
+      rows.map((row) => {
+        if (row.id !== rowId) return row;
+
+        return {
+          ...row,
+          tecnical_specs: row.tecnical_specs.map((spec) =>
+            spec.key === columnName ? { ...spec, value } : spec
+          ),
+        };
+      })
+    );
+  };
+
+  // ============================
+  // RENDER
+  // ============================
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-bold">Tabla de Variedades</h3>
+      <div className="flex justify-between">
+        <h3 className="text-xl font-bold">Tabla de Variantes</h3>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleAddColumn}>
+          <Button size="sm" variant="outline" onClick={handleAddColumn}>
             <Plus className="w-4 h-4 mr-1" />
-            Agregar columna
+            Columna
           </Button>
-          <Button variant="outline" size="sm" onClick={handleAddRow}>
+          <Button size="sm" variant="outline" onClick={handleAddRow}>
             <Plus className="w-4 h-4 mr-1" />
-            Agregar fila
+            Fila
           </Button>
         </div>
       </div>
 
-      <div className="border border-border rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            {/* Header - Column Names (Editable) */}
-            <thead>
-              <tr className="bg-muted/50">
-                <th className="w-10 p-2 border-b border-border">
-                  <span className="sr-only">Acciones</span>
+      <div className="border rounded-lg overflow-auto">
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Código</th>
+              <th>Nombre</th>
+              {columns.map((col) => (
+                <th key={col.id}>
+                  <div className="flex gap-1">
+                    <Input
+                      value={col.name}
+                      onChange={(e) =>
+                        handleColumnNameChange(col.id, e.target.value)
+                      }
+                    />
+                    <button onClick={() => handleRemoveColumn(col.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </th>
-                {columns.map((column) => (
-                  <th
-                    key={column.id}
-                    className="p-2 border-b border-border min-w-[120px]"
-                  >
-                    <div className="flex items-center gap-1">
-                      <Input
-                        value={column.name}
-                        onChange={(e) =>
-                          handleColumnNameChange(column.id, e.target.value)
-                        }
-                        className="h-8 text-sm font-medium text-center bg-transparent border-dashed hover:border-solid focus:border-solid"
-                        placeholder="Nombre columna"
-                      />
-                      {columns.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveColumn(column.id)}
-                          className="p-1 text-muted-foreground hover:text-destructive transition-colors"
-                          title="Eliminar columna"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </th>
-                ))}
-                <th className="w-10 p-2 border-b border-border">
-                  <span className="sr-only">Eliminar fila</span>
-                </th>
-              </tr>
-            </thead>
-
-            {/* Body - Rows (Variants) */}
-            <tbody>
-              {rows.map((row, rowIndex) => (
-                <tr
-                  key={row.id}
-                  className="hover:bg-muted/30 transition-colors"
-                >
-                  <td className="p-2 border-b border-border text-center">
-                    <span className="text-muted-foreground text-sm">
-                      <GripVertical className="w-4 h-4 inline-block opacity-50" />
-                    </span>
-                  </td>
-                  {columns.map((column) => (
-                    <td
-                      key={`${row.id}-${column.id}`}
-                      className="p-2 border-b border-border"
-                    >
-                      <Input
-                        value={row.values[column.id] ?? ""}
-                        onChange={(e) =>
-                          handleCellChange(row.id, column.id, e.target.value)
-                        }
-                        className="h-8 text-sm"
-                        placeholder={`${column.name}...`}
-                      />
-                    </td>
-                  ))}
-                  <td className="p-2 border-b border-border text-center">
-                    {rows.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveRow(row.id)}
-                        className="p-1 text-muted-foreground hover:text-destructive transition-colors"
-                        title="Eliminar fila"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id}>
+                <td>
+                  <GripVertical className="w-4 h-4 opacity-50" />
+                </td>
+
+                <td>
+                  <Input
+                    value={row.code}
+                    onChange={(e) =>
+                      handleRowChange(row.id, "code", e.target.value)
+                    }
+                  />
+                </td>
+
+                <td>
+                  <Input
+                    value={row.name}
+                    onChange={(e) =>
+                      handleRowChange(row.id, "name", e.target.value)
+                    }
+                  />
+                </td>
+
+                {columns.map((col) => (
+                  <td key={col.id}>
+                    <Input
+                      value={
+                        row.tecnical_specs.find((s) => s.key === col.name)
+                          ?.value || ""
+                      }
+                      onChange={(e) =>
+                        handleSpecChange(row.id, col.name, e.target.value)
+                      }
+                    />
+                  </td>
+                ))}
+
+                <td>
+                  <button onClick={() => handleRemoveRow(row.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* Summary */}
       <p className="text-sm text-muted-foreground">
-        {rows.length} variedad{rows.length !== 1 ? "es" : ""} · {columns.length}{" "}
-        columna{columns.length !== 1 ? "s" : ""}
+        {rows.length} variantes · {columns.length} columnas dinámicas
       </p>
     </div>
   );
