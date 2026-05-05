@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.contenttypes.models import ContentType
 from .models import (
     Brand, Category, Product, ProductVariant, ProductRelation,
-    TechnicalSpec, ProductTechnicalSpec,
+    TechnicalSpec, ProductTechnicalSpec, VariantTechnicalSpec,
 )
 from attachments.models import Attachment
 from attachments.serializers import AttachmentSerializer
@@ -45,12 +45,35 @@ class TechnicalSpecSerializer(serializers.ModelSerializer):
 class ProductVariantSerializer(serializers.ModelSerializer):
     """Serializer para variantes de producto (code, name, dimensions + specs técnicas propias)"""
 
-    technical_specs = TechnicalSpecSerializer(many=True, read_only=True)
+    technical_specs = TechnicalSpecSerializer(many=True, required=False)
 
     class Meta:
         model = ProductVariant
         fields = ['id', 'product', 'code', 'name', 'dimensions', 'technical_specs', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+    def _save_specs(self, variant, specs_data, replace=False):
+        if replace:
+            VariantTechnicalSpec.objects.filter(variant=variant).delete()
+        for spec in specs_data:
+            spec.pop('id', None)
+            tech_spec = TechnicalSpec.objects.create(
+                **{k: v for k, v in spec.items() if k in ('key', 'value')}
+            )
+            VariantTechnicalSpec.objects.create(variant=variant, technical_spec=tech_spec)
+
+    def create(self, validated_data):
+        specs_data = validated_data.pop('technical_specs', [])
+        variant = super().create(validated_data)
+        self._save_specs(variant, specs_data)
+        return variant
+
+    def update(self, instance, validated_data):
+        specs_data = validated_data.pop('technical_specs', None)
+        variant = super().update(instance, validated_data)
+        if specs_data is not None:
+            self._save_specs(variant, specs_data, replace=True)
+        return variant
 
 
 class ProductRelationSerializer(serializers.ModelSerializer):
