@@ -1,6 +1,5 @@
 import { formStateToUpdateRequest } from "@/utils/productConverters";
 import { createProduct, updateProduct } from "@/store/productSlice";
-import { createSpec, updateSpec, deleteSpec } from "@/store/specsSlice";
 import { AppDispatch } from "@/store";
 import {
   Product,
@@ -9,6 +8,7 @@ import {
   ProductUpdateRequest,
   Variants,
 } from "@/types/types";
+import { productsApi } from "@/lib/api/products";
 
 export const variantsInitialData: Variants = {
   id: undefined,
@@ -16,7 +16,7 @@ export const variantsInitialData: Variants = {
   code: "",
   dimensions: "",
   name: "",
-  tecnical_specs: [],
+  technical_specs: [],
 };
 
 export const CreateProduct = async ({
@@ -45,7 +45,44 @@ export const CreateProduct = async ({
   };
   return await dispatch(createProduct(payload)).unwrap();
 };
+export const syncVariants = async (
+  productId: string,
+  current: Variants[],
+  initial: Variants[]
+) => {
+  const initialMap = new Map(initial.map((v) => [v.id, v]));
 
+  const toDelete = initial.filter(
+    (init) => !current.some((v) => v.id === init.id)
+  );
+
+  const toCreate = current.filter((v) => !v.id);
+
+  const toUpdate = current.filter((v) => v.id && initialMap.has(v.id));
+
+  // DELETE
+  await Promise.all(toDelete.map((v) => productsApi.deleteVariants(v.id!)));
+
+  // CREATE
+  await Promise.all(
+    toCreate.map((v) =>
+      productsApi.createVariants({
+        ...v,
+        product: productId,
+      })
+    )
+  );
+
+  // UPDATE
+  await Promise.all(
+    toUpdate.map((v) =>
+      productsApi.updateVariants(v.id!, {
+        ...v,
+        product: productId,
+      })
+    )
+  );
+};
 export const saveProductEntity = async ({
   dispatch,
   formState,
@@ -94,7 +131,21 @@ export const buildProductUploadFormData = (
 
   return formData;
 };
-
+export const normalizeVariants = (vars: Variants[]) =>
+  vars
+    .map((v) => ({
+      id: v.id,
+      code: v.code.trim(),
+      name: v.name?.trim() || "",
+      technical_specs: (v.technical_specs || [])
+        .map((s) => ({
+          key: s.key,
+          value: s.value.trim(),
+        }))
+        .filter((s) => s.value)
+        .sort((a, b) => a.key.localeCompare(b.key)),
+    }))
+    .sort((a, b) => (a.id || "").localeCompare(b.id || ""));
 export const validateProductForm = (
   formState: ProductFormState,
   options?: { skipBrandAndCategory?: boolean }
@@ -115,7 +166,16 @@ export const validateProductForm = (
         errorMessage: "Debes seleccionar una categoría",
       };
     }
+    if (formState.variants) {
+      const invalid = formState.variants.some((v) => !v.code || !v.code.trim());
 
+      if (invalid) {
+        return {
+          isValid: false,
+          errorMessage: "Todas las variantes deben tener código",
+        };
+      }
+    }
     if (!formState.brand) {
       return {
         isValid: false,

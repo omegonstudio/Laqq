@@ -118,7 +118,6 @@ const TicketForm = ({
 
     return newErrors;
   };
-  console.log(errors, "AASAS");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,8 +140,6 @@ const TicketForm = ({
 
     try {
       setIsUploading(true);
-
-      console.log(payload.ticket.description);
 
       const ticket = await dispatch(createTicket(payload)).unwrap();
 

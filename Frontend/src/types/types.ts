@@ -35,7 +35,7 @@ export interface Variants {
   id?: string;
   product: string;
   dimensions?: string;
-  tecnical_specs?: TecnicalSpecs[];
+  technical_specs?: TecnicalSpecs[];
 }
 
 export interface BulkUploadResponse {
