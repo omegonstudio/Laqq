@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import Button from "@/components/atoms/Button";
 import Badge from "@/components/atoms/Badge";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearSelected, fetchProduct } from "@/store/productSlice";
@@ -17,17 +17,14 @@ import { Attachment } from "@/types/types";
 import { Toggle } from "@radix-ui/react-toggle";
 
 const ProductDetailPage = () => {
-  const [activeTab, setActiveTab] = useState<"details" | "related" | "spects">(
-    "details"
-  );
-  const { addToCart, addVariantToCart } = useCart();
+  const [activeTab, setActiveTab] = useState<"details" | "files">("details");
+  const { items, addToCart, addVariantToCart, removeFromCart } = useCart();
   const { id } = useParams();
   const {
     selected: product,
     selectedLoading,
     selectedError,
   } = useAppSelector((state) => state.products);
-
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -36,27 +33,72 @@ const ProductDetailPage = () => {
     : Array.isArray(product?.related_products)
     ? product.related_products
     : [];
-  // Reemplazá estas variables al inicio del componente:
-  const hasFixedSpecs =
-    Array.isArray(product?.fixed_specs) && product.fixed_specs.length > 0;
-  const hasSpecs = Array.isArray(product?.specs) && product.specs.length > 0;
-  const hasRelated = relatedList.length > 0;
-  const showDetailsSection = hasFixedSpecs || hasSpecs || hasRelated;
-  // Agregar este estado al componente (junto a los otros useState)
-  const [selectedSpecIds, setSelectedSpecIds] = useState<string[]>([]);
 
-  // Función para toggle de selección
-  const toggleSpecSelection = (specId: string) => {
-    setSelectedSpecIds((prev) =>
-      prev.includes(specId)
-        ? prev.filter((id) => id !== specId)
-        : [...prev, specId]
-    );
+  const variantCount = product?.variants?.length ?? 0;
+  const isVariantInCart = (variant) => {
+    const uniqueId = `${product.id}-${variant.code}`;
+    return items.some((item) => item.id === uniqueId);
+  };
+  const hasVariants = variantCount > 0;
+  const hasSingleVariant = variantCount === 1;
+  const hasRelated = relatedList.length > 0;
+  const showDetailsSection = hasVariants || hasRelated;
+  const toggleVariantInCart = (variant) => {
+    const uniqueId = `${product.id}-${variant.code}`;
+
+    if (isVariantInCart(variant)) {
+      removeFromCart(uniqueId);
+    } else {
+      addVariantToCart(product, variant, variant.code);
+    }
   };
   // Si no hay ninguna de las dos secciones, no mostrar el contenedor
+  const variantColumns = useMemo(() => {
+    const keys = new Set<string>();
+
+    product?.variants?.forEach((v) => {
+      v.technical_specs?.forEach((s) => {
+        if (s.key) keys.add(s.key);
+      });
+    });
+
+    return Array.from(keys);
+  }, [product]);
+
+  const hasProductInCart = () => {
+    return items.some(
+      (item) =>
+        item.variantSpecId
+          ? item.id.startsWith(product.id) // variantes
+          : item.id === product.id // producto simple
+    );
+  };
 
   const addCuoteButton = (product) => {
-    addToCart(product);
+    const variantCount = product?.variants?.length;
+    console.log(variantCount, product, items);
+    // 1. Ya hay variantes en carrito → solo redirigir
+    if (hasProductInCart()) {
+      navigate("/quote");
+      return;
+    }
+
+    // 2. Producto sin variantes
+    if (variantCount === 0) {
+      addToCart(product);
+      navigate("/quote");
+      return;
+    }
+
+    // 3. Producto con una sola variante
+    if (variantCount === 1) {
+      const variant = product.variants[0];
+      addVariantToCart(product, variant, variant.code);
+      navigate("/quote");
+      return;
+    }
+
+    // 4. Múltiples variantes y ninguna seleccionada
     navigate("/quote");
   };
 
@@ -70,13 +112,7 @@ const ProductDetailPage = () => {
       dispatch(clearSelected());
     };
   }, [id, dispatch]);
-  useEffect(() => {
-    if (!hasFixedSpecs && hasSpecs) {
-      setActiveTab("spects");
-    } else if (!hasFixedSpecs && !hasSpecs && hasRelated) {
-      setActiveTab("related");
-    }
-  }, [hasFixedSpecs, hasSpecs, hasRelated]);
+
   // Mostrar loading mientras carga
   if (selectedLoading) {
     return (
@@ -118,7 +154,13 @@ const ProductDetailPage = () => {
       </div>
     );
   }
+  const isImage = (contentType?: string) => contentType?.startsWith("image/");
 
+  const imageAttachments =
+    product.attachments?.filter((att) => isImage(att.content_type_str)) ?? [];
+
+  const fileAttachments =
+    product.attachments?.filter((att) => !isImage(att.content_type_str)) ?? [];
   // Construir array de imágenes con la lógica correcta
   // AHORA SÍ podemos usar product de forma segura porque ya verificamos que existe
   const buildImageArray = () => {
@@ -128,16 +170,14 @@ const ProductDetailPage = () => {
     if (product.image_url) {
       imageArray.push({ url: product.image_url, isMain: true });
     }
-
-    // 2. Si existen attachments, agregarlos después
-    if (product.attachments && product.attachments.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const attachmentImages = product.attachments.map((att: any) => ({
-        url: att.url || att,
+    if (imageAttachments.length > 0) {
+      const attachmentImages = imageAttachments.map((att) => ({
+        url: att.url || att.file,
         isMain: false,
       }));
       imageArray.push(...attachmentImages);
     }
+    // 2. Si existen attachments, agregarlos después
 
     // 3. Si no hay ninguna imagen, usar placeholder
     if (imageArray.length === 0) {
@@ -146,7 +186,7 @@ const ProductDetailPage = () => {
 
     return imageArray;
   };
-
+  console.log(product.attachments);
   const images = buildImageArray();
   const totalImages = images.length;
 
@@ -164,7 +204,6 @@ const ProductDetailPage = () => {
   };
 
   // Calcular especificaciones y productos relacionados
-  console.log(product);
   return (
     <div className="py-16">
       <div className="container mx-auto px-4">
@@ -256,29 +295,25 @@ const ProductDetailPage = () => {
                 size="lg"
                 className="flex items-center justify-center gap-2"
                 onClick={() => {
-                  if (hasFixedSpecs && selectedSpecIds.length > 0) {
-                    // Agregar cada variante seleccionada al carrito
-                    selectedSpecIds.forEach((specCode) => {
-                      const spec = product.fixed_specs.find(
-                        (s) => s.code === specCode
-                      );
-                      if (spec) addVariantToCart(product, spec, specCode); // spec debe tener spec.id
-                    });
-                    setSelectedSpecIds([]); // limpiar selección
-                  } else {
-                    addToCart(product); // fallback si no hay variantes
+                  if (!hasVariants) {
+                    addToCart(product);
+                    return;
+                  }
+
+                  if (hasSingleVariant) {
+                    const variant = product.variants[0];
+                    addVariantToCart(product, variant, variant.code);
+                    return;
                   }
                 }}
-                disabled={hasFixedSpecs && selectedSpecIds.length === 0}
+                disabled={false}
               >
                 <ShoppingCart size={20} />
-                {hasFixedSpecs
-                  ? `Agregar ${
-                      selectedSpecIds.length > 0
-                        ? `(${selectedSpecIds.length})`
-                        : ""
-                    }`
-                  : "Agregar al Carrito"}
+                {!hasVariants
+                  ? "Agregar al Carrito"
+                  : hasSingleVariant
+                  ? "Agregar"
+                  : "Seleccionar variedad del producto en la lista"}
               </Button>
               {/* <Link to="/quote"> */}
               <Button
@@ -301,7 +336,7 @@ const ProductDetailPage = () => {
           <div className="bg-card border border-border rounded-2xl p-8">
             {/* Tab Bar */}
             <div className="flex gap-4 mb-6 border-b border-border">
-              {hasFixedSpecs && (
+              {hasVariants && (
                 <button
                   onClick={() => setActiveTab("details")}
                   className={`px-4 py-2 font-medium transition-colors ${
@@ -313,89 +348,74 @@ const ProductDetailPage = () => {
                   Variantes del producto
                 </button>
               )}
-
-              {hasSpecs && (
+              {fileAttachments.length > 0 && (
                 <button
-                  onClick={() => setActiveTab("spects")}
+                  onClick={() => setActiveTab("files")}
                   className={`px-4 py-2 font-medium transition-colors ${
-                    activeTab === "spects"
+                    activeTab === "files"
                       ? "text-primary border-b-2 border-primary"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Detalles Técnicos
+                  Archivos
                 </button>
               )}
             </div>
 
             {/* Tab: fixed_specs */}
-            {activeTab === "details" && hasFixedSpecs && (
+            {activeTab === "details" && hasVariants && (
               <div className="overflow-x-auto">
                 <table className="w-full border border-border rounded-xl overflow-hidden">
                   <thead className="bg-primary/10">
                     <tr>
                       <th className="px-4 py-3 text-left font-bold">Código</th>
-                      <th className="px-4 py-3 text-left font-bold">Volumen</th>
-                      <th className="px-4 py-3 text-left font-bold">
-                        Dimensiones
-                      </th>
-                      <th className="px-4 py-3 text-left font-bold">Tapa</th>
-                      <th className="px-4 py-3 text-left font-bold">Salida</th>
-                      <th className="px-4 py-3 text-left font-bold">
-                        Precisión
-                      </th>
-                      <th className="px-4 py-3 text-left font-bold">
-                        Exactitud
-                      </th>
+                      <th className="px-4 py-3 text-left font-bold">Nombre</th>
+
+                      {variantColumns.map((col) => (
+                        <th key={col} className="px-4 py-3 text-left font-bold">
+                          {col}
+                        </th>
+                      ))}
+
                       <th className="px-4 py-3 text-left font-bold">
                         Agregar al carrito
                       </th>
                     </tr>
                   </thead>
+
                   <tbody>
-                    {product.fixed_specs.map((spec, index) => (
-                      <tr key={index} className="border-t border-border">
+                    {product.variants.map((variant) => (
+                      <tr key={variant.id} className="border-t border-border">
                         <td className="px-4 py-3 text-sm font-medium">
-                          {spec.code}
+                          {variant.code}
                         </td>
+
                         <td className="px-4 py-3 text-sm font-medium">
-                          {spec.volume}
+                          {variant.name}
                         </td>
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {spec.dimensions}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {spec.cap}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {spec.outlet}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {spec.precision}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {spec.accuracy}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium">
-                          <Toggle
-                            pressed={selectedSpecIds.includes(spec.code)}
-                            onPressedChange={() =>
-                              toggleSpecSelection(spec.code)
+
+                        {variantColumns.map((col) => {
+                          const spec = variant.technical_specs?.find(
+                            (s) => s.key === col
+                          );
+
+                          return (
+                            <td key={col} className="px-4 py-3 text-sm">
+                              {spec?.value || "-"}
+                            </td>
+                          );
+                        })}
+
+                        <td className="px-4 py-3 text-sm">
+                          <Button
+                            size="sm"
+                            variant={
+                              isVariantInCart(variant) ? "primary" : "outline"
                             }
-                            className={`
-                            px-3 py-1.5 rounded-lg text-sm font-medium transition-all
-                            border flex items-center justify-center gap-1
-                            ${
-                              selectedSpecIds.includes(spec.code)
-                                ? "bg-primary text-white border-primary shadow-sm"
-                                : "bg-transparent border-primary text-primary border-border hover:bg-muted hover:text-foreground"
-                            }
-                          `}
+                            onClick={() => toggleVariantInCart(variant)}
                           >
-                            {selectedSpecIds.includes(spec.code)
-                              ? "✓ Quitar"
-                              : "+ Agregar"}
-                          </Toggle>
+                            {isVariantInCart(variant) ? "Quitar" : "+ Agregar"}
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -403,64 +423,55 @@ const ProductDetailPage = () => {
                 </table>
               </div>
             )}
-
-            {/* Tab: specs */}
-            {activeTab === "spects" && hasSpecs && (
-              <div className="overflow-x-auto">
-                <table className="w-full border border-border rounded-xl overflow-hidden">
-                  <thead className="bg-primary/10">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-bold">Nombre</th>
-                      <th className="px-4 py-3 text-left font-bold">Valor</th>
-                      <th className="px-4 py-3 text-left font-bold">Unidad</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {product.specs.map((spec, index) => (
-                      <tr key={index} className="border-t border-border">
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {spec.key}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {spec.value}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {spec.unit}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {activeTab === "files" && fileAttachments.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {fileAttachments.map((file) => (
+                  <div
+                    key={file.id}
+                    onClick={() => window.open(file.url || file.file, "_blank")}
+                    className="cursor-pointer border rounded-lg p-4 flex items-center gap-3 hover:bg-muted transition-colors"
+                  >
+                    <div className="text-2xl">📄</div>
+                    <div className="text-sm">
+                      <p className="font-medium truncate">{file.file_name}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {file.content_type_str}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
         )}
         <br />
-        <div className="space-y-4 bg-muted/30 border p-6 rounded-sm">
-          <label className="text-2xl text-center font-bold">
-            Productos relacionados
-          </label>
-          <br />
-          {relatedList.map((item, index) => (
-            <div
-              key={index}
-              onClick={() => navigate(`/product/${item.id}`)}
-              className="border border-border rounded-xl p-4 hover:bg-muted/30 transition-colors cursor-pointer"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <Badge variant="secondary" className="mb-2">
-                    {item.brand || "Relacionado"}
-                  </Badge>
-                  <h3 className="font-bold mb-1">{item.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Código: {item.product_code}
-                  </p>
+        {relatedList.length > 0 && (
+          <div className="space-y-4 bg-muted/30 border p-6 rounded-sm">
+            <label className="text-2xl text-center font-bold">
+              Productos relacionados
+            </label>
+            <br />
+            {relatedList.map((item, index) => (
+              <div
+                key={index}
+                onClick={() => navigate(`/product/${item.id}`)}
+                className="border border-border rounded-xl p-4 hover:bg-muted/30 transition-colors cursor-pointer"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <Badge variant="secondary" className="mb-2">
+                      {item.brand || "Relacionado"}
+                    </Badge>
+                    <h3 className="font-bold mb-1">{item.name}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Código: {item.product_code}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -22,6 +22,8 @@ import {
   validateProductForm,
   CreateProduct,
   saveProductEntity,
+  syncVariants,
+  normalizeVariants,
 } from "@/utils/productSaveFlow";
 import { attachmentsApi } from "@/lib/api/attachments";
 import { Toggle } from "@/components/ui/toggle";
@@ -113,10 +115,12 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   const [selectedRelated, setSelectedRelated] = useState<string>("");
   const [carrouselDeleteIds, setCarrouselDeleteIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>("general");
-  const [variants, setVariants] = useState<Variants[]>([]);
 
-  const handleVariantsChange = (data: Variants[]) => {
-    setVariants(data);
+  const handleVariantsChange = (vars: Variants[]) => {
+    setLocalState((prev) => ({
+      ...prev,
+      variants: vars,
+    }));
   };
 
   // ============================================
@@ -125,48 +129,39 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   useEffect(() => {
     if (!isNew && initialData) {
       const formState = productToFormState(initialData);
-      setVariants(initialData.variants ?? []);
+
       setLocalState({
         ...formState,
+        variants: initialData.variants ?? [],
         attachments_existing: (initialData.attachments ?? []).map((att) => ({
           ...att,
           role: att.role as Attachment["role"],
         })),
         attachments_files: [],
       });
-      if (initialData.image_url) {
-        setImagePreview(initialData.image_url);
-      }
-      if (initialData.attachments !== null) {
-        setCarrouselPreview(
-          initialData.attachments?.map((att) => ({
-            url: att.url,
-            type: "existing",
-            id: att.id,
-            fileType: att.url?.toLowerCase().endsWith(".pdf")
-              ? "application/pdf"
-              : undefined,
-          })) || null
-        );
-      }
-      setCarrouselDeleteIds([]);
+      setCarrouselPreview(
+        (initialData.attachments ?? []).map((att) => ({
+          url: att.url || att.file,
+          type: "existing" as const,
+          id: att.id,
+          fileType: att.content_type_str,
+        }))
+      );
+      setImagePreview(initialData.image_url);
     } else {
       setLocalState({
         ...getEmptyProductFormState(),
+        variants: [],
       });
       setCarrouselPreview(null);
-      setImagePreview(null);
-      setCarrouselDeleteIds([]);
     }
   }, [initialData, isNew]);
-
   useEffect(() => {
     if (!isOpen) {
       setImagePreview(null);
       setSelectedRelated("");
       setCarrouselDeleteIds([]);
       setActiveTab("general");
-      setVariants(initialData?.variants ?? []);
 
       if (initialData) {
         const formState = productToFormState(initialData);
@@ -232,12 +227,13 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     );
 
     const variantsChanged =
-      JSON.stringify(variants) !== JSON.stringify(initialData?.variants ?? []);
+      JSON.stringify(normalizeVariants(localState.variants || [])) !==
+      JSON.stringify(normalizeVariants(initialData?.variants || []));
 
     return (
       productChanged || imageChanged || attachmentsChanged || variantsChanged
     );
-  }, [localState, initialData, carrouselDeleteIds, variants]);
+  }, [localState, initialData, carrouselDeleteIds]);
 
   const isSaveEnabled = useMemo(() => {
     return validation.isValid && (!initialData || hasChanges);
@@ -279,7 +275,19 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             },
             attachmentId: attachmentId,
           });
-
+          const variantsToCreate = (localState.variants || []).filter((v) =>
+            v.code?.trim()
+          );
+          if (variantsToCreate.length > 0) {
+            await Promise.all(
+              variantsToCreate.map((v) =>
+                productsApi.createVariants({
+                  ...v,
+                  product: product.id,
+                })
+              )
+            );
+          }
           if (carrouselPreview?.length > 0) {
             const newImages = carrouselPreview.filter(
               (item) => item.type === "new"
@@ -408,7 +416,11 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             initialData: initialData,
             attachmentId: attachmentId,
           });
-
+          await syncVariants(
+            initialData.id,
+            localState.variants || [],
+            initialData.variants || []
+          );
           // 4. Sincronizar specs
 
           dispatch(refreshProductEverywhere(initialData.id));
@@ -728,9 +740,20 @@ const ModalProduct: React.FC<ModalProductProps> = ({
               </div>
               <div>
                 <span className="mb-2 block text-lg font-medium">
-                  Carrousel de archivos
+                  Carrousel de archivos.
                 </span>
-                <UploadFile onFileChange={handleCarouselFile} />
+                <UploadFile
+                  multiple
+                  onFileChange={(files) => {
+                    const filesArray = files as File[];
+                    filesArray.forEach((file) => handleCarouselFile(file));
+                  }}
+                />
+                <span className="mb-2 block text-sm font-medium">
+                  Los archivos de tipo texto se van a mostrar en la sección de
+                  archivos, mientras que los archivos de tipo imagen se van a
+                  mostrar en el carrusel de imágenes.
+                </span>
                 <div className="grid grid-cols-3 gap-2">
                   {carrouselPreview?.map((item, index) => (
                     <div
@@ -779,7 +802,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             </p>
             <ProductVariantsTable
               onChange={handleVariantsChange}
-              initialData={variants}
+              initialData={localState.variants ?? []}
             />
           </div>
         </TabsContent>

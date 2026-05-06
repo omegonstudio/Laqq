@@ -68,7 +68,6 @@ export function ViewTicketModal({
     };
   }
 
-  console.log(ticket, "SASA");
   const description = ticket.description || "-";
   const isLong = description.length > MAX_CHARS;
   const visibleText =

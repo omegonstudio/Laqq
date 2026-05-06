@@ -20,7 +20,7 @@ export interface Variants {
   code: string;
   name: string;
   product: string;
-  tecnical_specs?: TecnicalSpecs[];
+  technical_specs?: TecnicalSpecs[];
 }
 
 export interface VariantColumn {
@@ -32,7 +32,7 @@ interface VariantRow {
   id: string;
   code: string;
   name: string;
-  tecnical_specs: TecnicalSpecs[];
+  technical_specs: TecnicalSpecs[];
 }
 
 interface ProductVariantsTableProps {
@@ -51,7 +51,7 @@ const extractColumns = (variants: Variants[]): VariantColumn[] => {
   const keys = new Set<string>();
 
   variants.forEach((v) => {
-    v.tecnical_specs?.forEach((s) => {
+    v.technical_specs?.forEach((s) => {
       if (s.key) keys.add(s.key);
     });
   });
@@ -71,8 +71,8 @@ const variantsToRows = (
     id: v.id || generateId(),
     code: v.code || "",
     name: v.name || "",
-    tecnical_specs: columns.map((col) => {
-      const found = v.tecnical_specs?.find((s) => s.key === col.name);
+    technical_specs: columns.map((col) => {
+      const found = v.technical_specs?.find((s) => s.key === col.name);
       return {
         key: col.name,
         value: found?.value || "",
@@ -103,7 +103,7 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
             id: generateId(),
             code: "",
             name: "",
-            tecnical_specs: [],
+            technical_specs: [],
           },
         ]
   );
@@ -114,12 +114,25 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
 
   const notifyChange = useCallback(
     (cols: VariantColumn[], rows: VariantRow[]) => {
+      // detectar columnas que tienen al menos un valor
+      const activeKeys = new Set<string>();
+
+      rows.forEach((row) => {
+        row.technical_specs.forEach((spec) => {
+          if (spec.value?.trim()) {
+            activeKeys.add(spec.key);
+          }
+        });
+      });
+
       const variants: Variants[] = rows.map((row) => ({
-        id: row.id,
+        id: row.id?.includes("-") ? row.id : undefined,
         code: row.code,
         name: row.name,
-        product: "", // lo setea el padre
-        tecnical_specs: row.tecnical_specs.filter((s) => s.key && s.value),
+        product: "",
+        technical_specs: row.technical_specs.filter(
+          (s) => activeKeys.has(s.key) && s.value.trim()
+        ),
       }));
 
       onChange?.(variants);
@@ -140,11 +153,11 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
     columns: VariantColumn[]
   ): VariantRow[] => {
     return rows.map((row) => {
-      const map = new Map(row.tecnical_specs.map((s) => [s.key, s]));
+      const map = new Map(row.technical_specs.map((s) => [s.key, s]));
 
       return {
         ...row,
-        tecnical_specs: columns.map((col) => ({
+        technical_specs: columns.map((col) => ({
           key: col.name,
           value: map.get(col.name)?.value || "",
           id: map.get(col.name)?.id,
@@ -178,7 +191,7 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
 
     const newRows = rows.map((row) => ({
       ...row,
-      tecnical_specs: row.tecnical_specs.filter((s) => s.key !== col.name),
+      technical_specs: row.technical_specs.filter((s) => s.key !== col.name),
     }));
 
     setColumns(newColumns);
@@ -195,7 +208,7 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
 
     const newRows = rows.map((row) => ({
       ...row,
-      tecnical_specs: row.tecnical_specs.map((spec) =>
+      technical_specs: row.technical_specs.map((spec) =>
         spec.key === old.name ? { ...spec, key: newName } : spec
       ),
     }));
@@ -213,7 +226,7 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
       id: generateId(),
       code: "",
       name: "",
-      tecnical_specs: columns.map((col) => ({
+      technical_specs: columns.map((col) => ({
         key: col.name,
         value: "",
       })),
@@ -248,7 +261,7 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
 
         return {
           ...row,
-          tecnical_specs: row.tecnical_specs.map((spec) =>
+          technical_specs: row.technical_specs.map((spec) =>
             spec.key === columnName ? { ...spec, value } : spec
           ),
         };
@@ -287,6 +300,7 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
                 <th key={col.id}>
                   <div className="flex gap-1">
                     <Input
+                      className="my-2"
                       value={col.name}
                       onChange={(e) =>
                         handleColumnNameChange(col.id, e.target.value)
@@ -311,6 +325,7 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
 
                 <td>
                   <Input
+                    className="my-2"
                     value={row.code}
                     onChange={(e) =>
                       handleRowChange(row.id, "code", e.target.value)
@@ -320,6 +335,7 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
 
                 <td>
                   <Input
+                    className="my-2"
                     value={row.name}
                     onChange={(e) =>
                       handleRowChange(row.id, "name", e.target.value)
@@ -330,8 +346,9 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
                 {columns.map((col) => (
                   <td key={col.id}>
                     <Input
+                      className="my-2"
                       value={
-                        row.tecnical_specs.find((s) => s.key === col.name)
+                        row.technical_specs.find((s) => s.key === col.name)
                           ?.value || ""
                       }
                       onChange={(e) =>

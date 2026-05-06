@@ -140,7 +140,6 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
   );
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Set<string>>(new Set());
-  console.log(errors, "asas");
   const menuItems = buildCategories(categories);
   const flatCategories = flattenCategories(menuItems);
 
