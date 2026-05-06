@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 from django.contrib.contenttypes.models import ContentType
 from .models import (
     Brand, Category, Product, ProductVariant, ProductRelation,
@@ -51,6 +52,13 @@ class ProductVariantSerializer(serializers.ModelSerializer):
         model = ProductVariant
         fields = ['id', 'product', 'code', 'name', 'dimensions', 'technical_specs', 'created_at']
         read_only_fields = ['id', 'created_at']
+        validators = [
+            UniqueTogetherValidator(
+                queryset=ProductVariant.objects.all(),
+                fields=['product', 'code'],
+                message='Ya existe una variante con este código para este producto.'
+            )
+        ]
 
     def _save_specs(self, variant, specs_data, replace=False):
         if replace:
