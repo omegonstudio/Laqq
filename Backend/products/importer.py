@@ -285,12 +285,8 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
 
         if key not in products_data:
             has_specs = parse_bool(row.get('is_specs_column', ''))
-            # Las KEY NAMES vienen de la celda del producto padre; si está vacía, se usa el nombre de columna
-            spec_keys = []
-            if has_specs and spec_columns:
-                for col in spec_columns:
-                    val = row.get(col, '').strip()
-                    spec_keys.append(val if val else col)
+            # Las KEY NAMES vienen de la celda del producto padre; columnas sin nombre se ignoran
+            spec_keys = [row.get(col, '').strip() for col in spec_columns] if (has_specs and spec_columns) else []
             products_data[key] = {
                 'rows': [],
                 'first_row': row,
