@@ -15,7 +15,7 @@ try:
 except Exception:
     openpyxl = None
 
-from .models import Brand, Category, Product, ProductVariant, ProductRelation
+from .models import Brand, Category, Product, ProductVariant, ProductRelation, TechnicalSpec, VariantTechnicalSpec
 from attachments.models import Attachment
 from integrations.http import HttpClient
 from integrations.http.errors import HttpClientConfigError, HttpClientError, HttpClientResponseError
@@ -240,6 +240,13 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
     if not rows:
         return {'error': 'Archivo vacío o sin filas'}
 
+    # Detectar columnas dinámicas de TechnicalSpec (todo lo que viene después de 'is_specs_column')
+    spec_columns = []
+    if 'is_specs_column' in rows[0]:
+        all_headers = list(rows[0].keys())
+        spec_idx = all_headers.index('is_specs_column')
+        spec_columns = [c for c in all_headers[spec_idx + 1:] if c.strip()]
+
     # Separar filas en productos y variantes
     product_rows = []  # filas con is_variant=false o vacío
     variant_rows = []  # filas con is_variant=true
@@ -276,7 +283,21 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
             })
             continue
 
-        products_data.setdefault(key, {'rows': [], 'first_row': row}).get('rows').append((idx, row))
+        if key not in products_data:
+            has_specs = parse_bool(row.get('is_specs_column', ''))
+            # Las KEY NAMES vienen de la celda del producto padre; si está vacía, se usa el nombre de columna
+            spec_keys = []
+            if has_specs and spec_columns:
+                for col in spec_columns:
+                    val = row.get(col, '').strip()
+                    spec_keys.append(val if val else col)
+            products_data[key] = {
+                'rows': [],
+                'first_row': row,
+                'has_specs': has_specs,
+                'spec_keys': spec_keys,
+            }
+        products_data[key]['rows'].append((idx, row))
 
     summary = {
         'created_brands': 0,
@@ -287,6 +308,7 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
         'created_specs': 0,
         'updated_specs': 0,
         'created_variants': 0,
+        'created_technical_specs': 0,
         'created_relations': 0,
         'errors': errors,
     }
@@ -360,30 +382,12 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
 
                 created_product_map[product_key] = product
 
-                # variantes inline (filas de producto que traen variant_code)
-                for lineno, spec_row in rows_for_product:
-                    variant_code = (spec_row.get('variant_code') or spec_row.get('spec_code') or '').strip()
-                    if not variant_code:
-                        continue
-                    try:
-                        defaults = {
-                            'name': (spec_row.get('variant_name') or '').strip(),
-                            'dimensions': spec_row.get('dimensions') or None,
-                        }
-                        obj, created_spec = ProductVariant.objects.update_or_create(
-                            product=product,
-                            code=variant_code,
-                            defaults=defaults
-                        )
-                        if created_spec:
-                            summary['created_specs'] += 1
-                        else:
-                            summary['updated_specs'] += 1
-                    except Exception as e:
-                        summary['errors'].append({'row': lineno, 'error': f"Error creando/actualizando variante para {product_key}: {e}"})
-
         except Exception as e:
             summary['errors'].append({'product': product_key, 'error': str(e)})
+
+    # Mapas para la segunda pasada
+    product_has_specs_by_key = {k: v['has_specs'] for k, v in products_data.items()}
+    product_spec_keys_by_key = {k: v['spec_keys'] for k, v in products_data.items()}
 
     # segunda pasada: procesar variantes (is_variant=true)
     for lineno, variant_row in variant_rows:
@@ -400,10 +404,12 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
 
             # Buscar el producto padre por product_code
             parent_product = None
+            parent_key = None
 
             for key, prod in created_product_map.items():
                 if prod.product_code == product_code:
                     parent_product = prod
+                    parent_key = key
                     break
 
             if not parent_product:
@@ -431,6 +437,25 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                 summary['created_variants'] += 1
             else:
                 summary['updated_specs'] += 1
+
+            # Procesar TechnicalSpecs si el producto padre tiene is_specs_column=true
+            has_specs = product_has_specs_by_key.get(parent_key, False) if parent_key else False
+            spec_keys = product_spec_keys_by_key.get(parent_key, []) if parent_key else []
+            if has_specs and spec_keys:
+                # Eliminar specs existentes de esta variante (y sus TechnicalSpec huérfanos)
+                old_vts = VariantTechnicalSpec.objects.filter(variant=variant_obj)
+                old_ts_ids = list(old_vts.values_list('technical_spec_id', flat=True))
+                old_vts.delete()
+                TechnicalSpec.objects.filter(id__in=old_ts_ids).delete()
+                # Las key names vienen del producto padre; los values de la fila de la variante
+                for col, key_name in zip(spec_columns, spec_keys):
+                    if not key_name:
+                        continue
+                    raw = variant_row.get(col)
+                    value = str(raw) if raw is not None else ''
+                    ts = TechnicalSpec.objects.create(key=key_name, value=value)
+                    VariantTechnicalSpec.objects.create(variant=variant_obj, technical_spec=ts)
+                    summary['created_technical_specs'] += 1
 
         except Exception as e:
             summary['errors'].append({

@@ -46,7 +46,7 @@ class TechnicalSpecSerializer(serializers.ModelSerializer):
 class ProductVariantSerializer(serializers.ModelSerializer):
     """Serializer para variantes de producto (code, name, dimensions + specs técnicas propias)"""
 
-    technical_specs = TechnicalSpecSerializer(many=True, required=False)
+    technical_specs = TechnicalSpecSerializer(many=True, read_only=True)
 
     class Meta:
         model = ProductVariant
