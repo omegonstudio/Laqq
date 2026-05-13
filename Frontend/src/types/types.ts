@@ -34,7 +34,7 @@ export interface Variants {
   name: string;
   id?: string;
   product: string;
-  dimensions?: string;
+  dimensions: string;
   technical_specs?: TecnicalSpecs[];
 }
 

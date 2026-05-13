@@ -99,7 +99,7 @@ export default function NavDropdown() {
 
                 {/* PANEL SOLO PARA ESTE BOTÓN */}
                 {isActive && hasChildren && (
-                  <div className="absolute top-full left-0 mt-2 bg-card border rounded-xl shadow-lg z-50 flex">
+                  <div className="absolute top-full left-0 bg-card border rounded-xl shadow-lg z-50 flex">
                     {/* NIVEL 1 */}
                     <Column
                       items={item.subcategories}

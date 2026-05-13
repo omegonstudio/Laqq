@@ -96,7 +96,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   isNew,
 }) => {
   const dispatch = useAppDispatch();
-  const { list: categories } = useAppSelector((state) => state.categories);
   const { list: products } = useAppSelector((state) => state.products);
   const { list: brands } = useAppSelector((state) => state.brands);
 
@@ -115,7 +114,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   const [selectedRelated, setSelectedRelated] = useState<string>("");
   const [carrouselDeleteIds, setCarrouselDeleteIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>("general");
-
+  const [disabled, setDisabled] = useState<boolean>(false);
   const handleVariantsChange = (vars: Variants[]) => {
     setLocalState((prev) => ({
       ...prev,
@@ -235,11 +234,12 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     );
   }, [localState, initialData, carrouselDeleteIds]);
 
-  const isSaveEnabled = useMemo(() => {
-    return validation.isValid && (!initialData || hasChanges);
+  useEffect(() => {
+    setDisabled(validation.isValid && (!initialData || hasChanges));
   }, [validation.isValid, initialData, hasChanges]);
 
   const handleSave = async () => {
+    setDisabled(false);
     try {
       const initialImage = initialData?.image_attachment ?? null;
       const currentImage = localState.image_file ?? null;
@@ -436,6 +436,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       }
 
       onClose();
+      setDisabled(true);
     } catch (error: unknown) {
       console.error("Error inesperado:", error);
       toast({
@@ -444,7 +445,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       });
     }
   };
-
+  console.log(disabled);
   const handleFile = (selectedFile: File | null) => {
     if (selectedFile) {
       const reader = new FileReader();
@@ -812,11 +813,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           <Button variant="outline" onClick={handleCancel}>
             Cancelar
           </Button>
-          <Button
-            variant="primary"
-            onClick={handleSave}
-            disabled={!isSaveEnabled}
-          >
+          <Button variant="primary" onClick={handleSave} disabled={!disabled}>
             Guardar
           </Button>
         </div>

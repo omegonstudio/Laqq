@@ -137,6 +137,7 @@ export const normalizeVariants = (vars: Variants[]) =>
       id: v.id,
       code: v.code.trim(),
       name: v.name?.trim() || "",
+      dimensions: v.dimensions?.trim() || "",
       technical_specs: (v.technical_specs || [])
         .map((s) => ({
           key: s.key,

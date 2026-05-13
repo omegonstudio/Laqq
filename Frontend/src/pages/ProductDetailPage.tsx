@@ -11,10 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearSelected, fetchProduct } from "@/store/productSlice";
-import { unifyProductSpecs } from "@/components/atoms/specsTable";
 import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
-import { Attachment } from "@/types/types";
-import { Toggle } from "@radix-ui/react-toggle";
 
 const ProductDetailPage = () => {
   const [activeTab, setActiveTab] = useState<"details" | "files">("details");
@@ -34,15 +31,14 @@ const ProductDetailPage = () => {
     ? product.related_products
     : [];
 
-  const variantCount = product?.variants?.length ?? 0;
+  const variantCount: number = product?.variants?.length ?? 0;
   const isVariantInCart = (variant) => {
     const uniqueId = `${product.id}-${variant.code}`;
     return items.some((item) => item.id === uniqueId);
   };
   const hasVariants = variantCount > 0;
   const hasSingleVariant = variantCount === 1;
-  const hasRelated = relatedList.length > 0;
-  const showDetailsSection = hasVariants || hasRelated;
+
   const toggleVariantInCart = (variant) => {
     const uniqueId = `${product.id}-${variant.code}`;
 
@@ -64,7 +60,7 @@ const ProductDetailPage = () => {
 
     return Array.from(keys);
   }, [product]);
-
+  console.log(variantColumns);
   const hasProductInCart = () => {
     return items.some(
       (item) =>
@@ -76,7 +72,6 @@ const ProductDetailPage = () => {
 
   const addCuoteButton = (product) => {
     const variantCount = product?.variants?.length;
-    console.log(variantCount, product, items);
     // 1. Ya hay variantes en carrito → solo redirigir
     if (hasProductInCart()) {
       navigate("/quote");
@@ -112,7 +107,19 @@ const ProductDetailPage = () => {
       dispatch(clearSelected());
     };
   }, [id, dispatch]);
+  const isImage = (contentType?: string) => contentType?.startsWith("image/");
 
+  const imageAttachments =
+    product?.attachments?.filter((att) => isImage(att.content_type_str)) ?? [];
+
+  const fileAttachments =
+    product?.attachments?.filter((att) => !isImage(att.content_type_str)) ?? [];
+  const showDetailsSection = hasVariants || fileAttachments.length > 0;
+  useEffect(() => {
+    if (!hasVariants && fileAttachments.length > 0) {
+      setActiveTab("files");
+    }
+  }, [hasVariants, fileAttachments.length]);
   // Mostrar loading mientras carga
   if (selectedLoading) {
     return (
@@ -154,13 +161,7 @@ const ProductDetailPage = () => {
       </div>
     );
   }
-  const isImage = (contentType?: string) => contentType?.startsWith("image/");
 
-  const imageAttachments =
-    product.attachments?.filter((att) => isImage(att.content_type_str)) ?? [];
-
-  const fileAttachments =
-    product.attachments?.filter((att) => !isImage(att.content_type_str)) ?? [];
   // Construir array de imágenes con la lógica correcta
   // AHORA SÍ podemos usar product de forma segura porque ya verificamos que existe
   const buildImageArray = () => {
@@ -186,7 +187,6 @@ const ProductDetailPage = () => {
 
     return imageArray;
   };
-  console.log(product.attachments);
   const images = buildImageArray();
   const totalImages = images.length;
 
@@ -291,30 +291,42 @@ const ProductDetailPage = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                size="lg"
-                className="flex items-center justify-center gap-2"
-                onClick={() => {
-                  if (!hasVariants) {
-                    addToCart(product);
-                    return;
-                  }
-
-                  if (hasSingleVariant) {
-                    const variant = product.variants[0];
-                    addVariantToCart(product, variant, variant.code);
-                    return;
-                  }
-                }}
-                disabled={false}
-              >
-                <ShoppingCart size={20} />
-                {!hasVariants
-                  ? "Agregar al Carrito"
-                  : hasSingleVariant
-                  ? "Agregar"
-                  : "Seleccionar variedad del producto en la lista"}
-              </Button>
+              {variantCount < 2 ? (
+                <Button
+                  size="lg"
+                  className="flex items-center justify-center gap-2"
+                  onClick={() => {
+                    if (!hasVariants) {
+                      addToCart(product);
+                      return;
+                    }
+                    if (hasSingleVariant) {
+                      const variant = product.variants[0];
+                      addVariantToCart(product, variant, variant.code);
+                      return;
+                    }
+                  }}
+                  disabled={false}
+                >
+                  <ShoppingCart size={20} />
+                  Agregar al carrito
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  className="flex items-center justify-center gap-2"
+                  onClick={() => {
+                    document.getElementById("variantes")?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "center",
+                    });
+                  }}
+                  disabled={false}
+                >
+                  <ShoppingCart size={20} />
+                  Seleccionar variedad
+                </Button>
+              )}
               {/* <Link to="/quote"> */}
               <Button
                 size="lg"
@@ -333,11 +345,12 @@ const ProductDetailPage = () => {
 
         {/* Solo mostrar esta sección si hay especificaciones o productos relacionados */}
         {showDetailsSection && (
-          <div className="bg-card border border-border rounded-2xl p-8">
+          <div className="bg-card border border-border rounded-2xl p-8 ">
             {/* Tab Bar */}
             <div className="flex gap-4 mb-6 border-b border-border">
               {hasVariants && (
                 <button
+                  id="variantes"
                   onClick={() => setActiveTab("details")}
                   className={`px-4 py-2 font-medium transition-colors ${
                     activeTab === "details"
@@ -370,7 +383,9 @@ const ProductDetailPage = () => {
                     <tr>
                       <th className="px-4 py-3 text-left font-bold">Código</th>
                       <th className="px-4 py-3 text-left font-bold">Nombre</th>
-
+                      <th className="px-4 py-3 text-left font-bold">
+                        Dimensiones
+                      </th>
                       {variantColumns.map((col) => (
                         <th key={col} className="px-4 py-3 text-left font-bold">
                           {col}
@@ -392,6 +407,10 @@ const ProductDetailPage = () => {
 
                         <td className="px-4 py-3 text-sm font-medium">
                           {variant.name}
+                        </td>
+
+                        <td className="px-4 py-3 text-sm font-medium">
+                          {variant.dimensions}
                         </td>
 
                         {variantColumns.map((col) => {

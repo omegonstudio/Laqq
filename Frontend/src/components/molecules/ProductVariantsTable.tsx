@@ -20,6 +20,7 @@ export interface Variants {
   code: string;
   name: string;
   product: string;
+  dimensions: string;
   technical_specs?: TecnicalSpecs[];
 }
 
@@ -32,6 +33,7 @@ interface VariantRow {
   id: string;
   code: string;
   name: string;
+  dimensions: string;
   technical_specs: TecnicalSpecs[];
 }
 
@@ -71,6 +73,7 @@ const variantsToRows = (
     id: v.id || generateId(),
     code: v.code || "",
     name: v.name || "",
+    dimensions: v.dimensions || "",
     technical_specs: columns.map((col) => {
       const found = v.technical_specs?.find((s) => s.key === col.name);
       return {
@@ -104,6 +107,7 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
             code: "",
             name: "",
             technical_specs: [],
+            dimensions: "",
           },
         ]
   );
@@ -129,6 +133,7 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
         id: row.id?.includes("-") ? row.id : undefined,
         code: row.code,
         name: row.name,
+        dimensions: row.dimensions,
         product: "",
         technical_specs: row.technical_specs.filter(
           (s) => activeKeys.has(s.key) && s.value.trim()
@@ -226,6 +231,7 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
       id: generateId(),
       code: "",
       name: "",
+      dimensions: "",
       technical_specs: columns.map((col) => ({
         key: col.name,
         value: "",
@@ -236,13 +242,12 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
   };
 
   const handleRemoveRow = (rowId: string) => {
-    if (rows.length <= 1) return;
     setRows(rows.filter((r) => r.id !== rowId));
   };
 
   const handleRowChange = (
     rowId: string,
-    field: "code" | "name",
+    field: "code" | "name" | "dimensions",
     value: string
   ) => {
     setRows(
@@ -296,6 +301,7 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
               <th></th>
               <th>Código</th>
               <th>Nombre</th>
+              <th>Dimensiones</th>
               {columns.map((col) => (
                 <th key={col.id}>
                   <div className="flex gap-1">
@@ -339,6 +345,15 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
                     value={row.name}
                     onChange={(e) =>
                       handleRowChange(row.id, "name", e.target.value)
+                    }
+                  />
+                </td>
+                <td>
+                  <Input
+                    className="my-2"
+                    value={row.dimensions}
+                    onChange={(e) =>
+                      handleRowChange(row.id, "dimensions", e.target.value)
                     }
                   />
                 </td>

@@ -374,6 +374,7 @@ function QuoteForm() {
                 </div>
 
                 <Button
+                  type="button"
                   className="bg-transparent text-red-600 hover:bg-red-600 hover:text-white"
                   onClick={() => removeItem(index)}
                 >
