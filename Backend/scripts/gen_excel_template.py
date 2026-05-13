@@ -13,22 +13,22 @@ ws = wb.active
 ws.title = 'Productos y Variantes'
 
 headers = [
-    'product_code',
-    'name',
-    'brand',
-    'category_level_0',
-    'category_level_1',
-    'category_level_2',
-    'description',
-    'image_name',
-    'is_active',
-    'is_variant',
-    'variant_code',
-    'variant_name',
-    'dimensions',
-    'related_product_codes',
-    'is_specs_column',
-    # Columnas posicionales para TechnicalSpecs (el padre define los key names, las variantes los values):
+    'codigo_producto',
+    'nombre',
+    'marca',
+    'categoria_nivel_0',
+    'categoria_nivel_1',
+    'categoria_nivel_2',
+    'descripcion',
+    'nombre_imagen',
+    'activo',
+    'es_variante',
+    'codigo_variante',
+    'nombre_variante',
+    'dimensiones',
+    'productos_relacionados',
+    'tiene_specs',
+    # Columnas posicionales para specs dinamicas (el padre define los nombres, las variantes los valores):
     'spec_1',
     'spec_2',
     'spec_3',
@@ -44,7 +44,9 @@ border = Border(left=thin, right=thin, top=thin, bottom=thin)
 center = Alignment(horizontal='center', vertical='center', wrap_text=True)
 wrap = Alignment(wrap_text=True, vertical='top')
 
-specs_start_col = headers.index('is_specs_column') + 1  # 1-based
+specs_start_col = headers.index('tiene_specs') + 1  # 1-based
+is_variant_col_idx = headers.index('es_variante')   # 0-based para row_data
+
 for col_idx, h in enumerate(headers, 1):
     cell = ws.cell(row=1, column=col_idx, value=h)
     cell.font = header_font
@@ -53,34 +55,34 @@ for col_idx, h in enumerate(headers, 1):
     cell.border = border
 
 col_widths = {
-    'product_code': 15,
-    'name': 28,
-    'brand': 15,
-    'category_level_0': 16,
-    'category_level_1': 16,
-    'category_level_2': 16,
-    'description': 30,
-    'image_name': 22,
-    'is_active': 10,
-    'is_variant': 11,
-    'variant_code': 18,
-    'variant_name': 18,
-    'dimensions': 14,
-    'related_product_codes': 22,
-    'is_specs_column': 16,
-    'spec_1': 16,
-    'spec_2': 16,
-    'spec_3': 16,
+    'codigo_producto':      16,
+    'nombre':               28,
+    'marca':                15,
+    'categoria_nivel_0':    17,
+    'categoria_nivel_1':    17,
+    'categoria_nivel_2':    17,
+    'descripcion':          30,
+    'nombre_imagen':        22,
+    'activo':               10,
+    'es_variante':          12,
+    'codigo_variante':      18,
+    'nombre_variante':      18,
+    'dimensiones':          14,
+    'productos_relacionados': 22,
+    'tiene_specs':          13,
+    'spec_1':               16,
+    'spec_2':               16,
+    'spec_3':               16,
 }
 for col_idx, h in enumerate(headers, 1):
     ws.column_dimensions[get_column_letter(col_idx)].width = col_widths.get(h, 14)
 
 example_rows = [
-    # Producto 1 — padre define KEY NAMES en spec_1/spec_2/spec_3 (is_specs_column=true)
+    # Producto 1 — padre define NOMBRES de specs en spec_1/spec_2/spec_3 (tiene_specs=true)
     ('MAT-001', 'Matraz Aforado Clase A', 'LabEquip', 'equipos', 'Material Volumetrico', 'Matraces',
      'Matraz aforado de vidrio borosilicato clase A', 'matraz_aforado.jpg', 'true', 'false',
      None, None, None, None, 'true', 'potencia', 'velocidad', 'volumen'),
-    # variantes ponen los VALUES en esas mismas columnas
+    # variantes ponen los VALORES en esas mismas columnas
     ('MAT-001', None, None, None, None, None, None, None, None, 'true',
      'MAT-001-25ML', '25 ml', '70x40mm', None, None, '20hp', '25mhp', '25ml'),
     ('MAT-001', None, None, None, None, None, None, None, None, 'true',
@@ -89,21 +91,21 @@ example_rows = [
      'MAT-001-100ML', '100 ml', '110x50mm', None, None, '60hp', '40mhp', '100ml'),
     # Separador
     (None,) * len(headers),
-    # Producto 2 — padre define sus propios KEY NAMES distintos
+    # Producto 2 — define sus propios nombres de specs (distintos al producto 1)
     ('VAS-002', 'Vaso de Precipitado', 'GlassLab', 'equipos', 'Cristaleria', 'Vasos',
      'Vaso de precipitado graduado', 'vaso_precipitado.jpg', 'true', 'false',
-     None, None, None, 'MAT-001', 'true', 'viscosidad', 'dimensiones', None),
+     None, None, None, 'MAT-001', 'true', 'viscosidad', 'cap_nominal', None),
     ('VAS-002', None, None, None, None, None, None, None, None, 'true',
-     'VAS-002-100ML', '100 ml', '50x70mm', None, None, '52cP', '50x70mm', None),
+     'VAS-002-100ML', '100 ml', '50x70mm', None, None, '52cP', '100ml', None),
     ('VAS-002', None, None, None, None, None, None, None, None, 'true',
-     'VAS-002-250ML', '250 ml', '70x95mm', None, None, '48cP', '70x95mm', None),
+     'VAS-002-250ML', '250 ml', '70x95mm', None, None, '48cP', '250ml', None),
     ('VAS-002', None, None, None, None, None, None, None, None, 'true',
-     'VAS-002-500ML', '500 ml', '90x125mm', None, None, '45cP', '90x125mm', None),
+     'VAS-002-500ML', '500 ml', '90x125mm', None, None, '45cP', '500ml', None),
 ]
 
 for row_idx, row_data in enumerate(example_rows, 2):
     is_empty = all(v is None for v in row_data)
-    is_variant_row = row_data[9] == 'true'
+    is_variant_row = row_data[is_variant_col_idx] == 'true'
     for col_idx, value in enumerate(row_data, 1):
         cell = ws.cell(row=row_idx, column=col_idx, value=value)
         cell.border = border
@@ -116,7 +118,7 @@ ws.row_dimensions[1].height = 32
 
 # ========== HOJA 2: Instrucciones ==========
 ws2 = wb.create_sheet('Instrucciones')
-ws2.column_dimensions['A'].width = 110
+ws2.column_dimensions['A'].width = 115
 
 title_font = Font(bold=True, size=13, color='1F4E79')
 section_font = Font(bold=True, size=11)
@@ -124,75 +126,97 @@ normal_font = Font(size=10)
 code_font = Font(name='Courier New', size=9, color='8B0000')
 title_fill = PatternFill('solid', fgColor='D6E4F7')
 code_fill = PatternFill('solid', fgColor='F5F5F5')
+error_fill = PatternFill('solid', fgColor='FCE4D6')
 
 instrucciones = [
-    ('INSTRUCCIONES PARA CARGA MASIVA CON VARIANTES', 'title'),
+    ('INSTRUCCIONES PARA CARGA MASIVA DE PRODUCTOS Y VARIANTES', 'title'),
     ('', None),
     ('1. COLUMNAS DISPONIBLES', 'section'),
-    ('   product_code          Codigo unico del producto (obligatorio)', 'normal'),
-    ('   name                  Nombre del producto', 'normal'),
-    ('   brand                 Marca del producto', 'normal'),
-    ('   category_level_0      Categoria raiz: insumos, procesos, equipos, mobiliario (obligatoria si hay categoria)', 'normal'),
-    ('   category_level_1      Subcategoria nivel 1 (se crea si no existe)', 'normal'),
-    ('   category_level_2      Subcategoria nivel 2 (se crea si no existe, requiere level_1)', 'normal'),
-    ('   description           Descripcion del producto', 'normal'),
-    ('   image_name            Nombre del archivo de imagen en la libreria (ej: producto.jpg)', 'normal'),
-    ('   is_active             true/false - si el producto esta activo (default: true)', 'normal'),
-    ('   is_variant            true/false - si la fila es una variante o un producto', 'normal'),
-    ('   variant_code          Codigo unico de la variante (obligatorio para variantes)', 'normal'),
-    ('   variant_name          Nombre de la variante (ej: 250 ml, Talla L, Version A)', 'normal'),
-    ('   dimensions            Dimensiones fisicas (ej: 10x5x5cm, 70x40mm)', 'normal'),
-    ('   related_product_codes Codigos de productos relacionados separados por ; (ej: MAT-001;VAS-002)', 'normal'),
-    ('   is_specs_column       true/false - si las variantes del producto tendran TechnicalSpecs dinamicas', 'normal'),
-    ('   [columnas dinamicas]  Cualquier columna despues de is_specs_column es un TechnicalSpec.', 'normal'),
-    ('                         El nombre de la columna = key, el valor de la celda = value.', 'normal'),
-    ('                         Ejemplo: agregar columna "potencia" con valor "20hp" en la variante.', 'normal'),
+    ('   codigo_producto        Codigo unico del producto (obligatorio)', 'normal'),
+    ('   nombre                 Nombre del producto', 'normal'),
+    ('   marca                  Marca del producto', 'normal'),
+    ('   categoria_nivel_0      Categoria raiz — valores validos: insumos, procesos, equipos, mobiliario', 'normal'),
+    ('   categoria_nivel_1      Subcategoria nivel 1 (se crea si no existe)', 'normal'),
+    ('   categoria_nivel_2      Subcategoria nivel 2 (se crea si no existe; requiere categoria_nivel_1)', 'normal'),
+    ('   descripcion            Descripcion del producto', 'normal'),
+    ('   nombre_imagen          Nombre del archivo de imagen en la libreria (ej: producto.jpg)', 'normal'),
+    ('   activo                 true/false — si el producto esta activo (por defecto: true)', 'normal'),
+    ('   es_variante            true/false — si la fila es una variante (true) o un producto padre (false)', 'normal'),
+    ('   codigo_variante        Codigo unico de la variante (obligatorio para es_variante=true)', 'normal'),
+    ('   nombre_variante        Nombre descriptivo de la variante (ej: 250 ml, Talla L)', 'normal'),
+    ('   dimensiones            Dimensiones fisicas (ej: 10x5x5cm, 70x40mm)', 'normal'),
+    ('   productos_relacionados Codigos de productos relacionados separados por ; (ej: MAT-001;VAS-002)', 'normal'),
+    ('   tiene_specs            true/false — en la fila del producto padre: habilita specs dinamicas para sus variantes', 'normal'),
+    ('   spec_1, spec_2, ...    Columnas de specs dinamicas: el padre escribe el NOMBRE, la variante escribe el VALOR', 'normal'),
     ('', None),
-    ('2. TECHNICAL SPECS DINAMICAS', 'section'),
-    ('   - Solo aplican a variantes (is_variant=true), nunca al producto padre', 'normal'),
-    ('   - El producto padre define is_specs_column=true para habilitar el procesamiento', 'normal'),
-    ('   - Agregar tantas columnas dinamicas como necesites despues de is_specs_column', 'normal'),
-    ('   - Si el valor esta vacio, igual se crea el TechnicalSpec con value=""', 'normal'),
+    ('2. SPECS DINAMICAS DE VARIANTES', 'section'),
+    ('   - Solo aplican a variantes (es_variante=true), nunca al producto padre', 'normal'),
+    ('   - En la fila del producto padre, escribir el NOMBRE de cada atributo (ej: potencia, material)', 'normal'),
+    ('   - En cada fila de variante, escribir el VALOR correspondiente (ej: 20hp, acero inoxidable)', 'normal'),
+    ('   - Columnas sin nombre en la fila del padre se ignoran completamente', 'normal'),
     ('   - Al reimportar una variante existente, sus specs anteriores se reemplazan por las nuevas', 'normal'),
-    ('   - Los nombres de columna dinamicas son libres (ej: potencia, velocidad, material, voltaje)', 'normal'),
-    ('   - Las columnas dinamicas en el Excel aplican a TODOS los productos del archivo.', 'normal'),
-    ('     Si un producto no usa specs (is_specs_column=false), esas columnas se ignoran para el.', 'normal'),
+    ('   - Podes agregar tantas columnas de specs como necesites (spec_1, spec_2, spec_3, ...)', 'normal'),
     ('', None),
-    ('3. CREAR UN PRODUCTO CON VARIANTES', 'section'),
-    ('   Paso 1: Fila del producto (is_variant=false): completar name, brand, category, is_specs_column', 'normal'),
-    ('   Paso 2: Para cada variante, usar el mismo product_code con is_variant=true', 'normal'),
-    ('   Paso 3: Completar variant_code, variant_name y las columnas dinamicas en cada variante', 'normal'),
+    ('3. PASOS PARA CARGAR UN PRODUCTO CON VARIANTES', 'section'),
+    ('   Paso 1: Una fila con es_variante=false define el producto padre (nombre, marca, categoria, etc.)', 'normal'),
+    ('          Si usa specs, poner tiene_specs=true y escribir los nombres de atributos en spec_1, spec_2...', 'normal'),
+    ('   Paso 2: Para cada variante, una fila con es_variante=true y el mismo codigo_producto', 'normal'),
+    ('          Completar codigo_variante, nombre_variante y los valores de specs', 'normal'),
     ('', None),
-    ('4. REGLAS', 'section'),
-    ('   - Solo puede haber UN producto (is_variant=false) por product_code', 'normal'),
-    ('   - Las variantes (is_variant=true) DEBEN tener un producto padre existente o creado en el mismo archivo', 'normal'),
-    ('   - Las variantes pueden dejar vacios los campos del producto (name, brand, category, etc.)', 'normal'),
-    ('   - Cada variante debe tener un variant_code unico dentro del mismo producto', 'normal'),
-    ('   - Si variant_code esta vacio, la fila no crea variante (se ignora esa parte)', 'normal'),
+    ('4. EJEMPLO', 'section'),
+    ('   codigo_producto | es_variante | codigo_variante | tiene_specs | spec_1   | spec_2   ', 'code'),
+    ('   MAT-001         | false       |                 | true        | potencia | volumen  ', 'code'),
+    ('   MAT-001         | true        | MAT-001-25ML    |             | 20hp     | 25ml     ', 'code'),
+    ('   MAT-001         | true        | MAT-001-50ML    |             | 40hp     | 50ml     ', 'code'),
     ('', None),
-    ('5. EJEMPLO', 'section'),
-    ('   product_code | ... | is_variant | variant_code  | is_specs_column | spec_1     | spec_2    | spec_3', 'code'),
-    ('   MAT-001      | ... | false      |               | true            | potencia   | velocidad | volumen', 'code'),
-    ('   MAT-001      | ... | true       | MAT-001-25ML  |                 | 20hp       | 25mhp     | 25ml  ', 'code'),
-    ('   MAT-001      | ... | true       | MAT-001-50ML  |                 | 40hp       | 30mhp     | 50ml  ', 'code'),
-    ('   ---', 'code'),
-    ('   VAS-002      | ... | false      |               | true            | viscosidad | dimensiones |     ', 'code'),
-    ('   VAS-002      | ... | true       | VAS-002-100ML |                 | 52cP       | 50x70mm     |     ', 'code'),
+    ('5. ERRORES POSIBLES Y SOLUCIONES', 'section'),
     ('', None),
-    ('6. ERRORES COMUNES', 'section'),
-    ('   - Variante (is_variant=true) sin product_code: fila ignorada con error', 'normal'),
-    ('   - Variante (is_variant=true) sin variant_code: fila ignorada con error', 'normal'),
-    ('   - Mas de un producto con el mismo product_code (is_variant=false): segundo es ignorado con error', 'normal'),
-    ('   - Variante cuyo product_code no existe en DB ni en el archivo: error', 'normal'),
+    ('   ERROR: Fila N: variante sin codigo_producto', 'error'),
+    ('   Causa:    La fila tiene es_variante=true pero no tiene codigo_producto.', 'normal'),
+    ('   Solucion: Completar el campo codigo_producto con el codigo del producto padre.', 'normal'),
     ('', None),
-    ('7. CAMBIOS RESPECTO A LA VERSION ANTERIOR', 'section'),
-    ('   - spec_code         => variant_code  (renombrado)', 'normal'),
-    ('   - volume            => variant_name  (renombrado, ahora es el nombre descriptivo de la variante)', 'normal'),
-    ('   - cap               => ELIMINADO (manejar via TechnicalSpecs en admin/API)', 'normal'),
-    ('   - outlet            => ELIMINADO (manejar via TechnicalSpecs en admin/API)', 'normal'),
-    ('   - accuracy          => ELIMINADO (manejar via TechnicalSpecs en admin/API)', 'normal'),
-    ('   - precision         => ELIMINADO (manejar via TechnicalSpecs en admin/API)', 'normal'),
-    ('   - additional_specs  => ELIMINADO (manejar via TechnicalSpecs en admin/API)', 'normal'),
+    ('   ERROR: Fila N: codigo_producto "X" duplicado', 'error'),
+    ('   Causa:    Hay dos o mas filas con es_variante=false y el mismo codigo_producto.', 'normal'),
+    ('   Solucion: Solo puede haber UNA fila de producto por codigo. Las demas deben ser variantes.', 'normal'),
+    ('', None),
+    ('   ERROR: Fila N: variante sin codigo_variante', 'error'),
+    ('   Causa:    La fila tiene es_variante=true pero no tiene codigo_variante.', 'normal'),
+    ('   Solucion: Completar el campo codigo_variante con un codigo unico para esa variante.', 'normal'),
+    ('', None),
+    ('   ERROR: Fila N: producto padre con codigo_producto "X" no encontrado', 'error'),
+    ('   Causa:    La variante referencia un producto que no existe en la DB ni en el archivo.', 'normal'),
+    ('   Solucion: Agregar la fila del producto padre en el mismo archivo, o verificar el codigo.', 'normal'),
+    ('', None),
+    ('   ERROR: Fila N: imagen "X" no encontrada en la libreria de archivos', 'error'),
+    ('   Causa:    El nombre_imagen no coincide con ningun archivo en la libreria de imagenes.', 'normal'),
+    ('   Solucion: Subir la imagen a la libreria antes de importar, o dejar el campo vacio.', 'normal'),
+    ('', None),
+    ('   ERROR: Fila N: error al procesar producto "X" — Categoria nivel 0 invalida', 'error'),
+    ('   Causa:    El valor de categoria_nivel_0 no es uno de los permitidos.', 'normal'),
+    ('   Solucion: Usar solo: insumos, procesos, equipos, mobiliario (exactamente, sin tildes).', 'normal'),
+    ('', None),
+    ('   ERROR: Fila N: producto relacionado con codigo "X" no encontrado', 'error'),
+    ('   Causa:    Un codigo en productos_relacionados no existe en la DB ni en el archivo.', 'normal'),
+    ('   Solucion: Verificar el codigo o definir el producto relacionado en el mismo archivo.', 'normal'),
+    ('', None),
+    ('   NOTA: Si descargaste el Excel de errores y lo corregiste para reimportar,', 'normal'),
+    ('         la columna "error" se ignora automaticamente — no hace falta borrarla.', 'normal'),
+    ('', None),
+    ('6. CAMBIOS DE NOMBRES DE COLUMNAS (version anterior → actual)', 'section'),
+    ('   product_code         => codigo_producto', 'normal'),
+    ('   name                 => nombre', 'normal'),
+    ('   brand                => marca', 'normal'),
+    ('   category_level_0/1/2 => categoria_nivel_0/1/2', 'normal'),
+    ('   description          => descripcion', 'normal'),
+    ('   image_name           => nombre_imagen', 'normal'),
+    ('   is_active            => activo', 'normal'),
+    ('   is_variant           => es_variante', 'normal'),
+    ('   variant_code         => codigo_variante', 'normal'),
+    ('   variant_name         => nombre_variante', 'normal'),
+    ('   dimensions           => dimensiones', 'normal'),
+    ('   related_product_codes => productos_relacionados', 'normal'),
+    ('   is_specs_column      => tiene_specs', 'normal'),
+    ('   (ambos formatos son aceptados por el importador)', 'normal'),
 ]
 
 for row_idx, (text, style) in enumerate(instrucciones, 1):
@@ -202,6 +226,9 @@ for row_idx, (text, style) in enumerate(instrucciones, 1):
         cell.fill = title_fill
     elif style == 'section':
         cell.font = section_font
+    elif style == 'error':
+        cell.font = Font(bold=True, size=10, color='C00000')
+        cell.fill = error_fill
     elif style == 'code':
         cell.font = code_font
         cell.fill = code_fill

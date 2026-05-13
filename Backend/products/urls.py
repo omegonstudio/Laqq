@@ -6,6 +6,7 @@ from .views import (
     ProductVariantViewSet,
     TechnicalSpecViewSet,
     ProductsBulkUploadAPIView,
+    BulkUploadErrorsAPIView,
 )
 from django.urls import path, include
 
@@ -17,6 +18,7 @@ router.register(r'variants', ProductVariantViewSet, basename='product-variant')
 router.register(r'technical-specs', TechnicalSpecViewSet, basename='technical-spec')
 
 urlpatterns = [
+    path('bulk-upload/errors/', BulkUploadErrorsAPIView.as_view(), name='bulk-upload-errors'),
     path('bulk-upload/', ProductsBulkUploadAPIView.as_view(), name='products-bulk-upload'),
     path('', include(router.urls)),
 ]
