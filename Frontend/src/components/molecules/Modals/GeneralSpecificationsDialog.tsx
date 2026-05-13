@@ -18,22 +18,21 @@ import {
 
 import Button from "@/components/atoms/Button";
 import { useState } from "react";
-
+import { SpecificationsForm } from "@/types/api";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSave: (values: SpecificationsForm) => void;
+  initialData: SpecificationsForm;
 }
 
-const GeneralSpecificationsDialog = ({ open, onOpenChange }: Props) => {
-  const [form, setForm] = useState({
-    precios: "",
-    forma_pago: "",
-    clausula_pago: "",
-    validez_oferta: "15 días",
-    garantia: "Por el término de un año contra todo defecto de fabricación.",
-    orden_compra: "",
-    observaciones: "",
-  });
+const GeneralSpecificationsDialog = ({
+  open,
+  onOpenChange,
+  onSave,
+  initialData,
+}: Props) => {
+  const [form, setForm] = useState(initialData);
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({
@@ -43,6 +42,7 @@ const GeneralSpecificationsDialog = ({ open, onOpenChange }: Props) => {
   };
 
   const handleSave = () => {
+    onSave(form);
     onOpenChange(false);
   };
 

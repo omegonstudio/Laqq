@@ -182,7 +182,15 @@ export interface Quote {
   created_at?: string;
   updated_at?: string;
 }
-
+export interface SpecificationsForm {
+  precios: string;
+  forma_pago: string;
+  clausula_pago: string;
+  validez_oferta: string;
+  garantia: string;
+  orden_compra: string;
+  observaciones: string;
+}
 // Para LEER (GET) - Lo que recibes de la API
 export interface QuoteRender {
   id: string;
@@ -198,6 +206,7 @@ export interface QuoteRender {
   updated_at: string;
   items: QuoteItemRender[]; // Items con productos completos
   observaciones: string;
+  specs: SpecificationsForm;
 }
 
 // =================== CONTACT TYPES ===================
@@ -262,6 +271,7 @@ export interface QuoteUpdatePayload {
   quote_type?: QuoteTypeEnum;
   state?: QuoteStateType;
   observaciones: string;
+  specs: SpecificationsForm;
 }
 export interface QuoteSendClient {
   contact: Contact;

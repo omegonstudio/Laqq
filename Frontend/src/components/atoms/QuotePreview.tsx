@@ -19,6 +19,7 @@ import {
   QuoteStateType,
   QuoteTypeEnum,
   UserData,
+  SpecificationsForm,
 } from "@/types/api";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -75,7 +76,9 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   const { list: products, loading: loadingProducts } = useAppSelector(
     (state) => state.products
   );
+  const [specs, setSpecs] = useState<SpecificationsForm>();
   const [openSpecs, setOpenSpecs] = useState(false);
+  const [originalSpecs, setOriginalSpecs] = useState<SpecificationsForm>();
   const [newProducts, setNewProducts] = useState<
     (QuoteItemEditable & { existing: boolean })[]
   >([]);
@@ -91,6 +94,20 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       return total + parseFloat(item.subtotal || "0");
     }, 0);
   };
+  useEffect(() => {
+    if (quote?.specs) {
+      setSpecs(quote.specs);
+      setOriginalSpecs(quote.specs);
+    }
+  }, [quote]);
+
+  useEffect(() => {
+    if (!specs || !originalSpecs) return;
+
+    const hasChanges = JSON.stringify(specs) !== JSON.stringify(originalSpecs);
+
+    setEdit(hasChanges);
+  }, [specs, originalSpecs]);
 
   useEffect(() => {
     const fetchQuoteData = async () => {
@@ -111,7 +128,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       setFormState(null);
     }
   }, [open]);
-
+  console.log(quote, "asasas");
   useEffect(() => {
     dispatch(fetchUsers({ page: 1, page_size: 50 }));
     dispatch(fetchAllProducts({}));
@@ -245,6 +262,9 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       },
     ]);
   };
+  const handleSaveSpecs = (values: SpecificationsForm) => {
+    setSpecs(values);
+  };
 
   const updateItemVariant = (index: number, variant: Variants | null) => {
     setNewProducts((prev) =>
@@ -278,6 +298,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
             quote_type: formState.quote_type,
             state: formState.state,
             observaciones: formState.observaciones,
+            specs: specs,
           },
         })
       ).unwrap();
@@ -747,6 +768,8 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         <GeneralSpecificationsDialog
           open={openSpecs}
           onOpenChange={setOpenSpecs}
+          onSave={handleSaveSpecs}
+          initialData={specs!}
         />
 
         {user?.is_superuser && (
