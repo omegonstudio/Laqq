@@ -26,7 +26,9 @@
       "Bash(del Backendquotesmigrations0008_add_fixed_spec_to_quote_item.py)",
       "Bash(git pull:*)",
       "Bash(git merge:*)",
-      "Bash(venv/Scripts/python.exe manage.py test quotes products --verbosity=0)"
+      "Bash(venv/Scripts/python.exe manage.py test quotes products --verbosity=0)",
+      "Bash(venv/Scripts/python.exe manage.py makemigrations quotes --name add_specs_to_quote)",
+      "Bash(venv/Scripts/python.exe manage.py test --verbosity=0)"
     ],
     "deny": [],
     "ask": []

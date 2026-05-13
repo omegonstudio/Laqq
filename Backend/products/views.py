@@ -52,6 +52,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         'from_relations__to_product__brand',
         'technical_specs',
         'variants',
+        'variants__technical_specs',
     )
     serializer_class = ProductSerializer
     permission_classes = [IsReadOnlyOrAdmin]
