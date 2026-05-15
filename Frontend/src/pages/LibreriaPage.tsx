@@ -142,7 +142,20 @@ const LibreriaPage = () => {
   const copyToClipboard = async (value?: string | null) => {
     if (!value) return;
     try {
-      await navigator.clipboard.writeText(value);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        // Fallback para entornos sin clipboard API
+        const textarea = document.createElement("textarea");
+        textarea.value = value;
+        textarea.style.cssText =
+          "position:fixed;top:-9999px;left:-9999px;opacity:0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
       toast({ title: "Copiado al portapapeles", description: value });
     } catch (e) {
       console.error("No se pudo copiar al portapapeles", e);

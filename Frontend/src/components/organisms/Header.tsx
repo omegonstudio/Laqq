@@ -240,7 +240,7 @@ const Header = () => {
                   : "border-orange-500 text-orange-600 hover:bg-orange-50"
               }`}
             >
-              SERVICIO TÉCNICO
+              Servicio técnico
             </Link>
 
             {/* Nosotros — always last */}
@@ -252,7 +252,7 @@ const Header = () => {
                     : "bg-white border-gray-300 text-gray-700"
                 }`}
               >
-                <SelectValue placeholder="NOSOTROS" />
+                <SelectValue placeholder="Nosotros" />
               </SelectTrigger>
 
               <SelectContent className="rounded-2xl">
@@ -333,7 +333,7 @@ const Header = () => {
                     : "border-orange-500 text-orange-600 hover:bg-orange-50"
                 }`}
               >
-                SERVICIO TÉCNICO
+                Servicio técnico
               </Link>
 
               {/* Nosotros */}
