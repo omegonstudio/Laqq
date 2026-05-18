@@ -347,37 +347,15 @@ const ProductDetailPage = () => {
         {showDetailsSection && (
           <div className="bg-card border border-border rounded-2xl p-8 ">
             {/* Tab Bar */}
-            <div className="flex gap-4 mb-6 border-b border-border">
-              {hasVariants && (
-                <button
-                  id="variantes"
-                  onClick={() => setActiveTab("details")}
-                  className={`px-4 py-2 font-medium transition-colors ${
-                    activeTab === "details"
-                      ? "text-primary border-b-2 border-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Variantes del producto
-                </button>
-              )}
-              {fileAttachments.length > 0 && (
-                <button
-                  onClick={() => setActiveTab("files")}
-                  className={`px-4 py-2 font-medium transition-colors ${
-                    activeTab === "files"
-                      ? "text-primary border-b-2 border-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Archivos
-                </button>
-              )}
-            </div>
 
             {/* Tab: fixed_specs */}
-            {activeTab === "details" && hasVariants && (
+            {hasVariants && (
               <div className="overflow-x-auto">
+                <label className="text-2xl text-center font-bold">
+                  Variantes del producto
+                </label>
+                <br />
+                <br />
                 <table className="w-full border border-border rounded-xl overflow-hidden">
                   <thead className="bg-primary/10">
                     <tr>
@@ -442,25 +420,34 @@ const ProductDetailPage = () => {
                 </table>
               </div>
             )}
-            {activeTab === "files" && fileAttachments.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {fileAttachments.map((file) => (
-                  <div
-                    key={file.id}
-                    onClick={() => window.open(file.url || file.file, "_blank")}
-                    className="cursor-pointer border rounded-lg p-4 flex items-center gap-3 hover:bg-muted transition-colors"
-                  >
-                    <div className="text-2xl">📄</div>
-                    <div className="text-sm">
-                      <p className="font-medium truncate">{file.file_name}</p>
-                      <p className="text-muted-foreground text-xs">
-                        {file.content_type_str}
-                      </p>
-                    </div>
+          </div>
+        )}
+        <br />
+        {fileAttachments.length > 0 && (
+          <div className="space-y-4 bg-muted/30 border p-6 rounded-sm">
+            <label className="text-2xl text-center font-bold">
+              Información adicional
+            </label>
+
+            <div className="grid lg:grid-cols-2 gap-5 mb-12">
+              {fileAttachments.map((file) => (
+                <div
+                  key={file.id}
+                  onClick={() => window.open(file.url || file.file, "_blank")}
+                  className="cursor-pointer border rounded-lg p-4 flex items-center gap-3 hover:bg-muted transition-colors w-full overflow-hidden"
+                >
+                  <div className="text-2xl shrink-0">📄</div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{file.file_name}</p>
+
+                    <p className="text-muted-foreground text-xs truncate">
+                      {file.content_type_str}
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
         <br />
@@ -470,25 +457,27 @@ const ProductDetailPage = () => {
               Productos relacionados
             </label>
             <br />
-            {relatedList.map((item, index) => (
-              <div
-                key={index}
-                onClick={() => navigate(`/product/${item.id}`)}
-                className="border border-border rounded-xl p-4 hover:bg-muted/30 transition-colors cursor-pointer"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <Badge variant="secondary" className="mb-2">
-                      {item.brand || "Relacionado"}
-                    </Badge>
-                    <h3 className="font-bold mb-1">{item.name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Código: {item.product_code}
-                    </p>
+            <div className="grid lg:grid-cols-2 gap-5 mb-12">
+              {relatedList.map((item, index) => (
+                <div
+                  key={index}
+                  onClick={() => navigate(`/product/${item.id}`)}
+                  className="border border-border rounded-xl p-4 hover:bg-muted/30 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <Badge variant="secondary" className="mb-2">
+                        {item.brand || "Relacionado"}
+                      </Badge>
+                      <h3 className="font-bold mb-1">{item.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Código: {item.product_code}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </div>

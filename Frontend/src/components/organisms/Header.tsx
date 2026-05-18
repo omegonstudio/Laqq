@@ -227,46 +227,47 @@ const Header = () => {
               : "border-gray-200 bg-white"
           }`}
         >
-          <div className="container mx-auto flex items-center gap-5 justify-center py-2 px-4 md:px-6">
+          <div className="container md:flex md:flex-row flex-col mx-auto flex items-center gap-5 justify-center py-2 px-4 md:px-6">
             {/* Product categories: Equipamiento, Insumos, Procesos, Mobiliario (fixed order via display_order) */}
             <NavDropdown />
-
-            {/* Servicio Técnico — fixed link, always 5th */}
-            <Link
-              to="/support"
-              className={`px-4 py-2 rounded-2xl text-sm font-medium border transition-colors ${
-                theme === "dark"
-                  ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
-                  : "border-orange-500 text-orange-600 hover:bg-orange-50"
-              }`}
-            >
-              Servicio técnico
-            </Link>
-
-            {/* Nosotros — always last */}
-            <Select onValueChange={(value) => handleNavigate(value)}>
-              <SelectTrigger
-                className={`w-auto text-sm rounded-2xl px-4 py-1 border transition-colors ${
+            <div className="flex justify-between md:justify-center gap-5">
+              {/* Servicio Técnico — fixed link, always 5th */}
+              <Link
+                to="/support"
+                className={`px-4 py-2 rounded-2xl text-sm font-medium border transition-colors ${
                   theme === "dark"
-                    ? "bg-[#0a0a0a] border-gray-700 text-gray-200"
-                    : "bg-white border-gray-300 text-gray-700"
+                    ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
+                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
                 }`}
               >
-                <SelectValue placeholder="Nosotros" />
-              </SelectTrigger>
+                Servicio técnico
+              </Link>
 
-              <SelectContent className="rounded-2xl">
-                {navigateNosotros.map((n) => (
-                  <SelectItem
-                    key={n.path}
-                    className="rounded-xl"
-                    value={n.path}
-                  >
-                    {n.name.toUpperCase()}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {/* Nosotros — always last */}
+              <Select onValueChange={(value) => handleNavigate(value)}>
+                <SelectTrigger
+                  className={`w-auto text-sm rounded-2xl px-4 py-1 border transition-colors ${
+                    theme === "dark"
+                      ? "bg-[#0a0a0a] border-gray-700 text-gray-200"
+                      : "bg-white border-gray-300 text-gray-700"
+                  }`}
+                >
+                  <SelectValue placeholder="Nosotros" />
+                </SelectTrigger>
+
+                <SelectContent className="rounded-2xl">
+                  {navigateNosotros.map((n) => (
+                    <SelectItem
+                      key={n.path}
+                      className="rounded-xl"
+                      value={n.path}
+                    >
+                      {n.name.toUpperCase()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </nav>
 
@@ -324,7 +325,7 @@ const Header = () => {
               <NavDropdown />
 
               {/* Servicio Técnico */}
-              <Link
+              {/* <Link
                 to="/support"
                 onClick={() => setMobileMenuOpen(false)}
                 className={`px-4 py-3 rounded-md text-sm font-medium border text-center transition-colors ${
@@ -334,10 +335,10 @@ const Header = () => {
                 }`}
               >
                 Servicio técnico
-              </Link>
+              </Link> */}
 
               {/* Nosotros */}
-              <Select onValueChange={(value) => handleNavigate(value)}>
+              {/* <Select onValueChange={(value) => handleNavigate(value)}>
                 <SelectTrigger
                   className={`w-[180px] text-sm rounded-2xl px-4 py-2 border transition-colors ${
                     theme === "dark"
@@ -359,7 +360,7 @@ const Header = () => {
                     </SelectItem>
                   ))}
                 </SelectContent>
-              </Select>
+              </Select> */}
             </div>
 
             {/* User actions on mobile */}
