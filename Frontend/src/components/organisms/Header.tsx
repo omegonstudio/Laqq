@@ -227,7 +227,7 @@ const Header = () => {
               : "border-gray-200 bg-white"
           }`}
         >
-          <div className="container md:flex md:flex-row flex-col mx-auto flex items-center gap-5 justify-center py-2 px-4 md:px-6">
+          <div className="container md:flex md:flex-row flex-col mx-auto flex items-center gap-5 justify-center py-2 px-0">
             {/* Product categories: Equipamiento, Insumos, Procesos, Mobiliario (fixed order via display_order) */}
             <NavDropdown />
             <div className="flex justify-between md:justify-center gap-5">
@@ -244,7 +244,12 @@ const Header = () => {
               </Link>
 
               {/* Nosotros — always last */}
-              <Select onValueChange={(value) => handleNavigate(value)}>
+              <Select
+                value=""
+                onValueChange={(value) => {
+                  handleNavigate(value);
+                }}
+              >
                 <SelectTrigger
                   className={`w-auto text-sm rounded-2xl px-4 py-1 border transition-colors ${
                     theme === "dark"
@@ -262,7 +267,7 @@ const Header = () => {
                       className="rounded-xl"
                       value={n.path}
                     >
-                      {n.name.toUpperCase()}
+                      {n.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
