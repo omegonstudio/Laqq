@@ -4,57 +4,10 @@ import type {
   ProductFormState,
   ProductCreateRequest,
   ProductUpdateRequest,
-  ProductSpec,
-  ProductFixedSpec,
+  TecnicalSpecs,
+  Variants,
 } from "@/types/types";
-import {
-  fixedSpecInitialData,
-  normalizeFixedSpecs,
-  normalizeSpecs,
-} from "./productSaveFlow";
 
-export const sanitizeSpecs = (specs: ProductSpec[] = []): ProductSpec[] => {
-  return specs
-    .map((spec, index) => ({
-      id: spec.id,
-      product: spec.product,
-      key: spec.key?.trim() || "",
-      value: spec.value?.trim() || "",
-      unit: spec.unit ?? "",
-      display_order: spec.display_order ?? index,
-      is_visible: spec.is_visible ?? true,
-    }))
-    .filter((spec) => spec.key || spec.value);
-};
-export const sanitizeFixedSpecs = (
-  specs: ProductFixedSpec[] = []
-): ProductFixedSpec[] => {
-  return specs
-    .map((spec) => ({
-      id: spec.id,
-      product: spec.product,
-      code: spec.code?.trim() || null,
-      volume: spec.volume?.trim() || null,
-      dimensions: spec.dimensions?.trim() || null,
-      cap: spec.cap?.trim() || null,
-      outlet: spec.outlet?.trim() || null,
-      accuracy: spec.accuracy?.trim() || null,
-      precision: spec.precision?.trim() || null,
-      // additional_specs: spec.additional_specs?.trim() || null,
-      created_at: spec.created_at || "",
-    }))
-    .filter(
-      (spec) =>
-        spec.id ||
-        spec.code ||
-        spec.volume ||
-        spec.dimensions ||
-        spec.cap ||
-        spec.outlet ||
-        spec.accuracy ||
-        spec.precision
-    );
-};
 /**
  * Convierte un Product (del backend) a ProductFormState (para el formulario)
  */
@@ -75,12 +28,8 @@ export const productToFormState = (product: Product): ProductFormState => {
     image_attachment_id: product.image_attachment,
     is_featured: product.is_featured || false,
     is_active: product.is_active,
-    specs: sanitizeSpecs(product.specs || product.specifications || []),
+    variants: product.variants || [],
     related: product.related || product.related_products || [],
-    fixed_specs:
-      product.fixed_specs.length > 0
-        ? sanitizeFixedSpecs(product.fixed_specs)
-        : [fixedSpecInitialData],
   };
 };
 
@@ -202,30 +151,6 @@ export const formStateToUpdateRequest = (
   return updateRequest as ProductUpdateRequest;
 };
 
-export const haveSpecsChanged = (
-  currentSpecs: ProductSpec[],
-  initialSpecs: ProductSpec[] = []
-): boolean => {
-  const normalizedCurrent = normalizeSpecs(currentSpecs);
-  const normalizedInitial = normalizeSpecs(initialSpecs);
-
-  return (
-    JSON.stringify(normalizedCurrent) !== JSON.stringify(normalizedInitial)
-  );
-};
-
-// CORRECTO ✅
-export const haveFixedSpecsChanged = (
-  current: ProductFixedSpec[],
-  initial: ProductFixedSpec[] = []
-): boolean => {
-  const normalizedCurrent = normalizeFixedSpecs(current);
-  const normalizedInitial = normalizeFixedSpecs(initial);
-  return (
-    JSON.stringify(normalizedCurrent) !== JSON.stringify(normalizedInitial)
-  );
-};
-
 export const hasProductChanges = (updateRequest: ProductUpdateRequest) =>
   Object.keys(updateRequest).length > 0;
 
@@ -239,9 +164,8 @@ export const getEmptyProductFormState = (): ProductFormState => ({
   image_attachment_id: "",
   image_file: null,
   is_active: true,
-  specs: [],
+  variants: [],
   related: [],
-  fixed_specs: [fixedSpecInitialData],
   is_featured: false,
   attachments_existing: [],
   attachments_files: [],

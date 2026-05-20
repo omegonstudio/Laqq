@@ -15,13 +15,35 @@ try:
 except Exception:
     openpyxl = None
 
-from .models import Brand, Category, Product, ProductVariant, ProductRelation
+from .models import Brand, Category, Product, ProductVariant, ProductRelation, TechnicalSpec, VariantTechnicalSpec
 from attachments.models import Attachment
 from integrations.http import HttpClient
 from integrations.http.errors import HttpClientConfigError, HttpClientError, HttpClientResponseError
 
 REQUEST_TIMEOUT = 15
 logger = logging.getLogger(__name__)
+
+# Mapping de nombres de columnas en español → nombres internos del modelo
+COLUMN_NAME_MAP = {
+    'codigo_producto':      'product_code',
+    'nombre':               'name',
+    'marca':                'brand',
+    'categoria_nivel_0':    'category_level_0',
+    'categoria_nivel_1':    'category_level_1',
+    'categoria_nivel_2':    'category_level_2',
+    'descripcion':          'description',
+    'nombre_imagen':        'image_name',
+    'activo':               'is_active',
+    'es_variante':          'is_variant',
+    'codigo_variante':      'variant_code',
+    'nombre_variante':      'variant_name',
+    'dimensiones':          'dimensions',
+    'productos_relacionados': 'related_product_codes',
+    'tiene_specs':          'is_specs_column',
+}
+
+# Columnas ignoradas al importar (ej: columna "error" del Excel de errores descargado)
+IGNORED_IMPORT_COLUMNS = {'error', 'error_mensaje', 'errores'}
 
 # Cliente HTTP específico para descargas de imágenes (control de tamaño/host)
 image_http_client = HttpClient(
@@ -240,6 +262,22 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
     if not rows:
         return {'error': 'Archivo vacío o sin filas'}
 
+    # Guardar filas originales (con nombres en español) para el reporte de errores descargable
+    original_row_by_idx = {i + 2: dict(row) for i, row in enumerate(rows)}
+
+    # Normalizar nombres de columna al estándar interno (acepta español e inglés)
+    rows = [
+        {COLUMN_NAME_MAP.get(k, k): v for k, v in row.items() if k not in IGNORED_IMPORT_COLUMNS}
+        for row in rows
+    ]
+
+    # Detectar columnas dinámicas de TechnicalSpec (todo lo que viene después de 'is_specs_column')
+    spec_columns = []
+    if 'is_specs_column' in rows[0]:
+        all_headers = list(rows[0].keys())
+        spec_idx = all_headers.index('is_specs_column')
+        spec_columns = [c for c in all_headers[spec_idx + 1:] if c.strip()]
+
     # Separar filas en productos y variantes
     product_rows = []  # filas con is_variant=false o vacío
     variant_rows = []  # filas con is_variant=true
@@ -250,15 +288,21 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
         product_code = (row.get('product_code') or row.get('product code') or '').strip()
 
         if is_variant:
-            # Es una variante, requiere product_code
             if not product_code:
-                errors.append({'row': idx, 'error': 'is_variant=true requiere product_code para encontrar el producto padre'})
+                errors.append({
+                    'row': idx,
+                    'error': f'Fila {idx}: variante sin codigo_producto — no se puede asociar a ningún producto padre.',
+                    'row_data': original_row_by_idx.get(idx, {}),
+                })
                 continue
             variant_rows.append((idx, row))
         else:
-            # Es un producto
             if not product_code and not (row.get('name') or '').strip():
-                errors.append({'row': idx, 'error': 'Falta product_code y name'})
+                errors.append({
+                    'row': idx,
+                    'error': f'Fila {idx}: falta codigo_producto y nombre — no se puede identificar el producto.',
+                    'row_data': original_row_by_idx.get(idx, {}),
+                })
                 continue
             product_rows.append((idx, row))
 
@@ -272,11 +316,22 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
         if code and key in products_data:
             errors.append({
                 'row': idx,
-                'error': f'Product con product_code "{code}" duplicado. Solo puede haber un producto con is_variant=false por product_code.'
+                'error': f'Fila {idx}: codigo_producto "{code}" duplicado — solo puede haber una fila de producto (es_variante=false) por código.',
+                'row_data': original_row_by_idx.get(idx, {}),
             })
             continue
 
-        products_data.setdefault(key, {'rows': [], 'first_row': row}).get('rows').append((idx, row))
+        if key not in products_data:
+            has_specs = parse_bool(row.get('is_specs_column', ''))
+            # Las KEY NAMES vienen de la celda del producto padre; columnas sin nombre se ignoran
+            spec_keys = [row.get(col, '').strip() for col in spec_columns] if (has_specs and spec_columns) else []
+            products_data[key] = {
+                'rows': [],
+                'first_row': row,
+                'has_specs': has_specs,
+                'spec_keys': spec_keys,
+            }
+        products_data[key]['rows'].append((idx, row))
 
     summary = {
         'created_brands': 0,
@@ -287,6 +342,7 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
         'created_specs': 0,
         'updated_specs': 0,
         'created_variants': 0,
+        'created_technical_specs': 0,
         'created_relations': 0,
         'errors': errors,
     }
@@ -323,8 +379,12 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                         summary['linked_attachments'] += 1
                     else:
                         logger.warning("Imagen '%s' no encontrada en la librería para el producto '%s'", image_name, product_key)
-                        if summary is not None:
-                            summary['errors'].append({'product': product_key, 'error': f'Imagen "{image_name}" no encontrada en la librería'})
+                        first_row_idx = data['rows'][0][0]
+                        summary['errors'].append({
+                            'row': first_row_idx,
+                            'error': f'Fila {first_row_idx}: imagen "{image_name}" no encontrada en la librería de archivos — subí la imagen antes de importar o dejá el campo vacío.',
+                            'row_data': original_row_by_idx.get(first_row_idx, {}),
+                        })
 
                 # lookup product by product_code if provided, else by name+brand
                 product_lookup = {}
@@ -360,30 +420,17 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
 
                 created_product_map[product_key] = product
 
-                # variantes inline (filas de producto que traen variant_code)
-                for lineno, spec_row in rows_for_product:
-                    variant_code = (spec_row.get('variant_code') or spec_row.get('spec_code') or '').strip()
-                    if not variant_code:
-                        continue
-                    try:
-                        defaults = {
-                            'name': (spec_row.get('variant_name') or '').strip(),
-                            'dimensions': spec_row.get('dimensions') or None,
-                        }
-                        obj, created_spec = ProductVariant.objects.update_or_create(
-                            product=product,
-                            code=variant_code,
-                            defaults=defaults
-                        )
-                        if created_spec:
-                            summary['created_specs'] += 1
-                        else:
-                            summary['updated_specs'] += 1
-                    except Exception as e:
-                        summary['errors'].append({'row': lineno, 'error': f"Error creando/actualizando variante para {product_key}: {e}"})
-
         except Exception as e:
-            summary['errors'].append({'product': product_key, 'error': str(e)})
+            first_row_idx = data['rows'][0][0]
+            summary['errors'].append({
+                'row': first_row_idx,
+                'error': f'Fila {first_row_idx}: error al procesar producto "{product_key}" — {str(e)}',
+                'row_data': original_row_by_idx.get(first_row_idx, {}),
+            })
+
+    # Mapas para la segunda pasada
+    product_has_specs_by_key = {k: v['has_specs'] for k, v in products_data.items()}
+    product_spec_keys_by_key = {k: v['spec_keys'] for k, v in products_data.items()}
 
     # segunda pasada: procesar variantes (is_variant=true)
     for lineno, variant_row in variant_rows:
@@ -394,16 +441,19 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
             if not variant_code:
                 summary['errors'].append({
                     'row': lineno,
-                    'error': f'Variante requiere variant_code para identificarla'
+                    'error': f'Fila {lineno}: variante sin codigo_variante — completá el campo para poder identificarla.',
+                    'row_data': original_row_by_idx.get(lineno, {}),
                 })
                 continue
 
             # Buscar el producto padre por product_code
             parent_product = None
+            parent_key = None
 
             for key, prod in created_product_map.items():
                 if prod.product_code == product_code:
                     parent_product = prod
+                    parent_key = key
                     break
 
             if not parent_product:
@@ -412,7 +462,8 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                 except Product.DoesNotExist:
                     summary['errors'].append({
                         'row': lineno,
-                        'error': f'Producto padre con product_code "{product_code}" no encontrado. Las variantes requieren un producto existente con is_variant=false.'
+                        'error': f'Fila {lineno}: producto padre con codigo_producto "{product_code}" no encontrado — debe existir en la base de datos o definirse como producto en el mismo archivo.',
+                        'row_data': original_row_by_idx.get(lineno, {}),
                     })
                     continue
 
@@ -432,10 +483,30 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
             else:
                 summary['updated_specs'] += 1
 
+            # Procesar TechnicalSpecs si el producto padre tiene is_specs_column=true
+            has_specs = product_has_specs_by_key.get(parent_key, False) if parent_key else False
+            spec_keys = product_spec_keys_by_key.get(parent_key, []) if parent_key else []
+            if has_specs and spec_keys:
+                # Eliminar specs existentes de esta variante (y sus TechnicalSpec huérfanos)
+                old_vts = VariantTechnicalSpec.objects.filter(variant=variant_obj)
+                old_ts_ids = list(old_vts.values_list('technical_spec_id', flat=True))
+                old_vts.delete()
+                TechnicalSpec.objects.filter(id__in=old_ts_ids).delete()
+                # Las key names vienen del producto padre; los values de la fila de la variante
+                for col, key_name in zip(spec_columns, spec_keys):
+                    if not key_name:
+                        continue
+                    raw = variant_row.get(col)
+                    value = str(raw) if raw is not None else ''
+                    ts = TechnicalSpec.objects.create(key=key_name, value=value)
+                    VariantTechnicalSpec.objects.create(variant=variant_obj, technical_spec=ts)
+                    summary['created_technical_specs'] += 1
+
         except Exception as e:
             summary['errors'].append({
                 'row': lineno,
-                'error': f'Error procesando variante: {str(e)}'
+                'error': f'Fila {lineno}: error al procesar variante "{variant_code}" — {str(e)}',
+                'row_data': original_row_by_idx.get(lineno, {}),
             })
 
     # tercera pasada: relaciones (usando el campo related_product_codes en la primera fila)
@@ -462,7 +533,12 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                 except Exception:
                     target = None
             if not target:
-                summary['errors'].append({'product': product_key, 'error': f'related product code {to_code} not found'})
+                first_row_idx = products_data[product_key]['rows'][0][0]
+                summary['errors'].append({
+                    'row': first_row_idx,
+                    'error': f'Fila {first_row_idx}: producto relacionado con código "{to_code}" no encontrado — verificá el código o definilo en el mismo archivo.',
+                    'row_data': original_row_by_idx.get(first_row_idx, {}),
+                })
                 continue
             if target.pk == product.pk:
                 continue

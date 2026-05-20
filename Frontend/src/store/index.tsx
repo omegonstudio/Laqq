@@ -7,7 +7,6 @@ import categoriesReducer from "./categoriesSlice";
 import { setStoreReference } from "@/api/client"; // ✅ Importar
 import brandsReducer from "./brandSlice";
 import specsReducer from "./specsSlice";
-import fixedSpecsReducer from "./fixedSpecsSlice";
 import quotesReducer from "./quotesSlice";
 import contacts from "./contacts";
 import users from "./usersSlice";
@@ -28,7 +27,6 @@ export const store = configureStore({
     categories: categoriesReducer,
     brands: brandsReducer,
     specs: specsReducer,
-    fixedSpecs: fixedSpecsReducer,
     quotes: quotesReducer,
     contacts: contacts,
     users: users,

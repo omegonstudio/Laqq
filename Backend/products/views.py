@@ -5,7 +5,9 @@ from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser
+from io import BytesIO
+from django.http import HttpResponse
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -52,6 +54,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         'from_relations__to_product__brand',
         'technical_specs',
         'variants',
+        'variants__technical_specs',
     )
     serializer_class = ProductSerializer
     permission_classes = [IsReadOnlyOrAdmin]
@@ -362,3 +365,79 @@ class ProductsBulkUploadAPIView(APIView):
 
         summary = import_products_csv(csv_file, encoding=encoding, create_missing=create_missing, skip_downloads=skip_downloads)
         return Response(summary, status=status.HTTP_200_OK)
+
+
+class BulkUploadErrorsAPIView(APIView):
+    """
+    Recibe el array `error_rows` devuelto por el endpoint de carga masiva
+    y retorna un archivo Excel descargable con las filas que fallaron + columna de error.
+    El frontend usa este endpoint para implementar el botón "Descargar errores".
+    """
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        try:
+            import openpyxl
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            from openpyxl.utils import get_column_letter
+        except ImportError:
+            return Response({'error': 'openpyxl no está instalado en el servidor.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        error_rows = request.data.get('error_rows', [])
+        if not error_rows:
+            return Response({'error': 'No hay filas de error para exportar.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Obtener headers del primer error que tenga row_data
+        headers = None
+        for err in error_rows:
+            if err.get('row_data'):
+                headers = list(err['row_data'].keys())
+                break
+
+        if not headers:
+            return Response({'error': 'Los errores no contienen datos de fila (row_data).'}, status=status.HTTP_400_BAD_REQUEST)
+
+        all_headers = headers + ['error']
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Errores de Carga'
+
+        header_font = Font(bold=True, color='FFFFFF', size=11)
+        header_fill = PatternFill('solid', fgColor='C00000')
+        thin = Side(border_style='thin', color='AAAAAA')
+        border = Border(left=thin, right=thin, top=thin, bottom=thin)
+        center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        wrap = Alignment(wrap_text=True, vertical='top')
+
+        for col_idx, h in enumerate(all_headers, 1):
+            cell = ws.cell(row=1, column=col_idx, value=h)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center
+            cell.border = border
+
+        for err in error_rows:
+            row_data = err.get('row_data', {})
+            error_msg = err.get('error', '')
+            row_values = [row_data.get(h, '') for h in headers] + [error_msg]
+            row_idx = ws.max_row + 1
+            for col_idx, value in enumerate(row_values, 1):
+                cell = ws.cell(row=row_idx, column=col_idx, value=value or '')
+                cell.alignment = wrap
+                cell.border = border
+
+        ws.freeze_panes = 'A2'
+        ws.row_dimensions[1].height = 28
+        ws.column_dimensions[get_column_letter(len(all_headers))].width = 50
+
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+
+        response = HttpResponse(
+            buffer.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = 'attachment; filename="errores_carga_masiva.xlsx"'
+        return response

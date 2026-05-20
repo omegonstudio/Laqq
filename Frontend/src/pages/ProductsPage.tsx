@@ -5,8 +5,8 @@ import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchAllProducts, fetchProducts } from "@/store/productSlice";
 import { useProductFilters } from "@/hooks/useFilters";
-import { fetchAllBrands, fetchBrands } from "@/store/brandSlice";
-import { fetchAllCategories, fetchCategories } from "@/store/categoriesSlice";
+import { fetchAllBrands } from "@/store/brandSlice";
+import { fetchAllCategories } from "@/store/categoriesSlice";
 import NavDropdown from "@/components/molecules/NavDropdown";
 
 const ProductsPage = () => {

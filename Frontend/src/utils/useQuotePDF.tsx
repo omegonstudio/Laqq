@@ -3,7 +3,7 @@ import { convertQuotesState, convertQuotesTypes } from "./quotesConvert";
 
 const generateQuoteHTML = (quote: QuoteRender): string => {
   const contact = quote.contact;
-
+  const hasVariants = quote.items.some((item) => item.variant !== null);
   return `  
   <html>
     <body style="font-family: Arial; padding: 40px;">
@@ -34,28 +34,44 @@ const generateQuoteHTML = (quote: QuoteRender): string => {
         <thead style="background-color: #f2f2f2;">
           <tr>
             <th align="left">Producto</th>
-            <th align="left">Código</th>
+             <th align="left">Código del producto</th>
+            ${
+              hasVariants
+                ? `
+              <th align="left">Variedad</th>
+               <th align="left">Código de la variedad</th>
+            `
+                : ""
+            }
             <th align="right">Cantidad</th>
             <th align="right">Precio unitario</th>
             <th align="right">Subtotal</th>
           </tr>
         </thead>
         <tbody>
-          ${quote.items
-            ?.map(
-              (i) => `
-            <tr>
-              <td>${i.product.name}</td>
-              <td>${i.product.product_code}</td>
-              <td align="right">${i.quantity}</td>
-              <td align="right">$${i.unit_price}</td>
-              <td align="right">$${
-                Number(i.quantity) * Number(i.unit_price)
-              }</td>
-            </tr>
-          `
-            )
-            .join("")}
+        ${quote.items
+          ?.map(
+            (i) => `
+              <tr>
+                <td>${i.product.name}</td>
+               <td>${i.product.product_code ?? "-"}</td>
+                ${
+                  hasVariants
+                    ? `
+                      <td>${i.variant?.name ?? "-"}</td>
+                      <td>${i.variant?.code ?? "-"}</td>
+                    `
+                    : ""
+                }
+                <td align="right">${i.quantity}</td>
+                <td align="right">$${i.unit_price}</td>
+                <td align="right">$${
+                  Number(i.quantity) * Number(i.unit_price)
+                }</td>
+              </tr>
+            `
+          )
+          .join("")}
         </tbody>
       </table>
 

@@ -7,7 +7,6 @@ import Button from "@/components/atoms/Button";
 import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { deleteProduct, fetchProducts } from "@/store/productSlice";
-import { fixedSpecInitialData } from "@/utils/productSaveFlow";
 import ModalProduct from "../molecules/Modals/EditProduct";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import CargaMasivaProducts from "../molecules/CargaMasiva";
@@ -22,15 +21,14 @@ const currentInitialData: Product = {
   category: "",
   category_id: "",
   product_code: "",
-  specs: [],
   related: [],
   related_products: [],
   image_attachment: null,
   is_active: true,
-  fixed_specs: [fixedSpecInitialData],
   image_url: null,
   is_featured: false,
   attachments: [],
+  variants: [],
 };
 
 const ProductsTable: React.FC = () => {

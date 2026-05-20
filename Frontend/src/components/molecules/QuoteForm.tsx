@@ -9,14 +9,7 @@ import { createQuoteFromForm } from "@/store/quotesSlice";
 import { ProductSearchCombobox } from "./ProductSearch";
 import { fetchAllProducts } from "@/store/productSlice";
 import { toast } from "@/hooks/use-toast";
-import { Product } from "@/types/types";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@radix-ui/react-select";
+import { Product, Variants } from "@/types/types";
 
 const initialState: QuoteFormState = {
   contact: {
@@ -42,7 +35,7 @@ const initialState: QuoteFormState = {
 
 function QuoteForm() {
   const dispatch = useAppDispatch();
-  const { items: itemsCart, clearCart } = useCart();
+  const { items: itemsCart, clearCart, removeFromCart } = useCart();
 
   useEffect(() => {
     dispatch(fetchAllProducts({ is_active: true }));
@@ -73,15 +66,15 @@ function QuoteForm() {
 
         // ⬅️ Resolver el fixed_spec desde los productos ya cargados
         const product = products.find((p) => p.id === productId);
-        const specId =
+        const variantId =
           item.variantSpecId ??
-          (product?.fixed_specs?.length === 1 ? product.fixed_specs[0].id : "");
+          (product?.variants?.length === 1 ? product.variants[0].id : "");
 
         return {
           product: productId,
           quantity: item.quantity,
           unit_price: "0",
-          fixed_spec: specId ?? "",
+          variant: variantId ?? "",
         };
       }),
     }));
@@ -96,26 +89,48 @@ function QuoteForm() {
           product: "",
           quantity: 1,
           unit_price: "0",
-
-          fixed_spec: "",
+          variant: "",
         },
       ],
     }));
   };
 
   const removeItem = (index: number) => {
-    setFormState((prev) => ({
-      ...prev,
-      items: prev.items.filter((_, i) => i !== index),
-    }));
+    setFormState((prev) => {
+      const itemToRemove = prev.items[index];
+
+      if (itemToRemove) {
+        const product = products.find((p) => p.id === itemToRemove.product);
+
+        let uniqueId = itemToRemove.product;
+
+        // Si tiene variante → reconstruir ID igual que en el cart
+        if (itemToRemove.variant && product) {
+          const variantObj = product.variants?.find(
+            (v) => v.id === itemToRemove.variant
+          );
+
+          if (variantObj) {
+            uniqueId = `${product.id}-${variantObj.code}`;
+          }
+        }
+
+        removeFromCart(uniqueId);
+      }
+
+      return {
+        ...prev,
+        items: prev.items.filter((_, i) => i !== index),
+      };
+    });
   };
 
   const getProductById = (productId: string) =>
     products.find((p) => p.id === productId) ?? null;
 
   const updateItemProduct = (index: number, product: Product | null) => {
-    const autoSpec =
-      product?.fixed_specs?.length === 1 ? product.fixed_specs[0] : null;
+    const autoVariant =
+      product?.variants?.length === 1 ? product.variants[0] : null;
 
     setFormState((prev) => ({
       ...prev,
@@ -124,7 +139,7 @@ function QuoteForm() {
           ? {
               ...item,
               product: product?.id ?? "",
-              fixed_spec: autoSpec?.id ?? "", // 👈 clave
+              variant: autoVariant?.id ?? "", // reset controlado
             }
           : item
       ),
@@ -134,12 +149,10 @@ function QuoteForm() {
     setFormState((prev) => ({
       ...prev,
       items: prev.items.map((item, i) =>
-        i === index ? { ...item, fixed_spec: specId } : item
+        i === index ? { ...item, variant: specId } : item
       ),
     }));
   };
-
-  console.log(formState, "aaaaaaaaa");
 
   const updateItemQuantity = (index: number, quantity: number) => {
     setFormState((prev) => ({
@@ -189,9 +202,9 @@ function QuoteForm() {
       const result = await dispatch(
         createQuoteFromForm({
           ...formState,
-          items: formState.items.map(({ fixed_spec, ...item }) => ({
+          items: formState.items.map(({ variant, ...item }) => ({
             ...item,
-            ...(fixed_spec ? { fixed_spec } : {}), // ⬅️ solo incluir si tiene valor
+            ...(variant ? { variant } : {}), // ⬅️ solo incluir si tiene valor
           })),
         })
       ).unwrap();
@@ -209,7 +222,6 @@ function QuoteForm() {
       });
     }
   };
-  console.log(formState, "estado del formulario");
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Información del contacto */}
@@ -296,8 +308,8 @@ function QuoteForm() {
         </div>
         {formState.items.map((item, index) => {
           const selectedProduct = getProductById(item.product);
-          const specs = selectedProduct?.fixed_specs ?? [];
-          const specsCount = specs.length;
+          const variants = selectedProduct?.variants ?? [];
+          const variantsCount = variants.length;
 
           return (
             <div key={index} className="grid grid-cols-2 gap-2">
@@ -308,12 +320,12 @@ function QuoteForm() {
                   onSelect={(product) => updateItemProduct(index, product)}
                 />
                 {/* 🔹 VARIANTES */}
-                {specsCount === 0 && null}
+                {variantsCount === 0 && null}
 
-                {specsCount === 1 && (
+                {variantsCount === 1 && (
                   <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-muted/40 text-sm">
                     <span className="text-muted-foreground">Variedad:</span>
-                    <span className="font-medium">{specs[0].code}</span>
+                    <span className="font-medium">{variants[0].code}</span>
                     {/* Indicador visual de que está seleccionada */}
                     <span className="ml-auto text-xs text-green-600 font-medium">
                       ✓ Seleccionada
@@ -321,18 +333,18 @@ function QuoteForm() {
                   </div>
                 )}
 
-                {specsCount > 1 && (
+                {variantsCount > 1 && (
                   <select
-                    value={item.fixed_spec || ""}
+                    value={item.variant || ""}
                     onChange={(e) => updateItemSpec(index, e.target.value)}
                     className="h-10 w-full border rounded-md px-3 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="" disabled>
                       Seleccionar variedad
                     </option>
-                    {specs.map((spec) => (
-                      <option key={spec.id} value={spec.id}>
-                        {spec.code}
+                    {variants.map((variant) => (
+                      <option key={variant.id} value={variant.id}>
+                        {variant.code}
                       </option>
                     ))}
                   </select>
@@ -362,6 +374,7 @@ function QuoteForm() {
                 </div>
 
                 <Button
+                  type="button"
                   className="bg-transparent text-red-600 hover:bg-red-600 hover:text-white"
                   onClick={() => removeItem(index)}
                 >

@@ -21,7 +21,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
 
-    const specs = product.fixed_specs ?? [];
+    const specs = product.variants ?? [];
     const specsCount = specs.length;
 
     // 🔹 Sin variantes

@@ -7,8 +7,6 @@ import { buildCategories } from "@/utils/data/categories";
 import { CategoryUI } from "@/types/types";
 import { ChevronDown } from "lucide-react";
 
-const MAX_HEIGHT = "max-h-[300px]";
-
 export default function NavDropdown() {
   const { setFilter } = useProductFilters();
   const { list: categories } = useAppSelector((state) => state.categories);
@@ -40,11 +38,6 @@ export default function NavDropdown() {
     setActivePath([]);
   };
 
-  const open = (id: string) => setOpenMap((prev) => ({ ...prev, [id]: true }));
-
-  const close = (id: string) =>
-    setOpenMap((prev) => ({ ...prev, [id]: false }));
-
   const toggle = (id: string) =>
     setOpenMap((prev) => ({ ...prev, [id]: !prev[id] }));
 
@@ -56,10 +49,6 @@ export default function NavDropdown() {
       setFilter("category", item.id);
       closeAll();
     }
-  };
-  const getColumnItems = (level: number) => {
-    if (level === 0) return menuItems;
-    return activePath[level - 1]?.subcategories || [];
   };
 
   return (
@@ -99,7 +88,7 @@ export default function NavDropdown() {
 
                 {/* PANEL SOLO PARA ESTE BOTÓN */}
                 {isActive && hasChildren && (
-                  <div className="absolute top-full left-0 mt-2 bg-card border rounded-xl shadow-lg z-50 flex">
+                  <div className="absolute top-full left-0 bg-card border rounded-xl shadow-lg z-50 flex">
                     {/* NIVEL 1 */}
                     <Column
                       items={item.subcategories}
@@ -132,7 +121,7 @@ export default function NavDropdown() {
         {/* PANEL MULTI-COLUMNA */}
       </div>
       <div className="flex md:hidden">
-        <div className="flex flex-wrap gap-2 justify-center">
+        <div className="flex  gap-2 justify-center">
           {menuItems.map((item) => (
             <div key={item.id} className="relative">
               {/* TRIGGER */}
@@ -160,7 +149,7 @@ export default function NavDropdown() {
                   <div className="p-2 space-y-1 max-h-[300px] overflow-y-auto">
                     {/* Ver todo button */}
                     <button
-                      className="w-full text-left px-3 py-2 text-xs font-medium text-primary hover:bg-muted rounded-lg transition-colors"
+                      className="w-full text-left px-3 py-2 text-xs font-medium text-primary hover:bg-muted rounded-lg transition-colors  bg-red-500"
                       onClick={() => {
                         setFilter("category", item.id);
                         closeAll();

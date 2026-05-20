@@ -62,7 +62,10 @@ class ProductVariantSerializer(serializers.ModelSerializer):
 
     def _save_specs(self, variant, specs_data, replace=False):
         if replace:
-            VariantTechnicalSpec.objects.filter(variant=variant).delete()
+            old_vts = VariantTechnicalSpec.objects.filter(variant=variant)
+            old_ts_ids = list(old_vts.values_list('technical_spec_id', flat=True))
+            old_vts.delete()
+            TechnicalSpec.objects.filter(id__in=old_ts_ids).delete()
         for spec in specs_data:
             spec.pop('id', None)
             tech_spec = TechnicalSpec.objects.create(

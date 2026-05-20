@@ -19,7 +19,7 @@ import {
   QuoteStateType,
   QuoteTypeEnum,
   UserData,
-  ProductFixedSpec,
+  SpecificationsForm,
 } from "@/types/api";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -36,7 +36,7 @@ import { convertQuotesState, convertQuotesTypes } from "@/utils/quotesConvert";
 import { fetchUsers } from "@/store/usersSlice";
 import { toast } from "@/hooks/use-toast";
 import { ProductSearchCombobox } from "../molecules/ProductSearch";
-import { Product } from "@/types/types";
+import { Product, Variants } from "@/types/types";
 import InputField from "./InputField";
 import { fetchAllProducts } from "@/store/productSlice";
 import { useUserAdmins } from "@/hooks/useUsers";
@@ -54,13 +54,17 @@ interface Props {
 interface EditableData {
   state: QuoteStateType;
   quote_type: QuoteTypeEnum;
-  items: (QuoteItemRender & { existing: boolean })[];
+  items: (QuoteItemEditable & { existing: boolean })[];
   user: UserData;
   message?: string;
   created_at?: string;
   updated_at?: string;
   observaciones: string;
 }
+type QuoteItemEditable = QuoteItemRender & {
+  existing: boolean;
+  variant?: Variants | null; // 👈 nuevo campo normalizado
+};
 
 const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   const dispatch = useAppDispatch();
@@ -72,9 +76,11 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   const { list: products, loading: loadingProducts } = useAppSelector(
     (state) => state.products
   );
+  const [specs, setSpecs] = useState<SpecificationsForm>();
   const [openSpecs, setOpenSpecs] = useState(false);
+  const [originalSpecs, setOriginalSpecs] = useState<SpecificationsForm>();
   const [newProducts, setNewProducts] = useState<
-    (QuoteItemRender & { existing: boolean })[]
+    (QuoteItemEditable & { existing: boolean })[]
   >([]);
 
   const [edit, setEdit] = useState(false);
@@ -83,12 +89,25 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   const [quote, setQuote] = useState<QuoteRender | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [total, setTotal] = useState(0);
-
   const calculateTotal = (): number => {
     return newProducts.reduce((total, item) => {
       return total + parseFloat(item.subtotal || "0");
     }, 0);
   };
+  useEffect(() => {
+    if (quote?.specs) {
+      setSpecs(quote.specs);
+      setOriginalSpecs(quote.specs);
+    }
+  }, [quote]);
+
+  useEffect(() => {
+    if (!specs || !originalSpecs) return;
+
+    const hasChanges = JSON.stringify(specs) !== JSON.stringify(originalSpecs);
+
+    setEdit(hasChanges);
+  }, [specs, originalSpecs]);
 
   useEffect(() => {
     const fetchQuoteData = async () => {
@@ -109,7 +128,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       setFormState(null);
     }
   }, [open]);
-
+  console.log(quote, "asasas");
   useEffect(() => {
     dispatch(fetchUsers({ page: 1, page_size: 50 }));
     dispatch(fetchAllProducts({}));
@@ -137,7 +156,11 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   useEffect(() => {
     if (quote) {
       const items = quote.items
-        ? quote.items.map((item) => ({ ...item, existing: true }))
+        ? quote.items.map((item) => ({
+            ...item,
+            existing: true,
+            variant: item.variant ?? null,
+          }))
         : [];
 
       setTotal(Number(quote.total_amount));
@@ -180,8 +203,8 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
 
   // ✅ CAMBIO: auto-asigna fixed_spec si el producto tiene exactamente 1
   const updateItemProduct = (index: number, product: Product | null) => {
-    const autoSpec =
-      product?.fixed_specs?.length === 1 ? product.fixed_specs[0] : null;
+    const autoVariant =
+      product?.variants?.length === 1 ? product.variants[0] : null;
 
     setNewProducts((prev) =>
       prev.map((item, i) =>
@@ -191,7 +214,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
               product: product
                 ? { ...product, created_at: "", updated_at: "" }
                 : null,
-              fixed_spec: autoSpec,
+              variant: autoVariant, // 👈 clave
             }
           : item
       )
@@ -235,16 +258,17 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         unit_price: "0",
         subtotal: "0",
         existing: false,
-        fixed_spec: null,
+        variant: null, // 👈 cambio
       },
     ]);
   };
+  const handleSaveSpecs = (values: SpecificationsForm) => {
+    setSpecs(values);
+  };
 
-  const updateItemSpec = (index: number, spec: ProductFixedSpec | null) => {
+  const updateItemVariant = (index: number, variant: Variants | null) => {
     setNewProducts((prev) =>
-      prev.map((item, i) =>
-        i === index ? { ...item, fixed_spec: spec } : item
-      )
+      prev.map((item, i) => (i === index ? { ...item, variant } : item))
     );
   };
 
@@ -274,6 +298,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
             quote_type: formState.quote_type,
             state: formState.state,
             observaciones: formState.observaciones,
+            specs: specs,
           },
         })
       ).unwrap();
@@ -300,7 +325,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
               quantity: item.quantity,
               unit_price: item.unit_price,
               subtotal: item.subtotal,
-              fixed_spec: item.fixed_spec?.id,
+              variant: item.variant?.id,
             })
           ).unwrap()
         ),
@@ -314,7 +339,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                 quantity: item.quantity,
                 unit_price: item.unit_price,
                 subtotal: item.subtotal,
-                fixed_spec: item.fixed_spec?.id,
+                variant: item.variant?.id,
               },
             })
           ).unwrap()
@@ -363,7 +388,6 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         contact_id: quote.contact.id,
       });
       toast({ title: "Correo enviado al cliente" });
-      console.log(res);
     } catch (error) {
       toast({ title: "Error al enviar el correo", variant: "destructive" });
       console.error(error);
@@ -584,8 +608,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                   >
                     <td className="p-2 text-center">{item.product.name}</td>
                     <td className="p-2 text-center">
-                      {item.fixed_spec !== null &&
-                        (item.fixed_spec.code || "aaa")}
+                      {item.variant?.code || "-"}
                     </td>
                     <td className="p-2 text-center">
                       {item.product.product_code}
@@ -612,7 +635,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                 : null;
 
               // ✅ CAMBIO: cantidad de specs del producto seleccionado
-              const specsCount = selectedProduct?.fixed_specs?.length ?? 0;
+              const specsCount = selectedProduct?.variants?.length ?? 0;
 
               return (
                 <div
@@ -636,27 +659,27 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                         <p className="text-xs text-muted-foreground">
                           Variedad:{" "}
                           <span className="font-medium">
-                            {item.fixed_spec?.code ??
-                              selectedProduct?.fixed_specs[0].code}
+                            {item.variant?.code ??
+                              selectedProduct?.variants?.[0]?.code}
                           </span>
                         </p>
                       )}
 
                       {specsCount > 1 && (
                         <Select
-                          value={item.fixed_spec?.id || ""}
+                          value={item.variant?.id || ""}
                           onValueChange={(value) => {
-                            const spec = selectedProduct?.fixed_specs.find(
+                            const spec = selectedProduct?.variants.find(
                               (s) => s.id === value
                             );
-                            updateItemSpec(index, spec || null);
+                            updateItemVariant(index, spec || null);
                           }}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Seleccionar variedad" />
                           </SelectTrigger>
                           <SelectContent>
-                            {selectedProduct?.fixed_specs.map((spec) => (
+                            {selectedProduct?.variants.map((spec) => (
                               <SelectItem key={spec.id} value={spec.id}>
                                 {spec.code}
                               </SelectItem>
@@ -667,8 +690,8 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                     </div>
                   ) : (
                     <p>{`${item.product?.name} (${item.product?.product_code})${
-                      item.fixed_spec !== null
-                        ? ` Variedad: ${item.fixed_spec?.code}`
+                      item.variant !== null
+                        ? ` Variedad: ${item.variant?.code}`
                         : ""
                     }`}</p>
                   )}
@@ -745,6 +768,8 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         <GeneralSpecificationsDialog
           open={openSpecs}
           onOpenChange={setOpenSpecs}
+          onSave={handleSaveSpecs}
+          initialData={specs!}
         />
 
         {user?.is_superuser && (

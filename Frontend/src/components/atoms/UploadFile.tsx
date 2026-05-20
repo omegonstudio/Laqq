@@ -3,10 +3,11 @@ import { Upload } from "lucide-react";
 import { ChangeEvent, useRef, useState } from "react";
 
 interface UploadFileProps {
-  onFileChange: (file: File | null) => void;
+  onFileChange: (files: File[] | File | null) => void;
   allowedTypes?: string[];
   label?: string;
   helpText?: string;
+  multiple?: boolean; // 👈 nueva prop
 }
 
 const ALLOWED_TYPES = [
@@ -21,19 +22,24 @@ const UploadFile: React.FC<UploadFileProps> = ({
   allowedTypes = ALLOWED_TYPES,
   label = "Adjuntar Archivo (opcional)",
   helpText,
+  multiple = false,
 }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [dragActive, setDragActive] = useState(false);
 
   const getErrorMessage = () => {
     const types = allowedTypes
-      .map((type) => {
-        const [category, format] = type.split("/");
-        return format.toUpperCase();
-      })
+      .map((type) => type.split("/")[1].toUpperCase())
       .join(", ");
-
     return `Solo se permiten archivos: ${types}`;
+  };
+
+  const isValidFile = (file: File) => {
+    return (
+      allowedTypes.includes(file.type) ||
+      file.name.toLowerCase().endsWith(".svg") ||
+      file.name.toLowerCase().endsWith(".pdf")
+    );
   };
 
   const handleClick = () => {
@@ -49,50 +55,53 @@ const UploadFile: React.FC<UploadFileProps> = ({
     setDragActive(false);
   };
 
+  const processFiles = (fileList: FileList) => {
+    const filesArray = Array.from(fileList);
+
+    const validFiles: File[] = [];
+    const invalidFiles: File[] = [];
+
+    filesArray.forEach((file) => {
+      if (isValidFile(file)) validFiles.push(file);
+      else invalidFiles.push(file);
+    });
+
+    if (invalidFiles.length > 0) {
+      toast({
+        title: getErrorMessage(),
+        variant: "destructive",
+      });
+    }
+
+    if (validFiles.length === 0) return;
+
+    if (multiple) {
+      onFileChange(validFiles);
+    } else {
+      onFileChange(validFiles[0]);
+    }
+  };
+
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragActive(false);
 
-    const file = e.dataTransfer.files?.[0] ?? null;
-    if (!file) return;
-
-    const isValidType =
-    allowedTypes.includes(file.type) ||
-    file.name.toLowerCase().endsWith(".svg") ||
-    file.name.toLowerCase().endsWith(".pdf");
-
-if (!isValidType) {      toast({
-        title: getErrorMessage(),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    onFileChange(file);
+    if (!e.dataTransfer.files?.length) return;
+    processFiles(e.dataTransfer.files);
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null;
+    const files = e.target.files;
 
-    if (!file) {
+    if (!files || files.length === 0) {
       onFileChange(null);
       return;
     }
 
-    const isValidType =
-  allowedTypes.includes(file.type) ||
-  file.name.toLowerCase().endsWith(".svg") ||
-  file.name.toLowerCase().endsWith(".pdf");
+    processFiles(files);
 
-if (!isValidType) {      toast({
-        title: getErrorMessage(),
-        variant: "destructive",
-      });
-      e.target.value = "";
-      return;
-    }
-
-    onFileChange(file);
+    // reset input para permitir subir el mismo archivo otra vez
+    e.target.value = "";
   };
 
   return (
@@ -122,13 +131,17 @@ if (!isValidType) {      toast({
 
         <p className="text-sm text-muted-foreground">
           {dragActive
-            ? "Soltá el archivo para cargarlo"
-            : helpText || "Click para cargar o arrastra el archivo aquí"}
+            ? "Soltá los archivos"
+            : helpText ||
+              (multiple
+                ? "Click o arrastrá múltiples archivos"
+                : "Click o arrastrá un archivo")}
         </p>
 
         <input
           ref={inputRef}
           type="file"
+          multiple={multiple} // 👈 clave
           accept={allowedTypes.join(",") + ",.pdf,.svg"}
           className="hidden"
           onChange={handleFileChange}
