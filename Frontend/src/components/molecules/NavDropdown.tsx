@@ -1,16 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useProductFilters } from "@/hooks/useFilters";
 import { useAppSelector } from "@/store/hooks";
 import { buildCategories } from "@/utils/data/categories";
 import { CategoryUI } from "@/types/types";
 import { ChevronDown } from "lucide-react";
+import { SkeletonMenu } from "../atoms/SkeletonMenu";
 
 export default function NavDropdown() {
   const { setFilter } = useProductFilters();
-  const { list: categories } = useAppSelector((state) => state.categories);
-  const menuItems = buildCategories(categories);
+  const { list: categories, loading } = useAppSelector(
+    (state) => state.categories
+  );
+
+  const menuItems = useMemo(() => {
+    if (loading || categories.length === 0) {
+      return [];
+    }
+
+    return buildCategories(categories);
+  }, [categories, loading]);
+
+  const menuReady = !loading && menuItems.length > 0;
+
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -50,7 +63,9 @@ export default function NavDropdown() {
       closeAll();
     }
   };
-
+  if (!menuReady) {
+    return <SkeletonMenu />;
+  }
   return (
     <>
       <div className="relative hidden md:block">
@@ -120,60 +135,58 @@ export default function NavDropdown() {
 
         {/* PANEL MULTI-COLUMNA */}
       </div>
-      <div className="flex md:hidden">
-        <div className="flex  gap-2 justify-center">
-          {menuItems.map((item) => (
-            <div key={item.id} className="relative">
-              {/* TRIGGER */}
-              <button
-                className={`px-3 h-8 rounded-full border text-xs uppercase flex items-center gap-1 whitespace-nowrap transition-colors ${
-                  openMap[item.id]
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border"
-                }`}
-                onClick={() => handleCategoryClick(item)}
-              >
-                {item.name}
-                {item.subcategories.length > 0 && (
-                  <ChevronDown
-                    className={`w-3 h-3 transition-transform ${
-                      openMap[item.id] ? "rotate-180" : ""
-                    }`}
-                  />
-                )}
-              </button>
-
-              {/* MOBILE PANEL */}
-              {openMap[item.id] && item.subcategories.length > 0 && (
-                <div className="absolute top-full left-0 mt-1 bg-card border border-border rounded-xl shadow-lg min-w-[200px] max-w-[280px] z-50">
-                  <div className="p-2 space-y-1 max-h-[300px] overflow-y-auto">
-                    {/* Ver todo button */}
-                    <button
-                      className="w-full text-left px-3 py-2 text-xs font-medium text-primary hover:bg-muted rounded-lg transition-colors  bg-red-500"
-                      onClick={() => {
-                        setFilter("category", item.id);
-                        closeAll();
-                      }}
-                    >
-                      Ver todo en {item.name}
-                    </button>
-                    <div className="border-t border-border my-1" />
-                    {item.subcategories.map((sub) => (
-                      <MobileMenuItem
-                        key={sub.id}
-                        item={sub}
-                        openMap={openMap}
-                        toggle={toggle}
-                        setFilter={setFilter}
-                        closeAll={closeAll}
-                      />
-                    ))}
-                  </div>
-                </div>
+      <div className="gap-2 justify-center w-full flex md:hidden">
+        {menuItems.map((item) => (
+          <div key={item.id} className="relative">
+            {/* TRIGGER */}
+            <button
+              className={`px-3 h-8 rounded-full border text-xs w-full flex items-center gap-1 whitespace-nowrap truncate min-w-0 transition-colors ${
+                openMap[item.id]
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border"
+              }`}
+              onClick={() => handleCategoryClick(item)}
+            >
+              {item.name}
+              {item.subcategories.length > 0 && (
+                <ChevronDown
+                  className={`w-3 h-3 transition-transform ${
+                    openMap[item.id] ? "rotate-180" : ""
+                  }`}
+                />
               )}
-            </div>
-          ))}
-        </div>
+            </button>
+
+            {/* MOBILE PANEL */}
+            {openMap[item.id] && item.subcategories.length > 0 && (
+              <div className="absolute top-full left-0 mt-1 bg-card border border-border rounded-xl shadow-lg min-w-[200px] max-w-[280px] z-50 ">
+                <div className="p-2 space-y-1 max-h-[300px] overflow-y-auto">
+                  {/* Ver todo button */}
+                  <button
+                    className="w-full text-left px-3 py-2 text-xs font-medium text-primary hover:bg-muted rounded-lg transition-colors"
+                    onClick={() => {
+                      setFilter("category", item.id);
+                      closeAll();
+                    }}
+                  >
+                    Ver todo en {item.name}
+                  </button>
+                  <div className="border-t border-border my-1" />
+                  {item.subcategories.map((sub) => (
+                    <MobileMenuItem
+                      key={sub.id}
+                      item={sub}
+                      openMap={openMap}
+                      toggle={toggle}
+                      setFilter={setFilter}
+                      closeAll={closeAll}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Backdrop for mobile */}

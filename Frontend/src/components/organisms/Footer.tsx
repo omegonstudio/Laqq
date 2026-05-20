@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
 import Logo from "../atoms/Logo";
 import { buildCategories } from "@/utils/data/categories";
 import { useAppSelector } from "@/store/hooks";
@@ -15,8 +14,8 @@ const Footer = () => {
       <div className="container mx-auto px-4">
         <div className="grid md:grid-cols-4 gap-8 mb-12">
           <div>
-            <Logo variant="dark" showLink={false} /> 
-                        <p className="text-sm opacity-80">
+            <Logo variant="dark" showLink={false} />
+            <p className="text-sm opacity-80">
               Proveedor especializado en equipo de laboratorio y servicios
               técnicos
             </p>
@@ -26,7 +25,7 @@ const Footer = () => {
             <h3 className="font-bold mb-4">Productos</h3>
             <ul className="space-y-2 text-sm">
               {menuItems.map((item) => (
-                <li>
+                <li key={item.id}>
                   {" "}
                   <p
                     onClick={() => setFilter("category", item.id)}
