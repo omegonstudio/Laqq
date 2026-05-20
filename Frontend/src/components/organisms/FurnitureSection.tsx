@@ -55,14 +55,14 @@ const FurnitureSection = () => {
           {/* CONTENT */}
           <div className="flex flex-col gap-8">
             {/* TITLE CARD */}
-            <div className="bg-white dark:bg-neutral-800 rounded-2xl p-8 shadow-sm border border-gray-200 dark:border-neutral-700">
+            <div className=" dark:bg-neutral-800 rounded-2xl p-8 shadow-sm border border-gray-200 dark:border-neutral-700">
               <h3 className="text-3xl md:text-4xl font-light leading-tight text-gray-900 dark:text-white">
                 Diseño modular y tecnología aplicada al laboratorio
               </h3>
             </div>
 
             {/* LOGO */}
-            <div className="bg-white dark:bg-neutral-800 rounded-2xl p-8 flex items-center justify-center shadow-sm border border-gray-200 dark:border-neutral-700">
+            <div className=" dark:bg-neutral-100 rounded-2xl p-8 flex items-center justify-center shadow-sm border border-gray-200 dark:border-neutral-700">
               <img
                 src="/kottermann.svg"
                 alt="Kottermann"
@@ -117,7 +117,7 @@ const FurnitureSection = () => {
 
         {/* CARDS */}
         <div className="mt-24">
-          <div className="mb-12 max-w-3xl">
+          <div className="mb-12 max-w-4xl">
             <h3 className="text-4xl font-light mb-4 text-gray-900 dark:text-white">
               Sistemas y componentes
             </h3>
