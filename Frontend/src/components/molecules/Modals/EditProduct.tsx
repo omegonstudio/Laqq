@@ -35,6 +35,7 @@ import SelectCategories from "@/components/atoms/SelectCategories";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProductVariantsTable from "@/components/molecules/ProductVariantsTable";
 import type { Variants } from "@/components/molecules/ProductVariantsTable";
+import DescriptionEditor from "@/components/atoms/DescriptionProductEditor";
 
 interface ModalProductProps {
   isOpen: boolean;
@@ -626,12 +627,14 @@ const ModalProduct: React.FC<ModalProductProps> = ({
                 Destacar
               </label>
             </div>
-            <Textarea
+            <DescriptionEditor
               value={localState.description}
-              onChange={(e) =>
-                setLocalState({ ...localState, description: e.target.value })
+              onChange={(value) =>
+                setLocalState({
+                  ...localState,
+                  description: value,
+                })
               }
-              placeholder="Descripción del producto"
             />
             <div className="flex gap-5">
               <div className="w-[50%]">

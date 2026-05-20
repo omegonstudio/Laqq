@@ -41,6 +41,27 @@ const ProductCard = ({ product }: ProductCardProps) => {
     // 🔹 Más de una → ir al detalle
     navigate(`/product/${product.id}`);
   };
+  const extractPlainText = (html: string) => {
+    if (!html) return "";
+
+    // Remover bloques completos que NO deben generar preview
+    const cleaned = html
+      .replace(/<table[\s\S]*?<\/table>/gi, "")
+      .replace(/<img[^>]*>/gi, "")
+      .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
+      .replace(/<video[\s\S]*?<\/video>/gi, "");
+
+    // Remover el resto de tags
+    return cleaned.replace(/<[^>]*>/g, "").trim();
+  };
+  const plainDescription = extractPlainText(product.description || "");
+
+  const truncatedDescription =
+    plainDescription.length > 200
+      ? `${plainDescription.slice(0, 200)}...`
+      : plainDescription;
+
+  const shouldShowDescription = truncatedDescription.length > 0;
   return (
     <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-xl hover:scale-[1.02] hover:border-primary/50 transition-all duration-300 group">
       <div className="aspect-square bg-muted rounded-xl mb-4 overflow-hidden relative">
@@ -69,9 +90,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
         </h3>
       </Link>
 
-      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-        {product.description}
-      </p>
+      {shouldShowDescription && (
+        <p className="text-sm text-muted-foreground mb-4 line-clamp-3 whitespace-pre-line">
+          {truncatedDescription}
+        </p>
+      )}
 
       <div className="flex gap-2">
         <Button

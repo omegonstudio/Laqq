@@ -202,7 +202,7 @@ const ProductDetailPage = () => {
   const goToImage = (index: number) => {
     setCurrentImageIndex(index);
   };
-
+  const hasHtml = /<\/?[a-z][\s\S]*>/i.test(product.description);
   // Calcular especificaciones y productos relacionados
   return (
     <div className="py-16">
@@ -286,10 +286,27 @@ const ProductDetailPage = () => {
               {product.brand}
             </Badge>
             <h1 className="text-4xl font-bold mb-4">{product.name}</h1>
-            <p className="text-lg text-muted-foreground mb-8 whitespace-pre-line ">
-              {product.description}
-            </p>
-
+            {hasHtml ? (
+              <div
+                className="
+      prose prose-sm max-w-none text-muted-foreground
+      [&_table]:w-full
+      [&_table]:border-collapse
+      [&_th]:border
+      [&_td]:border
+      [&_th]:p-2
+      [&_td]:p-2
+    "
+                dangerouslySetInnerHTML={{
+                  __html: product.description,
+                }}
+              />
+            ) : (
+              <p className="text-lg text-muted-foreground mb-8 whitespace-pre-line">
+                {product.description}
+              </p>
+            )}
+            <br />
             <div className="flex flex-col sm:flex-row gap-3">
               {variantCount < 2 ? (
                 <Button
