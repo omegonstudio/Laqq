@@ -15,40 +15,41 @@ export default function DescriptionEditor({ value, onChange }: Props) {
   const hasHtml = useMemo(() => {
     return /<\/?[a-z][\s\S]*>/i.test(value);
   }, [value]);
+  const TABLE_TEMPLATE = `
+  <table border="1">
+    <thead>
+      <tr>
+        <th>Columna 1</th>
+        <th>Columna 2</th>
+        <th>Columna 3</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Dato 1</td>
+        <td>Dato 2</td>
+        <td>Dato 3</td>
+      </tr>
+    </tbody>
+  </table>
+  `;
 
   const insertTable = () => {
-    const tableTemplate = `
-<table border="1">
-  <thead>
-    <tr>
-      <th>Columna 1</th>
-      <th>Columna 2</th>
-      <th>Columna 3</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Dato 1</td>
-      <td>Dato 2</td>
-      <td>Dato 3</td>
-    </tr>
-  </tbody>
-</table>
-`;
+    // Evitar insertar dos veces seguidas el template vacío
+    if (value.includes(TABLE_TEMPLATE.trim())) {
+      return;
+    }
 
-    onChange(value.trim() ? `${value}\n\n${tableTemplate}` : tableTemplate);
+    const nextValue = value.trim()
+      ? `${value}\n\n${TABLE_TEMPLATE}`
+      : TABLE_TEMPLATE;
 
-    setPreview(false);
+    onChange(nextValue);
   };
-
   return (
     <div className="space-y-3">
       {/* Toolbar */}
-      <div className="flex items-center gap-2">
-        <Button type="button" variant="outline" onClick={insertTable}>
-          Insertar tabla
-        </Button>
-
+      <div className="flex items-center justify-between gap-2">
         {hasHtml && (
           <Button
             type="button"
@@ -58,6 +59,9 @@ export default function DescriptionEditor({ value, onChange }: Props) {
             {preview ? "Editar HTML" : "Visualizar"}
           </Button>
         )}
+        <Button type="button" variant="outline" onClick={insertTable}>
+          Insertar tabla
+        </Button>
       </div>
 
       {/* Preview */}
