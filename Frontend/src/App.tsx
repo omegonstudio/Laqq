@@ -26,6 +26,7 @@ import SupportPage from "./pages/SupportPage";
 import CertificatesPage from "./pages/CertificatesPage";
 import CompanyPage from "./pages/CompanyPage";
 import ContactPage from "./pages/ContactPage";
+import FurniturePage from "./pages/FurniturePage";
 import BrandsPage from "./pages/BrandsPage";
 import ContactsPage from "./pages/ContactsPage";
 import StatesPage from "./pages/complementary/StatesPage";
@@ -103,6 +104,14 @@ const App = () => {
                   element={
                     <MainLayout>
                       <CertificatesPage />
+                    </MainLayout>
+                  }
+                />
+                <Route
+                  path="/furniture"
+                  element={
+                    <MainLayout>
+                      <FurniturePage />
                     </MainLayout>
                   }
                 />
