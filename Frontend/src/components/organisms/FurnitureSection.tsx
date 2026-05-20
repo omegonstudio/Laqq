@@ -154,7 +154,7 @@ const FurnitureSection = () => {
            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-10"> 
             {cards.map((card, index) => ( <div key={index} className="relative overflow-hidden rounded-lg shadow-md group" > 
               <img src={card.image} alt={card.title} className="w-full h-[190px] object-cover transition-transform duration-500 group-hover:scale-105" />
-               {/* Overlay */} <div className="absolute inset-0 bg-gradient-to-t from-[#0077ff]/90 via-[#0077ff]/20 to-transparent" /> 
+               {/* Overlay */} <div className="absolute inset-0 bg-gradient-to-t from-orange-500/90 via-orange-500/20 to-transparent" /> 
                {/* Title */} <div className="absolute bottom-5 left-0 right-0 text-center px-4"> 
                 <h4 className="text-white font-bold text-lg tracking-wide"> {card.title} 
                   </h4> 
