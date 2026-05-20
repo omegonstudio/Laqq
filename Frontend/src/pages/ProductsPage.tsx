@@ -167,9 +167,30 @@ const ProductsPage = () => {
           <br></br>
           <div className="flex justify-between">
             {/* Mostrar filtro activo */}
+            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+              {activeCategory && (
+                <div>
+                  <span className="text-sm text-muted-foreground mr-2">
+                    Filtrando por categoría:
+                  </span>
+                  <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/30 px-4 py-2 rounded-full shadow-sm hover:shadow-md transition-shadow">
+                    <span className="font-medium text-primary">
+                      {activeCategory.name}
+                    </span>
+                    <button
+                      onClick={clearFilterCategory}
+                      className="text-primary hover:text-primary/80 hover:scale-125 transition-transform font-bold text-xl"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {activeBrand && (
               <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground mr-2">
                   Filtrando por marca:
                 </span>
                 <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/30 px-4 py-2 rounded-full shadow-sm hover:shadow-md transition-shadow">
@@ -178,25 +199,6 @@ const ProductsPage = () => {
                   </span>
                   <button
                     onClick={clearFilterBrand}
-                    className="text-primary hover:text-primary/80 hover:scale-125 transition-transform font-bold text-xl"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {activeCategory && (
-              <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-                <span className="text-sm text-muted-foreground">
-                  Filtrando por categoría:
-                </span>
-                <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/30 px-4 py-2 rounded-full shadow-sm hover:shadow-md transition-shadow">
-                  <span className="font-medium text-primary">
-                    {activeCategory.name}
-                  </span>
-                  <button
-                    onClick={clearFilterCategory}
                     className="text-primary hover:text-primary/80 hover:scale-125 transition-transform font-bold text-xl"
                   >
                     ×
