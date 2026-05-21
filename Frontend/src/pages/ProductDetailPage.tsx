@@ -130,6 +130,28 @@ const ProductDetailPage = () => {
       </div>
     );
   }
+  const formatDescription = (description: string) => {
+    if (!description) return "";
+
+    // Separar tablas temporalmente
+    const tables: string[] = [];
+
+    let content = description.replace(/<table[\s\S]*?<\/table>/gi, (match) => {
+      tables.push(match);
+      return `__TABLE_${tables.length - 1}__`;
+    });
+
+    // Convertir saltos de línea SOLO fuera de tablas
+    content = content.replace(/\n/g, "<br />");
+
+    // Restaurar tablas originales
+    content = content.replace(
+      /__TABLE_(\d+)__/g,
+      (_, index) => tables[Number(index)]
+    );
+
+    return content;
+  };
 
   // Mostrar error si hay error
   if (selectedError) {
@@ -161,6 +183,7 @@ const ProductDetailPage = () => {
       </div>
     );
   }
+  const formattedDescription = formatDescription(product.description);
 
   // Construir array de imágenes con la lógica correcta
   // AHORA SÍ podemos usar product de forma segura porque ya verificamos que existe
@@ -286,26 +309,22 @@ const ProductDetailPage = () => {
               {product.brand}
             </Badge>
             <h1 className="text-4xl font-bold mb-4">{product.name}</h1>
-            {hasHtml ? (
-              <div
-                className="
-      prose prose-sm max-w-none text-muted-foreground
-      [&_table]:w-full
-      [&_table]:border-collapse
-      [&_th]:border
-      [&_td]:border
-      [&_th]:p-2
-      [&_td]:p-2
-    "
-                dangerouslySetInnerHTML={{
-                  __html: product.description,
-                }}
-              />
-            ) : (
-              <p className="text-lg text-muted-foreground mb-8 whitespace-pre-line">
-                {product.description}
-              </p>
-            )}
+            <div
+              className="
+    prose prose-sm max-w-none text-muted-foreground
+    whitespace-normal
+    [&_table]:w-full
+    [&_table]:border-collapse
+    [&_table]:my-2
+    [&_th]:border
+    [&_td]:border
+    [&_th]:p-2
+    [&_td]:p-2
+  "
+              dangerouslySetInnerHTML={{
+                __html: formattedDescription,
+              }}
+            />
             <br />
             <div className="flex flex-col sm:flex-row gap-3">
               {variantCount < 2 ? (

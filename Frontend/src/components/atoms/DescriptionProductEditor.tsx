@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/hooks/use-toast";
 
 type Props = {
   value: string;
@@ -37,6 +38,12 @@ export default function DescriptionEditor({ value, onChange }: Props) {
   const insertTable = () => {
     // Evitar insertar dos veces seguidas el template vacío
     if (value.includes(TABLE_TEMPLATE.trim())) {
+      toast({
+        title: "Ya has insertado una tabla.",
+        description:
+          " Edita el HTML para modificarla o eliminarla antes de insertar otra.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -46,19 +53,46 @@ export default function DescriptionEditor({ value, onChange }: Props) {
 
     onChange(nextValue);
   };
+
+  const formatDescription = (description: string) => {
+    if (!description) return "";
+
+    // Separar tablas temporalmente
+    const tables: string[] = [];
+
+    let content = description.replace(/<table[\s\S]*?<\/table>/gi, (match) => {
+      tables.push(match);
+      return `__TABLE_${tables.length - 1}__`;
+    });
+
+    // Convertir saltos de línea SOLO fuera de tablas
+    content = content.replace(/\n/g, "<br />");
+
+    // Restaurar tablas originales
+    content = content.replace(
+      /__TABLE_(\d+)__/g,
+      (_, index) => tables[Number(index)]
+    );
+
+    return content;
+  };
+  const formattedDescription = formatDescription(value);
+
   return (
     <div className="space-y-3">
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-2">
-        {hasHtml && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setPreview((p) => !p)}
-          >
-            {preview ? "Editar HTML" : "Visualizar"}
-          </Button>
-        )}
+        <div>
+          {hasHtml && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPreview((p) => !p)}
+            >
+              {preview ? "Editar HTML" : "Visualizar"}
+            </Button>
+          )}
+        </div>
         <Button type="button" variant="outline" onClick={insertTable}>
           Insertar tabla
         </Button>
@@ -68,27 +102,27 @@ export default function DescriptionEditor({ value, onChange }: Props) {
       {preview && hasHtml ? (
         <div
           className="
-            min-h-[200px]
-            rounded-md
-            border
-            p-4
-            prose
-            max-w-none
-            [&_table]:w-full
-            [&_table]:border-collapse
-            [&_th]:border
-            [&_td]:border
-            [&_th]:p-2
-            [&_td]:p-2
-          "
-          dangerouslySetInnerHTML={{ __html: value }}
+          border rounded-md p-4
+prose prose-sm max-w-none text-muted-foreground
+whitespace-normal
+[&_table]:w-full
+[&_table]:border-collapse
+[&_table]:my-2
+[&_th]:border
+[&_td]:border
+[&_th]:p-2
+[&_td]:p-2
+"
+          dangerouslySetInnerHTML={{
+            __html: formattedDescription,
+          }}
         />
       ) : (
         <Textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Descripción del producto"
-          className="min-h-[220px] font-mono"
+          className="min-h-[320px] font-mono"
         />
       )}
     </div>
