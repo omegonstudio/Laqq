@@ -446,7 +446,6 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       });
     }
   };
-  console.log(disabled);
   const handleFile = (selectedFile: File | null) => {
     if (selectedFile) {
       const reader = new FileReader();

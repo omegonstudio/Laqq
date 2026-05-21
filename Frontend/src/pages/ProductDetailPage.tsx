@@ -60,7 +60,6 @@ const ProductDetailPage = () => {
 
     return Array.from(keys);
   }, [product]);
-  console.log(variantColumns);
   const hasProductInCart = () => {
     return items.some(
       (item) =>

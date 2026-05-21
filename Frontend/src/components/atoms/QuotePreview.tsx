@@ -128,7 +128,6 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       setFormState(null);
     }
   }, [open]);
-  console.log(quote, "asasas");
   useEffect(() => {
     dispatch(fetchUsers({ page: 1, page_size: 50 }));
     dispatch(fetchAllProducts({}));
