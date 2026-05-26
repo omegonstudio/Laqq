@@ -103,13 +103,10 @@ def _get_or_create_brand(name, brand_cache, summary):
         summary['created_brands'] += 1
     return obj
 
-VALID_LEVEL_0_CATEGORIES = {'insumos', 'procesos', 'equipos', 'mobiliario'}
-
 def _get_or_create_category_by_levels(level_0, level_1, level_2, category_cache, summary):
     """
     Resuelve la categoría a partir de 3 niveles.
-    - level_0: obligatorio, solo acepta: insumos, procesos, equipos, mobiliario (case-insensitive).
-               Debe pre-existir en la base de datos.
+    - level_0: obligatorio, debe pre-existir en la base de datos (búsqueda case-insensitive).
     - level_1: opcional, se crea si no existe (case-insensitive).
     - level_2: opcional, se crea si no existe (case-insensitive). Requiere level_1.
     Todas las búsquedas son case-insensitive para evitar duplicados.
@@ -120,12 +117,6 @@ def _get_or_create_category_by_levels(level_0, level_1, level_2, category_cache,
 
     if not level_0:
         return None
-
-    if level_0.lower() not in VALID_LEVEL_0_CATEGORIES:
-        raise ValueError(
-            f"Categoría nivel 0 inválida: '{level_0}'. "
-            f"Valores permitidos: {', '.join(sorted(VALID_LEVEL_0_CATEGORIES))}"
-        )
 
     # Cache key normalizado en lower para evitar duplicados
     cache_key = level_0.lower()

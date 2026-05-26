@@ -5,6 +5,7 @@ Ejecutar desde Backend/: venv/Scripts/python.exe scripts/gen_excel_template.py
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 
 wb = openpyxl.Workbook()
 
@@ -79,7 +80,7 @@ for col_idx, h in enumerate(headers, 1):
 
 example_rows = [
     # Producto 1 — padre define NOMBRES de specs en spec_1/spec_2/spec_3 (tiene_specs=true)
-    ('MAT-001', 'Matraz Aforado Clase A', 'LabEquip', 'equipos', 'Material Volumetrico', 'Matraces',
+    ('MAT-001', 'Matraz Aforado Clase A', 'LabEquip', 'Equipamiento', 'Material Volumetrico', 'Matraces',
      'Matraz aforado de vidrio borosilicato clase A', 'matraz_aforado.jpg', 'true', 'false',
      None, None, None, None, 'true', 'potencia', 'velocidad', 'volumen'),
     # variantes ponen los VALORES en esas mismas columnas
@@ -92,7 +93,7 @@ example_rows = [
     # Separador
     (None,) * len(headers),
     # Producto 2 — define sus propios nombres de specs (distintos al producto 1)
-    ('VAS-002', 'Vaso de Precipitado', 'GlassLab', 'equipos', 'Cristaleria', 'Vasos',
+    ('VAS-002', 'Vaso de Precipitado', 'GlassLab', 'Equipamiento', 'Cristaleria', 'Vasos',
      'Vaso de precipitado graduado', 'vaso_precipitado.jpg', 'true', 'false',
      None, None, None, 'MAT-001', 'true', 'viscosidad', 'cap_nominal', None),
     ('VAS-002', None, None, None, None, None, None, None, None, 'true',
@@ -116,6 +117,23 @@ for row_idx, row_data in enumerate(example_rows, 2):
 ws.freeze_panes = 'A2'
 ws.row_dimensions[1].height = 32
 
+# ========== Dropdown para categoria_nivel_0 ==========
+cat0_col = get_column_letter(headers.index('categoria_nivel_0') + 1)
+dv_cat0 = DataValidation(
+    type='list',
+    formula1='"Insumos,Procesos,Equipamiento,Mobiliario"',
+    allow_blank=True,
+    showDropDown=False,  # False = el selector es visible en Excel
+    showErrorMessage=True,
+    errorTitle='Categoría inválida',
+    error='Seleccioná una categoría de la lista: Insumos, Procesos, Equipamiento, Mobiliario.',
+    showInputMessage=True,
+    promptTitle='Categoría nivel 0',
+    prompt='Seleccioná la categoría raíz del producto.',
+)
+ws.add_data_validation(dv_cat0)
+dv_cat0.sqref = f'{cat0_col}2:{cat0_col}5000'
+
 # ========== HOJA 2: Instrucciones ==========
 ws2 = wb.create_sheet('Instrucciones')
 ws2.column_dimensions['A'].width = 115
@@ -135,7 +153,7 @@ instrucciones = [
     ('   codigo_producto        Codigo unico del producto (obligatorio)', 'normal'),
     ('   nombre                 Nombre del producto', 'normal'),
     ('   marca                  Marca del producto', 'normal'),
-    ('   categoria_nivel_0      Categoria raiz — valores validos: insumos, procesos, equipos, mobiliario', 'normal'),
+    ('   categoria_nivel_0      Categoria raiz — debe coincidir con una categoria existente en la base de datos (ej: Insumos, Procesos, Equipamiento, Mobiliario)', 'normal'),
     ('   categoria_nivel_1      Subcategoria nivel 1 (se crea si no existe)', 'normal'),
     ('   categoria_nivel_2      Subcategoria nivel 2 (se crea si no existe; requiere categoria_nivel_1)', 'normal'),
     ('   descripcion            Descripcion del producto', 'normal'),
@@ -191,9 +209,9 @@ instrucciones = [
     ('   Causa:    El nombre_imagen no coincide con ningun archivo en la libreria de imagenes.', 'normal'),
     ('   Solucion: Subir la imagen a la libreria antes de importar, o dejar el campo vacio.', 'normal'),
     ('', None),
-    ('   ERROR: Fila N: error al procesar producto "X" — Categoria nivel 0 invalida', 'error'),
-    ('   Causa:    El valor de categoria_nivel_0 no es uno de los permitidos.', 'normal'),
-    ('   Solucion: Usar solo: insumos, procesos, equipos, mobiliario (exactamente, sin tildes).', 'normal'),
+    ('   ERROR: Fila N: error al procesar producto "X" — Categoria nivel 0 no encontrada', 'error'),
+    ('   Causa:    El valor de categoria_nivel_0 no coincide con ninguna categoria raiz en la base de datos.', 'normal'),
+    ('   Solucion: Verificar el nombre exacto de la categoria raiz en el sistema (ej: Insumos, Procesos, Equipamiento, Mobiliario).', 'normal'),
     ('', None),
     ('   ERROR: Fila N: producto relacionado con codigo "X" no encontrado', 'error'),
     ('   Causa:    Un codigo en productos_relacionados no existe en la DB ni en el archivo.', 'normal'),
