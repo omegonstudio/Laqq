@@ -116,7 +116,14 @@ def _get_or_create_category_by_levels(level_0, level_1, level_2, category_cache,
     level_2 = (level_2 or '').strip()
 
     if not level_0:
-        return None
+        if level_1 or level_2:
+            raise ValueError(
+                f"Se especificó categoria_nivel_1 ('{level_1}') o categoria_nivel_2 ('{level_2}') "
+                f"sin categoria_nivel_0. El nivel 0 es obligatorio cuando se indica alguna categoría."
+            )
+        raise ValueError(
+            "El producto debe tener al menos categoria_nivel_0. La categoría es obligatoria."
+        )
 
     # Cache key normalizado en lower para evitar duplicados
     cache_key = level_0.lower()
