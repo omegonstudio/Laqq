@@ -48,7 +48,7 @@ const App = () => {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    dispatch(fetchAllCategories());
+    dispatch(fetchAllCategories({ retries: 2, retryDelayMs: 350 }));
     dispatch(fetchAllBrands());
     // dispatch(fetchAllProducts());
   }, [dispatch]);

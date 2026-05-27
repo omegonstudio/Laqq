@@ -1,14 +1,23 @@
 import { Link } from "react-router-dom";
 import Logo from "../atoms/Logo";
-import { buildCategories } from "@/utils/data/categories";
-import { useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useProductFilters } from "@/hooks/useFilters";
+import {
+  selectCategoryMenuItems,
+  selectCategoriesUiState,
+} from "@/store/selectors/categoriesSelectors";
+import { fetchAllCategories } from "@/store/categoriesSlice";
 
 const Footer = () => {
-  const { list: categories } = useAppSelector((state) => state.categories);
+  const dispatch = useAppDispatch();
+  const menuItems = useAppSelector(selectCategoryMenuItems);
+  const categoriesUi = useAppSelector(selectCategoriesUiState);
   const { setFilter } = useProductFilters();
 
-  const menuItems = buildCategories(categories);
+  const handleRetry = () => {
+    dispatch(fetchAllCategories({ retries: 2, retryDelayMs: 350 }));
+  };
+
   return (
     <footer className="bg-secondary text-secondary-foreground pt-16 pb-8">
       <div className="container mx-auto px-4">
@@ -23,19 +32,41 @@ const Footer = () => {
 
           <div>
             <h3 className="font-bold mb-4">Productos</h3>
-            <ul className="space-y-2 text-sm">
-              {menuItems.map((item) => (
-                <li key={item.id}>
-                  {" "}
-                  <p
-                    onClick={() => setFilter("category", item.id)}
-                    className="opacity-80 hover:opacity-100 hover:underline transition-opacity cursor-pointer"
-                  >
-                    {item.name}
-                  </p>
-                </li>
-              ))}
-            </ul>
+            {categoriesUi.loading ? (
+              <ul className="space-y-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <li
+                    key={`footer-skeleton-${index}`}
+                    className="h-4 w-28 rounded bg-secondary-foreground/20 animate-pulse"
+                  />
+                ))}
+              </ul>
+            ) : categoriesUi.isError ? (
+              <div className="text-sm space-y-2">
+                <p className="opacity-80">No se pudieron cargar las categorías.</p>
+                <button
+                  onClick={handleRetry}
+                  className="px-2 py-1 rounded border border-secondary-foreground/30 hover:bg-secondary-foreground/10 transition-colors"
+                >
+                  Reintentar
+                </button>
+              </div>
+            ) : categoriesUi.isEmpty ? (
+              <p className="text-sm opacity-80">No hay categorías disponibles.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {menuItems.map((item) => (
+                  <li key={item.id}>
+                    <p
+                      onClick={() => setFilter("category", item.id)}
+                      className="opacity-80 hover:opacity-100 hover:underline transition-opacity cursor-pointer"
+                    >
+                      {item.name}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
             {/* <ul className="space-y-2 text-sm">
               <li>
                 <Link
