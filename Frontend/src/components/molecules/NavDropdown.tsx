@@ -1,28 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useProductFilters } from "@/hooks/useFilters";
-import { useAppSelector } from "@/store/hooks";
-import { buildCategories } from "@/utils/data/categories";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { CategoryUI } from "@/types/types";
 import { ChevronDown } from "lucide-react";
 import { SkeletonMenu } from "../atoms/SkeletonMenu";
+import {
+  selectCategoryMenuItems,
+  selectCategoriesUiState,
+} from "@/store/selectors/categoriesSelectors";
+import { fetchAllCategories } from "@/store/categoriesSlice";
 
 export default function NavDropdown() {
+  const dispatch = useAppDispatch();
   const { setFilter } = useProductFilters();
-  const { list: categories, loading } = useAppSelector(
-    (state) => state.categories
-  );
-
-  const menuItems = useMemo(() => {
-    if (loading || categories.length === 0) {
-      return [];
-    }
-
-    return buildCategories(categories);
-  }, [categories, loading]);
-
-  const menuReady = !loading && menuItems.length > 0;
+  const menuItems = useAppSelector(selectCategoryMenuItems);
+  const categoriesUi = useAppSelector(selectCategoriesUiState);
+  const menuReady = !categoriesUi.loading && menuItems.length > 0;
 
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -63,9 +58,36 @@ export default function NavDropdown() {
       closeAll();
     }
   };
-  if (!menuReady) {
+  const handleRetry = () => {
+    dispatch(fetchAllCategories({ retries: 2, retryDelayMs: 350 }));
+  };
+
+  if (categoriesUi.loading) {
     return <SkeletonMenu />;
   }
+
+  if (categoriesUi.isError) {
+    return (
+      <div className="w-full flex items-center justify-center gap-2 py-2 text-xs">
+        <span className="text-destructive">No se pudo cargar categorías.</span>
+        <button
+          className="px-2 py-1 rounded-md border border-border hover:bg-muted transition-colors"
+          onClick={handleRetry}
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
+  if (!menuReady) {
+    return (
+      <div className="w-full flex items-center justify-center py-2 text-xs text-muted-foreground">
+        No hay categorías disponibles.
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="relative hidden md:block">

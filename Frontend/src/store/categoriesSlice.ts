@@ -7,12 +7,19 @@ interface FetchCategoriesParams {
   page?: number;
   page_size?: number;
 }
+interface FetchAllCategoriesOptions {
+  retries?: number;
+  retryDelayMs?: number;
+  force?: boolean;
+}
 
 interface CategoriesState {
   list: Category[];
   count: number;
   loading: boolean;
+  status: "idle" | "loading" | "success" | "error";
   error: string | null;
+  lastRequestId: string | null;
 
   selected: Category | null;
   selectedLoading: boolean;
@@ -35,7 +42,9 @@ const initialState: CategoriesState = {
   list: [],
   count: 0,
   loading: false,
+  status: "idle",
   error: null,
+  lastRequestId: null,
 
   selected: null,
   selectedLoading: false,
@@ -58,23 +67,69 @@ const initialState: CategoriesState = {
 
 export const fetchAllCategories = createAsyncThunk(
   "brands/fetchAllCategories",
-  async (_, { rejectWithValue }) => {
+  async (
+    options: FetchAllCategoriesOptions | undefined,
+    { rejectWithValue }
+  ) => {
+    const retries = options?.retries ?? 2;
+    const retryDelayMs = options?.retryDelayMs ?? 300;
+
+    const sleep = (ms: number) =>
+      new Promise((resolve) => {
+        setTimeout(resolve, ms);
+      });
+
     try {
       const allCategories: Category[] = [];
       let page = 1;
       const pageSize = 100;
       let hasMore = true;
+      const seenIds = new Set<string>();
 
       while (hasMore) {
-        const response = await productsApi.listCategories({
-          page,
-          page_size: pageSize,
+        let attempt = 0;
+        let response: Awaited<ReturnType<typeof productsApi.listCategories>> | null =
+          null;
+
+        while (attempt <= retries) {
+          try {
+            response = await productsApi.listCategories({
+              page,
+              page_size: pageSize,
+            });
+            break;
+          } catch (error) {
+            attempt += 1;
+            if (attempt > retries) throw error;
+            console.warn(
+              `[categories] reintento ${attempt}/${retries} para página ${page}`
+            );
+            await sleep(retryDelayMs * attempt);
+          }
+        }
+
+        if (!response) {
+          throw new Error("No se pudo cargar la página de categorías");
+        }
+
+        response.results.forEach((category) => {
+          if (!seenIds.has(category.id)) {
+            allCategories.push(category);
+            seenIds.add(category.id);
+          }
         });
 
-        allCategories.push(...response.results);
+        if (!Array.isArray(response.results)) {
+          console.warn("[categories] payload inválido en listCategories.results");
+          break;
+        }
+
         hasMore = response.next !== null;
         page++;
       }
+      console.info(
+        `[categories] cargadas ${allCategories.length} categorías (${page - 1} páginas)`
+      );
       return {
         results: allCategories,
         count: allCategories.length,
@@ -87,6 +142,17 @@ export const fetchAllCategories = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error);
     }
+  },
+  {
+    condition: (options, { getState }) => {
+      const state = getState() as { categories: CategoriesState };
+      if (options?.force) return true;
+      if (state.categories.loading) return false;
+      if (state.categories.status === "success" && state.categories.list.length > 0) {
+        return false;
+      }
+      return true;
+    },
   }
 );
 export const fetchCategories = createAsyncThunk(
@@ -149,18 +215,21 @@ export const categoriesSlice = createSlice({
     builder
       .addCase(fetchCategories.pending, (state) => {
         state.loading = true;
+        state.status = "loading";
         state.error = null;
       })
       .addCase(
         fetchCategories.fulfilled,
         (state, action: PayloadAction<PaginatedResponse<Category>>) => {
           state.loading = false;
+          state.status = "success";
           state.list = action.payload.results;
           state.count = action.payload.count;
         }
       )
       .addCase(fetchCategories.rejected, (state, action) => {
         state.loading = false;
+        state.status = "error";
         state.error = action.error.message || "Error cargando categorías";
       });
 
@@ -179,11 +248,29 @@ export const categoriesSlice = createSlice({
         state.selectedError =
           action.error.message || "Error cargando categoría";
       });
-    builder.addCase(fetchAllCategories.fulfilled, (state, action) => {
-      state.loading = false;
-      state.list = action.payload.results;
-      state.count = action.payload.count;
-    });
+    builder
+      .addCase(fetchAllCategories.pending, (state, action) => {
+        state.loading = true;
+        state.status = "loading";
+        state.error = null;
+        state.lastRequestId = action.meta.requestId;
+      })
+      .addCase(fetchAllCategories.fulfilled, (state, action) => {
+        if (state.lastRequestId !== action.meta.requestId) return;
+        state.loading = false;
+        state.status = "success";
+        state.list = action.payload.results;
+        state.count = action.payload.count;
+      })
+      .addCase(fetchAllCategories.rejected, (state, action) => {
+        if (state.lastRequestId !== action.meta.requestId) return;
+        state.loading = false;
+        state.status = "error";
+        state.error =
+          (action.payload as { message?: string } | undefined)?.message ||
+          action.error.message ||
+          "Error cargando categorías";
+      });
 
     // CREATE
     builder
