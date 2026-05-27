@@ -368,7 +368,7 @@ class QuotePackageSerializer(serializers.Serializer):
                 )
             quote_create_data['state'] = quote_state
         else:
-            default_quote_state = QuoteState.objects.first()
+            default_quote_state = QuoteState.objects.filter(id='pending').first()
             if not default_quote_state:
                 raise serializers.ValidationError(
                     "No QuoteState available. Please create at least one QuoteState."
