@@ -65,7 +65,7 @@ def dashboard_summary(request):
     """
 
     # 1. Usuarios Activos
-    active_users_count = User.objects.filter(is_active=True).count()
+    active_users_count = User.objects.filter(is_active=True).exclude(user_type__id='client').count()
 
     # 2. Productos Totales
     products_count = Product.objects.filter(is_active=True).count()

@@ -31,6 +31,13 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = '__all__'
 
+    def validate(self, attrs):
+        if not self.instance and not attrs.get('parent'):
+            raise serializers.ValidationError(
+                {'parent': 'No se pueden crear categorías de nivel 0 directamente. Toda categoría debe tener una categoría padre.'}
+            )
+        return attrs
+
 
 class TechnicalSpecSerializer(serializers.ModelSerializer):
     """Serializer para especificaciones técnicas dinámicas (clave-valor)"""

@@ -142,8 +142,10 @@ def _get_or_create_category_by_levels(level_0, level_1, level_2, category_cache,
         category_cache[key_0] = parent
 
     if not level_1:
-        category_cache[cache_key] = parent
-        return parent
+        raise ValueError(
+            f"Se requiere categoria_nivel_1 cuando se especifica categoria_nivel_0 ('{level_0}'). "
+            f"Los productos no pueden asignarse directamente a categorías de nivel 0."
+        )
 
     # Level 1: buscar case-insensitive, crear si no existe
     key_1 = f'{level_0.lower()}>{level_1.lower()}'
