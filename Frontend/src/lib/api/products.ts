@@ -19,6 +19,7 @@ export interface PaginationParams {
   page_size?: number;
   search?: string;
   ordering?: string;
+  name?: string; // 👈 agregar esto
 }
 
 export interface ProductListParams extends PaginationParams {

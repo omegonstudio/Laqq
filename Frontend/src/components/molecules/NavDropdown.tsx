@@ -15,7 +15,7 @@ export default function NavDropdown() {
   );
 
   const menuItems = useMemo(() => {
-    if (loading || categories.length === 0) {
+    if (loading || categories.length < 4) {
       return [];
     }
 

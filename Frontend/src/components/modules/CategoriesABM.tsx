@@ -143,6 +143,7 @@ const CategoriesABM = () => {
         <div className="text-center py-8">Cargando categorías...</div>
       ) : (
         <Table
+          key={tableData.length}
           columns={columns}
           data={tableData}
           actions={actions}

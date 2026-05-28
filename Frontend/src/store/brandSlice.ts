@@ -10,8 +10,8 @@ import { productsApi } from "@/lib/api/products";
 interface FetchBrandsParams {
   page?: number;
   page_size?: number;
+  name?: string; // 👈 nuevo parámetro
 }
-
 interface BrandsState {
   list: Brand[];
   count: number;
@@ -31,7 +31,9 @@ interface BrandsState {
   updating: boolean;
   updateError: string | null;
   updatedItem: Brand | null;
-
+  abmList: Brand[];
+  abmLoading: boolean;
+  abmPagination: PaginationInfo;
   deleting: boolean;
   deleteError: string | null;
   deleteSuccess: boolean;
@@ -52,7 +54,9 @@ const initialState: BrandsState = {
   loading: false,
   error: null,
   allLoaded: false,
-
+  abmList: [], // 👈
+  abmLoading: false, // 👈
+  abmPagination: initialPagination, // 👈
   selected: null,
   selectedLoading: false,
   selectedError: null,
@@ -163,20 +167,27 @@ export const brandsSlice = createSlice({
   extraReducers: (builder) => {
     // LIST
     builder
-      .addCase(fetchBrands.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
       .addCase(
         fetchBrands.fulfilled,
         (state, action: PayloadAction<PaginatedResponse<Brand>>) => {
-          state.loading = false;
-          state.list = action.payload.results;
-          state.count = action.payload.count;
+          state.abmLoading = false;
+          state.abmList = action.payload.results; // 👈 ya no pisa list
+          state.abmPagination = {
+            count: action.payload.count,
+            next: action.payload.next,
+            previous: action.payload.previous,
+            page_size: action.payload.page_size,
+            current_page: action.payload.current_page,
+            total_pages: action.payload.total_pages,
+          };
         }
       )
+      .addCase(fetchBrands.pending, (state) => {
+        state.abmLoading = true;
+        state.error = null;
+      })
       .addCase(fetchBrands.rejected, (state, action) => {
-        state.loading = false;
+        state.abmLoading = false;
         state.error = action.error.message || "Error cargando marcas";
       });
     builder
