@@ -142,7 +142,9 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         items: quote.items
           ? quote.items.map((item) => ({ ...item, existing: true }))
           : [],
-        user: users.results?.find((item) => item.id === quote.user) as UserData,
+        user: users?.results?.find(
+          (item) => item.id === quote.user
+        ) as UserData,
         observaciones: quote.observaciones,
       });
     }
@@ -167,7 +169,9 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         state: quote.state,
         quote_type: quote.quote_type,
         items,
-        user: users.results?.find((item) => item.id === quote.user) as UserData,
+        user: users?.results?.find(
+          (item) => item.id === quote.user
+        ) as UserData,
         observaciones: quote.observaciones,
       });
       setNewProducts(items);
@@ -190,7 +194,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       items: quote.items
         ? quote.items.map((item) => ({ ...item, existing: true }))
         : [],
-      user: users.results?.find((item) => item.id === quote.user) as UserData,
+      user: users?.results?.find((item) => item.id === quote.user) as UserData,
       observaciones: "",
     });
     setEdit(false);
@@ -355,7 +359,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
           updatedQuote.items?.map((item) => ({ ...item, existing: true })) ??
           [],
         user:
-          users.results?.find((u) => u.id === updatedQuote.user) ??
+          users?.results?.find((u) => u.id === updatedQuote.user) ??
           formState.user,
         message: updatedQuote.message,
         created_at: updatedQuote.created_at,
@@ -512,7 +516,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                 <Select
                   value={formState?.user?.id ?? ""}
                   onValueChange={(userId) => {
-                    const selectedUser = users.results?.find(
+                    const selectedUser = users?.results?.find(
                       (u) => u.id === userId
                     );
                     if (!selectedUser) return;
@@ -525,7 +529,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                     <SelectValue placeholder="Seleccionar usuario" />
                   </SelectTrigger>
                   <SelectContent>
-                    {users.results?.map((user) => (
+                    {users?.results?.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
                         {user.first_name} {user.last_name} ({user.email})
                       </SelectItem>
