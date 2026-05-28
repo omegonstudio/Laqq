@@ -6,13 +6,7 @@ import {
 } from "@/lib/api/products";
 
 import { NormalizedApiError } from "@/lib/api/client";
-import {
-  Brand,
-  BulkUploadResponse,
-  Category,
-  Product,
-  ProductSpec,
-} from "@/types/types";
+import { Brand, BulkUploadResponse, Category, Product } from "@/types/types";
 import { PaginatedResponse } from "@/types/api";
 
 const listKey = (params?: ProductListParams) => ["products", "list", params];
@@ -46,33 +40,33 @@ export const useProduct = (id?: string) =>
     enabled: Boolean(id),
   });
 
-export const useCreateProduct = () => {
-  const queryClient = useQueryClient();
+// export const useCreateProduct = () => {
+//   const queryClient = useQueryClient();
 
-  return useMutation<Product, NormalizedApiError, Partial<Product>>({
-    mutationFn: (payload) => productsApi.create(payload),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.setQueryData(detailKey(data.id), data);
-    },
-  });
-};
+//   return useMutation<Product, NormalizedApiError, Partial<Product>>({
+//     mutationFn: (payload) => productsApi.create(payload),
+//     onSuccess: (data) => {
+//       queryClient.invalidateQueries({ queryKey: ["products"] });
+//       queryClient.setQueryData(detailKey(data.id), data);
+//     },
+//   });
+// };
 
-export const useUpdateProduct = () => {
-  const queryClient = useQueryClient();
+// export const useUpdateProduct = () => {
+//   const queryClient = useQueryClient();
 
-  return useMutation<
-    Product,
-    NormalizedApiError,
-    { id: string; payload: Partial<Product> }
-  >({
-    mutationFn: ({ id, payload }) => productsApi.update(id, payload),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.setQueryData(detailKey(data.id), data);
-    },
-  });
-};
+//   return useMutation<
+//     Product,
+//     NormalizedApiError,
+//     { id: string; payload: Partial<Product> }
+//   >({
+//     mutationFn: ({ id, payload }) => productsApi.update(id, payload),
+//     onSuccess: (data) => {
+//       queryClient.invalidateQueries({ queryKey: ["products"] });
+//       queryClient.setQueryData(detailKey(data.id), data);
+//     },
+//   });
+// };
 
 export const usePatchProduct = () => {
   const queryClient = useQueryClient();
@@ -245,75 +239,75 @@ export const useDeleteCategory = () => {
 };
 
 // Specs
-export const useProductSpecs = (params?: PaginationParams) =>
-  useQuery<PaginatedResponse<ProductSpec>, NormalizedApiError>({
-    queryKey: specsKey(params),
-    queryFn: () => productsApi.listSpecs(params),
-    placeholderData: (prev) => prev,
-  });
+// export const useProductSpecs = (params?: PaginationParams) =>
+//   useQuery<PaginatedResponse<ProductSpec>, NormalizedApiError>({
+//     queryKey: specsKey(params),
+//     queryFn: () => productsApi.listSpecs(params),
+//     placeholderData: (prev) => prev,
+//   });
 
-export const useProductSpec = (id?: string) =>
-  useQuery<ProductSpec, NormalizedApiError>({
-    queryKey: specDetailKey(id),
-    queryFn: () => productsApi.getSpec(id as string),
-    enabled: Boolean(id),
-  });
+// export const useProductSpec = (id?: string) =>
+//   useQuery<ProductSpec, NormalizedApiError>({
+//     queryKey: specDetailKey(id),
+//     queryFn: () => productsApi.getSpec(id as string),
+//     enabled: Boolean(id),
+//   });
 
-export const useCreateProductSpec = () => {
-  const queryClient = useQueryClient();
+// export const useCreateProductSpec = () => {
+//   const queryClient = useQueryClient();
 
-  return useMutation<ProductSpec, NormalizedApiError, Partial<ProductSpec>>({
-    mutationFn: (payload) => productsApi.createSpec(payload),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["product-specs"] });
-      queryClient.setQueryData(specDetailKey(data.id), data);
-    },
-  });
-};
+//   return useMutation<ProductSpec, NormalizedApiError, Partial<ProductSpec>>({
+//     mutationFn: (payload) => productsApi.createSpec(payload),
+//     onSuccess: (data) => {
+//       queryClient.invalidateQueries({ queryKey: ["product-specs"] });
+//       queryClient.setQueryData(specDetailKey(data.id), data);
+//     },
+//   });
+// };
 
-export const useUpdateProductSpec = () => {
-  const queryClient = useQueryClient();
+// export const useUpdateProductSpec = () => {
+//   const queryClient = useQueryClient();
 
-  return useMutation<
-    ProductSpec,
-    NormalizedApiError,
-    { id: string; payload: Partial<ProductSpec> }
-  >({
-    mutationFn: ({ id, payload }) => productsApi.updateSpec(id, payload),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["product-specs"] });
-      queryClient.setQueryData(specDetailKey(data.id), data);
-    },
-  });
-};
+//   return useMutation<
+//     ProductSpec,
+//     NormalizedApiError,
+//     { id: string; payload: Partial<ProductSpec> }
+//   >({
+//     mutationFn: ({ id, payload }) => productsApi.updateSpec(id, payload),
+//     onSuccess: (data) => {
+//       queryClient.invalidateQueries({ queryKey: ["product-specs"] });
+//       queryClient.setQueryData(specDetailKey(data.id), data);
+//     },
+//   });
+// };
 
-export const usePatchProductSpec = () => {
-  const queryClient = useQueryClient();
+// export const usePatchProductSpec = () => {
+//   const queryClient = useQueryClient();
 
-  return useMutation<
-    ProductSpec,
-    NormalizedApiError,
-    { id: string; payload: Partial<ProductSpec> }
-  >({
-    mutationFn: ({ id, payload }) => productsApi.patchSpec(id, payload),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["product-specs"] });
-      queryClient.setQueryData(specDetailKey(data.id), data);
-    },
-  });
-};
+//   return useMutation<
+//     ProductSpec,
+//     NormalizedApiError,
+//     { id: string; payload: Partial<ProductSpec> }
+//   >({
+//     mutationFn: ({ id, payload }) => productsApi.patchSpec(id, payload),
+//     onSuccess: (data) => {
+//       queryClient.invalidateQueries({ queryKey: ["product-specs"] });
+//       queryClient.setQueryData(specDetailKey(data.id), data);
+//     },
+//   });
+// };
 
-export const useDeleteProductSpec = () => {
-  const queryClient = useQueryClient();
+// export const useDeleteProductSpec = () => {
+//   const queryClient = useQueryClient();
 
-  return useMutation<void, NormalizedApiError, string>({
-    mutationFn: (id) => productsApi.removeSpec(id),
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ["product-specs"] });
-      queryClient.removeQueries({ queryKey: specDetailKey(id) });
-    },
-  });
-};
+//   return useMutation<void, NormalizedApiError, string>({
+//     mutationFn: (id) => productsApi.removeSpec(id),
+//     onSuccess: (_, id) => {
+//       queryClient.invalidateQueries({ queryKey: ["product-specs"] });
+//       queryClient.removeQueries({ queryKey: specDetailKey(id) });
+//     },
+//   });
+// };
 
 export const useBulkUploadProducts = () => {
   const queryClient = useQueryClient();

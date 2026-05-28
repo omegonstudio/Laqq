@@ -5,12 +5,9 @@ import {
   Package,
   FileText,
   Mail,
-  Newspaper,
   FolderTree,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
-  Settings,
   Tag,
   Phone,
   Ticket,
@@ -104,7 +101,7 @@ const Sidebar = () => {
       )}
     >
       <div className="p-4 border-b border-white/10 flex items-center justify-between">
-        {!collapsed && <Logo variant="dark"/>}
+        {!collapsed && <Logo variant="dark" />}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="p-2 hover:bg-white/10 rounded-lg transition-colors"

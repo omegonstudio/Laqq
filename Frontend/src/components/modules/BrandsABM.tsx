@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Edit2, Trash2, Plus } from "lucide-react";
 import Table from "@/components/common/Table";
 import Button from "@/components/atoms/Button";
@@ -12,10 +12,32 @@ import { toast } from "@/hooks/use-toast";
 
 const BrandsABM = () => {
   const dispatch = useAppDispatch();
-
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1); // 👈 página controlada por el padre
+  const { list: brands, loading } = useAppSelector((state) => state.brands);
   useEffect(() => {
-    dispatch(fetchBrands({ page: 1, page_size: 20 }));
-  }, [dispatch]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Al cambiar la búsqueda, volver siempre a página 1
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
+  // Fetch cada vez que cambia página o búsqueda
+  const filteredBrands = useMemo(() => {
+    if (!searchTerm.trim()) return brands;
+    const lower = searchTerm.toLowerCase().trim();
+    return brands.filter(
+      (brand) =>
+        brand.name.toLowerCase().includes(lower) ||
+        brand.description.toLowerCase().includes(lower)
+    );
+  }, [brands, searchTerm]);
 
   const [isModalEditOpen, setIsModalEditOpen] = useState(false);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
@@ -28,16 +50,6 @@ const BrandsABM = () => {
     logo_url: null,
   });
 
-  const { list: initialBrands, loading } = useAppSelector(
-    (state) => state.brands
-  );
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const filteredBrands = initialBrands.filter(
-    (brand) =>
-      brand.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      brand.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
   const handleEdit = (brand: Brand) => {
     setCurrentBrand(brand);
     setIsModalEditOpen(true);
@@ -56,25 +68,21 @@ const BrandsABM = () => {
     setIsModalEditOpen(true);
   };
 
-  const columns = [
-    { key: "name", label: "name", sortable: true },
-    { key: "description", label: "Descripción", sortable: true },
-  ];
-
   const handleOpenDeleteModal = (item: Brand) => {
     setCurrentBrand(item);
     setIsModalDeleteOpen(true);
   };
 
-  // ✅ Esta función se ejecuta cuando confirmas en el modal
   const handleConfirmDelete = async () => {
     if (!currentBrand) return;
-
     try {
       await dispatch(deleteBrand(currentBrand.id)).unwrap();
-
       toast({ title: "Marca eliminada exitosamente", variant: "default" });
       setIsModalDeleteOpen(false);
+      // Si era el único elemento de la página, retroceder una página
+      if (brands.length === 1 && currentPage > 1) {
+        setCurrentPage((prev) => prev - 1);
+      }
     } catch (error: unknown) {
       console.error("Error eliminando:", error);
       if (error instanceof Error) {
@@ -83,13 +91,16 @@ const BrandsABM = () => {
           variant: "destructive",
         });
       } else {
-        toast({
-          title: "Error al eliminar la marca",
-          variant: "destructive",
-        });
+        toast({ title: "Error al eliminar la marca", variant: "destructive" });
       }
     }
   };
+
+  const columns = [
+    { key: "name", label: "Nombre", sortable: true },
+    { key: "description", label: "Descripción", sortable: true },
+  ];
+
   const actions = [
     { icon: <Edit2 size={16} />, onClick: handleEdit, label: "Editar" },
     {
@@ -99,6 +110,7 @@ const BrandsABM = () => {
       label: "Eliminar",
     },
   ];
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
@@ -120,7 +132,13 @@ const BrandsABM = () => {
         </Button>
       </div>
 
-      <Table columns={columns} data={filteredBrands} actions={actions} />
+      <Table
+        key={filteredBrands.length} // 👈 resetea la paginación al filtrar
+        columns={columns}
+        data={filteredBrands}
+        actions={actions}
+      />
+
       <ModalBrands
         isNew={isNew}
         isOpen={isModalEditOpen}

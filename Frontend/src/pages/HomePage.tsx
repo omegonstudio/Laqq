@@ -5,14 +5,12 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useEffect } from "react";
 import { fetchAllProducts } from "@/store/productSlice";
 import { fetchAllBrands } from "@/store/brandSlice";
-import { fetchCategories } from "@/store/categoriesSlice";
 
 const HomePage = () => {
   const dispatch = useAppDispatch();
   useEffect(() => {
     dispatch(fetchAllProducts({ is_active: true }));
     dispatch(fetchAllBrands());
-    dispatch(fetchCategories({ page: 1, page_size: 10 }));
   }, [dispatch]);
 
   const { list } = useAppSelector((state) => state.products);

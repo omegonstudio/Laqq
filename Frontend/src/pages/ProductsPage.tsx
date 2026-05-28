@@ -32,7 +32,7 @@ const ProductsPage = () => {
   useEffect(() => {
     // dispatch(fetchProducts({ page: 1, page_size: 9, is_active: true }));
     setCurrentPage(1);
-    dispatch(fetchAllBrands());
+    // dispatch(fetchAllBrands());
     dispatch(fetchAllCategories());
   }, [dispatch]);
 
