@@ -25,7 +25,7 @@ const CategoriesABM = () => {
 
   // Cargar TODAS las categorías al montar
   useEffect(() => {
-    dispatch(fetchAllCategories());
+    dispatch(fetchAllCategories({}));
   }, [dispatch]);
 
   const handleEdit = (category: Category) => {

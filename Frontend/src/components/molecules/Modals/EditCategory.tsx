@@ -237,7 +237,7 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
   };
 
   useEffect(() => {
-    dispatch(fetchAllCategories());
+    dispatch(fetchAllCategories({}));
   }, [dispatch]);
 
   const isDisabled = (cat: FlatCategory) => {

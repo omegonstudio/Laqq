@@ -33,7 +33,7 @@ const ProductsPage = () => {
     // dispatch(fetchProducts({ page: 1, page_size: 9, is_active: true }));
     setCurrentPage(1);
     // dispatch(fetchAllBrands());
-    dispatch(fetchAllCategories());
+    dispatch(fetchAllCategories({}));
   }, [dispatch]);
 
   // Cargar productos cuando cambian los filtros

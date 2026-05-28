@@ -18,7 +18,7 @@ export default function NavDropdown() {
   const { setFilter } = useProductFilters();
   const menuItems = useAppSelector(selectCategoryMenuItems);
   const categoriesUi = useAppSelector(selectCategoriesUiState);
-  const menuReady = !categoriesUi.loading && menuItems.length > 0;
+  const menuReady = !categoriesUi.loading && menuItems.length >= 4;
 
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
