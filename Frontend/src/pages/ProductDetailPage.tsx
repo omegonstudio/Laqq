@@ -391,7 +391,7 @@ const ProductDetailPage = () => {
                 </label>
                 <br />
                 <br />
-                <table className="w-full border border-border rounded-xl overflow-hidden">
+                <table className="w-full border border-border rounded-xl overflow-hidden text-center">
                   <thead className="bg-primary/10">
                     <tr>
                       <th className="px-4 py-3 text-left font-bold">Código</th>
