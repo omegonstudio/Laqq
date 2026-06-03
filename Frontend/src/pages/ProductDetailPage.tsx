@@ -346,8 +346,8 @@ const ProductDetailPage = () => {
                   <ShoppingCart size={20} />
                   Agregar al carrito
                 </Button>
-              ) : (
-                <Button
+              ) : ( null
+              /* <Button
                   size="lg"
                   className="flex items-center justify-center gap-2"
                   onClick={() => {
@@ -360,7 +360,7 @@ const ProductDetailPage = () => {
                 >
                   <ShoppingCart size={20} />
                   Seleccionar variedad
-                </Button>
+                </Button>*/
               )}
               {/* <Link to="/quote"> */}
               <Button
