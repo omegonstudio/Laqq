@@ -28,13 +28,13 @@ const HeroSection = () => {
             Equipos y Consumibles
             <br />
             <span className="text-foreground">para </span>
-            <span className="text-primary">Laboratorio Científico</span>
+            <span className="text-primary">Laboratorio Científicos</span>
           </h1>
 
           <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
-            Proveedor especializado en equipo de laboratorio, material de
-            consumo y servicios técnicos para la industria científica
-          </p>
+            Asistiendo a la ciencia desde 1952
+          </p> 
+          
 
           <div className="max-w-2xl mx-auto">
             {" "}
