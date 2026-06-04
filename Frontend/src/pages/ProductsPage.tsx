@@ -5,9 +5,9 @@ import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchAllProducts, fetchProducts } from "@/store/productSlice";
 import { useProductFilters } from "@/hooks/useFilters";
-import { fetchAllBrands } from "@/store/brandSlice";
 import { fetchAllCategories } from "@/store/categoriesSlice";
 import NavDropdown from "@/components/molecules/NavDropdown";
+import { Loader, Loader2 } from "lucide-react";
 
 const ProductsPage = () => {
   const { searchParams, setFilter, clearBrand, clearCategory } =
@@ -24,9 +24,9 @@ const ProductsPage = () => {
   } = useAppSelector((state) => state.products);
   const { list: brands } = useAppSelector((state) => state.brands);
   const { list: categories } = useAppSelector((state) => state.categories);
-
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [localLoading, setLocalLoading] = useState<boolean>(false);
 
   // Cargar categorías y marcas al montar el componente
   useEffect(() => {
@@ -38,6 +38,7 @@ const ProductsPage = () => {
 
   // Cargar productos cuando cambian los filtros
   useEffect(() => {
+    setAllProducts([]);
     // Construir parámetros de filtrado para el backend
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const params: any = {
@@ -63,12 +64,15 @@ const ProductsPage = () => {
 
     // Realizar la búsqueda con los filtros aplicados
     dispatch(fetchProducts(params));
+    console.log("ENTRASTE A FETCH PRODUCTS CON PARAMS:", params);
     setCurrentPage(1);
     setAllProducts([]); // Resetear productos acumulados
+    setLocalLoading(false);
   }, [dispatch, search, category, brand]);
 
   // Acumular productos cuando llegan nuevos
   useEffect(() => {
+    if (products.length === 0) return;
     if (products.length > 0) {
       setAllProducts((prev) => {
         // Si es la página 1, reemplazar todo
@@ -81,25 +85,7 @@ const ProductsPage = () => {
         return [...prev, ...newProducts];
       });
     } else setAllProducts([]); // Si no hay productos, limpiar (ej: al cambiar filtros)
-  }, [products, currentPage]);
-
-  // Aplicar filtros locales
-  useEffect(() => {
-    // dispatch(fetchAllProducts({ is_active: true }));
-    const search = searchParams.get("search");
-    const category = searchParams.get("category");
-    const brand = searchParams.get("brand");
-
-    // let filtered = allProducts;
-    dispatch(
-      fetchAllProducts({
-        is_active: true,
-        brand: brand ?? undefined,
-        category: category ?? undefined,
-        search: search ?? undefined,
-      })
-    );
-  }, [searchParams]);
+  }, [products]);
 
   // Handler para "Ver más"
   const handleLoadMore = () => {
@@ -209,7 +195,6 @@ const ProductsPage = () => {
           </div>
         </div>
       </div>
-
       <ProductGrid
         products={allProducts}
         hasMore={hasMore}

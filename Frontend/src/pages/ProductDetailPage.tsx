@@ -114,11 +114,13 @@ const ProductDetailPage = () => {
   const fileAttachments =
     product?.attachments?.filter((att) => !isImage(att.content_type_str)) ?? [];
   const showDetailsSection = hasVariants || fileAttachments.length > 0;
+
   useEffect(() => {
     if (!hasVariants && fileAttachments.length > 0) {
       setActiveTab("files");
     }
-  }, [hasVariants, fileAttachments.length]);
+  }, [hasVariants, fileAttachments]);
+  console.log(fileAttachments.length, variantCount);
   // Mostrar loading mientras carga
   if (selectedLoading) {
     return (
@@ -224,7 +226,6 @@ const ProductDetailPage = () => {
   const goToImage = (index: number) => {
     setCurrentImageIndex(index);
   };
-  const hasHtml = /<\/?[a-z][\s\S]*>/i.test(product.description);
   // Calcular especificaciones y productos relacionados
   return (
     <div className="py-16">
@@ -310,16 +311,15 @@ const ProductDetailPage = () => {
             <h1 className="text-4xl font-bold mb-4">{product.name}</h1>
             <div
               className="
-    prose prose-sm max-w-none text-muted-foreground
-    whitespace-normal
-    [&_table]:w-full
-    [&_table]:border-collapse
-    [&_table]:my-2
-    [&_th]:border
-    [&_td]:border
-    [&_th]:p-2
-    [&_td]:p-2
-  "
+                    prose prose-sm max-w-none text-muted-foreground
+                    whitespace-normal
+                    [&_table]:w-full
+                    [&_table]:border-collapse
+                    [&_table]:my-2
+                    [&_th]:border
+                    [&_td]:border
+                    [&_th]:p-2
+                    [&_td]:p-2 "
               dangerouslySetInnerHTML={{
                 __html: formattedDescription,
               }}
@@ -346,23 +346,7 @@ const ProductDetailPage = () => {
                   <ShoppingCart size={20} />
                   Agregar al carrito
                 </Button>
-              ) : ( null
-              /* <Button
-                  size="lg"
-                  className="flex items-center justify-center gap-2"
-                  onClick={() => {
-                    document.getElementById("variantes")?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "center",
-                    });
-                  }}
-                  disabled={false}
-                >
-                  <ShoppingCart size={20} />
-                  Seleccionar variedad
-                </Button>*/
-              )}
-              {/* <Link to="/quote"> */}
+              ) : null}
               <Button
                 size="lg"
                 variant="outline"
@@ -381,31 +365,47 @@ const ProductDetailPage = () => {
         {/* Solo mostrar esta sección si hay especificaciones o productos relacionados */}
         {showDetailsSection && (
           <div className="bg-card border border-border rounded-2xl p-8 ">
-            {/* Tab Bar */}
-
-            {/* Tab: fixed_specs */}
-            {hasVariants && (
+            <div className="flex mb-5">
+              {hasVariants && (
+                <div
+                  onClick={() => setActiveTab("details")}
+                  className={`cursor-pointer border-b-2 pb-3 pr-5 ${
+                    activeTab === "details"
+                      ? "text-primary font-bold border-primary"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  <p>Variantes del producto</p>
+                </div>
+              )}
+              {fileAttachments.length > 0 && (
+                <div
+                  onClick={() => setActiveTab("files")}
+                  className={`cursor-pointer border-b-2 pb-3 pl-5 ${
+                    activeTab === "files"
+                      ? "text-primary font-bold border-primary"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  <p>Información adicional</p>
+                </div>
+              )}
+            </div>
+            {hasVariants && activeTab === "details" && (
               <div className="overflow-x-auto">
-                <label className="text-2xl text-center font-bold">
-                  Variantes del producto
-                </label>
-                <br />
-                <br />
                 <table className="w-full border border-border rounded-xl overflow-hidden text-center">
                   <thead className="bg-primary/10">
                     <tr>
                       <th className="px-4 py-3 text-left font-bold">Código</th>
                       <th className="px-4 py-3 text-left font-bold">Nombre</th>
-                      <th className="px-4 py-3 text-left font-bold">
-                        Dimensiones
-                      </th>
+
                       {variantColumns.map((col) => (
                         <th key={col} className="px-4 py-3 text-left font-bold">
                           {col}
                         </th>
                       ))}
 
-                      <th className="px-4 py-3 text-left font-bold">
+                      <th className="px-4 py-3 text-center font-bold">
                         Agregar al carrito
                       </th>
                     </tr>
@@ -414,16 +414,12 @@ const ProductDetailPage = () => {
                   <tbody>
                     {product.variants.map((variant) => (
                       <tr key={variant.id} className="border-t border-border">
-                        <td className="px-4 py-3 text-sm font-medium">
+                        <td className="px-4 py-3 text-sm font-medium text-start">
                           {variant.code}
                         </td>
 
-                        <td className="px-4 py-3 text-sm font-medium">
+                        <td className="px-4 py-3 text-sm font-medium text-start">
                           {variant.name}
-                        </td>
-
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {variant.dimensions}
                         </td>
 
                         {variantColumns.map((col) => {
@@ -432,7 +428,10 @@ const ProductDetailPage = () => {
                           );
 
                           return (
-                            <td key={col} className="px-4 py-3 text-sm">
+                            <td
+                              key={col}
+                              className="px-4 py-3 text-sm text-start"
+                            >
                               {spec?.value || "-"}
                             </td>
                           );
@@ -455,36 +454,35 @@ const ProductDetailPage = () => {
                 </table>
               </div>
             )}
+            {fileAttachments.length > 0 && activeTab === "files" && (
+              <div className="space-y-4 bg-muted/30 rounded-sm">
+                <div className="grid lg:grid-cols-2 gap-5 mb-12">
+                  {fileAttachments.map((file) => (
+                    <div
+                      key={file.id}
+                      onClick={() =>
+                        window.open(file.url || file.file, "_blank")
+                      }
+                      className="cursor-pointer border rounded-lg p-4 flex items-center gap-3 hover:bg-muted transition-colors w-full overflow-hidden"
+                    >
+                      <div className="text-2xl shrink-0">📄</div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{file.file_name}</p>
+
+                        <p className="text-muted-foreground text-xs truncate">
+                          {file.content_type_str}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
         <br />
-        {fileAttachments.length > 0 && (
-          <div className="space-y-4 bg-muted/30 border p-6 rounded-sm">
-            <label className="text-2xl text-center font-bold">
-              Información adicional
-            </label>
 
-            <div className="grid lg:grid-cols-2 gap-5 mb-12">
-              {fileAttachments.map((file) => (
-                <div
-                  key={file.id}
-                  onClick={() => window.open(file.url || file.file, "_blank")}
-                  className="cursor-pointer border rounded-lg p-4 flex items-center gap-3 hover:bg-muted transition-colors w-full overflow-hidden"
-                >
-                  <div className="text-2xl shrink-0">📄</div>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{file.file_name}</p>
-
-                    <p className="text-muted-foreground text-xs truncate">
-                      {file.content_type_str}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
         <br />
         {relatedList.length > 0 && (
           <div className="space-y-4 bg-muted/30 border p-6 rounded-sm">

@@ -748,16 +748,20 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         </div>
 
         <label>Observaciones</label>
-        <Textarea
-          aria-description="Observaciones de la cotización"
-          placeholder="Observaciones"
-          value={formState.observaciones}
-          onChange={(e) =>
-            setFormState((prev) =>
-              prev ? { ...prev, observaciones: e.target.value } : null
-            )
-          }
-        />
+        {!edit ? (
+          <p>{formState.observaciones ?? "No hay observaciones"}</p>
+        ) : (
+          <Textarea
+            aria-description="Observaciones de la cotización"
+            placeholder="Observaciones"
+            value={formState.observaciones}
+            onChange={(e) =>
+              setFormState((prev) =>
+                prev ? { ...prev, observaciones: e.target.value } : null
+              )
+            }
+          />
+        )}
 
         <Button
           type="button"

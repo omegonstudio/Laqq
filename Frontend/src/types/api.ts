@@ -134,7 +134,6 @@ export interface ProductFixedSpec {
   product: string;
   code: string;
   volume?: string | null;
-  dimensions?: string | null;
   cap?: string | null;
   outlet?: string | null;
   accuracy?: string | null;

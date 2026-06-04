@@ -30,12 +30,12 @@ import { Toggle } from "@/components/ui/toggle";
 import { refreshProductEverywhere } from "@/store/productSlice";
 import { toast } from "@/hooks/use-toast";
 import { productsApi } from "@/lib/api/products";
-import { Textarea } from "@/components/ui/textarea";
-import SelectCategories from "@/components/atoms/SelectCategories";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProductVariantsTable from "@/components/molecules/ProductVariantsTable";
 import type { Variants } from "@/components/molecules/ProductVariantsTable";
 import DescriptionEditor from "@/components/atoms/DescriptionProductEditor";
+import { CascadeCategorySelect } from "@/components/atoms/FlatCategories";
+import { Label } from "recharts";
 
 interface ModalProductProps {
   isOpen: boolean;
@@ -636,12 +636,24 @@ const ModalProduct: React.FC<ModalProductProps> = ({
               }
             />
             <div className="flex gap-5">
-              <div className="w-[50%]">
-                <SelectCategories
+              <div className="w-[80%]">
+                <label className="text-sm font-medium">
+                  Categoría
+                  {localState.is_active && (
+                    <span className="text-red-500 ml-1">*</span>
+                  )}
+                </label>
+                <CascadeCategorySelect
+                  // flatCategories={flatCategories}
+                  value={localState.category}
+                  onChange={handleCategoryChange}
+                  maxLevel={3} // <-- agregás esta prop
+                />
+                {/* <SelectCategories
                   editProductModal
                   onChange={handleCategoryChange}
                   value={localState.category}
-                />
+                /> */}
               </div>
               <div className="w-[50%]">
                 <label className="text-sm font-medium">
