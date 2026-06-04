@@ -51,13 +51,13 @@ class TechnicalSpecSerializer(serializers.ModelSerializer):
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):
-    """Serializer para variantes de producto (code, name, dimensions + specs técnicas propias)"""
+    """Serializer para variantes de producto (code, name + specs técnicas propias)"""
 
     technical_specs = TechnicalSpecSerializer(many=True, required=False)
 
     class Meta:
         model = ProductVariant
-        fields = ['id', 'product', 'code', 'name', 'dimensions', 'technical_specs', 'created_at']
+        fields = ['id', 'product', 'code', 'name', 'technical_specs', 'created_at']
         read_only_fields = ['id', 'created_at']
         validators = [
             UniqueTogetherValidator(

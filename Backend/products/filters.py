@@ -14,6 +14,12 @@ class ProductFilter(django_filters.FilterSet):
     - Filtros estándar por marca, estado activo, destacado
     """
 
+    name = django_filters.CharFilter(
+        field_name='name',
+        lookup_expr='icontains',
+        label='Nombre del producto',
+    )
+
     # Filtro recursivo de categoría
     category_recursive = django_filters.CharFilter(
         method='filter_category_recursive',
@@ -30,7 +36,7 @@ class ProductFilter(django_filters.FilterSet):
 
     class Meta:
         model = Product
-        fields = ['brand', 'category', 'is_active', 'is_featured']
+        fields = ['name', 'brand', 'category', 'is_active', 'is_featured']
 
     def filter_category_recursive(self, queryset, name, value):
         """

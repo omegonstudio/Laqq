@@ -238,7 +238,7 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['product', 'code']
-    search_fields = ['code', 'name', 'dimensions']
+    search_fields = ['code', 'name', 'product__name']
     ordering_fields = ['code', 'created_at']
     ordering = ['-created_at']
 
