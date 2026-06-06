@@ -60,7 +60,6 @@ export function CascadeCategorySelect({
   );
   const menuItems = buildCategories(categories);
   const flatCategories = flattenCategories(menuItems);
-  console.log(flatCategories, "asa");
   const level0 = flatCategories.filter((c) => c.level === 0);
   // Reconstruir selecciones actuales a partir del value
   const buildSelections = (selectedId?: string): (string | undefined)[] => {
