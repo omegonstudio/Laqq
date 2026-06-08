@@ -55,6 +55,65 @@ await fetch(`/api/quotes/list/${quoteId}/send-updated/`, {
 
 ---
 
+## 1.b. Cotizaciones — `specs` ahora trae las "condiciones generales de la oferta"
+
+**Endpoints:** `GET/PUT/PATCH /api/quotes/list/{id}/` (y listado)
+
+Para que el front pueda completar el PDF de la cotización (validez, condición de pago, garantía, plazos de entrega, etc.), el campo `specs` de la cotización ahora tiene una **estructura fija y siempre completa** — ya no es un JSON libre/vacío.
+
+**Claves que siempre vienen en `specs` (aunque la cotización sea vieja o no las tenga cargadas — se completan con `""`):**
+```json
+{
+  "specs": {
+    "validity": "",
+    "validity_date": "",
+    "payment_terms": "",
+    "cash_price_label": "",
+    "iva_label": "",
+    "currency": "",
+    "delivery_terms": "",
+    "warranty": "",
+    "extra_conditions": ""
+  }
+}
+```
+
+**Para cargar/editar estos datos** (por ejemplo desde un formulario de "condiciones generales" antes de enviar la cotización), se manda un PUT/PATCH con `specs` parcial o completo — el backend rellena automáticamente las claves que falten con su valor por defecto:
+
+```js
+await fetch(`/api/quotes/list/${quoteId}/`, {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+  body: JSON.stringify({
+    specs: {
+      validity: '15 días',
+      validity_date: '2026-06-30',
+      payment_terms: 'Contado / Transferencia',
+      warranty: '12 meses',
+      currency: 'ARS',
+      // las claves que no mandes quedan con "" (no se pierden las que ya tenía cargadas otras personas, se mergean)
+    }
+  }),
+});
+```
+
+**Mapeo sugerido para la plantilla del PDF:**
+
+| Placeholder del PDF      | Clave en `specs`     |
+|--------------------------|----------------------|
+| `{{VALIDITY}}`           | `validity`           |
+| `{{VALIDITY_DATE}}`      | `validity_date`      |
+| `{{PAYMENT_TERMS}}`      | `payment_terms`      |
+| `{{CASH_PRICE_LABEL}}`   | `cash_price_label`   |
+| `{{IVA_LABEL}}`          | `iva_label`          |
+| `{{CURRENCY}}`           | `currency`           |
+| `{{DELIVERY_TERMS}}`     | `delivery_terms`     |
+| `{{WARRANTY}}`           | `warranty`           |
+| `{{EXTRA_CONDITIONS}}`   | `extra_conditions`   |
+| `{{OBSERVATIONS}}`       | `observaciones` (campo de la cotización, no de `specs`) |
+
+---
+
 ## 2. Categorías — nuevas reglas de validación
 
 **Endpoint:** `POST /products/categories/` y `PUT/PATCH /products/categories/{id}/`

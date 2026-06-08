@@ -8,6 +8,21 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Estructura fija de "condiciones generales de la oferta" que viaja en Quote.specs.
+# El front arma el PDF de la cotización con estos datos, así que toda cotización
+# (nueva o vieja) debe exponer siempre estas claves, aunque estén vacías.
+QUOTE_SPECS_DEFAULTS = {
+    'validity': '',
+    'validity_date': '',
+    'payment_terms': '',
+    'cash_price_label': '',
+    'iva_label': '',
+    'currency': '',
+    'delivery_terms': '',
+    'warranty': '',
+    'extra_conditions': '',
+}
+
 class QuoteTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuoteType
@@ -91,6 +106,25 @@ class QuoteSerializer(serializers.ModelSerializer):
         if value is not None and value < 0:
             raise serializers.ValidationError("Total amount cannot be negative")
         return value
+
+    def validate_specs(self, value):
+        if value in (None, ''):
+            return dict(QUOTE_SPECS_DEFAULTS)
+        if not isinstance(value, dict):
+            raise serializers.ValidationError(
+                'specs debe ser un objeto JSON con las condiciones generales de la cotización '
+                f'(claves esperadas: {", ".join(QUOTE_SPECS_DEFAULTS.keys())}).'
+            )
+        merged = dict(QUOTE_SPECS_DEFAULTS)
+        merged.update(value)
+        return merged
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        merged = dict(QUOTE_SPECS_DEFAULTS)
+        merged.update(instance.specs or {})
+        data['specs'] = merged
+        return data
 
 class BulkQuoteItemSerializer(serializers.Serializer):
     """
