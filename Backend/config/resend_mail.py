@@ -135,10 +135,18 @@ def send_via_resend(email: EmailMultiAlternatives, timeout: int = 15) -> bool:
     return False
 
 
+_DEV_BACKENDS = {
+    'django.core.mail.backends.console.EmailBackend',
+    'django.core.mail.backends.locmem.EmailBackend',
+    'django.core.mail.backends.filebased.EmailBackend',
+    'django.core.mail.backends.dummy.EmailBackend',
+}
+
 def send_email_message(email: EmailMultiAlternatives) -> bool:
     """
     Entry point: envía usando Resend. NO realiza fallback a SMTP.
     - Si RESEND_API_KEY está configurada envía por Resend.
+    - Si EMAIL_BACKEND es un backend de desarrollo (console, locmem, etc.) lo usa directamente.
     - Si no está configurada lanza RuntimeError para evitar intento SMTP.
     - Durante tests (mail.outbox existe) usa el backend estándar de Django.
     """
@@ -147,6 +155,13 @@ def send_email_message(email: EmailMultiAlternatives) -> bool:
     # no bypasee este check.
     from django.core import mail as django_mail
     if hasattr(django_mail, 'outbox'):
+        email.send()
+        return True
+
+    # Desarrollo local: si el backend configurado es console/locmem/filebased/dummy,
+    # usarlo directamente sin necesitar RESEND_API_KEY.
+    email_backend = getattr(settings, 'EMAIL_BACKEND', '')
+    if email_backend in _DEV_BACKENDS:
         email.send()
         return True
 
