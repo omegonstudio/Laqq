@@ -36,6 +36,18 @@ class CategorySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {'parent': 'No se pueden crear categorías de nivel 0 directamente. Toda categoría debe tener una categoría padre.'}
             )
+
+        if self.instance is not None and 'parent' in attrs:
+            new_parent = attrs.get('parent')
+            if self.instance.parent is None and new_parent is not None:
+                raise serializers.ValidationError(
+                    {'parent': 'No se puede reasignar el padre de una categoría principal (nivel 0).'}
+                )
+            if self.instance.parent is not None and new_parent is None:
+                raise serializers.ValidationError(
+                    {'parent': 'No se puede quitar la categoría padre: esto crearía una categoría huérfana de nivel 0.'}
+                )
+
         return attrs
 
 

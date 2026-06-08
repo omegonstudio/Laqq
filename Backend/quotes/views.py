@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import QuoteType, QuoteState, Quote, QuoteItem
@@ -232,7 +233,13 @@ class QuoteViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED
         )
 
-    @action(detail=True, methods=['post'], url_path='send-updated', permission_classes=[IsAuthenticated])
+    @action(
+        detail=True,
+        methods=['post'],
+        url_path='send-updated',
+        permission_classes=[IsAuthenticated],
+        parser_classes=[MultiPartParser, FormParser, JSONParser],
+    )
     def send_updated(self, request, pk=None):
         """
         Envía la cotización actualizada por email al cliente.
@@ -242,6 +249,11 @@ class QuoteViewSet(viewsets.ModelViewSet):
 
         ENDPOINT: POST /api/quotes/list/{id}/send-updated/
 
+        Acepta tanto JSON como multipart/form-data. Para adjuntar el PDF de la
+        cotización generado en el front-end, enviar un FormData con un archivo
+        en el campo `pdf_file` (PDF). Si no se envía archivo, el correo se
+        manda sin adjunto.
+
         EJEMPLO:
         POST /api/quotes/list/a1b2c3d4-e5f6-7890-abcd-ef1234567890/send-updated/
 
@@ -249,7 +261,8 @@ class QuoteViewSet(viewsets.ModelViewSet):
         {
             "message": "Updated quote sent successfully to cliente@example.com",
             "quote_number": "Q-2026-00015",
-            "sent_to": "cliente@example.com"
+            "sent_to": "cliente@example.com",
+            "attachment": "cotizacion.pdf"
         }
 
         RESPUESTA ERROR (404 Not Found):
@@ -260,6 +273,9 @@ class QuoteViewSet(viewsets.ModelViewSet):
         RESPUESTA ERROR (400 Bad Request):
         {
             "error": "Contact has no email address"
+        }
+        {
+            "error": "El archivo adjunto debe ser un PDF"
         }
 
         RESPUESTA ERROR (500 Internal Server Error):
@@ -280,20 +296,33 @@ class QuoteViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # PDF adjunto opcional, enviado desde el front como FormData (campo 'pdf_file')
+        pdf_file = request.FILES.get('pdf_file')
+        if pdf_file is not None:
+            is_pdf = (
+                pdf_file.content_type == 'application/pdf'
+                or pdf_file.name.lower().endswith('.pdf')
+            )
+            if not is_pdf:
+                return Response(
+                    {'error': 'El archivo adjunto debe ser un PDF'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         try:
-            # Send the email
-            success = send_updated_quote_to_customer(quote)
+            # Send the email (con o sin adjunto, según corresponda)
+            success = send_updated_quote_to_customer(quote, pdf_file=pdf_file)
 
             if success:
                 logger.info(f"Updated quote #{quote.quote_number} sent manually to {quote.contact.email}")
-                return Response(
-                    {
-                        'message': f'Updated quote sent successfully to {quote.contact.email}',
-                        'quote_number': quote.quote_number,
-                        'sent_to': quote.contact.email
-                    },
-                    status=status.HTTP_200_OK
-                )
+                response_data = {
+                    'message': f'Updated quote sent successfully to {quote.contact.email}',
+                    'quote_number': quote.quote_number,
+                    'sent_to': quote.contact.email
+                }
+                if pdf_file is not None:
+                    response_data['attachment'] = pdf_file.name
+                return Response(response_data, status=status.HTTP_200_OK)
             else:
                 return Response(
                     {

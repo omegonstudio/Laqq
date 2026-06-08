@@ -237,7 +237,7 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
     fileobj: objeto tipo UploadedFile o file-like. Se detecta la extensión por fileobj.name si está disponible.
     Retorna un dict resumen con contadores y errores.
     CSV/Excel debe contener columnas (recomendadas):
-      product_code, name, brand, category_level_0, category_level_1, category_level_2, description, image_name, is_active, related_product_codes, is_variant, variant_code, variant_name, dimensions
+      product_code, name, brand, category_level_0, category_level_1, category_level_2, description, image_name, is_active, related_product_codes, is_variant, variant_code, variant_name
 
     is_variant:
       - false/0/vacío: Crea o actualiza un Product. Si ya existe un Product con ese product_code, se lanza error.

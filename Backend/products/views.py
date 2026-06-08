@@ -49,6 +49,15 @@ class CategoryViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'display_order', 'created_at']
     ordering = ['display_order']
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.parent is None:
+            return Response(
+                {'detail': 'No se pueden eliminar las categorías principales (nivel 0).'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
+
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all().prefetch_related(
         'from_relations__to_product__brand',
@@ -253,8 +262,8 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
         {
             "product": "uuid-del-producto",
             "variants": [
-                {"code": "PROD-001-A", "name": "Versión A", "dimensions": "10x5x5cm"},
-                {"code": "PROD-001-B", "name": "Versión B", "dimensions": "15x7x7cm"}
+                {"code": "PROD-001-A", "name": "Versión A"},
+                {"code": "PROD-001-B", "name": "Versión B"}
             ]
         }
         """

@@ -385,13 +385,17 @@ def send_quote_updated_to_customer(quote):
         raise
 
 
-def send_updated_quote_to_customer(quote):
+def send_updated_quote_to_customer(quote, pdf_file=None):
     """
     Send updated quote with full details to customer (manual send from backoffice).
     This is called manually when the user presses the "Send" button.
 
     Args:
         quote: Quote instance
+        pdf_file: Optional uploaded PDF (e.g. request.FILES['pdf_file']) generado
+            en el front-end. Se adjunta directamente al correo en memoria, sin
+            guardarlo en disco ni en la base de datos. Si es None, el correo
+            se envía sin adjunto.
 
     Returns:
         bool: True if email sent successfully, False otherwise
@@ -442,6 +446,15 @@ def send_updated_quote_to_customer(quote):
             to=to_email,
         )
         email.attach_alternative(html_content, "text/html")
+
+        # Adjuntar el PDF recibido del front-end directamente en memoria
+        # (sin persistirlo en disco ni en la base de datos)
+        if pdf_file is not None:
+            pdf_file.seek(0)
+            email.attach(pdf_file.name, pdf_file.read(), 'application/pdf')
+            logger.info(f"Quote #{quote.quote_number}: attaching PDF '{pdf_file.name}' to customer email")
+        else:
+            logger.info(f"Quote #{quote.quote_number}: no PDF provided, sending email without attachment")
 
         # Print email content to console for debugging (BEFORE sending)
         safe_print("\n" + "="*80)
