@@ -1,7 +1,7 @@
 import { MessageCircle } from "lucide-react";
 
-const PHONE = "549291122548874"; 
-const MESSAGE = "Hola! Quiero consultar.";
+const PHONE = "5491131040495"; 
+const MESSAGE = "Hola! Quisiera recibir información sobre sus soluciones para laboratorios e industrias.";
 
 const WhatsAppFloat = () => {
   const url = `https://wa.me/${PHONE}?text=${encodeURIComponent(MESSAGE)}`;
