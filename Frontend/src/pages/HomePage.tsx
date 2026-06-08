@@ -28,7 +28,7 @@ const HomePage = () => {
         <ProductGrid products={productFilter()} title="Productos Destacados" />
       )}
       <BrandsGrid />
-     {/* <WhatsAppFloat />*/}
+     <WhatsAppFloat />
     </>
   );
 };
