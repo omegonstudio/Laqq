@@ -47,9 +47,7 @@ export default function DescriptionEditor({ value, onChange }: Props) {
           "[&_table]:w-full [&_table]:border-collapse " +
           "[&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted [&_th]:font-semibold " +
           "[&_td]:border [&_td]:border-border [&_td]:p-2 " +
-          "[&_ul]:!list-disc [&_ul]:!pl-5 [&_ul]:!list-outside " +
-          "[&_ol]:!list-decimal [&_ol]:!pl-5 [&_ol]:!list-outside " +
-          "[&_li]:![display:list-item] " +
+          "[&_ul]:!list-inside [&_ol]:!list-inside " +
           "[&_strong]:font-bold [&_em]:italic",
       },
     },
