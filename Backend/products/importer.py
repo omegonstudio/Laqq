@@ -438,6 +438,10 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
             product_code = (variant_row.get('product_code') or '').strip()
             variant_code = (variant_row.get('variant_code') or variant_row.get('spec_code') or '').strip()
 
+            # Si el variant_code no incluye el product_code como prefijo, lo concatenamos
+            if variant_code and product_code and not variant_code.startswith(product_code + '-'):
+                variant_code = f'{product_code}-{variant_code}'
+
             if not variant_code:
                 summary['errors'].append({
                     'row': lineno,
