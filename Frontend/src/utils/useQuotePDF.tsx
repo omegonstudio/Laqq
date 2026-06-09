@@ -1,6 +1,15 @@
 import { QuoteItemRender, QuoteRender } from "@/types/api";
 import { convertQuotesState, convertQuotesTypes } from "./quotesConvert";
-import html2pdf from "html2pdf.js";
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  Image,
+  StyleSheet,
+  pdf,
+  Font,
+} from "@react-pdf/renderer";
 
 const formatCurrency = (value: string | number | null): string => {
   if (value === null || value === undefined) return "$0,00";
@@ -31,324 +40,478 @@ const getLogoBase64 = async (): Promise<string> => {
     reader.readAsDataURL(blob);
   });
 };
-const generateItemBlock = (item: QuoteItemRender, index: number): string => {
-  const product = item.product;
-  const subtotal = Number(item.quantity) * Number(item.unit_price);
-  return `
-    <div style=" margin-bottom: 16px; overflow: hidden; page-break-inside: avoid;">
-      
-      <!-- Header del ítem -->
-      <div style="background: #f0f4fa; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-weight: bold; font-size: 12px; color: #FF6B1A;">
-          Ítem ${index + 1} · ${product.name}
-        </span>
-        ${
-          product.product_code
-            ? `<span style="font-size: 10px; color: #666; font-family: monospace;">Cód: ${product.product_code} Marca: ${product.brand} </span>`
-            : ""
-        }
-      </div>
 
-      <!-- Cuerpo: imagen flotante + descripción -->
-      <div style="padding: 12px; overflow: hidden;">
-        
-        ${
-          item.product.image_url
-            ? `<img
-                src="${item.product.image_url}"
-                alt="${product.name}"
-                style="float: right; max-width: 200px; max-height: 160px; object-fit: contain; margin: 0 0 12px 20px; border-radius: 4px;"
-              />`
-            : ""
-        }
+const ORANGE = "#FF6B1A";
+const GRAY_TEXT = "#444";
+const LIGHT_BG = "#f0f4fa";
 
-        ${
-          product.description
-            ? `<p style="color: #444; line-height: 1.7; margin: 0 0 10px; font-size: 10.5px;">
-                ${product.description}
-              </p>`
-            : ""
-        }
+const s = StyleSheet.create({
+  page: {
+    fontFamily: "Helvetica",
+    fontSize: 10,
+    color: "#222",
+    padding: "40 48",
+  },
 
-        <!-- Clearfix para que el contenedor envuelva el float -->
-        <div style="clear: both;"></div>
+  // Header
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    borderBottomWidth: 2,
+    borderBottomColor: ORANGE,
+    paddingBottom: 10,
+    marginBottom: 16,
+  },
+  logoBg: { padding: "5 8", borderRadius: 4 },
+  logo: { width: 90, height: 30, objectFit: "contain" },
+  tagline: { fontSize: 7.5, color: "#555", marginTop: 3, letterSpacing: 1 },
+  headerRight: {
+    fontSize: 8.5,
+    color: "#444",
+    lineHeight: 1.7,
+    textAlign: "right",
+  },
 
-        ${
-          item.variant
-            ? `<p style="font-size: 10px; color: #555; margin: 0 0 8px;">
-                <strong>Variedad:</strong> ${item.variant.name}
-                ${
-                  item.variant.code
-                    ? `· <span style="font-family: monospace;">${item.variant.code}</span>`
-                    : ""
-                }
-              </p>`
-            : ""
-        }
+  // Destinatario
+  recipientRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  recipientText: { fontSize: 10, lineHeight: 1.7 },
+  company: { fontSize: 12, fontFamily: "Helvetica-Bold" },
+  quoteLabel: { fontSize: 8.5, color: "#888" },
+  quoteNumber: { fontSize: 20, fontFamily: "Helvetica-Bold", color: ORANGE },
 
-        <!-- Totales del ítem -->
-        <div style="display: flex; gap: 24px; font-size: 10px; color: #555; border-top: 0.5px solid #eee; padding-top: 8px; margin-top: 4px;">
-          <span><strong style="color: #222;">Cantidad:</strong> ${
-            item.quantity
-          }</span>
-          <span><strong style="color: #222;">Precio unitario:</strong> ${formatCurrency(
-            item.unit_price
-          )}</span>
-          <span><strong style="color: #222;">Subtotal:</strong> ${formatCurrency(
-            subtotal
-          )}</span>
-        </div>
+  // Intro
+  intro: {
+    fontSize: 9.5,
+    color: GRAY_TEXT,
+    borderLeftWidth: 3,
+    borderLeftColor: "#ddd",
+    paddingLeft: 8,
+    marginBottom: 16,
+  },
 
-      </div>
-    </div>
-  `;
-};
+  // Section title
+  sectionTitle: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: "#888",
+    letterSpacing: 1.5,
+    borderLeftWidth: 3,
+    borderLeftColor: ORANGE,
+    paddingLeft: 8,
+    marginBottom: 10,
+    textTransform: "uppercase",
+  },
 
-const generateTableRows = (
-  items: QuoteItemRender[],
-  hasVariants: boolean
-): string => {
-  return items
-    .map((item) => {
-      const subtotal = Number(item.quantity) * Number(item.unit_price);
-      return `
-        <tr>
-          <td style="padding: 6px 10px; border-bottom: 0.5px solid #e8e8e8;">${
-            item.product.name
-          }</td>
-          <td style="padding: 6px 10px; border-bottom: 0.5px solid #e8e8e8; font-family: monospace; font-size: 10px;">${
-            item.product.product_code ?? "—"
-          }</td>
-          ${
-            hasVariants
-              ? `
-            <td style="padding: 6px 10px; border-bottom: 0.5px solid #e8e8e8;">${
-              item.variant?.name ?? "—"
-            }</td>
-            <td style="padding: 6px 10px; border-bottom: 0.5px solid #e8e8e8; font-family: monospace; font-size: 10px;">${
-              item.variant?.code ?? "—"
-            }</td>
-          `
-              : ""
-          }
-          <td style="padding: 6px 10px; border-bottom: 0.5px solid #e8e8e8; text-align: right;">${
-            item.quantity
-          }</td>
-          <td style="padding: 6px 10px; border-bottom: 0.5px solid #e8e8e8; text-align: right;">${formatCurrency(
-            item.unit_price
-          )}</td>
-          <td style="padding: 6px 10px; border-bottom: 0.5px solid #e8e8e8; text-align: right;">${formatCurrency(
-            subtotal
-          )}</td>
-        </tr>
-      `;
-    })
-    .join("");
-};
+  // Item block
+  itemWrap: { marginBottom: 14 },
+  itemHeader: {
+    backgroundColor: LIGHT_BG,
+    padding: "6 10",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  itemTitle: { fontFamily: "Helvetica-Bold", fontSize: 10.5, color: ORANGE },
+  itemCode: { fontSize: 8.5, color: "#666" },
+  itemBody: { padding: "8 10" },
+  itemRow: {
+    flexDirection: "row",
+    gap: 20,
+    borderTopWidth: 0.5,
+    borderTopColor: "#eee",
+    paddingTop: 6,
+    marginTop: 4,
+  },
+  itemDesc: { fontSize: 9, color: GRAY_TEXT, lineHeight: 1.6, marginBottom: 6 },
+  itemVariant: { fontSize: 8.5, color: "#555", marginBottom: 6 },
+  itemImage: { width: 120, height: 90, objectFit: "contain", marginLeft: 12 },
 
-const generateQuoteHTML = (quote: QuoteRender, logoBase64: string): string => {
+  // Tabla resumen
+  tableHeader: { flexDirection: "row", backgroundColor: ORANGE },
+  tableHeaderCell: {
+    padding: "5 8",
+    color: "white",
+    fontFamily: "Helvetica-Bold",
+    fontSize: 9,
+  },
+  tableRow: {
+    flexDirection: "row",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#e8e8e8",
+  },
+  tableCell: { padding: "5 8", fontSize: 9 },
+  tableCellRight: { padding: "5 8", fontSize: 9, textAlign: "right" },
+
+  // Total
+  totalRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 10 },
+  totalBadge: {
+    backgroundColor: ORANGE,
+    color: "white",
+    padding: "8 16",
+    borderRadius: 4,
+    fontSize: 13,
+    fontFamily: "Helvetica-Bold",
+  },
+
+  // Condiciones
+  conditionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 4,
+  },
+  conditionItem: { width: "47%", marginBottom: 6 },
+  conditionLabel: {
+    fontFamily: "Helvetica-Bold",
+    color: "#222",
+    fontSize: 9,
+    marginBottom: 2,
+  },
+  conditionValue: { color: GRAY_TEXT, fontSize: 9 },
+
+  // Footer
+  footer: {
+    marginTop: 24,
+    borderTopWidth: 2,
+    borderTopColor: ORANGE,
+    paddingTop: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    fontSize: 8.5,
+    color: "#666",
+  },
+});
+
+// ─── Componente PDF ───────────────────────────────────────────────────────────
+
+const QuotePDF = ({
+  quote,
+  logoBase64,
+}: {
+  quote: QuoteRender;
+  logoBase64: string;
+}) => {
   const { contact, specs, items } = quote;
   const hasVariants = items.some((item) => item.variant !== null);
+  const stripHtml = (html: string) =>
+    html
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  // Anchos de columnas de la tabla
+  const colWidths = hasVariants
+    ? {
+        name: "22%",
+        code: "12%",
+        varName: "18%",
+        varCode: "11%",
+        qty: "8%",
+        price: "13%",
+        sub: "13%",
+      }
+    : { name: "30%", code: "18%", qty: "12%", price: "18%", sub: "18%" };
 
-  return `
-  <html>
-    <head>
-      <meta charset="UTF-8" />
-      <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-          font-family: Arial, Helvetica, sans-serif;
-          font-size: 11px;
-          color: #222;
-          padding: 48px 56px;
-        }
-        @media print {
-          body { padding: 32px 40px; }
-          .no-print { display: none; }
-        }
-      </style>
-    </head>
-    <body>
+  return (
+    <Document>
+      <Page size="A4" style={s.page}>
+        {/* HEADER */}
+        <View style={s.headerRow}>
+          <View>
+            <View style={s.logoBg}>
+              {logoBase64 ? (
+                <Image src={logoBase64} style={s.logo} />
+              ) : (
+                <Text
+                  style={{
+                    color: "white",
+                    fontSize: 14,
+                    fontFamily: "Helvetica-Bold",
+                  }}
+                >
+                  LAQQ
+                </Text>
+              )}
+            </View>
+            <Text style={s.tagline}>EQUIPAMIENTO INTEGRAL DE LABORATORIOS</Text>
+          </View>
+          <View style={s.headerRight}>
+            <Text>Saavedra 247 C1083ACE · Buenos Aires, Argentina</Text>
+            <Text>Tel: (5411) 5277-7200 · Interno: 222</Text>
+            <Text>info@laqq.com.ar · www.laqq.com</Text>
+          </View>
+        </View>
 
-      <!-- HEADER -->
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; border-bottom: 2px solid #FF6B1A; margin-bottom: 20px;">
-        <div>
-          <div style="background: #FF6B1A; padding: 6px 10px; border-radius: 4px; display: inline-block;">
-              <img
-                src="${logoBase64}"
-                alt="Logo"
-                style="max-width: 100px; max-height: 36px; object-fit: contain; display: block;"
-              />
-            </div>  
-          <p style="font-size: 9px; color: #555; margin-top: 4px; letter-spacing: 1px; text-transform: uppercase;">
-            Equipamiento integral de laboratorios
-          </p>
-        </div>
-        <div style="text-align: right; font-size: 10px; color: #444; line-height: 1.7;">
-          Saavedra 247 C1083ACE · Buenos Aires, Argentina<br/>
-          Tel: (5411) 5277-7200 · Interno: 222<br/>
-          info@laqq.com.ar · www.laqq.com
-        </div>
-      </div>
+        {/* DESTINATARIO + NRO */}
+        <View style={s.recipientRow}>
+          <View style={s.recipientText}>
+            <Text>Buenos Aires, {formatDate(quote.updated_at)}</Text>
+            <Text> </Text>
+            <Text>Señores:</Text>
+            <Text style={s.company}>{contact?.company_name ?? "—"}</Text>
+            {contact && (
+              <Text>
+                Atención: {contact.first_name} {contact.last_name}
+              </Text>
+            )}
+          </View>
+          <View style={{ alignItems: "flex-end" }}>
+            <Text style={s.quoteLabel}>Cotización</Text>
+            <Text style={s.quoteNumber}>#{quote.quote_number}</Text>
+          </View>
+        </View>
 
-      <!-- DESTINATARIO + NRO COTIZACIÓN -->
-      <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-        <div style="font-size: 11px; line-height: 1.7;">
-          Buenos Aires, ${formatDate(quote.updated_at)}<br/><br/>
-          Señores:<br/>
-          <strong style="font-size: 13px;">${
-            contact?.company_name ?? "—"
-          }</strong><br/>
-          ${
-            contact
-              ? `Atención: ${contact.first_name} ${contact.last_name}`
-              : ""
-          }
-        </div>
-        <div style="text-align: right;">
-          <div style="font-size: 10px; color: #888;">Cotización</div>
-          <div style="font-size: 22px; font-weight: bold; color: #FF6B1A;">#${
-            quote.quote_number
-          }</div>
-        
-        </div>
-      </div>
+        {/* INTRO */}
+        <View style={s.intro}>
+          <Text>
+            De nuestra mayor consideración: Tenemos el agrado de dirigirnos a
+            Uds. a fin de poner a vuestra disposición el presente presupuesto.
+            {quote.message ? `\n${quote.message}` : ""}
+          </Text>
+        </View>
 
-      <!-- MENSAJE INTRODUCTORIO -->
-      <p style="font-size: 10.5px; color: #444; border-left: 3px solid #ddd; padding-left: 10px; margin-bottom: 20px;">
-      De nuestra mayor consideración:
-        Tenemos el agrado de dirigirnos a Uds. a fin de poner a vuestra disposición el presente presupuesto.
-        ${quote.message ? `<br/><em>${quote.message}</em>` : ""}
-      </p>
+        {/* ÍTEMS */}
+        <Text style={s.sectionTitle}>Ítems</Text>
 
-      <!-- ÍTEMS CON DESCRIPCIÓN -->
-      <div style="font-size: 9px; font-weight: bold; color: #888; letter-spacing: 1.5px; text-transform: uppercase; border-left: 3px solid #FF6B1A; padding-left: 8px; margin-bottom: 12px;">
-        Ítems
-      </div>
+        {items.map((item, index) => {
+          const subtotal = Number(item.quantity) * Number(item.unit_price);
+          return (
+            <View key={item.id ?? index} style={s.itemWrap} wrap={false}>
+              <View style={s.itemHeader}>
+                <Text style={s.itemTitle}>
+                  Ítem {index + 1} · {item.product.name}
+                </Text>
+                {item.product.product_code && (
+                  <Text style={s.itemCode}>
+                    Cód: {item.product.product_code} Marca: {item.product.brand}
+                  </Text>
+                )}
+              </View>
+              <View style={s.itemBody}>
+                <View style={{ flexDirection: "row" }}>
+                  <View style={{ flex: 1 }}>
+                    {item.product.description && (
+                      <Text style={s.itemDesc}>
+                        {stripHtml(item.product.description)}
+                      </Text>
+                    )}
+                    {item.variant && (
+                      <Text style={s.itemVariant}>
+                        <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                          Variedad:{" "}
+                        </Text>
 
-      ${items.map((item, index) => generateItemBlock(item, index)).join("")}
+                        {item.variant.code ? ` · ${item.variant.code}` : ""}
+                      </Text>
+                    )}
+                  </View>
+                  {item.product.image_url && (
+                    <Image src={item.product.image_url} style={s.itemImage} />
+                  )}
+                </View>
+                <View style={s.itemRow}>
+                  <Text>
+                    <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                      Cantidad:{" "}
+                    </Text>
+                    {item.quantity}
+                  </Text>
+                  <Text>
+                    <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                      Precio unitario:{" "}
+                    </Text>
+                    {formatCurrency(item.unit_price)}
+                  </Text>
+                  <Text>
+                    <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                      Subtotal:{" "}
+                    </Text>
+                    {formatCurrency(subtotal)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          );
+        })}
 
-      <!-- TABLA RESUMEN -->
-      <table style="width: 100%; border-collapse: collapse; font-size: 10.5px; margin-top: 8px;">
-        <thead>
-          <tr style="background: #FF6B1A; color: white;">
-            <th style="padding: 7px 10px; text-align: left;">Producto</th>
-            <th style="padding: 7px 10px; text-align: left;">Código</th>
-            ${
-              hasVariants
-                ? `
-              <th style="padding: 7px 10px; text-align: left;">Variedad</th>
-              <th style="padding: 7px 10px; text-align: left;">Cód. variedad</th>
-            `
-                : ""
-            }
-            <th style="padding: 7px 10px; text-align: right;">Cantidad</th>
-            <th style="padding: 7px 10px; text-align: right;">Precio unit.</th>
-            <th style="padding: 7px 10px; text-align: right;">Subtotal</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${generateTableRows(items, hasVariants)}
-        </tbody>
-      </table>
+        {/* TABLA RESUMEN */}
+        <View style={s.tableHeader}>
+          <Text
+            style={[
+              s.tableHeaderCell,
+              { width: hasVariants ? colWidths.name : colWidths.name },
+            ]}
+          >
+            Producto
+          </Text>
+          <Text style={[s.tableHeaderCell, { width: colWidths.code }]}>
+            Código
+          </Text>
+          {hasVariants && (
+            <>
+              <Text
+                style={[
+                  s.tableHeaderCell,
+                  {
+                    width: (colWidths as typeof colWidths & { varName: string })
+                      .varCode,
+                  },
+                ]}
+              >
+                Cód. variedad
+              </Text>
+            </>
+          )}
+          <Text
+            style={[
+              s.tableHeaderCell,
+              { width: colWidths.qty, textAlign: "right" },
+            ]}
+          >
+            Cantidad
+          </Text>
+          <Text
+            style={[
+              s.tableHeaderCell,
+              { width: colWidths.price, textAlign: "right" },
+            ]}
+          >
+            Precio unit.
+          </Text>
+          <Text
+            style={[
+              s.tableHeaderCell,
+              { width: colWidths.sub, textAlign: "right" },
+            ]}
+          >
+            Subtotal
+          </Text>
+        </View>
 
-      <!-- TOTAL -->
-      <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
-        <div style="background: #FF6B1A; color: white; padding: 10px 20px; border-radius: 4px; font-size: 14px; font-weight: bold;">
-          Total: ${formatCurrency(quote.total_amount)}
-        </div>
-      </div>
+        {items.map((item, index) => {
+          const subtotal = Number(item.quantity) * Number(item.unit_price);
+          return (
+            <View key={index} style={s.tableRow}>
+              <Text style={[s.tableCell, { width: colWidths.name }]}>
+                {item.product.name ?? "—"}
+              </Text>
+              <Text style={[s.tableCell, { width: colWidths.code }]}>
+                {item.product.product_code ?? "—"}
+              </Text>
+              {hasVariants && (
+                <>
+                  <Text
+                    style={[
+                      s.tableCell,
+                      {
+                        width: (
+                          colWidths as typeof colWidths & { varCode: string }
+                        ).varCode,
+                      },
+                    ]}
+                  >
+                    {item.variant?.code ?? "—"}
+                  </Text>
+                </>
+              )}
+              <Text style={[s.tableCellRight, { width: colWidths.qty }]}>
+                {item.quantity}
+              </Text>
+              <Text style={[s.tableCellRight, { width: colWidths.price }]}>
+                {formatCurrency(item.unit_price)}
+              </Text>
+              <Text style={[s.tableCellRight, { width: colWidths.sub }]}>
+                {formatCurrency(subtotal)}
+              </Text>
+            </View>
+          );
+        })}
 
-      <!-- CONDICIONES GENERALES -->
-      <div style="margin-top: 28px; border-top: 1px solid #ddd; padding-top: 16px;">
-        <div style="font-size: 9px; font-weight: bold; color: #888; letter-spacing: 1.5px; text-transform: uppercase; border-left: 3px solid #FF6B1A; padding-left: 8px; margin-bottom: 12px;">
-          Condiciones generales
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 32px; font-size: 10px;">
-          ${[
-            ["Precios", specs.precios],
-            ["Forma de pago", specs.forma_pago],
-            ["Cláusula de pago", specs.clausula_pago],
-            ["Validez de oferta", specs.validez_oferta],
-            ["Garantía", specs.garantia],
-            ["Orden de compra", specs.orden_compra],
-          ]
-            .map(
-              ([label, value]) => `
-            <div>
-              <span style="font-weight: bold; color: black; display: block; margin-bottom: 2px;">${label}</span>
-              <span style="color: #444;">${value || "—"}</span>
-            </div>
-          `
-            )
-            .join("")}
-        </div>
+        {/* TOTAL */}
+        <View style={s.totalRow}>
+          <Text style={s.totalBadge}>
+            Total: {formatCurrency(quote.total_amount)}
+          </Text>
+        </View>
 
-        ${
-          specs.observaciones || quote.observaciones
-            ? `
-          <div style="margin-top: 12px; font-size: 10px; color: #444;">
-            <strong>Observaciones:</strong> ${
-              specs.observaciones || quote.observaciones || "—"
-            }
-          </div>
-        `
-            : ""
-        }
-      </div>
+        {/* CONDICIONES GENERALES */}
+        <View
+          style={{
+            marginTop: 24,
+            borderTopWidth: 1,
+            borderTopColor: "#ddd",
+            paddingTop: 14,
+          }}
+        >
+          <Text style={s.sectionTitle}>Condiciones generales</Text>
+          <View style={s.conditionsGrid}>
+            {(
+              [
+                ["Precios", specs.precios],
+                ["Forma de pago", specs.forma_pago],
+                ["Cláusula de pago", specs.clausula_pago],
+                ["Validez de oferta", specs.validez_oferta],
+                ["Garantía", specs.garantia],
+                ["Orden de compra", specs.orden_compra],
+              ] as [string, string][]
+            ).map(([label, value]) => (
+              <View key={label} style={s.conditionItem}>
+                <Text style={s.conditionLabel}>{label}</Text>
+                <Text style={s.conditionValue}>{value || "—"}</Text>
+              </View>
+            ))}
+          </View>
+          {(specs.observaciones || quote.observaciones) && (
+            <View style={{ marginTop: 10 }}>
+              <Text style={{ fontSize: 9, color: GRAY_TEXT }}>
+                <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                  Observaciones:{" "}
+                </Text>
+                {specs.observaciones || quote.observaciones || "—"}
+              </Text>
+            </View>
+          )}
+        </View>
 
-      <!-- FOOTER -->
-      <div style="margin-top: 32px; border-top: 2px solid #FF6B1A; padding-top: 12px; display: flex; justify-content: space-between; font-size: 10px; color: #666;">
-        <div>
-          ${
-            contact
+        {/* FOOTER */}
+        <View style={s.footer}>
+          <Text>
+            {contact
               ? `${contact.first_name} ${contact.last_name} · ${contact.email}`
-              : ""
-          }
-        </div>
-        <div>
-          Cotización #${quote.quote_number} · Última modificación: ${formatDate(
-    quote.updated_at
-  )}
-        </div>
-      </div>
-
-    </body>
-  </html>
-  `;
+              : ""}
+          </Text>
+          <Text>
+            Cotización #{quote.quote_number} · Última modificación:{" "}
+            {formatDate(quote.updated_at)}
+          </Text>
+        </View>
+      </Page>
+    </Document>
+  );
 };
 
-export const generateQuotePdf = async (quote: QuoteRender) => {
-  const logoBase64 = await getLogoBase64();
-
-  const iframe = document.createElement("iframe");
-  iframe.style.display = "none";
-  document.body.appendChild(iframe);
-
-  const doc = iframe.contentWindow?.document;
-  if (!doc) return;
-
-  doc.open();
-  doc.write(generateQuoteHTML(quote, logoBase64)); // <-- pasás el base64
-  doc.close();
-
-  iframe.contentWindow?.focus();
-  iframe.contentWindow?.print();
-
-  setTimeout(() => document.body.removeChild(iframe), 1000);
-};
+// ─── Exports ──────────────────────────────────────────────────────────────────
 
 export const generateQuotePdfBlob = async (
   quote: QuoteRender
 ): Promise<Blob> => {
   const logoBase64 = await getLogoBase64();
-
-  const container = document.createElement("div");
-  container.innerHTML = generateQuoteHTML(quote, logoBase64);
-
-  const worker = html2pdf().from(container);
-
-  const pdfBlob = await worker.outputPdf("blob");
-
-  return pdfBlob;
+  const blob = await pdf(
+    <QuotePDF quote={quote} logoBase64={logoBase64} />
+  ).toBlob();
+  return blob;
+};
+export const generateQuotePdf = async (quote: QuoteRender): Promise<void> => {
+  const logoBase64 = await getLogoBase64();
+  const blob = await pdf(
+    <QuotePDF quote={quote} logoBase64={logoBase64} />
+  ).toBlob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+  // El navegador abre el PDF en su visor nativo, que incluye el botón de imprimir
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 };
