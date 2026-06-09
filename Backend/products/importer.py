@@ -31,13 +31,13 @@ COLUMN_NAME_MAP = {
     'categoria_nivel_0':    'category_level_0',
     'categoria_nivel_1':    'category_level_1',
     'categoria_nivel_2':    'category_level_2',
+    'categoria_nivel_3':    'category_level_3',
     'descripcion':          'description',
     'nombre_imagen':        'image_name',
     'activo':               'is_active',
     'es_variante':          'is_variant',
     'codigo_variante':      'variant_code',
     'nombre_variante':      'variant_name',
-    'dimensiones':          'dimensions',
     'productos_relacionados': 'related_product_codes',
     'tiene_specs':          'is_specs_column',
 }
@@ -103,23 +103,23 @@ def _get_or_create_brand(name, brand_cache, summary):
         summary['created_brands'] += 1
     return obj
 
-def _get_or_create_category_by_levels(level_0, level_1, level_2, category_cache, summary):
+def _get_or_create_category_by_levels(level_0, level_1, level_2, level_3, category_cache, summary):
     """
-    Resuelve la categoría a partir de 3 niveles.
+    Resuelve la categoría a partir de hasta 4 niveles.
     - level_0: obligatorio, debe pre-existir en la base de datos (búsqueda case-insensitive).
-    - level_1: opcional, se crea si no existe (case-insensitive).
-    - level_2: opcional, se crea si no existe (case-insensitive). Requiere level_1.
+    - level_1/2/3: opcionales, se crean si no existen. Cada uno requiere el anterior.
     Todas las búsquedas son case-insensitive para evitar duplicados.
     """
     level_0 = (level_0 or '').strip()
     level_1 = (level_1 or '').strip()
     level_2 = (level_2 or '').strip()
+    level_3 = (level_3 or '').strip()
 
     if not level_0:
-        if level_1 or level_2:
+        if level_1 or level_2 or level_3:
             raise ValueError(
-                f"Se especificó categoria_nivel_1 ('{level_1}') o categoria_nivel_2 ('{level_2}') "
-                f"sin categoria_nivel_0. El nivel 0 es obligatorio cuando se indica alguna categoría."
+                f"Se especificó un nivel de categoría sin categoria_nivel_0. "
+                f"El nivel 0 es obligatorio cuando se indica alguna categoría."
             )
         raise ValueError(
             "El producto debe tener al menos categoria_nivel_0. La categoría es obligatoria."
@@ -131,6 +131,8 @@ def _get_or_create_category_by_levels(level_0, level_1, level_2, category_cache,
         cache_key += f'>{level_1.lower()}'
     if level_2:
         cache_key += f'>{level_2.lower()}'
+    if level_3:
+        cache_key += f'>{level_3.lower()}'
 
     if cache_key in category_cache:
         return category_cache[cache_key]
@@ -171,9 +173,25 @@ def _get_or_create_category_by_levels(level_0, level_1, level_2, category_cache,
         return parent
 
     # Level 2: buscar case-insensitive, crear si no existe
-    obj = Category.objects.filter(name__iexact=level_2, parent=parent).first()
+    key_2 = f'{level_0.lower()}>{level_1.lower()}>{level_2.lower()}'
+    if key_2 in category_cache:
+        parent = category_cache[key_2]
+    else:
+        obj = Category.objects.filter(name__iexact=level_2, parent=parent).first()
+        if not obj:
+            obj = Category.objects.create(name=level_2, parent=parent, description='', display_order=0)
+            summary['created_categories'] += 1
+        category_cache[key_2] = obj
+        parent = obj
+
+    if not level_3:
+        category_cache[cache_key] = parent
+        return parent
+
+    # Level 3: buscar case-insensitive, crear si no existe
+    obj = Category.objects.filter(name__iexact=level_3, parent=parent).first()
     if not obj:
-        obj = Category.objects.create(name=level_2, parent=parent, description='', display_order=0)
+        obj = Category.objects.create(name=level_3, parent=parent, description='', display_order=0)
         summary['created_categories'] += 1
     category_cache[cache_key] = obj
     return obj
@@ -219,7 +237,7 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
     fileobj: objeto tipo UploadedFile o file-like. Se detecta la extensión por fileobj.name si está disponible.
     Retorna un dict resumen con contadores y errores.
     CSV/Excel debe contener columnas (recomendadas):
-      product_code, name, brand, category_level_0, category_level_1, category_level_2, description, image_name, is_active, related_product_codes, is_variant, variant_code, variant_name, dimensions
+      product_code, name, brand, category_level_0, category_level_1, category_level_2, description, image_name, is_active, related_product_codes, is_variant, variant_code, variant_name
 
     is_variant:
       - false/0/vacío: Crea o actualiza un Product. Si ya existe un Product con ese product_code, se lanza error.
@@ -367,7 +385,8 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                 cat_level_0 = (first_row.get('category_level_0') or '').strip()
                 cat_level_1 = (first_row.get('category_level_1') or '').strip()
                 cat_level_2 = (first_row.get('category_level_2') or '').strip()
-                category = _get_or_create_category_by_levels(cat_level_0, cat_level_1, cat_level_2, category_cache, summary)
+                cat_level_3 = (first_row.get('category_level_3') or '').strip()
+                category = _get_or_create_category_by_levels(cat_level_0, cat_level_1, cat_level_2, cat_level_3, category_cache, summary)
 
                 # image attachment por nombre (búsqueda en librería)
                 image_name = (first_row.get('image_name') or first_row.get('image_url') or '').strip()
@@ -473,7 +492,6 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
 
             defaults = {
                 'name': (variant_row.get('variant_name') or '').strip(),
-                'dimensions': (variant_row.get('dimensions') or '').strip() or None,
             }
 
             variant_obj, created_variant = ProductVariant.objects.update_or_create(

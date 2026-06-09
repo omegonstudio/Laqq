@@ -61,8 +61,12 @@ const initialState: userState = {
 
 export const fetchUsers = createAsyncThunk(
   "user/fetch",
-  async (params?: FetchuserParams) => {
-    return usersApi.list(params);
+  async (params: FetchuserParams | undefined, { rejectWithValue }) => {
+    try {
+      return await usersApi.list(params);
+    } catch (error) {
+      return rejectWithValue(error);
+    }
   }
 );
 

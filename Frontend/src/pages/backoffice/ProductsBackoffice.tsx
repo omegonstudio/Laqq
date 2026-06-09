@@ -1,19 +1,6 @@
 import ProductsTable from "@/components/modules/ProductsTable";
-import { fetchAllBrands, fetchBrands } from "@/store/brandSlice";
-import { fetchAllCategories } from "@/store/categoriesSlice";
-import { useAppDispatch } from "@/store/hooks";
-import { useEffect } from "react";
 
 const ProductsBackoffice = () => {
-  const dispatch = useAppDispatch();
-  useEffect(() => {
-    dispatch(fetchAllCategories());
-  }, [dispatch]);
-
-  useEffect(() => {
-    dispatch(fetchAllBrands());
-  }, [dispatch]);
-
   return (
     <div className="space-y-6">
       <div>

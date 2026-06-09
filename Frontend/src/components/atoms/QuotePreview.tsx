@@ -44,6 +44,7 @@ import { Textarea } from "../ui/textarea";
 import { quotesApi } from "@/lib/api/quotes";
 import { DialogDescription } from "@radix-ui/react-dialog";
 import GeneralSpecificationsDialog from "../molecules/Modals/GeneralSpecificationsDialog";
+import { generateQuotePdfBlob } from "@/utils/useQuotePDF";
 
 interface Props {
   open: boolean;
@@ -142,7 +143,9 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         items: quote.items
           ? quote.items.map((item) => ({ ...item, existing: true }))
           : [],
-        user: users.results.find((item) => item.id === quote.user) as UserData,
+        user: users?.results?.find(
+          (item) => item.id === quote.user
+        ) as UserData,
         observaciones: quote.observaciones,
       });
     }
@@ -167,12 +170,14 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         state: quote.state,
         quote_type: quote.quote_type,
         items,
-        user: users.results.find((item) => item.id === quote.user) as UserData,
+        user: users?.results?.find(
+          (item) => item.id === quote.user
+        ) as UserData,
         observaciones: quote.observaciones,
       });
       setNewProducts(items);
     }
-  }, [quote]);
+  }, [quote, users]);
 
   if (!quote || !formState) {
     return null;
@@ -183,7 +188,6 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   if (!quote) {
     return;
   }
-
   const handleCancel = () => {
     setFormState({
       state: quote.state,
@@ -191,7 +195,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       items: quote.items
         ? quote.items.map((item) => ({ ...item, existing: true }))
         : [],
-      user: users.results.find((item) => item.id === quote.user) as UserData,
+      user: users?.results?.find((item) => item.id === quote.user) as UserData,
       observaciones: "",
     });
     setEdit(false);
@@ -271,7 +275,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
     );
   };
 
-  const handleSave = async () => {
+  const handleSave = async (): Promise<QuoteRender | null> => {
     if (formState.user === null || formState.user === undefined) {
       toast({
         title: "El usuario es obligatorio",
@@ -356,7 +360,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
           updatedQuote.items?.map((item) => ({ ...item, existing: true })) ??
           [],
         user:
-          users.results.find((u) => u.id === updatedQuote.user) ??
+          users?.results?.find((u) => u.id === updatedQuote.user) ??
           formState.user,
         message: updatedQuote.message,
         created_at: updatedQuote.created_at,
@@ -366,13 +370,16 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
 
       toast({ title: "Cotización actualizada correctamente" });
       setEdit(false);
+
       setUserError(false);
+      return updatedQuote;
     } catch (error) {
       console.error(error);
       toast({
         title: "Error al actualizar la cotización",
         variant: "destructive",
       });
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -381,11 +388,24 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   const handleSendClient = async () => {
     setIsLoading(true);
     try {
-      await handleSave();
-      const res = await quotesApi.sendClient(quote.id, {
-        contact: quote.contact,
-        contact_id: quote.contact.id,
-      });
+      const updatedQuote = await handleSave();
+
+      if (!updatedQuote) {
+        return;
+      }
+
+      const pdfBlob = await generateQuotePdfBlob(updatedQuote);
+
+      const formData = new FormData();
+
+      formData.append(
+        "pdf_file",
+        pdfBlob,
+        `cotizacion-${updatedQuote.quote_number}.pdf`
+      );
+
+      await quotesApi.sendClient(updatedQuote.id, formData);
+
       toast({ title: "Correo enviado al cliente" });
     } catch (error) {
       toast({ title: "Error al enviar el correo", variant: "destructive" });
@@ -513,7 +533,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                 <Select
                   value={formState?.user?.id ?? ""}
                   onValueChange={(userId) => {
-                    const selectedUser = users.results.find(
+                    const selectedUser = users?.results?.find(
                       (u) => u.id === userId
                     );
                     if (!selectedUser) return;
@@ -526,7 +546,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                     <SelectValue placeholder="Seleccionar usuario" />
                   </SelectTrigger>
                   <SelectContent>
-                    {users.results.map((user) => (
+                    {users?.results?.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
                         {user.first_name} {user.last_name} ({user.email})
                       </SelectItem>
@@ -542,7 +562,8 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
             ) : (
               <p className="text-muted-foreground">
                 {formState?.user
-                  ? `${formState.user.first_name} ${formState.user.last_name}`
+                  ? `${formState.user.first_name} ${formState.user.last_name}
+                  ${formState.user.username}`
                   : "Ninguno"}
               </p>
             )}
@@ -587,7 +608,9 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                   <th className="text-center p-2 w-1/4 font-medium">
                     Variedad (Código)
                   </th>
-                  <th className="text-center p-2 w-1/4 font-medium">Código</th>
+                  <th className="text-center p-2 w-1/4 font-medium">
+                    Código producto
+                  </th>
                   <th className="text-center p-2 w-1/4 font-medium">Cant.</th>
                   <th className="text-center p-2 w-1/4 font-medium">
                     Precio unitario
@@ -744,16 +767,20 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         </div>
 
         <label>Observaciones</label>
-        <Textarea
-          aria-description="Observaciones de la cotización"
-          placeholder="Observaciones"
-          value={formState.observaciones}
-          onChange={(e) =>
-            setFormState((prev) =>
-              prev ? { ...prev, observaciones: e.target.value } : null
-            )
-          }
-        />
+        {!edit ? (
+          <p>{formState.observaciones ?? "No hay observaciones"}</p>
+        ) : (
+          <Textarea
+            aria-description="Observaciones de la cotización"
+            placeholder="Observaciones"
+            value={formState.observaciones}
+            onChange={(e) =>
+              setFormState((prev) =>
+                prev ? { ...prev, observaciones: e.target.value } : null
+              )
+            }
+          />
+        )}
 
         <Button
           type="button"

@@ -24,7 +24,7 @@ class Command(BaseCommand):
 
         headers = [
             'product_code', 'name', 'brand', 'category_level_0', 'category_level_1',
-            'description', 'is_active', 'is_variant', 'variant_code', 'variant_name', 'dimensions'
+            'description', 'is_active', 'is_variant', 'variant_code', 'variant_name'
         ]
         ws.append(headers)
 
@@ -40,7 +40,6 @@ class Command(BaseCommand):
             'false',              # is_variant (es un producto)
             'TEST-001-25ML',      # variant_code
             '25 ml',              # variant_name
-            '70x40mm',            # dimensions
         ])
 
         # Variante 1 (is_variant=true)
@@ -55,7 +54,6 @@ class Command(BaseCommand):
             'true',               # is_variant
             'TEST-001-50ML',      # variant_code
             '50 ml',              # variant_name
-            '90x45mm',            # dimensions
         ])
 
         # Variante 2 (is_variant=true)
@@ -70,7 +68,6 @@ class Command(BaseCommand):
             'true',               # is_variant
             'TEST-001-100ML',     # variant_code
             '100 ml',             # variant_name
-            '110x50mm',           # dimensions
         ])
 
         # Test case 2: Variante sin producto padre (debería fallar)
@@ -85,7 +82,6 @@ class Command(BaseCommand):
             'true',               # is_variant
             'TEST-999-50ML',      # variant_code
             '50 ml',
-            '',
         ])
 
         # Test case 3: Producto duplicado (debería fallar)
@@ -100,7 +96,6 @@ class Command(BaseCommand):
             'false',              # is_variant (producto - debería fallar por duplicado)
             'TEST-001-DUP',
             'Dup',
-            '',
         ])
 
         buffer = BytesIO()
@@ -149,7 +144,7 @@ class Command(BaseCommand):
             self.stdout.write(f"\nNúmero de variantes: {variants.count()}")
             self.stdout.write("\nVariantes:")
             for i, variant in enumerate(variants, 1):
-                self.stdout.write(f"  {i}. {variant.code} - {variant.name} - {variant.dimensions}")
+                self.stdout.write(f"  {i}. {variant.code} - {variant.name}")
 
             expected_variants = 3  # 1 del producto principal + 2 variantes is_variant=true
             if variants.count() == expected_variants:

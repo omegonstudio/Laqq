@@ -1,9 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import {Table} from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
+import {
+  Bold,
+  Italic,
+  List,
+  Table as TableIcon,
+  Trash2,
+  Plus,
+  Minus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/hooks/use-toast";
+import { Toggle } from "@/components/ui/toggle";
+import { cn } from "@/lib/utils";
 
 type Props = {
   value: string;
@@ -11,120 +26,209 @@ type Props = {
 };
 
 export default function DescriptionEditor({ value, onChange }: Props) {
-  const [preview, setPreview] = useState(false);
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
+    ],
+    content: value || "",
+    onUpdate({ editor }) {
+      // Emit empty string instead of Tiptap's empty-doc HTML
+      const html = editor.isEmpty ? "" : editor.getHTML();
+      onChange(html);
+    },
+    editorProps: {
+      attributes: {
+        class:
+          "min-h-[280px] px-4 py-3 focus:outline-none prose prose-sm max-w-none text-foreground " +
+          "[--tw-prose-body:currentColor] [--tw-prose-bold:currentColor] " +
+          "[--tw-prose-bullets:currentColor] [--tw-prose-counters:currentColor] " +
+          "[&_table]:w-full [&_table]:border-collapse " +
+          "[&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted [&_th]:font-semibold " +
+          "[&_td]:border [&_td]:border-border [&_td]:p-2 " +
+          "[&_ul]:!list-inside [&_ol]:!list-inside " +
+          "[&_strong]:font-bold [&_em]:italic",
+      },
+    },
+  });
 
-  const hasHtml = useMemo(() => {
-    return /<\/?[a-z][\s\S]*>/i.test(value);
-  }, [value]);
-  const TABLE_TEMPLATE = `
-  <table border="1">
-    <thead>
-      <tr>
-        <th>Columna 1</th>
-        <th>Columna 2</th>
-        <th>Columna 3</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Dato 1</td>
-        <td>Dato 2</td>
-        <td>Dato 3</td>
-      </tr>
-    </tbody>
-  </table>
-  `;
-
-  const insertTable = () => {
-    // Evitar insertar dos veces seguidas el template vacío
-    if (value.includes(TABLE_TEMPLATE.trim())) {
-      toast({
-        title: "Ya has insertado una tabla.",
-        description:
-          " Edita el HTML para modificarla o eliminarla antes de insertar otra.",
-        variant: "destructive",
-      });
-      return;
+  // Sync external value changes (e.g. when modal opens with existing product)
+  useEffect(() => {
+    if (!editor) return;
+    const current = editor.isEmpty ? "" : editor.getHTML();
+    if (value !== current) {
+editor.commands.setContent(value || "", { emitUpdate: false });
     }
+  }, [value, editor]);
 
-    const nextValue = value.trim()
-      ? `${value}\n\n${TABLE_TEMPLATE}`
-      : TABLE_TEMPLATE;
+  if (!editor) return null;
 
-    onChange(nextValue);
-  };
-
-  const formatDescription = (description: string) => {
-    if (!description) return "";
-
-    // Separar tablas temporalmente
-    const tables: string[] = [];
-
-    let content = description.replace(/<table[\s\S]*?<\/table>/gi, (match) => {
-      tables.push(match);
-      return `__TABLE_${tables.length - 1}__`;
-    });
-
-    // Convertir saltos de línea SOLO fuera de tablas
-    content = content.replace(/\n/g, "<br />");
-
-    // Restaurar tablas originales
-    content = content.replace(
-      /__TABLE_(\d+)__/g,
-      (_, index) => tables[Number(index)]
-    );
-
-    return content;
-  };
-  const formattedDescription = formatDescription(value);
+  const isInTable = editor.isActive("table");
 
   return (
-    <div className="space-y-3">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          {hasHtml && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setPreview((p) => !p)}
+    <div className="space-y-1">
+      <label className="text-sm font-medium">Descripción</label>
+
+      <div className="border rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring">
+        {/* ── Toolbar ── */}
+        <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/40 px-2 py-1.5">
+          {/* Text format */}
+          <ToolbarToggle
+            title="Negrita"
+            active={editor.isActive("bold")}
+            onClick={() => editor.chain().focus().toggleBold().run()}
+          >
+            <Bold className="w-4 h-4" />
+          </ToolbarToggle>
+
+          <ToolbarToggle
+            title="Cursiva"
+            active={editor.isActive("italic")}
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+          >
+            <Italic className="w-4 h-4" />
+          </ToolbarToggle>
+
+          <Divider />
+
+          {/* Lists */}
+          <ToolbarToggle
+            title="Lista con viñetas"
+            active={editor.isActive("bulletList")}
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+          >
+            <List className="w-4 h-4" />
+          </ToolbarToggle>
+
+          <Divider />
+
+          {/* Table controls */}
+          {!isInTable ? (
+            <ToolbarButton
+              title="Insertar tabla"
+              onClick={() =>
+                editor
+                  .chain()
+                  .focus()
+                  .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+                  .run()
+              }
             >
-              {preview ? "Editar HTML" : "Visualizar"}
-            </Button>
+              <TableIcon className="w-4 h-4" />
+              <span className="text-xs ml-1 hidden sm:inline">
+                Insertar tabla
+              </span>
+            </ToolbarButton>
+          ) : (
+            <>
+              <ToolbarButton
+                title="Agregar columna"
+                onClick={() =>
+                  editor.chain().focus().addColumnAfter().run()
+                }
+              >
+                <Plus className="w-3 h-3" />
+                <span className="text-xs ml-1">Col</span>
+              </ToolbarButton>
+
+              <ToolbarButton
+                title="Eliminar columna"
+                onClick={() =>
+                  editor.chain().focus().deleteColumn().run()
+                }
+              >
+                <Minus className="w-3 h-3" />
+                <span className="text-xs ml-1">Col</span>
+              </ToolbarButton>
+
+              <ToolbarButton
+                title="Agregar fila"
+                onClick={() => editor.chain().focus().addRowAfter().run()}
+              >
+                <Plus className="w-3 h-3" />
+                <span className="text-xs ml-1">Fila</span>
+              </ToolbarButton>
+
+              <ToolbarButton
+                title="Eliminar fila"
+                onClick={() => editor.chain().focus().deleteRow().run()}
+              >
+                <Minus className="w-3 h-3" />
+                <span className="text-xs ml-1">Fila</span>
+              </ToolbarButton>
+
+              <ToolbarButton
+                title="Eliminar tabla"
+                onClick={() => editor.chain().focus().deleteTable().run()}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="w-4 h-4" />
+              </ToolbarButton>
+            </>
           )}
         </div>
-        <Button type="button" variant="outline" onClick={insertTable}>
-          Insertar tabla
-        </Button>
-      </div>
 
-      {/* Preview */}
-      {preview && hasHtml ? (
-        <div
-          className="
-          border rounded-md p-4
-prose prose-sm max-w-none text-muted-foreground
-whitespace-normal
-[&_table]:w-full
-[&_table]:border-collapse
-[&_table]:my-2
-[&_th]:border
-[&_td]:border
-[&_th]:p-2
-[&_td]:p-2
-"
-          dangerouslySetInnerHTML={{
-            __html: formattedDescription,
-          }}
-        />
-      ) : (
-        <Textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Descripción del producto"
-          className="min-h-[320px] font-mono"
-        />
-      )}
+        {/* ── Editor area ── */}
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
+}
+
+// ── Small reusable toolbar pieces ────────────────────────────────────────────
+
+function ToolbarToggle({
+  children,
+  title,
+  active,
+  onClick,
+}: {
+  children: React.ReactNode;
+  title: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Toggle
+      size="sm"
+      title={title}
+      pressed={active}
+      onPressedChange={onClick}
+      className="h-7 w-7 p-0 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground"
+    >
+      {children}
+    </Toggle>
+  );
+}
+
+function ToolbarButton({
+  children,
+  title,
+  onClick,
+  className,
+}: {
+  children: React.ReactNode;
+  title: string;
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      title={title}
+      onClick={onClick}
+      className={cn("h-7 px-2 text-muted-foreground hover:text-foreground", className)}
+    >
+      {children}
+    </Button>
+  );
+}
+
+function Divider() {
+  return <div className="mx-1 h-5 w-px bg-border" />;
 }

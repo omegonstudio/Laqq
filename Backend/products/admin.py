@@ -141,7 +141,7 @@ class AttachmentInline(GenericTabularInline):
 class ProductVariantInline(admin.TabularInline):
     model = ProductVariant
     extra = 1
-    fields = ['code', 'name', 'dimensions']
+    fields = ['code', 'name']
     verbose_name = "Variante"
     verbose_name_plural = "Variantes"
     show_change_link = True
@@ -240,8 +240,8 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(ProductVariant)
 class ProductVariantAdmin(admin.ModelAdmin):
-    list_display = ['code', 'name', 'product', 'dimensions', 'created_at']
-    search_fields = ['code', 'name', 'dimensions']
+    list_display = ['code', 'name', 'product', 'created_at']
+    search_fields = ['code', 'name', 'product__name']
     list_filter = ['product']
     ordering = ['-created_at']
     inlines = [VariantTechnicalSpecInline]

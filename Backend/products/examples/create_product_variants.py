@@ -42,32 +42,26 @@ def create_product_with_multiple_variants():
         {
             "code": f"MAT-{product.product_code}-25ML",
             "name": "25 ml",
-            "dimensions": "70 x 40 mm",
         },
         {
             "code": f"MAT-{product.product_code}-50ML",
             "name": "50 ml",
-            "dimensions": "90 x 45 mm",
         },
         {
             "code": f"MAT-{product.product_code}-100ML",
             "name": "100 ml",
-            "dimensions": "110 x 50 mm",
         },
         {
             "code": f"MAT-{product.product_code}-250ML",
             "name": "250 ml",
-            "dimensions": "145 x 60 mm",
         },
         {
             "code": f"MAT-{product.product_code}-500ML",
             "name": "500 ml",
-            "dimensions": "175 x 75 mm",
         },
         {
             "code": f"MAT-{product.product_code}-1000ML",
             "name": "1000 ml",
-            "dimensions": "220 x 90 mm",
         }
     ]
 
@@ -109,7 +103,7 @@ def test_product_serialization():
     if data['variants']:
         print("\n   Variantes incluidas:")
         for v in data['variants']:
-            print(f"   - {v['code']}: {v.get('name', 'N/A')} ({v.get('dimensions', 'N/A')})")
+            print(f"   - {v['code']}: {v.get('name', 'N/A')}")
 
     return data
 

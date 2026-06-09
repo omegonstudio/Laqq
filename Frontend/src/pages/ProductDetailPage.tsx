@@ -7,14 +7,31 @@ import {
 } from "lucide-react";
 import Button from "@/components/atoms/Button";
 import Badge from "@/components/atoms/Badge";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearSelected, fetchProduct } from "@/store/productSlice";
 import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
 
+const formatDescription = (description: string) => {
+  if (!description) return "";
+  const tables: string[] = [];
+  let content = description.replace(/<table[\s\S]*?<\/table>/gi, (match) => {
+    tables.push(match);
+    return `__TABLE_${tables.length - 1}__`;
+  });
+  content = content.replace(/\n/g, "<br />");
+  content = content.replace(
+    /__TABLE_(\d+)__/g,
+    (_, index) => tables[Number(index)]
+  );
+  return content;
+};
+
 const ProductDetailPage = () => {
+  // ─── ZONA 1: Hooks que NO dependen de derivaciones ───────────────────────
   const [activeTab, setActiveTab] = useState<"details" | "files">("details");
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { items, addToCart, addVariantToCart, removeFromCart } = useCart();
   const { id } = useParams();
   const {
@@ -24,102 +41,49 @@ const ProductDetailPage = () => {
   } = useAppSelector((state) => state.products);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const relatedList = Array.isArray(product?.related)
-    ? product.related
-    : Array.isArray(product?.related_products)
-    ? product.related_products
-    : [];
+  const variantsRef = useRef<HTMLDivElement>(null);
 
-  const variantCount: number = product?.variants?.length ?? 0;
-  const isVariantInCart = (variant) => {
-    const uniqueId = `${product.id}-${variant.code}`;
-    return items.some((item) => item.id === uniqueId);
-  };
-  const hasVariants = variantCount > 0;
-  const hasSingleVariant = variantCount === 1;
-
-  const toggleVariantInCart = (variant) => {
-    const uniqueId = `${product.id}-${variant.code}`;
-
-    if (isVariantInCart(variant)) {
-      removeFromCart(uniqueId);
-    } else {
-      addVariantToCart(product, variant, variant.code);
-    }
-  };
-  // Si no hay ninguna de las dos secciones, no mostrar el contenedor
   const variantColumns = useMemo(() => {
     const keys = new Set<string>();
-
     product?.variants?.forEach((v) => {
       v.technical_specs?.forEach((s) => {
         if (s.key) keys.add(s.key);
       });
     });
-
     return Array.from(keys);
   }, [product]);
-  const hasProductInCart = () => {
-    return items.some(
-      (item) =>
-        item.variantSpecId
-          ? item.id.startsWith(product.id) // variantes
-          : item.id === product.id // producto simple
-    );
-  };
-
-  const addCuoteButton = (product) => {
-    const variantCount = product?.variants?.length;
-    // 1. Ya hay variantes en carrito → solo redirigir
-    if (hasProductInCart()) {
-      navigate("/quote");
-      return;
-    }
-
-    // 2. Producto sin variantes
-    if (variantCount === 0) {
-      addToCart(product);
-      navigate("/quote");
-      return;
-    }
-
-    // 3. Producto con una sola variante
-    if (variantCount === 1) {
-      const variant = product.variants[0];
-      addVariantToCart(product, variant, variant.code);
-      navigate("/quote");
-      return;
-    }
-
-    // 4. Múltiples variantes y ninguna seleccionada
-    navigate("/quote");
-  };
 
   useEffect(() => {
-    if (id) {
-      dispatch(fetchProduct(id));
-    }
-
-    // Limpiar el producto seleccionado cuando se desmonte el componente
+    if (id) dispatch(fetchProduct(id));
     return () => {
       dispatch(clearSelected());
     };
   }, [id, dispatch]);
-  const isImage = (contentType?: string) => contentType?.startsWith("image/");
 
+  // ─── ZONA 2: Derivaciones ─────────────────────────────────────────────────
+  const isImage = (contentType?: string) => contentType?.startsWith("image/");
+  const variantCount = product?.variants?.length ?? 0;
+  const hasVariants = variantCount > 0;
+  const hasSingleVariant = variantCount === 1;
+  const relatedList = Array.isArray(product?.related)
+    ? product.related
+    : Array.isArray(product?.related_products)
+    ? product.related_products
+    : [];
   const imageAttachments =
     product?.attachments?.filter((att) => isImage(att.content_type_str)) ?? [];
-
   const fileAttachments =
     product?.attachments?.filter((att) => !isImage(att.content_type_str)) ?? [];
   const showDetailsSection = hasVariants || fileAttachments.length > 0;
+
+  // ─── ZONA 2b: useEffect que depende de las derivaciones ──────────────────
   useEffect(() => {
     if (!hasVariants && fileAttachments.length > 0) {
       setActiveTab("files");
     }
   }, [hasVariants, fileAttachments.length]);
-  // Mostrar loading mientras carga
+
+  // ─── ZONA 3: Early returns ────────────────────────────────────────────────
   if (selectedLoading) {
     return (
       <div className="py-16">
@@ -129,30 +93,7 @@ const ProductDetailPage = () => {
       </div>
     );
   }
-  const formatDescription = (description: string) => {
-    if (!description) return "";
 
-    // Separar tablas temporalmente
-    const tables: string[] = [];
-
-    let content = description.replace(/<table[\s\S]*?<\/table>/gi, (match) => {
-      tables.push(match);
-      return `__TABLE_${tables.length - 1}__`;
-    });
-
-    // Convertir saltos de línea SOLO fuera de tablas
-    content = content.replace(/\n/g, "<br />");
-
-    // Restaurar tablas originales
-    content = content.replace(
-      /__TABLE_(\d+)__/g,
-      (_, index) => tables[Number(index)]
-    );
-
-    return content;
-  };
-
-  // Mostrar error si hay error
   if (selectedError) {
     return (
       <div className="py-16">
@@ -169,7 +110,6 @@ const ProductDetailPage = () => {
     );
   }
 
-  // Mostrar mensaje si no hay producto
   if (!product) {
     return (
       <div className="py-16">
@@ -182,50 +122,80 @@ const ProductDetailPage = () => {
       </div>
     );
   }
+
+  // ─── ZONA 4: Lógica que requiere product garantizado ──────────────────────
   const formattedDescription = formatDescription(product.description);
 
-  // Construir array de imágenes con la lógica correcta
-  // AHORA SÍ podemos usar product de forma segura porque ya verificamos que existe
   const buildImageArray = () => {
     const imageArray = [];
-
-    // 1. Si existe image_url, agregarlo primero
     if (product.image_url) {
       imageArray.push({ url: product.image_url, isMain: true });
     }
     if (imageAttachments.length > 0) {
-      const attachmentImages = imageAttachments.map((att) => ({
-        url: att.url || att.file,
-        isMain: false,
-      }));
-      imageArray.push(...attachmentImages);
+      imageArray.push(
+        ...imageAttachments.map((att) => ({
+          url: att.url || att.file,
+          isMain: false,
+        }))
+      );
     }
-    // 2. Si existen attachments, agregarlos después
-
-    // 3. Si no hay ninguna imagen, usar placeholder
     if (imageArray.length === 0) {
       imageArray.push({ url: placeholderImage, isMain: true });
     }
-
     return imageArray;
   };
+
   const images = buildImageArray();
   const totalImages = images.length;
 
-  // Funciones para navegar entre imágenes
-  const goToNext = () => {
+  const isVariantInCart = (variant) => {
+    const uniqueId = `${product.id}-${variant.code}`;
+    return items.some((item) => item.id === uniqueId);
+  };
+
+  const toggleVariantInCart = (variant) => {
+    const uniqueId = `${product.id}-${variant.code}`;
+    if (isVariantInCart(variant)) {
+      removeFromCart(uniqueId);
+    } else {
+      addVariantToCart(product, variant, variant.code);
+    }
+  };
+
+  const hasProductInCart = () => {
+    return items.some((item) =>
+      item.variantSpecId
+        ? item.id.startsWith(product.id)
+        : item.id === product.id
+    );
+  };
+
+  const addCuoteButton = (product) => {
+    if (hasProductInCart()) {
+      navigate("/quote");
+      return;
+    }
+    if (variantCount === 0) {
+      addToCart(product);
+      navigate("/quote");
+      return;
+    }
+    if (variantCount === 1) {
+      const variant = product.variants[0];
+      addVariantToCart(product, variant, variant.code);
+      navigate("/quote");
+      return;
+    }
+    navigate("/quote");
+  };
+
+  const goToNext = () =>
     setCurrentImageIndex((prev) => (prev + 1) % totalImages);
-  };
-
-  const goToPrevious = () => {
+  const goToPrevious = () =>
     setCurrentImageIndex((prev) => (prev - 1 + totalImages) % totalImages);
-  };
+  const goToImage = (index: number) => setCurrentImageIndex(index);
 
-  const goToImage = (index: number) => {
-    setCurrentImageIndex(index);
-  };
-  const hasHtml = /<\/?[a-z][\s\S]*>/i.test(product.description);
-  // Calcular especificaciones y productos relacionados
+  // ─── ZONA 5: JSX ─────────────────────────────────────────────────────────
   return (
     <div className="py-16">
       <div className="container mx-auto px-4">
@@ -310,16 +280,17 @@ const ProductDetailPage = () => {
             <h1 className="text-4xl font-bold mb-4">{product.name}</h1>
             <div
               className="
-    prose prose-sm max-w-none text-muted-foreground
-    whitespace-normal
-    [&_table]:w-full
-    [&_table]:border-collapse
-    [&_table]:my-2
-    [&_th]:border
-    [&_td]:border
-    [&_th]:p-2
-    [&_td]:p-2
-  "
+                    prose prose-sm max-w-none text-muted-foreground
+                    [--tw-prose-body:currentColor] [--tw-prose-bold:currentColor]
+                    [--tw-prose-bullets:currentColor] [--tw-prose-counters:currentColor]
+                    whitespace-normal
+                    [&_table]:w-full
+                    [&_table]:border-collapse
+                    [&_table]:my-2
+                    [&_th]:border
+                    [&_td]:border
+                    [&_th]:p-2
+                    [&_td]:p-2 "
               dangerouslySetInnerHTML={{
                 __html: formattedDescription,
               }}
@@ -346,33 +317,34 @@ const ProductDetailPage = () => {
                   <ShoppingCart size={20} />
                   Agregar al carrito
                 </Button>
-              ) : (
+              ) : null}
+              {variantCount < 2 ? (
                 <Button
                   size="lg"
+                  variant="outline"
                   className="flex items-center justify-center gap-2"
                   onClick={() => {
-                    document.getElementById("variantes")?.scrollIntoView({
+                    addCuoteButton(product);
+                  }}
+                >
+                  Solicitar Cotización
+                </Button>
+              ) : null}
+              {variantCount >= 2 ? (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="flex items-center justify-center gap-2"
+                  onClick={() => {
+                    variantsRef.current?.scrollIntoView({
                       behavior: "smooth",
-                      block: "center",
+                      block: "start",
                     });
                   }}
-                  disabled={false}
                 >
-                  <ShoppingCart size={20} />
-                  Seleccionar variedad
+                  Elegir variante
                 </Button>
-              )}
-              {/* <Link to="/quote"> */}
-              <Button
-                size="lg"
-                variant="outline"
-                className="flex items-center justify-center gap-2"
-                onClick={() => {
-                  addCuoteButton(product);
-                }}
-              >
-                Solicitar Cotización
-              </Button>
+              ) : null}
               {/* </Link> */}
             </div>
           </div>
@@ -380,65 +352,74 @@ const ProductDetailPage = () => {
 
         {/* Solo mostrar esta sección si hay especificaciones o productos relacionados */}
         {showDetailsSection && (
-          <div className="bg-card border border-border rounded-2xl p-8 ">
-            {/* Tab Bar */}
-
-            {/* Tab: fixed_specs */}
-            {hasVariants && (
+          <div ref={variantsRef} className="bg-card border border-border rounded-2xl p-8 ">
+            <div className="flex mb-5">
+              {hasVariants && (
+                <div
+                  onClick={() => setActiveTab("details")}
+                  className={`cursor-pointer border-b-2 pb-3 pr-5 ${
+                    activeTab === "details"
+                      ? "text-primary font-bold border-primary"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  <p>Variantes del producto</p>
+                </div>
+              )}
+              {fileAttachments.length > 0 && (
+                <div
+                  onClick={() => setActiveTab("files")}
+                  className={`cursor-pointer border-b-2 pb-3 pl-5 ${
+                    activeTab === "files"
+                      ? "text-primary font-bold border-primary"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  <p>Información adicional</p>
+                </div>
+              )}
+            </div>
+            {hasVariants && activeTab === "details" && (
               <div className="overflow-x-auto">
-                <label className="text-2xl text-center font-bold">
-                  Variantes del producto
-                </label>
-                <br />
-                <br />
-                <table className="w-full border border-border rounded-xl overflow-hidden">
+                <table className="w-full border border-border rounded-xl overflow-hidden text-center">
                   <thead className="bg-primary/10">
                     <tr>
-                      <th className="px-4 py-3 text-left font-bold">Código</th>
-                      <th className="px-4 py-3 text-left font-bold">Nombre</th>
-                      <th className="px-4 py-3 text-left font-bold">
-                        Dimensiones
-                      </th>
+                      <th className="px-4 py-3 text-center font-bold">Código</th>
+
                       {variantColumns.map((col) => (
-                        <th key={col} className="px-4 py-3 text-left font-bold">
+                        <th key={col} className="px-4 py-3 text-center font-bold">
                           {col}
                         </th>
                       ))}
 
-                      <th className="px-4 py-3 text-left font-bold">
+                      <th className="px-4 py-3 text-center font-bold">
                         Agregar al carrito
                       </th>
                     </tr>
                   </thead>
-
                   <tbody>
                     {product.variants.map((variant) => (
                       <tr key={variant.id} className="border-t border-border">
-                        <td className="px-4 py-3 text-sm font-medium">
+                        <td className="px-4 py-3 text-sm font-medium text-center">
                           {variant.code}
                         </td>
 
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {variant.name}
-                        </td>
-
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {variant.dimensions}
-                        </td>
 
                         {variantColumns.map((col) => {
                           const spec = variant.technical_specs?.find(
                             (s) => s.key === col
                           );
-
                           return (
-                            <td key={col} className="px-4 py-3 text-sm">
+                            <td
+                              key={col}
+                              className="px-4 py-3 text-sm text-center"
+                            >
                               {spec?.value || "-"}
                             </td>
                           );
                         })}
 
-                        <td className="px-4 py-3 text-sm">
+                        <td className="px-4 py-3 text-sm text-center">
                           <Button
                             size="sm"
                             variant={
@@ -455,36 +436,35 @@ const ProductDetailPage = () => {
                 </table>
               </div>
             )}
+            {fileAttachments.length > 0 && activeTab === "files" && (
+              <div className="space-y-4 bg-muted/30 rounded-sm">
+                <div className="grid lg:grid-cols-2 gap-5 mb-12">
+                  {fileAttachments.map((file) => (
+                    <div
+                      key={file.id}
+                      onClick={() =>
+                        window.open(file.url || file.file, "_blank")
+                      }
+                      className="cursor-pointer border rounded-lg p-4 flex items-center gap-3 hover:bg-muted transition-colors w-full overflow-hidden"
+                    >
+                      <div className="text-2xl shrink-0">📄</div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{file.file_name}</p>
+
+                        <p className="text-muted-foreground text-xs truncate">
+                          {file.content_type_str}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
         <br />
-        {fileAttachments.length > 0 && (
-          <div className="space-y-4 bg-muted/30 border p-6 rounded-sm">
-            <label className="text-2xl text-center font-bold">
-              Información adicional
-            </label>
 
-            <div className="grid lg:grid-cols-2 gap-5 mb-12">
-              {fileAttachments.map((file) => (
-                <div
-                  key={file.id}
-                  onClick={() => window.open(file.url || file.file, "_blank")}
-                  className="cursor-pointer border rounded-lg p-4 flex items-center gap-3 hover:bg-muted transition-colors w-full overflow-hidden"
-                >
-                  <div className="text-2xl shrink-0">📄</div>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{file.file_name}</p>
-
-                    <p className="text-muted-foreground text-xs truncate">
-                      {file.content_type_str}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
         <br />
         {relatedList.length > 0 && (
           <div className="space-y-4 bg-muted/30 border p-6 rounded-sm">

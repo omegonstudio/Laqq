@@ -7,7 +7,7 @@ const CategoriesPage = () => {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    dispatch(fetchAllCategories());
+    dispatch(fetchAllCategories({}));
   }, [dispatch]);
 
   return (

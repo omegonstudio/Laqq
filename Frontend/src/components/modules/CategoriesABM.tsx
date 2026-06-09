@@ -25,7 +25,7 @@ const CategoriesABM = () => {
 
   // Cargar TODAS las categorías al montar
   useEffect(() => {
-    dispatch(fetchAllCategories());
+    dispatch(fetchAllCategories({}));
   }, [dispatch]);
 
   const handleEdit = (category: Category) => {
@@ -143,6 +143,7 @@ const CategoriesABM = () => {
         <div className="text-center py-8">Cargando categorías...</div>
       ) : (
         <Table
+          key={tableData.length}
           columns={columns}
           data={tableData}
           actions={actions}

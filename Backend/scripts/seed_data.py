@@ -219,7 +219,6 @@ def seed_product_variants(products):
             defaults={
                 "id": uuid.uuid4(),
                 "name": "Estándar",
-                "dimensions": "10x10cm",
             }
         )
 

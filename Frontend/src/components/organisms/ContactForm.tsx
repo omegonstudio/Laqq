@@ -98,8 +98,8 @@ const ContactForm = () => {
                   </div>
                   <div>
                     <h3 className="font-bold mb-1">Email</h3>
-                    <p className="text-muted-foreground">contacto@laqq.com</p>
-                    <p className="text-muted-foreground">ventas@laqq.com</p>
+                    <p className="text-muted-foreground">marketing@laqq.com.ar</p>
+                    <p className="text-muted-foreground">info@laqq.com</p>
                   </div>
                 </div>
 
@@ -110,7 +110,6 @@ const ContactForm = () => {
                   <div>
                     <h3 className="font-bold mb-1">Teléfono</h3>
                     <p className="text-muted-foreground">+54 (11) 5277-7200</p>
-                    {/* <p className="text-muted-foreground">+52 (55) 8765 4321</p> */}
                   </div>
                 </div>
 
@@ -134,9 +133,7 @@ const ContactForm = () => {
               <div className="mt-8 p-6 bg-muted/30 rounded-2xl">
                 <h3 className="font-bold mb-2">Horario de Atención</h3>
                 <p className="text-muted-foreground">
-                  Lunes a Viernes: 9:00 - 18:00
-                  <br />
-                  Sábados: 9:00 - 14:00
+                  Lunes a Viernes: 9:00 - 17:00
                 </p>
               </div>
             </div>

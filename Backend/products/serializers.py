@@ -36,6 +36,18 @@ class CategorySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {'parent': 'No se pueden crear categorías de nivel 0 directamente. Toda categoría debe tener una categoría padre.'}
             )
+
+        if self.instance is not None and 'parent' in attrs:
+            new_parent = attrs.get('parent')
+            if self.instance.parent is None and new_parent is not None:
+                raise serializers.ValidationError(
+                    {'parent': 'No se puede reasignar el padre de una categoría principal (nivel 0).'}
+                )
+            if self.instance.parent is not None and new_parent is None:
+                raise serializers.ValidationError(
+                    {'parent': 'No se puede quitar la categoría padre: esto crearía una categoría huérfana de nivel 0.'}
+                )
+
         return attrs
 
 
@@ -51,13 +63,13 @@ class TechnicalSpecSerializer(serializers.ModelSerializer):
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):
-    """Serializer para variantes de producto (code, name, dimensions + specs técnicas propias)"""
+    """Serializer para variantes de producto (code, name + specs técnicas propias)"""
 
     technical_specs = TechnicalSpecSerializer(many=True, required=False)
 
     class Meta:
         model = ProductVariant
-        fields = ['id', 'product', 'code', 'name', 'dimensions', 'technical_specs', 'created_at']
+        fields = ['id', 'product', 'code', 'name', 'technical_specs', 'created_at']
         read_only_fields = ['id', 'created_at']
         validators = [
             UniqueTogetherValidator(

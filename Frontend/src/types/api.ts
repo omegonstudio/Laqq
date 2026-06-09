@@ -134,7 +134,6 @@ export interface ProductFixedSpec {
   product: string;
   code: string;
   volume?: string | null;
-  dimensions?: string | null;
   cap?: string | null;
   outlet?: string | null;
   accuracy?: string | null;
@@ -273,10 +272,7 @@ export interface QuoteUpdatePayload {
   observaciones: string;
   specs: SpecificationsForm;
 }
-export interface QuoteSendClient {
-  contact: Contact;
-  contact_id: string;
-}
+
 // Para crear items en bulk
 export interface QuoteItemBulkCreate {
   quote: string; // UUID

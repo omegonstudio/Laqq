@@ -48,12 +48,12 @@ const GeneralSpecificationsDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Condiciones Generales</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>Condiciones Generales</DialogTitle>
+      </DialogHeader>
 
-        <div className="space-y-4 text-sm">
+      <div className="flex-1 overflow-y-auto pr-2 space-y-4 text-sm">
           <div>
             <label>Precios</label>
             <Select

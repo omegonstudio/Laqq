@@ -103,7 +103,6 @@ class ProductVariant(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
     code = models.CharField(max_length=120)
     name = models.CharField(max_length=255, blank=True, default='')
-    dimensions = models.CharField(max_length=100, blank=True, null=True)
     technical_specs = models.ManyToManyField(
         'TechnicalSpec',
         through='VariantTechnicalSpec',
@@ -136,7 +135,7 @@ class TechnicalSpec(models.Model):
     class Meta:
         verbose_name = 'Especificación Técnica'
         verbose_name_plural = 'Especificaciones Técnicas'
-        ordering = ['key']
+        ordering = ['created_at']
 
     def __str__(self):
         return f"{self.key}: {self.value}"

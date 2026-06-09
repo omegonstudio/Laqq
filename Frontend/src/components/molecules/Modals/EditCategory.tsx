@@ -10,13 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { Category, CategoryUI } from "@/types/types";
 import { buildCategories } from "@/utils/data/categories";
@@ -26,6 +19,7 @@ import {
   updateCategory,
 } from "@/store/categoriesSlice";
 import { DialogDescription } from "@radix-ui/react-dialog";
+import { CascadeCategorySelect } from "@/components/atoms/FlatCategories";
 
 interface CategoryFormState {
   id?: string;
@@ -48,6 +42,7 @@ interface FlatCategory {
   id: string;
   name: string;
   level: number;
+  parent?: string;
 }
 
 interface FormErrors {
@@ -72,26 +67,6 @@ const categoryToFormState = (category: Category): CategoryFormState => ({
   description: category.description,
   level: category.level,
 });
-
-const flattenCategories = (
-  categories: CategoryUI[],
-  level = 0,
-  acc: FlatCategory[] = []
-): FlatCategory[] => {
-  for (const cat of categories) {
-    acc.push({
-      id: cat.id,
-      name: cat.name,
-      level,
-    });
-
-    if (cat.subcategories?.length) {
-      flattenCategories(cat.subcategories, level + 1, acc);
-    }
-  }
-
-  return acc;
-};
 
 const validateCategoryForm = (formState: CategoryFormState): FormErrors => {
   const errors: FormErrors = {};
@@ -140,8 +115,6 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
   );
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Set<string>>(new Set());
-  const menuItems = buildCategories(categories);
-  const flatCategories = flattenCategories(menuItems);
 
   const dispatch = useAppDispatch();
   const { creating, updating } = useAppSelector((state) => state.categories);
@@ -237,7 +210,7 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
   };
 
   useEffect(() => {
-    dispatch(fetchAllCategories());
+    dispatch(fetchAllCategories({}));
   }, [dispatch]);
 
   const isDisabled = (cat: FlatCategory) => {
@@ -306,62 +279,16 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({
                 Categoría padre{" "}
                 {errors.parent && <span className="text-red-600">*</span>}
               </Label>
-              <Select
-                value={localState.parent || "none"}
-                onValueChange={(value) => {
-                  setLocalState({
-                    ...localState,
-                    parent: value === "none" ? undefined : value,
-                  });
+              <CascadeCategorySelect
+                // flatCategories={flatCategories}
+                value={localState.parent}
+                onChange={(value) => {
+                  setLocalState({ ...localState, parent: value });
                   handleBlur("parent");
                 }}
-              >
-                <SelectTrigger
-                  id="parent"
-                  className={
-                    showError("parent")
-                      ? "border-red-500 focus:ring-red-500"
-                      : ""
-                  }
-                >
-                  <SelectValue placeholder="Sin categoría padre" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin categoría padre</SelectItem>
-
-                  {flatCategories.map((cat) => {
-                    const disabled = isDisabled(cat) || cat.level >= 3;
-
-                    return (
-                      <SelectItem
-                        key={cat.id}
-                        value={cat.id}
-                        disabled={disabled}
-                      >
-                        <span
-                          className={`
-                            block
-                            ${disabled ? "opacity-50" : ""}
-                            ${
-                              cat.level === 0
-                                ? "uppercase text-sm font-bold"
-                                : ""
-                            }
-                            ${
-                              cat.level === 1
-                                ? "text-sm pl-3 font-semibold"
-                                : ""
-                            }
-                            ${cat.level === 2 ? "text-xs pl-6" : ""}
-                          `}
-                        >
-                          {cat.name}
-                        </span>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+                error={showError("parent")}
+                maxLevel={2} // <-- agregás esta prop
+              />
               {showError("parent") && (
                 <p className="text-sm text-red-600">{errors.parent}</p>
               )}

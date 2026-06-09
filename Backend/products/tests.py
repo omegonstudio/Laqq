@@ -316,8 +316,7 @@ class ProductVariantAPITestCase(APITestCase):
         self.variant = ProductVariant.objects.create(
             product=self.product,
             code='TEST-001',
-            name='Variante A',
-            dimensions='10x5cm'
+            name='Variante A'
         )
 
     def test_list_variants(self):
@@ -331,8 +330,7 @@ class ProductVariantAPITestCase(APITestCase):
         data = {
             'product': self.product.id,
             'code': 'TEST-002',
-            'name': 'Variante B',
-            'dimensions': '15x7cm'
+            'name': 'Variante B'
         }
         response = self.client.post('/products/variants/', data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)

@@ -1,23 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useProductFilters } from "@/hooks/useFilters";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { CategoryUI } from "@/types/types";
 import { ChevronDown } from "lucide-react";
 import { SkeletonMenu } from "../atoms/SkeletonMenu";
+import { fetchAllCategories } from "@/store/categoriesSlice";
+import { buildCategories } from "@/utils/data/categories";
 import {
   selectCategoryMenuItems,
   selectCategoriesUiState,
 } from "@/store/selectors/categoriesSelectors";
-import { fetchAllCategories } from "@/store/categoriesSlice";
 
 export default function NavDropdown() {
   const dispatch = useAppDispatch();
   const { setFilter } = useProductFilters();
   const menuItems = useAppSelector(selectCategoryMenuItems);
   const categoriesUi = useAppSelector(selectCategoriesUiState);
-  const menuReady = !categoriesUi.loading && menuItems.length > 0;
+  const menuReady = !categoriesUi.loading && menuItems.length >= 4;
 
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
