@@ -44,6 +44,7 @@ import { Textarea } from "../ui/textarea";
 import { quotesApi } from "@/lib/api/quotes";
 import { DialogDescription } from "@radix-ui/react-dialog";
 import GeneralSpecificationsDialog from "../molecules/Modals/GeneralSpecificationsDialog";
+import { generateQuotePdfBlob } from "@/utils/useQuotePDF";
 
 interface Props {
   open: boolean;
@@ -274,7 +275,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
     );
   };
 
-  const handleSave = async () => {
+  const handleSave = async (): Promise<QuoteRender | null> => {
     if (formState.user === null || formState.user === undefined) {
       toast({
         title: "El usuario es obligatorio",
@@ -369,13 +370,16 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
 
       toast({ title: "Cotización actualizada correctamente" });
       setEdit(false);
+
       setUserError(false);
+      return updatedQuote;
     } catch (error) {
       console.error(error);
       toast({
         title: "Error al actualizar la cotización",
         variant: "destructive",
       });
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -384,11 +388,24 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   const handleSendClient = async () => {
     setIsLoading(true);
     try {
-      await handleSave();
-      const res = await quotesApi.sendClient(quote.id, {
-        contact: quote.contact,
-        contact_id: quote.contact.id,
-      });
+      const updatedQuote = await handleSave();
+
+      if (!updatedQuote) {
+        return;
+      }
+
+      const pdfBlob = await generateQuotePdfBlob(updatedQuote);
+
+      const formData = new FormData();
+
+      formData.append(
+        "pdf_file",
+        pdfBlob,
+        `cotizacion-${updatedQuote.quote_number}.pdf`
+      );
+
+      await quotesApi.sendClient(updatedQuote.id, formData);
+
       toast({ title: "Correo enviado al cliente" });
     } catch (error) {
       toast({ title: "Error al enviar el correo", variant: "destructive" });
