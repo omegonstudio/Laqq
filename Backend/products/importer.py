@@ -225,6 +225,8 @@ def _read_excel_to_dicts(file_bytes):
                 d[h] = ''
             elif isinstance(val, str):
                 d[h] = val
+            elif isinstance(val, float) and val.is_integer():
+                d[h] = str(int(val))
             else:
                 d[h] = str(val)
         rows.append(d)
