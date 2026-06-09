@@ -7,6 +7,8 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
+NUM_SPECS = 100
+
 wb = openpyxl.Workbook()
 
 # ========== HOJA 1: Productos y Variantes ==========
@@ -26,13 +28,10 @@ headers = [
     'activo',
     'es_variante',
     'codigo_variante',
-    'nombre_variante',
     'productos_relacionados',
     'tiene_specs',
     # Columnas posicionales para specs dinamicas (el padre define los nombres, las variantes los valores):
-    'spec_1',
-    'spec_2',
-    'spec_3',
+    *[f'spec_{i}' for i in range(1, NUM_SPECS + 1)],
 ]
 
 header_font = Font(bold=True, color='FFFFFF', size=11)
@@ -68,41 +67,40 @@ col_widths = {
     'activo':               10,
     'es_variante':          12,
     'codigo_variante':      18,
-    'nombre_variante':      18,
     'productos_relacionados': 22,
     'tiene_specs':          13,
-    'spec_1':               16,
-    'spec_2':               16,
-    'spec_3':               16,
+    **{f'spec_{i}': 14 for i in range(1, NUM_SPECS + 1)},
 }
 for col_idx, h in enumerate(headers, 1):
     ws.column_dimensions[get_column_letter(col_idx)].width = col_widths.get(h, 14)
 
+_pad = (None,) * (NUM_SPECS - 3)  # relleno para completar hasta NUM_SPECS columnas de specs
+
 example_rows = [
-    # Producto 1 — padre define NOMBRES de specs en spec_1/spec_2/spec_3 (tiene_specs=true)
-    # cols: cod_prod, nombre, marca, cat0, cat1, cat2, cat3, desc, img, activo, es_var, cod_var, nom_var, relacionados, tiene_specs, spec1, spec2, spec3
+    # Producto 1 — padre define NOMBRES de specs en spec_1/spec_2/... (tiene_specs=true)
+    # cols: cod_prod, nombre, marca, cat0, cat1, cat2, cat3, desc, img, activo, es_var, cod_var, relacionados, tiene_specs, spec1, spec2, spec3, ...
     ('MAT-001', 'Matraz Aforado Clase A', 'LabEquip', 'Equipamiento', 'Material Volumetrico', 'Matraces',
      None, 'Matraz aforado de vidrio borosilicato clase A', 'matraz_aforado.jpg', 'true', 'false',
-     None, None, None, 'true', 'potencia', 'velocidad', 'volumen'),
+     None, None, 'true', 'potencia', 'velocidad', 'volumen') + _pad,
     # variantes ponen los VALORES en esas mismas columnas
     ('MAT-001', None, None, None, None, None, None, None, None, None, 'true',
-     'MAT-001-25ML', '25 ml', None, None, '20hp', '25mhp', '25ml'),
+     'MAT-001-25ML', None, None, '20hp', '25mhp', '25ml') + _pad,
     ('MAT-001', None, None, None, None, None, None, None, None, None, 'true',
-     'MAT-001-50ML', '50 ml', None, None, '40hp', '30mhp', '50ml'),
+     'MAT-001-50ML', None, None, '40hp', '30mhp', '50ml') + _pad,
     ('MAT-001', None, None, None, None, None, None, None, None, None, 'true',
-     'MAT-001-100ML', '100 ml', None, None, '60hp', '40mhp', '100ml'),
+     'MAT-001-100ML', None, None, '60hp', '40mhp', '100ml') + _pad,
     # Separador
     (None,) * len(headers),
     # Producto 2 — define sus propios nombres de specs (distintos al producto 1)
     ('VAS-002', 'Vaso de Precipitado', 'GlassLab', 'Equipamiento', 'Cristaleria', 'Vasos',
      None, 'Vaso de precipitado graduado', 'vaso_precipitado.jpg', 'true', 'false',
-     None, None, 'MAT-001', 'true', 'viscosidad', 'cap_nominal', None),
+     None, 'MAT-001', 'true', 'viscosidad', 'cap_nominal', None) + _pad,
     ('VAS-002', None, None, None, None, None, None, None, None, None, 'true',
-     'VAS-002-100ML', '100 ml', None, None, '52cP', '100ml', None),
+     'VAS-002-100ML', None, None, '52cP', '100ml', None) + _pad,
     ('VAS-002', None, None, None, None, None, None, None, None, None, 'true',
-     'VAS-002-250ML', '250 ml', None, None, '48cP', '250ml', None),
+     'VAS-002-250ML', None, None, '48cP', '250ml', None) + _pad,
     ('VAS-002', None, None, None, None, None, None, None, None, None, 'true',
-     'VAS-002-500ML', '500 ml', None, None, '45cP', '500ml', None),
+     'VAS-002-500ML', None, None, '45cP', '500ml', None) + _pad,
 ]
 
 for row_idx, row_data in enumerate(example_rows, 2):
@@ -163,7 +161,6 @@ instrucciones = [
     ('   activo                 true/false — si el producto esta activo (por defecto: true)', 'normal'),
     ('   es_variante            true/false — si la fila es una variante (true) o un producto padre (false)', 'normal'),
     ('   codigo_variante        Codigo unico de la variante (obligatorio para es_variante=true)', 'normal'),
-    ('   nombre_variante        Nombre descriptivo de la variante (ej: 250 ml, Talla L)', 'normal'),
     ('   productos_relacionados Codigos de productos relacionados separados por ; (ej: MAT-001;VAS-002)', 'normal'),
     ('   tiene_specs            true/false — en la fila del producto padre: habilita specs dinamicas para sus variantes', 'normal'),
     ('   spec_1, spec_2, ...    Columnas de specs dinamicas: el padre escribe el NOMBRE, la variante escribe el VALOR', 'normal'),
@@ -174,13 +171,13 @@ instrucciones = [
     ('   - En cada fila de variante, escribir el VALOR correspondiente (ej: 20hp, acero inoxidable)', 'normal'),
     ('   - Columnas sin nombre en la fila del padre se ignoran completamente', 'normal'),
     ('   - Al reimportar una variante existente, sus specs anteriores se reemplazan por las nuevas', 'normal'),
-    ('   - Podes agregar tantas columnas de specs como necesites (spec_1, spec_2, spec_3, ...)', 'normal'),
+    ('   - El template incluye spec_1 hasta spec_100; podes usar todas las que necesites', 'normal'),
     ('', None),
     ('3. PASOS PARA CARGAR UN PRODUCTO CON VARIANTES', 'section'),
     ('   Paso 1: Una fila con es_variante=false define el producto padre (nombre, marca, categoria, etc.)', 'normal'),
     ('          Si usa specs, poner tiene_specs=true y escribir los nombres de atributos en spec_1, spec_2...', 'normal'),
     ('   Paso 2: Para cada variante, una fila con es_variante=true y el mismo codigo_producto', 'normal'),
-    ('          Completar codigo_variante, nombre_variante y los valores de specs', 'normal'),
+    ('          Completar codigo_variante y los valores de specs', 'normal'),
     ('', None),
     ('4. EJEMPLO', 'section'),
     ('   codigo_producto | es_variante | codigo_variante | tiene_specs | spec_1   | spec_2   ', 'code'),
@@ -231,7 +228,6 @@ instrucciones = [
     ('   is_active            => activo', 'normal'),
     ('   is_variant           => es_variante', 'normal'),
     ('   variant_code         => codigo_variante', 'normal'),
-    ('   variant_name         => nombre_variante', 'normal'),
     ('   related_product_codes => productos_relacionados', 'normal'),
     ('   is_specs_column      => tiene_specs', 'normal'),
     ('   (ambos formatos son aceptados por el importador)', 'normal'),
