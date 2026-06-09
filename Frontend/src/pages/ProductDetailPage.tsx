@@ -419,7 +419,7 @@ const ProductDetailPage = () => {
                           );
                         })}
 
-                        <td className="px-4 py-3 text-sm">
+                        <td className="px-4 py-3 text-sm text-center">
                           <Button
                             size="sm"
                             variant={
