@@ -59,9 +59,9 @@ def _build_attachments_payload(attachments) -> List[dict]:
                 b64 = base64.b64encode(content_bytes).decode("ascii")
                 payload.append(
                     {
-                        "name": filename,
-                        "data": b64,
-                        "type": mimetype or "application/octet-stream",
+                        "filename": filename,
+                        "content": b64,
+                        "content_type": mimetype or "application/octet-stream",
                     }
                 )
             except Exception as e:
