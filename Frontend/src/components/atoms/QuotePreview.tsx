@@ -608,7 +608,9 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                   <th className="text-center p-2 w-1/4 font-medium">
                     Variedad (Código)
                   </th>
-                  <th className="text-center p-2 w-1/4 font-medium">Código</th>
+                  <th className="text-center p-2 w-1/4 font-medium">
+                    Código producto
+                  </th>
                   <th className="text-center p-2 w-1/4 font-medium">Cant.</th>
                   <th className="text-center p-2 w-1/4 font-medium">
                     Precio unitario
