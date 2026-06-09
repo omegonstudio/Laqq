@@ -312,6 +312,8 @@ const ProductDetailPage = () => {
             <div
               className="
                     prose prose-sm max-w-none text-muted-foreground
+                    [--tw-prose-body:currentColor] [--tw-prose-bold:currentColor]
+                    [--tw-prose-bullets:currentColor] [--tw-prose-counters:currentColor]
                     whitespace-normal
                     [&_table]:w-full
                     [&_table]:border-collapse

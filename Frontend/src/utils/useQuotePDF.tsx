@@ -1,5 +1,7 @@
 import { QuoteItemRender, QuoteRender } from "@/types/api";
 import { convertQuotesState, convertQuotesTypes } from "./quotesConvert";
+import html2pdf from "html2pdf.js";
+
 const formatCurrency = (value: string | number | null): string => {
   if (value === null || value === undefined) return "$0,00";
   return `$${Number(value).toLocaleString("es-AR", {
@@ -334,4 +336,19 @@ export const generateQuotePdf = async (quote: QuoteRender) => {
   iframe.contentWindow?.print();
 
   setTimeout(() => document.body.removeChild(iframe), 1000);
+};
+
+export const generateQuotePdfBlob = async (
+  quote: QuoteRender
+): Promise<Blob> => {
+  const logoBase64 = await getLogoBase64();
+
+  const container = document.createElement("div");
+  container.innerHTML = generateQuoteHTML(quote, logoBase64);
+
+  const worker = html2pdf().from(container);
+
+  const pdfBlob = await worker.outputPdf("blob");
+
+  return pdfBlob;
 };

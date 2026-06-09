@@ -9,7 +9,6 @@ import {
   QuoteItemBulkCreate,
   QuoteItemRender,
   QuoteRender,
-  QuoteSendClient,
   QuoteState,
   QuoteType,
   QuoteUpdatePayload,
@@ -52,8 +51,8 @@ export const quotesApi = {
 
   remove: (id: string) => api.delete<void>(`${BASE}/list/${id}/`),
 
-  sendClient: (id: string, payload: QuoteSendClient) =>
-    api.post<QuoteRender>(`${BASE}/list/${id}/send-updated/`, payload),
+  sendClient: (id: string, formData: FormData) =>
+    api.post<QuoteRender>(`${BASE}/list/${id}/send-updated/`, formData),
   // Crear cotización desde formulario (incluye contacto + items)
   createFromForm: (payload: QuoteFormState) =>
     api.post<QuoteRender>(`${BASE}/list/from-package/`, payload),

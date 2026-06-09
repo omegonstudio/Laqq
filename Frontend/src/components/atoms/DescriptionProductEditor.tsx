@@ -43,12 +43,13 @@ export default function DescriptionEditor({ value, onChange }: Props) {
     editorProps: {
       attributes: {
         class:
-          "min-h-[280px] px-4 py-3 focus:outline-none prose prose-sm max-w-none " +
+          "min-h-[280px] px-4 py-3 focus:outline-none prose prose-sm max-w-none text-foreground " +
+          "[--tw-prose-body:currentColor] [--tw-prose-bold:currentColor] " +
+          "[--tw-prose-bullets:currentColor] [--tw-prose-counters:currentColor] " +
           "[&_table]:w-full [&_table]:border-collapse " +
           "[&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted [&_th]:font-semibold " +
           "[&_td]:border [&_td]:border-border [&_td]:p-2 " +
-          "[&_ul]:list-disc [&_ul]:pl-5 " +
-          "[&_ol]:list-decimal [&_ol]:pl-5 " +
+          "[&_ul]:!list-inside [&_ol]:!list-inside " +
           "[&_strong]:font-bold [&_em]:italic",
       },
     },
