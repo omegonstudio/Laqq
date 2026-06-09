@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import Button from "@/components/atoms/Button";
 import Badge from "@/components/atoms/Badge";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearSelected, fetchProduct } from "@/store/productSlice";
@@ -226,6 +226,10 @@ const ProductDetailPage = () => {
   const goToImage = (index: number) => {
     setCurrentImageIndex(index);
   };
+
+
+  const variantsRef = useRef<HTMLDivElement>(null);
+
   // Calcular especificaciones y productos relacionados
   return (
     <div className="py-16">
@@ -349,7 +353,7 @@ const ProductDetailPage = () => {
                   Agregar al carrito
                 </Button>
               ) : null}
-              <Button
+              {variantCount < 2 ? ( <Button
                 size="lg"
                 variant="outline"
                 className="flex items-center justify-center gap-2"
@@ -359,6 +363,22 @@ const ProductDetailPage = () => {
               >
                 Solicitar Cotización
               </Button>
+              ) : null}
+            {variantCount >= 2 ? (
+             <Button
+                size="lg"
+                variant="outline"
+                className="flex items-center justify-center gap-2"
+                onClick={() => {
+                  variantsRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                }}
+                >
+                  Elegir variante
+                </Button>
+              ) : null}
               {/* </Link> */}
             </div>
           </div>
