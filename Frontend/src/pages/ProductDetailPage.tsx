@@ -24,6 +24,7 @@ const ProductDetailPage = () => {
   } = useAppSelector((state) => state.products);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const variantsRef = useRef<HTMLDivElement>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const relatedList = Array.isArray(product?.related)
     ? product.related
@@ -228,7 +229,6 @@ const ProductDetailPage = () => {
   };
 
 
-  const variantsRef = useRef<HTMLDivElement>(null);
 
   // Calcular especificaciones y productos relacionados
   return (
@@ -386,7 +386,7 @@ const ProductDetailPage = () => {
 
         {/* Solo mostrar esta sección si hay especificaciones o productos relacionados */}
         {showDetailsSection && (
-          <div className="bg-card border border-border rounded-2xl p-8 ">
+  <div ref={variantsRef} className="bg-card border border-border rounded-2xl p-8 ">
             <div className="flex mb-5">
               {hasVariants && (
                 <div
