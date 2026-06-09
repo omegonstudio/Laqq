@@ -13,8 +13,25 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearSelected, fetchProduct } from "@/store/productSlice";
 import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
 
+const formatDescription = (description: string) => {
+  if (!description) return "";
+  const tables: string[] = [];
+  let content = description.replace(/<table[\s\S]*?<\/table>/gi, (match) => {
+    tables.push(match);
+    return `__TABLE_${tables.length - 1}__`;
+  });
+  content = content.replace(/\n/g, "<br />");
+  content = content.replace(
+    /__TABLE_(\d+)__/g,
+    (_, index) => tables[Number(index)]
+  );
+  return content;
+};
+
 const ProductDetailPage = () => {
+  // ─── ZONA 1: Hooks que NO dependen de derivaciones ───────────────────────
   const [activeTab, setActiveTab] = useState<"details" | "files">("details");
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { items, addToCart, addVariantToCart, removeFromCart } = useCart();
   const { id } = useParams();
   const {
@@ -25,104 +42,48 @@ const ProductDetailPage = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const variantsRef = useRef<HTMLDivElement>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const relatedList = Array.isArray(product?.related)
-    ? product.related
-    : Array.isArray(product?.related_products)
-    ? product.related_products
-    : [];
 
-  const variantCount: number = product?.variants?.length ?? 0;
-  const isVariantInCart = (variant) => {
-    const uniqueId = `${product.id}-${variant.code}`;
-    return items.some((item) => item.id === uniqueId);
-  };
-  const hasVariants = variantCount > 0;
-  const hasSingleVariant = variantCount === 1;
-
-  const toggleVariantInCart = (variant) => {
-    const uniqueId = `${product.id}-${variant.code}`;
-
-    if (isVariantInCart(variant)) {
-      removeFromCart(uniqueId);
-    } else {
-      addVariantToCart(product, variant, variant.code);
-    }
-  };
-  // Si no hay ninguna de las dos secciones, no mostrar el contenedor
   const variantColumns = useMemo(() => {
     const keys = new Set<string>();
-
     product?.variants?.forEach((v) => {
       v.technical_specs?.forEach((s) => {
         if (s.key) keys.add(s.key);
       });
     });
-
     return Array.from(keys);
   }, [product]);
-  const hasProductInCart = () => {
-    return items.some(
-      (item) =>
-        item.variantSpecId
-          ? item.id.startsWith(product.id) // variantes
-          : item.id === product.id // producto simple
-    );
-  };
-
-  const addCuoteButton = (product) => {
-    const variantCount = product?.variants?.length;
-    // 1. Ya hay variantes en carrito → solo redirigir
-    if (hasProductInCart()) {
-      navigate("/quote");
-      return;
-    }
-
-    // 2. Producto sin variantes
-    if (variantCount === 0) {
-      addToCart(product);
-      navigate("/quote");
-      return;
-    }
-
-    // 3. Producto con una sola variante
-    if (variantCount === 1) {
-      const variant = product.variants[0];
-      addVariantToCart(product, variant, variant.code);
-      navigate("/quote");
-      return;
-    }
-
-    // 4. Múltiples variantes y ninguna seleccionada
-    navigate("/quote");
-  };
 
   useEffect(() => {
-    if (id) {
-      dispatch(fetchProduct(id));
-    }
-
-    // Limpiar el producto seleccionado cuando se desmonte el componente
+    if (id) dispatch(fetchProduct(id));
     return () => {
       dispatch(clearSelected());
     };
   }, [id, dispatch]);
-  const isImage = (contentType?: string) => contentType?.startsWith("image/");
 
+  // ─── ZONA 2: Derivaciones ─────────────────────────────────────────────────
+  const isImage = (contentType?: string) => contentType?.startsWith("image/");
+  const variantCount = product?.variants?.length ?? 0;
+  const hasVariants = variantCount > 0;
+  const hasSingleVariant = variantCount === 1;
+  const relatedList = Array.isArray(product?.related)
+    ? product.related
+    : Array.isArray(product?.related_products)
+    ? product.related_products
+    : [];
   const imageAttachments =
     product?.attachments?.filter((att) => isImage(att.content_type_str)) ?? [];
-
   const fileAttachments =
     product?.attachments?.filter((att) => !isImage(att.content_type_str)) ?? [];
   const showDetailsSection = hasVariants || fileAttachments.length > 0;
 
+  // ─── ZONA 2b: useEffect que depende de las derivaciones ──────────────────
   useEffect(() => {
     if (!hasVariants && fileAttachments.length > 0) {
       setActiveTab("files");
     }
-  }, [hasVariants, fileAttachments]);
-  console.log(fileAttachments.length, variantCount);
-  // Mostrar loading mientras carga
+  }, [hasVariants, fileAttachments.length]);
+
+  // ─── ZONA 3: Early returns ────────────────────────────────────────────────
   if (selectedLoading) {
     return (
       <div className="py-16">
@@ -132,30 +93,7 @@ const ProductDetailPage = () => {
       </div>
     );
   }
-  const formatDescription = (description: string) => {
-    if (!description) return "";
 
-    // Separar tablas temporalmente
-    const tables: string[] = [];
-
-    let content = description.replace(/<table[\s\S]*?<\/table>/gi, (match) => {
-      tables.push(match);
-      return `__TABLE_${tables.length - 1}__`;
-    });
-
-    // Convertir saltos de línea SOLO fuera de tablas
-    content = content.replace(/\n/g, "<br />");
-
-    // Restaurar tablas originales
-    content = content.replace(
-      /__TABLE_(\d+)__/g,
-      (_, index) => tables[Number(index)]
-    );
-
-    return content;
-  };
-
-  // Mostrar error si hay error
   if (selectedError) {
     return (
       <div className="py-16">
@@ -172,7 +110,6 @@ const ProductDetailPage = () => {
     );
   }
 
-  // Mostrar mensaje si no hay producto
   if (!product) {
     return (
       <div className="py-16">
@@ -185,52 +122,80 @@ const ProductDetailPage = () => {
       </div>
     );
   }
+
+  // ─── ZONA 4: Lógica que requiere product garantizado ──────────────────────
   const formattedDescription = formatDescription(product.description);
 
-  // Construir array de imágenes con la lógica correcta
-  // AHORA SÍ podemos usar product de forma segura porque ya verificamos que existe
   const buildImageArray = () => {
     const imageArray = [];
-
-    // 1. Si existe image_url, agregarlo primero
     if (product.image_url) {
       imageArray.push({ url: product.image_url, isMain: true });
     }
     if (imageAttachments.length > 0) {
-      const attachmentImages = imageAttachments.map((att) => ({
-        url: att.url || att.file,
-        isMain: false,
-      }));
-      imageArray.push(...attachmentImages);
+      imageArray.push(
+        ...imageAttachments.map((att) => ({
+          url: att.url || att.file,
+          isMain: false,
+        }))
+      );
     }
-    // 2. Si existen attachments, agregarlos después
-
-    // 3. Si no hay ninguna imagen, usar placeholder
     if (imageArray.length === 0) {
       imageArray.push({ url: placeholderImage, isMain: true });
     }
-
     return imageArray;
   };
+
   const images = buildImageArray();
   const totalImages = images.length;
 
-  // Funciones para navegar entre imágenes
-  const goToNext = () => {
+  const isVariantInCart = (variant) => {
+    const uniqueId = `${product.id}-${variant.code}`;
+    return items.some((item) => item.id === uniqueId);
+  };
+
+  const toggleVariantInCart = (variant) => {
+    const uniqueId = `${product.id}-${variant.code}`;
+    if (isVariantInCart(variant)) {
+      removeFromCart(uniqueId);
+    } else {
+      addVariantToCart(product, variant, variant.code);
+    }
+  };
+
+  const hasProductInCart = () => {
+    return items.some((item) =>
+      item.variantSpecId
+        ? item.id.startsWith(product.id)
+        : item.id === product.id
+    );
+  };
+
+  const addCuoteButton = (product) => {
+    if (hasProductInCart()) {
+      navigate("/quote");
+      return;
+    }
+    if (variantCount === 0) {
+      addToCart(product);
+      navigate("/quote");
+      return;
+    }
+    if (variantCount === 1) {
+      const variant = product.variants[0];
+      addVariantToCart(product, variant, variant.code);
+      navigate("/quote");
+      return;
+    }
+    navigate("/quote");
+  };
+
+  const goToNext = () =>
     setCurrentImageIndex((prev) => (prev + 1) % totalImages);
-  };
-
-  const goToPrevious = () => {
+  const goToPrevious = () =>
     setCurrentImageIndex((prev) => (prev - 1 + totalImages) % totalImages);
-  };
+  const goToImage = (index: number) => setCurrentImageIndex(index);
 
-  const goToImage = (index: number) => {
-    setCurrentImageIndex(index);
-  };
-
-
-
-  // Calcular especificaciones y productos relacionados
+  // ─── ZONA 5: JSX ─────────────────────────────────────────────────────────
   return (
     <div className="py-16">
       <div className="container mx-auto px-4">
@@ -353,28 +318,29 @@ const ProductDetailPage = () => {
                   Agregar al carrito
                 </Button>
               ) : null}
-              {variantCount < 2 ? ( <Button
-                size="lg"
-                variant="outline"
-                className="flex items-center justify-center gap-2"
-                onClick={() => {
-                  addCuoteButton(product);
-                }}
-              >
-                Solicitar Cotización
-              </Button>
+              {variantCount < 2 ? (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="flex items-center justify-center gap-2"
+                  onClick={() => {
+                    addCuoteButton(product);
+                  }}
+                >
+                  Solicitar Cotización
+                </Button>
               ) : null}
-            {variantCount >= 2 ? (
-             <Button
-                size="lg"
-                variant="outline"
-                className="flex items-center justify-center gap-2"
-                onClick={() => {
-                  variantsRef.current?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start",
-                  });
-                }}
+              {variantCount >= 2 ? (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="flex items-center justify-center gap-2"
+                  onClick={() => {
+                    variantsRef.current?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    });
+                  }}
                 >
                   Elegir variante
                 </Button>
@@ -419,7 +385,6 @@ const ProductDetailPage = () => {
                   <thead className="bg-primary/10">
                     <tr>
                       <th className="px-4 py-3 text-center font-bold">Código</th>
-                      <th className="px-4 py-3 text-center font-bold">Nombre</th>
 
                       {variantColumns.map((col) => (
                         <th key={col} className="px-4 py-3 text-center font-bold">
@@ -432,7 +397,6 @@ const ProductDetailPage = () => {
                       </th>
                     </tr>
                   </thead>
-
                   <tbody>
                     {product.variants.map((variant) => (
                       <tr key={variant.id} className="border-t border-border">
@@ -440,15 +404,11 @@ const ProductDetailPage = () => {
                           {variant.code}
                         </td>
 
-                        <td className="px-4 py-3 text-sm font-medium text-center">
-                          {variant.name}
-                        </td>
 
                         {variantColumns.map((col) => {
                           const spec = variant.technical_specs?.find(
                             (s) => s.key === col
                           );
-
                           return (
                             <td
                               key={col}

@@ -31,7 +31,6 @@ export interface TecnicalSpecs {
 
 export interface Variants {
   code: string;
-  name: string;
   id?: string;
   product: string;
   technical_specs?: TecnicalSpecs[];
