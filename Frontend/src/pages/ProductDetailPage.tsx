@@ -280,20 +280,21 @@ const ProductDetailPage = () => {
             <h1 className="text-4xl font-bold mb-4">{product.name}</h1>
             <div
               className="
-                    prose prose-sm max-w-none text-muted-foreground
-                    [--tw-prose-body:currentColor] [--tw-prose-bold:currentColor]
-                    [--tw-prose-bullets:currentColor] [--tw-prose-counters:currentColor]
-                    whitespace-normal
-                    [&_table]:w-full
-                    [&_table]:border-collapse
-                    [&_table]:my-2
-                    [&_th]:border
-                    [&_td]:border
-                    [&_th]:p-2
-                    [&_td]:p-2
-                    [&_p]:text-justify
-                    [&_li]:text-justify
-                    [&_td]:text-justify "
+                prose prose-sm max-w-none text-muted-foreground
+                text-justify
+                [--tw-prose-body:currentColor] [--tw-prose-bold:currentColor]
+                [--tw-prose-bullets:currentColor] [--tw-prose-counters:currentColor]
+                whitespace-normal
+                [&_table]:w-full
+                [&_table]:border-collapse
+                [&_table]:my-2
+                [&_th]:border
+                [&_td]:border
+                [&_th]:p-2
+                [&_td]:p-2
+                [&_p]:!text-justify
+                [&_li]:!text-justify
+                [&_td]:!text-justify "
               dangerouslySetInnerHTML={{
                 __html: formattedDescription,
               }}
