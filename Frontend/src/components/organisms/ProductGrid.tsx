@@ -73,7 +73,7 @@ const ProductGrid = ({
 
   // Caso 3: hay productos para mostrar (puede estar cargando más o no)
   return (
-    <section className="py-16">
+    <section className="">
       <div className="container mx-auto px-4">
         {title && (
           <h2 className="text-3xl font-bold mb-8 text-center">{title}</h2>

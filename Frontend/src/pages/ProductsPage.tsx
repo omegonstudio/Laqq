@@ -133,9 +133,9 @@ const ProductsPage = () => {
   const activeCategory = categories.find((b) => b.id === activeCategoryId);
 
   return (
-    <div className="py-16">
+    <div className="py-5">
       <div className="container mx-auto px-4">
-        <div className="max-w-3xl mx-auto text-center mb-12">
+        <div className="max-w-3xl mx-auto text-center mb-3">
           <h1 className="text-4xl font-bold mb-4">Catálogo de Productos</h1>
           <p className="text-xl text-muted-foreground mb-8">
             Explora nuestra amplia selección de equipos y material de
