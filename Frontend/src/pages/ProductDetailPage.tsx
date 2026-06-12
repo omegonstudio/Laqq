@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import Button from "@/components/atoms/Button";
 import Badge from "@/components/atoms/Badge";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearSelected, fetchProduct } from "@/store/productSlice";
@@ -41,6 +41,7 @@ const ProductDetailPage = () => {
   } = useAppSelector((state) => state.products);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const variantsRef = useRef<HTMLDivElement>(null);
 
   const variantColumns = useMemo(() => {
     const keys = new Set<string>();
@@ -280,6 +281,8 @@ const ProductDetailPage = () => {
             <div
               className="
                     prose prose-sm max-w-none text-muted-foreground
+                    [--tw-prose-body:currentColor] [--tw-prose-bold:currentColor]
+                    [--tw-prose-bullets:currentColor] [--tw-prose-counters:currentColor]
                     whitespace-normal
                     [&_table]:w-full
                     [&_table]:border-collapse
@@ -315,16 +318,33 @@ const ProductDetailPage = () => {
                   Agregar al carrito
                 </Button>
               ) : null}
-              <Button
-                size="lg"
-                variant="outline"
-                className="flex items-center justify-center gap-2"
-                onClick={() => {
-                  addCuoteButton(product);
-                }}
-              >
-                Solicitar Cotización
-              </Button>
+              {variantCount < 2 ? (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="flex items-center justify-center gap-2"
+                  onClick={() => {
+                    addCuoteButton(product);
+                  }}
+                >
+                  Solicitar Cotización
+                </Button>
+              ) : null}
+              {variantCount >= 2 ? (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="flex items-center justify-center gap-2"
+                  onClick={() => {
+                    variantsRef.current?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    });
+                  }}
+                >
+                  Elegir variante
+                </Button>
+              ) : null}
               {/* </Link> */}
             </div>
           </div>
@@ -332,7 +352,10 @@ const ProductDetailPage = () => {
 
         {/* Solo mostrar esta sección si hay especificaciones o productos relacionados */}
         {showDetailsSection && (
-          <div className="bg-card border border-border rounded-2xl p-8 ">
+          <div
+            ref={variantsRef}
+            className="bg-card border border-border rounded-2xl p-8 "
+          >
             <div className="flex mb-5">
               {hasVariants && (
                 <div
@@ -364,9 +387,15 @@ const ProductDetailPage = () => {
                 <table className="w-full border border-border rounded-xl overflow-hidden text-center">
                   <thead className="bg-primary/10">
                     <tr>
-                      <th className="px-4 py-3 text-left font-bold">Código</th>
+                      <th className="px-4 py-3 text-center font-bold">
+                        Código
+                      </th>
+
                       {variantColumns.map((col) => (
-                        <th key={col} className="px-4 py-3 text-left font-bold">
+                        <th
+                          key={col}
+                          className="px-4 py-3 text-center font-bold"
+                        >
                           {col}
                         </th>
                       ))}
@@ -379,9 +408,10 @@ const ProductDetailPage = () => {
                   <tbody>
                     {product.variants.map((variant) => (
                       <tr key={variant.id} className="border-t border-border">
-                        <td className="px-4 py-3 text-sm font-medium text-start">
+                        <td className="px-4 py-3 text-sm font-medium text-center">
                           {variant.code}
                         </td>
+
                         {variantColumns.map((col) => {
                           const spec = variant.technical_specs?.find(
                             (s) => s.key === col
@@ -389,14 +419,14 @@ const ProductDetailPage = () => {
                           return (
                             <td
                               key={col}
-                              className="px-4 py-3 text-sm text-start"
+                              className="px-4 py-3 text-sm text-center"
                             >
                               {spec?.value || "-"}
                             </td>
                           );
                         })}
 
-                        <td className="px-4 py-3 text-sm">
+                        <td className="px-4 py-3 text-sm text-center">
                           <Button
                             size="sm"
                             variant={

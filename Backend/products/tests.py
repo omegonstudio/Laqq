@@ -341,3 +341,67 @@ class ProductVariantAPITestCase(APITestCase):
         response = self.client.get(f'/products/variants/?product={self.product.id}')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
+
+
+class BulkUploadBackofficeTestCase(APITestCase):
+    """Un usuario BACKOFFICE puede subir productos vía Excel y el producto se limpia al final"""
+
+    def setUp(self):
+        import openpyxl
+        from io import BytesIO
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        self.client = APIClient()
+
+        backoffice_type, _ = UserType.objects.get_or_create(id='BACKOFFICE', defaults={'name': 'Backoffice'})
+        self.user = User.objects.create_user(username='backoffice_test', password='testpass123')
+        self.user.user_type = backoffice_type
+        self.user.save()
+        self.client.force_authenticate(user=self.user)
+
+        # categoria_nivel_0 debe pre-existir
+        self.root_category = Category.objects.create(name='Insumos Test', display_order=99)
+
+        # Generar Excel en memoria con una fila de producto
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        headers = [
+            'codigo_producto', 'nombre', 'marca',
+            'categoria_nivel_0', 'categoria_nivel_1',
+            'descripcion', 'activo', 'es_variante',
+        ]
+        ws.append(headers)
+        ws.append([
+            'TUBO-PRUEBA-001', 'tubo de prueba', 'Marca Test',
+            'Insumos Test', 'Tubos',
+            'Producto de prueba para test automatizado', '1', '0',
+        ])
+
+        buf = BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        self.excel_file = SimpleUploadedFile(
+            'productos_test.xlsx',
+            buf.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+
+    def test_backoffice_puede_hacer_carga_masiva(self):
+        """BACKOFFICE sube un Excel con 'tubo de prueba', verifica creación y luego lo borra"""
+        response = self.client.post(
+            '/products/bulk-upload/',
+            {'csv_file': self.excel_file},
+            format='multipart',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data.get('created_products'), 1)
+        self.assertEqual(len(response.data.get('errors', [])), 0)
+
+        product = Product.objects.filter(name='tubo de prueba').first()
+        self.assertIsNotNone(product, 'El producto "tubo de prueba" debería existir en la base de datos')
+        self.assertEqual(product.product_code, 'TUBO-PRUEBA-001')
+
+        # Limpieza explícita
+        product.delete()
+        self.assertFalse(Product.objects.filter(name='tubo de prueba').exists())

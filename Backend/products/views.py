@@ -23,7 +23,7 @@ from .serializers import (
     ProductVariantSerializer,
     TechnicalSpecSerializer,
 )
-from .permissions import IsReadOnlyOrAdmin
+from .permissions import IsReadOnlyOrAdmin, IsAdminUserType
 from .filters import ProductFilter
 
 from attachments.serializers import AttachmentSerializer
@@ -338,7 +338,6 @@ class TechnicalSpecViewSet(viewsets.ModelViewSet):
 # Bulk upload API
 # -------------------
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAdminUser
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework import status
@@ -351,7 +350,7 @@ class BulkUploadSerializer(serializers.Serializer):
     skip_downloads = serializers.BooleanField(required=False, default=False)
 
 class ProductsBulkUploadAPIView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminUserType]
     parser_classes = [MultiPartParser, FormParser]
 
     @swagger_auto_schema(
@@ -382,7 +381,7 @@ class BulkUploadErrorsAPIView(APIView):
     y retorna un archivo Excel descargable con las filas que fallaron + columna de error.
     El frontend usa este endpoint para implementar el botón "Descargar errores".
     """
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminUserType]
 
     def post(self, request):
         try:
