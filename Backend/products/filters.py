@@ -20,6 +20,18 @@ class ProductFilter(django_filters.FilterSet):
         label='Nombre del producto',
     )
 
+    brand_name = django_filters.CharFilter(
+        field_name='brand__name',
+        lookup_expr='icontains',
+        label='Nombre de marca',
+    )
+
+    product_code = django_filters.CharFilter(
+        field_name='product_code',
+        lookup_expr='icontains',
+        label='Código de producto',
+    )
+
     # Filtro recursivo de categoría
     category_recursive = django_filters.CharFilter(
         method='filter_category_recursive',
@@ -36,7 +48,7 @@ class ProductFilter(django_filters.FilterSet):
 
     class Meta:
         model = Product
-        fields = ['name', 'brand', 'category', 'is_active', 'is_featured']
+        fields = ['name', 'product_code', 'brand', 'brand_name', 'category', 'is_active', 'is_featured']
 
     def filter_category_recursive(self, queryset, name, value):
         """
