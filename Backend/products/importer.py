@@ -37,7 +37,6 @@ COLUMN_NAME_MAP = {
     'activo':               'is_active',
     'es_variante':          'is_variant',
     'codigo_variante':      'variant_code',
-    'nombre_variante':      'variant_name',
     'productos_relacionados': 'related_product_codes',
     'tiene_specs':          'is_specs_column',
 }
@@ -226,6 +225,8 @@ def _read_excel_to_dicts(file_bytes):
                 d[h] = ''
             elif isinstance(val, str):
                 d[h] = val
+            elif isinstance(val, float) and val.is_integer():
+                d[h] = str(int(val))
             else:
                 d[h] = str(val)
         rows.append(d)
@@ -237,7 +238,7 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
     fileobj: objeto tipo UploadedFile o file-like. Se detecta la extensión por fileobj.name si está disponible.
     Retorna un dict resumen con contadores y errores.
     CSV/Excel debe contener columnas (recomendadas):
-      product_code, name, brand, category_level_0, category_level_1, category_level_2, description, image_name, is_active, related_product_codes, is_variant, variant_code, variant_name
+      product_code, name, brand, category_level_0, category_level_1, category_level_2, description, image_name, is_active, related_product_codes, is_variant, variant_code
 
     is_variant:
       - false/0/vacío: Crea o actualiza un Product. Si ya existe un Product con ese product_code, se lanza error.
@@ -457,6 +458,10 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
             product_code = (variant_row.get('product_code') or '').strip()
             variant_code = (variant_row.get('variant_code') or variant_row.get('spec_code') or '').strip()
 
+            # Si el variant_code no incluye el product_code como prefijo, lo concatenamos
+            if variant_code and product_code and not variant_code.startswith(product_code + '-'):
+                variant_code = f'{product_code}-{variant_code}'
+
             if not variant_code:
                 summary['errors'].append({
                     'row': lineno,
@@ -486,9 +491,7 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                     })
                     continue
 
-            defaults = {
-                'name': (variant_row.get('variant_name') or '').strip(),
-            }
+            defaults = {}
 
             variant_obj, created_variant = ProductVariant.objects.update_or_create(
                 product=parent_product,

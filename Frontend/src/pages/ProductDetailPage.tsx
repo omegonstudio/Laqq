@@ -355,7 +355,10 @@ const ProductDetailPage = () => {
 
         {/* Solo mostrar esta sección si hay especificaciones o productos relacionados */}
         {showDetailsSection && (
-          <div ref={variantsRef} className="bg-card border border-border rounded-2xl p-8 ">
+          <div
+            ref={variantsRef}
+            className="bg-card border border-border rounded-2xl p-8 "
+          >
             <div className="flex mb-5">
               {hasVariants && (
                 <div
@@ -387,10 +390,15 @@ const ProductDetailPage = () => {
                 <table className="w-full border border-border rounded-xl overflow-hidden text-center">
                   <thead className="bg-primary/10">
                     <tr>
-                      <th className="px-4 py-3 text-center font-bold">Código</th>
+                      <th className="px-4 py-3 text-center font-bold">
+                        Código
+                      </th>
 
                       {variantColumns.map((col) => (
-                        <th key={col} className="px-4 py-3 text-center font-bold">
+                        <th
+                          key={col}
+                          className="px-4 py-3 text-center font-bold"
+                        >
                           {col}
                         </th>
                       ))}
@@ -406,7 +414,6 @@ const ProductDetailPage = () => {
                         <td className="px-4 py-3 text-sm font-medium text-center">
                           {variant.code}
                         </td>
-
 
                         {variantColumns.map((col) => {
                           const spec = variant.technical_specs?.find(

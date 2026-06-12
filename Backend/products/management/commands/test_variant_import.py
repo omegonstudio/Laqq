@@ -24,7 +24,7 @@ class Command(BaseCommand):
 
         headers = [
             'product_code', 'name', 'brand', 'category_level_0', 'category_level_1',
-            'description', 'is_active', 'is_variant', 'variant_code', 'variant_name'
+            'description', 'is_active', 'is_variant', 'variant_code'
         ]
         ws.append(headers)
 
@@ -39,7 +39,6 @@ class Command(BaseCommand):
             'true',               # is_active
             'false',              # is_variant (es un producto)
             'TEST-001-25ML',      # variant_code
-            '25 ml',              # variant_name
         ])
 
         # Variante 1 (is_variant=true)
@@ -53,7 +52,6 @@ class Command(BaseCommand):
             '',                   # is_active
             'true',               # is_variant
             'TEST-001-50ML',      # variant_code
-            '50 ml',              # variant_name
         ])
 
         # Variante 2 (is_variant=true)
@@ -67,7 +65,6 @@ class Command(BaseCommand):
             '',
             'true',               # is_variant
             'TEST-001-100ML',     # variant_code
-            '100 ml',             # variant_name
         ])
 
         # Test case 2: Variante sin producto padre (debería fallar)
@@ -81,7 +78,6 @@ class Command(BaseCommand):
             '',
             'true',               # is_variant
             'TEST-999-50ML',      # variant_code
-            '50 ml',
         ])
 
         # Test case 3: Producto duplicado (debería fallar)
@@ -95,7 +91,6 @@ class Command(BaseCommand):
             'true',
             'false',              # is_variant (producto - debería fallar por duplicado)
             'TEST-001-DUP',
-            'Dup',
         ])
 
         buffer = BytesIO()

@@ -3,9 +3,11 @@ from rest_framework.permissions import BasePermission
 class IsAdminUserType(BasePermission):
     def has_permission(self, request, view):
         user = request.user
+        if not user or not user.is_authenticated:
+            return False
         if user.is_superuser:
             return True
-        return user.user_type_id in ['ADMIN', 'admin']
+        return user.user_type_id in ['ADMIN', 'admin', 'BACKOFFICE', 'backoffice']
 
 class IsReadOnlyOrAdmin(BasePermission):
     def has_permission(self, request, view):
