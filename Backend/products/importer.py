@@ -81,11 +81,7 @@ def _get_attachment_by_name(image_name):
         if att:
             return att
         
-        # Si tampoco encuentra, buscar por nombre sin extensión
-        name_without_ext = os.path.splitext(image_name)[0]
-        att = Attachment.objects.filter(file_name__istartswith=name_without_ext).first()
-        
-        return att
+        return None
     except Exception as e:
         logger.warning("Error buscando attachment por nombre '%s': %s", image_name, e)
         return None
@@ -168,6 +164,11 @@ def _get_or_create_category_by_levels(level_0, level_1, level_2, level_3, catego
         parent = obj
 
     if not level_2:
+        if level_3:
+            raise ValueError(
+                f"Se requiere categoria_nivel_2 para poder usar categoria_nivel_3 ('{level_3}'). "
+                f"Completá el nivel 2 antes de especificar el nivel 3."
+            )
         category_cache[cache_key] = parent
         return parent
 
@@ -358,9 +359,8 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
         'linked_attachments': 0,
         'created_products': 0,
         'updated_products': 0,
-        'created_specs': 0,
-        'updated_specs': 0,
         'created_variants': 0,
+        'updated_variants': 0,
         'created_technical_specs': 0,
         'created_relations': 0,
         'errors': errors,
@@ -391,6 +391,7 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
 
                 # image attachment por nombre (búsqueda en librería)
                 image_name = (first_row.get('image_name') or first_row.get('image_url') or '').strip()
+                image_attachment_provided = bool(image_name)
                 image_attachment = None
                 if image_name and not skip_downloads:
                     att = _get_attachment_by_name(image_name)
@@ -423,9 +424,12 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                     'brand': brand,
                     'category': category,
                     'description': (first_row.get('description') or '').strip() or None,
-                    'image_attachment': image_attachment,
                     'is_active': parse_bool(first_row.get('is_active', 'TRUE')),
                 }
+                # Solo actualizar image_attachment si se proveyó un nombre de imagen explícito.
+                # Si el campo está vacío, preservar la imagen existente en el producto.
+                if image_attachment_provided:
+                    product_vals['image_attachment'] = image_attachment
 
                 product, created = Product.objects.update_or_create(defaults=product_vals, **product_lookup)
                 if created:
@@ -502,11 +506,22 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
             if created_variant:
                 summary['created_variants'] += 1
             else:
-                summary['updated_specs'] += 1
+                summary['updated_variants'] = summary.get('updated_variants', 0) + 1
 
             # Procesar TechnicalSpecs si el producto padre tiene is_specs_column=true
             has_specs = product_has_specs_by_key.get(parent_key, False) if parent_key else False
             spec_keys = product_spec_keys_by_key.get(parent_key, []) if parent_key else []
+
+            if parent_key is None and spec_columns:
+                # El producto vino de la DB (no del Excel actual): no hay spec_keys definidos.
+                # No es posible procesar specs sin la fila del producto padre en el archivo.
+                logger.info(
+                    "Variante '%s': el producto padre '%s' no está en el archivo actual — "
+                    "las specs no se procesarán. Incluí la fila del producto padre con tiene_specs=true "
+                    "para actualizar sus specs.",
+                    variant_code, product_code
+                )
+
             if has_specs and spec_keys:
                 # Eliminar specs existentes de esta variante (y sus TechnicalSpec huérfanos)
                 old_vts = VariantTechnicalSpec.objects.filter(variant=variant_obj)
