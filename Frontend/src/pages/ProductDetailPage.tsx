@@ -290,7 +290,10 @@ const ProductDetailPage = () => {
                     [&_th]:border
                     [&_td]:border
                     [&_th]:p-2
-                    [&_td]:p-2 "
+                    [&_td]:p-2
+                    [&_p]:text-justify
+                    [&_li]:text-justify
+                    [&_td]:text-justify "
               dangerouslySetInnerHTML={{
                 __html: formattedDescription,
               }}
