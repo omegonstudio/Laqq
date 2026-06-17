@@ -83,7 +83,7 @@ class ApiClient {
       const errorsField = parsed?.errors ?? (isObject ? parsed : undefined);
       const firstFieldError =
         isObject && errorsField
-          ? Object.values(errorsField)?.[0]?.[0]
+          ? Object.values(errorsField).find((v) => Array.isArray(v))?.[0]
           : undefined;
 
       const message =
