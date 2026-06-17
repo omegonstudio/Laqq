@@ -24,7 +24,7 @@ from .serializers import (
     TechnicalSpecSerializer,
 )
 from .permissions import IsReadOnlyOrAdmin, IsAdminUserType
-from .filters import ProductFilter
+from .filters import ProductFilter, UnaccentSearchFilter
 
 from attachments.serializers import AttachmentSerializer
 from attachments.models import Attachment
@@ -67,7 +67,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     )
     serializer_class = ProductSerializer
     permission_classes = [IsReadOnlyOrAdmin]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, UnaccentSearchFilter, OrderingFilter]
     filterset_class = ProductFilter
     search_fields = ['name', 'product_code', 'brand__name']
     ordering_fields = ['name', 'created_at', 'updated_at']

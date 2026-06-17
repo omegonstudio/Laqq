@@ -2,9 +2,65 @@
 Filtros personalizados para productos.
 Implementa filtrado recursivo de categorías y otras funcionalidades avanzadas.
 """
+import unicodedata
+
 import django_filters
-from django.db.models import Q
+from django.db import connection
+from django.db.models import F, Func, Q
+from rest_framework.filters import SearchFilter
+
 from .models import Product, Category
+
+
+def strip_accents(text):
+    normalized = unicodedata.normalize('NFKD', text)
+    return ''.join(c for c in normalized if not unicodedata.combining(c))
+
+
+def unaccent_alias(field_name):
+    # Sin "__" en el alias para que no se confunda con un lookup/relación al filtrar.
+    return f"{field_name.replace('__', '_')}_unaccented"
+
+
+class Unaccent(Func):
+    function = 'unaccent'
+
+
+class UnaccentSearchFilter(SearchFilter):
+    """
+    Igual que el SearchFilter de DRF (icontains, case-insensitive) pero
+    también ignora tildes/acentos, en ambos sentidos: "cafe" encuentra
+    "Café" y "café" encuentra "Cafe".
+
+    Requiere la extensión `unaccent` de Postgres (ver migración
+    0012_unaccent_extension). En motores sin esa extensión (ej. SQLite,
+    usado por la suite de tests) cae al comportamiento estándar de DRF.
+    """
+
+    def filter_queryset(self, request, queryset, view):
+        if connection.vendor != 'postgresql':
+            return super().filter_queryset(request, queryset, view)
+
+        search_fields = self.get_search_fields(view, request)
+        search_terms = self.get_search_terms(request)
+
+        if not search_fields or not search_terms:
+            return queryset
+
+        annotations = {
+            unaccent_alias(field): Unaccent(F(field)) for field in search_fields
+        }
+        queryset = queryset.annotate(**annotations)
+
+        conditions = Q()
+        for term in search_terms:
+            term_unaccented = strip_accents(term)
+            term_query = Q()
+            for field in search_fields:
+                term_query |= Q(**{f'{unaccent_alias(field)}__icontains': term_unaccented})
+            conditions &= term_query
+
+        return queryset.filter(conditions)
 
 
 class ProductFilter(django_filters.FilterSet):
