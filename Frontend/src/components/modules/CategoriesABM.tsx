@@ -9,6 +9,7 @@ import { deleteCategory, fetchAllCategories } from "@/store/categoriesSlice";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import InputField from "../atoms/InputField";
 import { toast } from "@/hooks/use-toast";
+import { extractErrorMessage } from "@/lib/api/client";
 import Modal from "../common/Modal";
 
 const CategoriesABM = () => {
@@ -47,17 +48,10 @@ const CategoriesABM = () => {
       setIsModalDeleteOpen(false);
     } catch (error: unknown) {
       console.error("Error eliminando categoría:", error);
-      if (error instanceof Error) {
-        toast({
-          title: error.message || "Error al eliminar el categoría",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Error al eliminar el categoría",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: extractErrorMessage(error, "Error al eliminar la categoría"),
+        variant: "destructive",
+      });
     }
   };
 
