@@ -118,8 +118,8 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD', default='postgres'),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
-        # Connection pooling configuration
-        'CONN_MAX_AGE': config('CONN_MAX_AGE', default=60, cast=int),  # Keep connections for 60s
+        # CONN_MAX_AGE=0: Django no retiene conexiones — PgBouncer maneja el pool
+        'CONN_MAX_AGE': 0,
         'OPTIONS': {
             'connect_timeout': 10,
         }
