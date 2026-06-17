@@ -56,6 +56,11 @@ class CategoryViewSet(viewsets.ModelViewSet):
                 {'detail': 'No se pueden eliminar las categorías principales (nivel 0).'},
                 status=status.HTTP_403_FORBIDDEN
             )
+        if instance.children.exists():
+            return Response(
+                {'detail': 'No se puede eliminar una categoría que tiene subcategorías. Elimine primero las subcategorías.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         return super().destroy(request, *args, **kwargs)
 
 class ProductViewSet(viewsets.ModelViewSet):
