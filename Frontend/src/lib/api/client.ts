@@ -20,6 +20,26 @@ const normalizeError = (err: unknown): NormalizedApiError => {
   return { message: "Error en la petición" };
 };
 
+/**
+ * Extrae un mensaje legible desde cualquier tipo de error:
+ * - Error instance → error.message
+ * - String → el string directamente
+ * - Objeto con .message → ese mensaje
+ * - Otro → el fallback
+ */
+export const extractErrorMessage = (
+  err: unknown,
+  fallback = "Error en la petición"
+): string => {
+  if (typeof err === "string") return err;
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object" && "message" in err) {
+    const msg = (err as Record<string, unknown>).message;
+    if (typeof msg === "string") return msg;
+  }
+  return fallback;
+};
+
 const wrap = async <T>(fn: () => Promise<T>): Promise<T> => {
   try {
     return await fn();
