@@ -142,7 +142,9 @@ export default function SearchBar({
     return (
       p.name.toLowerCase().includes(searchLower) ||
       (p.brand || "").toLowerCase().includes(searchLower) ||
-      (p.description || "").toLowerCase().includes(searchLower)
+      (p.description || "").toLowerCase().includes(searchLower) ||
+      p.product_code.toLowerCase().includes(searchLower) ||
+      p.variants?.some((v) => v.code?.toLowerCase().includes(searchLower))
     );
   }).length;
   return (

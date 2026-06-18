@@ -58,9 +58,11 @@ class UnaccentSearchFilter(SearchFilter):
             term_query = Q()
             for field in search_fields:
                 term_query |= Q(**{f'{unaccent_alias(field)}__icontains': term_unaccented})
+            # También buscar en código de variante (relación inversa Product -> ProductVariant)
+            term_query |= Q(**{'variants__code__icontains': term_unaccented})
             conditions &= term_query
 
-        return queryset.filter(conditions)
+        return queryset.filter(conditions).distinct()
 
 
 class ProductFilter(django_filters.FilterSet):
@@ -88,6 +90,12 @@ class ProductFilter(django_filters.FilterSet):
         label='Código de producto',
     )
 
+    variant_code = django_filters.CharFilter(
+        method='filter_variant_code',
+        label='Código de variante',
+        help_text='Busca productos por código de variante (retorna el producto padre)'
+    )
+
     # Filtro recursivo de categoría
     category_recursive = django_filters.CharFilter(
         method='filter_category_recursive',
@@ -104,7 +112,25 @@ class ProductFilter(django_filters.FilterSet):
 
     class Meta:
         model = Product
-        fields = ['name', 'product_code', 'brand', 'brand_name', 'category', 'is_active', 'is_featured']
+        fields = ['name', 'product_code', 'variant_code', 'brand', 'brand_name', 'category', 'is_active', 'is_featured']
+
+    def filter_variant_code(self, queryset, name, value):
+        """
+        Filtra productos por código de variante.
+        Busca en el campo `code` de las variantes asociadas y retorna
+        los productos padre que tengan al menos una variante que coincida.
+
+        Args:
+            queryset: QuerySet de productos
+            name: Nombre del campo (no usado)
+            value: Texto a buscar en el código de variante
+
+        Returns:
+            QuerySet filtrado con productos que tienen variantes cuyo código coincide
+        """
+        if not value:
+            return queryset
+        return queryset.filter(variants__code__icontains=value).distinct()
 
     def filter_category_recursive(self, queryset, name, value):
         """
