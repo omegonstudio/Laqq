@@ -50,31 +50,31 @@ python Backend/products/examples/generar_tabla_ejemplo_variantes.py
 ### Ejemplo 1: Crear un Producto con Múltiples Variantes
 
 ```excel
-| product_code | name              | brand    | category_level_0 | is_variant | spec_code      | volume | dimensions | cap      |
-|--------------|-------------------|----------|------------------|------------|----------------|--------|------------|----------|
-| MAT-001      | Matraz Aforado    | LabEquip | equipos          | false      | MAT-001-25ML   | 25ml   | 70x40mm    | NS 10/19 |
-| MAT-001      |                   |          |                  | true       | MAT-001-50ML   | 50ml   | 90x45mm    | NS 12/21 |
-| MAT-001      |                   |          |                  | true       | MAT-001-100ML  | 100ml  | 110x50mm   | NS 12/21 |
-| MAT-001      |                   |          |                  | true       | MAT-001-250ML  | 250ml  | 140x60mm   | NS 14/23 |
+| product_code | name              | brand    | category_level_0 | is_variant | spec_code | volume | dimensions | cap      |
+|--------------|-------------------|----------|------------------|------------|-----------|--------|------------|----------|
+| MAT-001      | Matraz Aforado    | LabEquip | equipos          | false      | 25ML      | 25ml   | 70x40mm    | NS 10/19 |
+| MAT-001      |                   |          |                  | true       | 50ML      | 50ml   | 90x45mm    | NS 12/21 |
+| MAT-001      |                   |          |                  | true       | 100ML     | 100ml  | 110x50mm   | NS 12/21 |
+| MAT-001      |                   |          |                  | true       | 250ML     | 250ml  | 140x60mm   | NS 14/23 |
 ```
 
 **Resultado:**
 - ✅ Se crea 1 producto: "Matraz Aforado" con `product_code=MAT-001`
 - ✅ Se crean 4 variantes (ProductSpec) asociadas al producto:
-  - MAT-001-25ML (25ml)
-  - MAT-001-50ML (50ml)
-  - MAT-001-100ML (100ml)
-  - MAT-001-250ML (250ml)
+  - 25ML (25ml)
+  - 50ML (50ml)
+  - 100ML (100ml)
+  - 250ML (250ml)
 
 ### Ejemplo 2: Agregar Variantes a un Producto Existente
 
 Si ya existe un producto con `product_code=VAS-200`, puedes agregar nuevas variantes:
 
 ```excel
-| product_code | name | brand | category_level_0 | is_variant | spec_code     | volume | dimensions |
-|--------------|------|-------|------------------|------------|---------------|--------|------------|
-| VAS-200      |      |       |                  | true       | VAS-200-500ML | 500ml  | 15x7x7cm   |
-| VAS-200      |      |       |                  | true       | VAS-200-1L    | 1000ml | 20x10x10cm |
+| product_code | name | brand | category_level_0 | is_variant | spec_code | volume | dimensions |
+|--------------|------|-------|------------------|------------|-----------|--------|------------|
+| VAS-200      |      |       |                  | true       | 500ML     | 500ml  | 15x7x7cm   |
+| VAS-200      |      |       |                  | true       | 1L        | 1000ml | 20x10x10cm |
 ```
 
 **Resultado:**
@@ -86,9 +86,9 @@ Si ya existe un producto con `product_code=VAS-200`, puedes agregar nuevas varia
 ### Error 1: Variante sin Producto Padre
 
 ```excel
-| product_code | is_variant | spec_code     |
-|--------------|------------|---------------|
-| PROD-999     | true       | PROD-999-50ML |
+| product_code | is_variant | spec_code |
+|--------------|------------|-----------|
+| PROD-999     | true       | 50ML      |
 ```
 
 **❌ ERROR:** "Producto padre con product_code 'PROD-999' no encontrado. Las variantes requieren un producto existente con is_variant=false."
@@ -96,10 +96,10 @@ Si ya existe un producto con `product_code=VAS-200`, puedes agregar nuevas varia
 **Solución:** Primero crea el producto con `is_variant=false`:
 
 ```excel
-| product_code | name        | brand | category_level_0 | is_variant | spec_code     |
-|--------------|-------------|-------|------------------|------------|---------------|
-| PROD-999     | Producto X  | Marca | equipos          | false      | PROD-999-BASE |
-| PROD-999     |             |       |                  | true       | PROD-999-50ML |
+| product_code | name        | brand | category_level_0 | is_variant | spec_code |
+|--------------|-------------|-------|------------------|------------|-----------|
+| PROD-999     | Producto X  | Marca | equipos          | false      | BASE      |
+| PROD-999     |             |       |                  | true       | 50ML      |
 ```
 
 ### Error 2: Product_code Duplicado
@@ -128,7 +128,7 @@ Si ya existe un producto con `product_code=VAS-200`, puedes agregar nuevas varia
 **Solución:** Todas las variantes deben tener un `spec_code` único:
 
 ```excel
-| product_code | is_variant | spec_code    | volume |
+| product_code | is_variant | spec_code | volume |
 |--------------|------------|--------------|--------|
 | MAT-001      | true       | MAT-001-50ML | 50ml   |
 ```
@@ -148,11 +148,11 @@ Si tu producto no tiene variantes, puedes omitir la columna `is_variant` o poner
 ### Caso 2: Producto con 1 Variante Principal + Variantes Adicionales
 
 ```excel
-| product_code | name    | brand | category_level_0 | is_variant | spec_code    | volume |
-|--------------|---------|-------|------------------|------------|--------------|--------|
-| VAR-001      | Vaso X  | Marca | insumos          | false      | VAR-001-BASE | 100ml  |
-| VAR-001      |         |       |                  | true       | VAR-001-250  | 250ml  |
-| VAR-001      |         |       |                  | true       | VAR-001-500  | 500ml  |
+| product_code | name    | brand | category_level_0 | is_variant | spec_code | volume |
+|--------------|---------|-------|------------------|------------|-----------|--------|
+| VAR-001      | Vaso X  | Marca | insumos          | false      | BASE      | 100ml  |
+| VAR-001      |         |       |                  | true       | 250       | 250ml  |
+| VAR-001      |         |       |                  | true       | 500       | 500ml  |
 ```
 
 ### Caso 3: Actualizar Datos de un Producto y Agregar Variantes
@@ -160,16 +160,16 @@ Si tu producto no tiene variantes, puedes omitir la columna `is_variant` o poner
 Si el producto ya existe en la base de datos, puedes actualizar sus datos y agregar nuevas variantes en una sola carga:
 
 ```excel
-| product_code | name            | brand      | is_variant | spec_code    | volume |
+| product_code | name            | brand      | is_variant | spec_code | volume |
 |--------------|-----------------|------------|------------|--------------|--------|
-| EXIST-001    | Nombre Nuevo    | Nueva Brand| false      | EXIST-001-A  | 50ml   |
-| EXIST-001    |                 |            | true       | EXIST-001-B  | 100ml  |
+| EXIST-001    | Nombre Nuevo    | Nueva Brand| false      | A         | 50ml   |
+| EXIST-001    |                 |            | true       | B         | 100ml  |
 ```
 
 **Resultado:**
 - ✅ Se actualiza el producto EXIST-001 con el nuevo nombre y marca
-- ✅ Se crea/actualiza la variante EXIST-001-A
-- ✅ Se crea la variante EXIST-001-B
+- ✅ Se crea/actualiza la variante A
+- ✅ Se crea la variante B
 
 ## 📊 Resumen de Importación
 
@@ -230,7 +230,7 @@ Al finalizar la importación, recibirás un resumen con:
 1. **Nomenclatura de códigos:**
    ```
    product_code: MAT-001
-   spec_code:    MAT-001-25ML, MAT-001-50ML, MAT-001-100ML
+   spec_code:    25ML, 50ML, 100ML
    ```
 
 2. **Reutilizar datos:**

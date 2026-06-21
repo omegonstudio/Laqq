@@ -84,11 +84,11 @@ example_rows = [
      None, None, 'true', 'potencia', 'velocidad', 'volumen') + _pad,
     # variantes ponen los VALORES en esas mismas columnas
     ('MAT-001', None, None, None, None, None, None, None, None, None, 'true',
-     'MAT-001-25ML', None, None, '20hp', '25mhp', '25ml') + _pad,
+     '25ML', None, None, '20hp', '25mhp', '25ml') + _pad,
     ('MAT-001', None, None, None, None, None, None, None, None, None, 'true',
-     'MAT-001-50ML', None, None, '40hp', '30mhp', '50ml') + _pad,
+     '50ML', None, None, '40hp', '30mhp', '50ml') + _pad,
     ('MAT-001', None, None, None, None, None, None, None, None, None, 'true',
-     'MAT-001-100ML', None, None, '60hp', '40mhp', '100ml') + _pad,
+     '100ML', None, None, '60hp', '40mhp', '100ml') + _pad,
     # Separador
     (None,) * len(headers),
     # Producto 2 — define sus propios nombres de specs (distintos al producto 1)
@@ -96,11 +96,11 @@ example_rows = [
      None, 'Vaso de precipitado graduado', 'vaso_precipitado.jpg', 'true', 'false',
      None, 'MAT-001', 'true', 'viscosidad', 'cap_nominal', None) + _pad,
     ('VAS-002', None, None, None, None, None, None, None, None, None, 'true',
-     'VAS-002-100ML', None, None, '52cP', '100ml', None) + _pad,
+     '100ML', None, None, '52cP', '100ml', None) + _pad,
     ('VAS-002', None, None, None, None, None, None, None, None, None, 'true',
-     'VAS-002-250ML', None, None, '48cP', '250ml', None) + _pad,
+     '250ML', None, None, '48cP', '250ml', None) + _pad,
     ('VAS-002', None, None, None, None, None, None, None, None, None, 'true',
-     'VAS-002-500ML', None, None, '45cP', '500ml', None) + _pad,
+     '500ML', None, None, '45cP', '500ml', None) + _pad,
 ]
 
 for row_idx, row_data in enumerate(example_rows, 2):
@@ -182,8 +182,8 @@ instrucciones = [
     ('4. EJEMPLO', 'section'),
     ('   codigo_producto | es_variante | codigo_variante | tiene_specs | spec_1   | spec_2   ', 'code'),
     ('   MAT-001         | false       |                 | true        | potencia | volumen  ', 'code'),
-    ('   MAT-001         | true        | MAT-001-25ML    |             | 20hp     | 25ml     ', 'code'),
-    ('   MAT-001         | true        | MAT-001-50ML    |             | 40hp     | 50ml     ', 'code'),
+    ('   MAT-001         | true        | 25ML    |             | 20hp     | 25ml     ', 'code'),
+    ('   MAT-001         | true        | 50ML    |             | 40hp     | 50ml     ', 'code'),
     ('', None),
     ('5. ERRORES POSIBLES Y SOLUCIONES', 'section'),
     ('', None),
