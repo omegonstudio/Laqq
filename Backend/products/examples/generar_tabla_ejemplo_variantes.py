@@ -72,7 +72,7 @@ ws.append([
     'matraz_aforado.jpg',               # image_name
     'true',                             # is_active
     'false',                            # is_variant (ES UN PRODUCTO)
-    'MAT-001-25ML',                     # spec_code
+    '25ML',                             # spec_code
     '25ml',                             # volume
     '70x40mm',                          # dimensions
     'NS 10/19',                         # cap
@@ -85,9 +85,9 @@ ws.append([
 
 # Variantes del producto (con color de fondo diferente)
 variantes_mat001 = [
-    ['MAT-001', '', '', '', '', '', '', '', '', 'true', 'MAT-001-50ML', '50ml', '90x45mm', 'NS 12/21', '', '±0.05ml', '0.02ml', '', ''],
-    ['MAT-001', '', '', '', '', '', '', '', '', 'true', 'MAT-001-100ML', '100ml', '110x50mm', 'NS 12/21', '', '±0.08ml', '0.02ml', '', ''],
-    ['MAT-001', '', '', '', '', '', '', '', '', 'true', 'MAT-001-250ML', '250ml', '140x60mm', 'NS 14/23', '', '±0.15ml', '0.05ml', '', ''],
+    ['MAT-001', '', '', '', '', '', '', '', '', 'true', '50ML', '50ml', '90x45mm', 'NS 12/21', '', '±0.05ml', '0.02ml', '', ''],
+    ['MAT-001', '', '', '', '', '', '', '', '', 'true', '100ML', '100ml', '110x50mm', 'NS 12/21', '', '±0.08ml', '0.02ml', '', ''],
+    ['MAT-001', '', '', '', '', '', '', '', '', 'true', '250ML', '250ml', '140x60mm', 'NS 14/23', '', '±0.15ml', '0.05ml', '', ''],
 ]
 
 for variant_row in variantes_mat001:
@@ -111,7 +111,7 @@ ws.append([
     'vaso_precipitado.jpg',             # image_name
     'true',                             # is_active
     'false',                            # is_variant (ES UN PRODUCTO)
-    'VAS-002-100ML',                    # spec_code
+    '100ML',                    # spec_code
     '100ml',                            # volume
     '50x70mm',                          # dimensions
     'Sin tapa',                         # cap
@@ -123,9 +123,9 @@ ws.append([
 ])
 
 variantes_vas002 = [
-    ['VAS-002', '', '', '', '', '', '', '', '', 'true', 'VAS-002-250ML', '250ml', '70x95mm', 'Sin tapa', 'Pico vertedor', '', '', '{"material": "vidrio borosilicato"}', ''],
-    ['VAS-002', '', '', '', '', '', '', '', '', 'true', 'VAS-002-500ML', '500ml', '90x125mm', 'Sin tapa', 'Pico vertedor', '', '', '{"material": "vidrio borosilicato"}', ''],
-    ['VAS-002', '', '', '', '', '', '', '', '', 'true', 'VAS-002-1000ML', '1000ml', '110x155mm', 'Sin tapa', 'Pico vertedor', '', '', '{"material": "vidrio borosilicato"}', ''],
+    ['VAS-002', '', '', '', '', '', '', '', '', 'true', '250ML', '250ml', '70x95mm', 'Sin tapa', 'Pico vertedor', '', '', '{"material": "vidrio borosilicato"}', ''],
+    ['VAS-002', '', '', '', '', '', '', '', '', 'true', '500ML', '500ml', '90x125mm', 'Sin tapa', 'Pico vertedor', '', '', '{"material": "vidrio borosilicato"}', ''],
+    ['VAS-002', '', '', '', '', '', '', '', '', 'true', '1000ML', '1000ml', '110x155mm', 'Sin tapa', 'Pico vertedor', '', '', '{"material": "vidrio borosilicato"}', ''],
 ]
 
 for variant_row in variantes_vas002:
@@ -182,9 +182,9 @@ instrucciones = [
     "   - Cada variante debe tener un spec_code único",
     "",
     "4. EJEMPLO:",
-    "   Fila 1: MAT-001, 'Matraz', 'Marca', 'equipos', ..., is_variant=false, spec_code=MAT-001-25ML",
-    "   Fila 2: MAT-001, '', '', '', ..., is_variant=true, spec_code=MAT-001-50ML",
-    "   Fila 3: MAT-001, '', '', '', ..., is_variant=true, spec_code=MAT-001-100ML",
+    "   Fila 1: MAT-001, 'Matraz', 'Marca', 'equipos', ..., is_variant=false, spec_code=25ML",
+    "   Fila 2: MAT-001, '', '', '', ..., is_variant=true, spec_code=50ML",
+    "   Fila 3: MAT-001, '', '', '', ..., is_variant=true, spec_code=100ML",
     "",
     "5. ERRORES COMUNES:",
     "   ❌ Dos productos con el mismo product_code y is_variant=false",
