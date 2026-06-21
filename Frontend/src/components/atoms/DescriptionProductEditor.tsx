@@ -25,6 +25,21 @@ type Props = {
   onChange: (value: string) => void;
 };
 
+/**
+ * Convierte texto plano con saltos de línea a HTML con <p> para Tiptap.
+ * Si el texto ya contiene etiquetas HTML, lo devuelve tal cual.
+ */
+const plainTextToHtml = (text: string): string => {
+  if (!text) return text;
+  // Si ya contiene HTML (tiene una etiqueta de apertura), devolver tal cual
+  if (/<[a-z][\s\S]*>/i.test(text)) return text;
+  // Si es texto plano, dividir por saltos de línea y envolver en <p>
+  return text
+    .split(/\r?\n/)
+    .map(line => `<p>${line || '<br>'}</p>`)
+    .join('');
+};
+
 export default function DescriptionEditor({ value, onChange }: Props) {
   const editor = useEditor({
     extensions: [
@@ -34,7 +49,7 @@ export default function DescriptionEditor({ value, onChange }: Props) {
       TableHeader,
       TableCell,
     ],
-    content: value || "",
+    content: plainTextToHtml(value || ""),
     onUpdate({ editor }) {
       // Emit empty string instead of Tiptap's empty-doc HTML
       const html = editor.isEmpty ? "" : editor.getHTML();
@@ -59,8 +74,11 @@ export default function DescriptionEditor({ value, onChange }: Props) {
   useEffect(() => {
     if (!editor) return;
     const current = editor.isEmpty ? "" : editor.getHTML();
-    if (value !== current) {
-editor.commands.setContent(value || "", { emitUpdate: false });
+    // Convertir el valor a HTML antes de comparar/setear,
+    // para que los saltos de línea del texto plano se vean en el editor
+    const htmlValue = plainTextToHtml(value || "");
+    if (htmlValue !== current) {
+      editor.commands.setContent(htmlValue, { emitUpdate: false });
     }
   }, [value, editor]);
 

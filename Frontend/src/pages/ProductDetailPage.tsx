@@ -20,7 +20,8 @@ const formatDescription = (description: string) => {
     tables.push(match);
     return `__TABLE_${tables.length - 1}__`;
   });
-  content = content.replace(/\n/g, "<br />");
+  // Convertir saltos de línea a <br />, cubriendo \n, \r\n y \r
+  content = content.replace(/\r?\n|\r/g, "<br />");
   content = content.replace(
     /__TABLE_(\d+)__/g,
     (_, index) => tables[Number(index)]
