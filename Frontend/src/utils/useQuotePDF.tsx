@@ -8,7 +8,6 @@ import {
   Image,
   StyleSheet,
   pdf,
-  Font,
 } from "@react-pdf/renderer";
 
 const formatCurrency = (value: string | number | null): string => {

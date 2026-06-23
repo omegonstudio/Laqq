@@ -69,7 +69,6 @@ const Header = () => {
 
   // Orden fijo de las opciones del menú Nosotros
   const navigateNosotros: { name: string; path: string }[] = [
-    { name: "Certificados", path: "/certificates" },
     { name: "Empresa", path: "/company" },
     { name: "Representaciones", path: "/company#representaciones" },
     { name: "Contacto", path: "/contact" },
@@ -243,6 +242,18 @@ const Header = () => {
                 Servicio técnico
               </Link>
 
+                   {/* Certificados — fixed link*/}
+                   <Link
+                to="/certificates"
+                className={`px-4 py-2 rounded-2xl text-sm font-medium border transition-colors ${
+                  theme === "dark"
+                    ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
+                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
+                }`}
+              >
+                Certificados
+              </Link>
+
               {/* Nosotros — always last */}
               <Select
                 value=""
@@ -272,6 +283,7 @@ const Header = () => {
                   ))}
                 </SelectContent>
               </Select>
+         
             </div>
           </div>
         </nav>
