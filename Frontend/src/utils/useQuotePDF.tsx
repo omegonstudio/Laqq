@@ -361,7 +361,7 @@ const QuotePDF = ({
                   },
                 ]}
               >
-                Cód. variedad
+                Modelo
               </Text>
             </>
           )}
