@@ -287,7 +287,7 @@ const ProductVariantsTable: React.FC<ProductVariantsTableProps> = ({
           <thead>
             <tr>
               <th></th>
-              <th>Código</th>
+              <th>Modelo</th>
 
               {columns.map((col) => (
                 <th key={col.id}>

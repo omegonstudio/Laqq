@@ -393,7 +393,7 @@ const ProductDetailPage = () => {
                   <thead className="bg-primary/10">
                     <tr>
                       <th className="px-4 py-3 text-center font-bold">
-                        Código
+                        Modelo
                       </th>
 
                       {variantColumns.map((col) => (

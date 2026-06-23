@@ -75,7 +75,7 @@ class ProductVariantSerializer(serializers.ModelSerializer):
             UniqueTogetherValidator(
                 queryset=ProductVariant.objects.all(),
                 fields=['product', 'code'],
-                message='Ya existe una variante con este código para este producto.'
+                message='Ya existe una variante con este modelo para este producto.'
             )
         ]
 

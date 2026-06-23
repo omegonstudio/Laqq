@@ -36,7 +36,8 @@ COLUMN_NAME_MAP = {
     'nombre_imagen':        'image_name',
     'activo':               'is_active',
     'es_variante':          'is_variant',
-    'codigo_variante':      'variant_code',
+    'modelo_variante':      'variant_code',
+    'codigo_variante':      'variant_code',  # compatibilidad hacia atrás
     'productos_relacionados': 'related_product_codes',
     'tiene_specs':          'is_specs_column',
 }
@@ -239,7 +240,7 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
     fileobj: objeto tipo UploadedFile o file-like. Se detecta la extensión por fileobj.name si está disponible.
     Retorna un dict resumen con contadores y errores.
     CSV/Excel debe contener columnas (recomendadas):
-      product_code, name, brand, category_level_0, category_level_1, category_level_2, description, image_name, is_active, related_product_codes, is_variant, variant_code
+      product_code, name, brand, category_level_0, category_level_1, category_level_2, description, image_name, is_active, related_product_codes, is_variant, variant_code, modelo_variante
 
     is_variant:
       - false/0/vacío: Crea o actualiza un Product. Si ya existe un Product con ese product_code, se lanza error.
@@ -465,7 +466,7 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
             if not variant_code:
                 summary['errors'].append({
                     'row': lineno,
-                    'error': f'Fila {lineno}: variante sin codigo_variante — completá el campo para poder identificarla.',
+                    'error': f'Fila {lineno}: variante sin modelo_variante — completá el campo para poder identificarla.',
                     'row_data': original_row_by_idx.get(lineno, {}),
                 })
                 continue
