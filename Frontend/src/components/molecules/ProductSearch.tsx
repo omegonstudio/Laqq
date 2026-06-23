@@ -28,18 +28,27 @@ export function ProductSearchCombobox({
   const [searchValue, setSearchValue] = useState("");
 
   const filteredProducts = useMemo(() => {
-    if (!searchValue) return products;
-    const search = searchValue.toLowerCase();
-    return products.filter((product) => {
-      // Buscar en nombre del producto
-      if (product.name.toLowerCase().includes(search)) return true;
-      // Buscar en código del producto
-      if (product.product_code.toLowerCase().includes(search)) return true;
-      // Buscar en códigos de variantes
-      if (product.variants?.some((v) => v.code?.toLowerCase().includes(search)))
-        return true;
-      return false;
-    });
+    const list = searchValue
+      ? products.filter((product) => {
+          const search = searchValue.toLowerCase();
+          // Buscar en nombre del producto
+          if (product.name.toLowerCase().includes(search)) return true;
+          // Buscar en código del producto
+          if (product.product_code.toLowerCase().includes(search)) return true;
+          // Buscar en códigos de variantes
+          if (
+            product.variants?.some((v) =>
+              v.code?.toLowerCase().includes(search)
+            )
+          )
+            return true;
+          return false;
+        })
+      : products;
+    // Ordenar alfabéticamente por nombre
+    return [...list].sort((a, b) =>
+      a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+    );
   }, [products, searchValue]);
 
   return (

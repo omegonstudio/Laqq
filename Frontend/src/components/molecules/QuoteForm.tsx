@@ -209,7 +209,7 @@ function QuoteForm() {
         })
       ).unwrap();
 
-      toast({ title: "Cotización creada exitosamente" });
+      toast({ title: "Solicitud de cotización enviada" });
 
       // Limpiar formulario y carrito
       setFormState(initialState);

@@ -383,7 +383,7 @@ const ProductDetailPage = () => {
                       : "text-muted-foreground"
                   }`}
                 >
-                  <p>Información adicional</p>
+                  <p>Descargas / Documentos</p>
                 </div>
               )}
             </div>
