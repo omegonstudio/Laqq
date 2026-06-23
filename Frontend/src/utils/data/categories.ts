@@ -86,6 +86,7 @@ export function buildCategories(categories: readonly Category[]): CategoryUI[] {
     rootIds.delete(nodeId);
   }
 
+  // Orden para raíces (nivel 0): por display_order, luego por sourceIndex
   const sortByOrder = (a: CategoryUI, b: CategoryUI) => {
     const aMeta = metaById.get(a.id);
     const bMeta = metaById.get(b.id);
@@ -93,6 +94,10 @@ export function buildCategories(categories: readonly Category[]): CategoryUI[] {
     if (orderDiff !== 0) return orderDiff;
     return (aMeta?.sourceIndex ?? 0) - (bMeta?.sourceIndex ?? 0);
   };
+
+  // Orden alfabético para subcategorías (nivel 1, 2, 3+)
+  const sortByName = (a: CategoryUI, b: CategoryUI) =>
+    a.name.localeCompare(b.name, "es", { sensitivity: "base" });
 
   const visited = new Set<string>();
   const toSortedTree = (id: string): CategoryUI | null => {
@@ -103,7 +108,7 @@ export function buildCategories(categories: readonly Category[]): CategoryUI[] {
     if (!node) return null;
 
     const sortedChildren = [...node.subcategories]
-      .sort(sortByOrder)
+      .sort(sortByName) // Subcategorías se ordenan alfabéticamente
       .map((child) => toSortedTree(child.id))
       .filter((child): child is CategoryUI => child !== null);
 
@@ -113,7 +118,7 @@ export function buildCategories(categories: readonly Category[]): CategoryUI[] {
   const roots = [...rootIds]
     .map((id) => toSortedTree(id))
     .filter((root): root is CategoryUI => root !== null)
-    .sort(sortByOrder);
+    .sort(sortByOrder); // Raíces siguen por display_order
 
   for (const [id] of nodeById.entries()) {
     if (!visited.has(id)) {
