@@ -72,7 +72,10 @@ const ProductsPage = () => {
 
   // Acumular productos cuando llegan nuevos
   useEffect(() => {
-    if (products.length === 0) return;
+    if (products.length === 0) {
+      setAllProducts([]); // Si la API devuelve vacío, limpiar productos mostrados
+      return;
+    }
     if (products.length > 0) {
       setAllProducts((prev) => {
         // Si es la página 1, reemplazar todo

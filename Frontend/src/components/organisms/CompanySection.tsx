@@ -110,7 +110,7 @@ const CompanySection = () => {
           {/* Cards */}
           <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
             {[
-              { title: "Instrumental", img: "/instrumental.png" },
+              { title: "Equipos", img: "/instrumental.png" },
               { title: "Consumibles", img: "/consumibles.png" },
               { title: "Equipamiento para procesos", img: "/procesos.png" },
               { title: "Mobiliario", img: "/header.png" }, // cambiar si tenés imagen

@@ -765,9 +765,9 @@ const ModalProduct: React.FC<ModalProductProps> = ({
                   }}
                 />
                 <span className="mb-2 block text-sm font-medium">
-                  Los archivos de tipo texto se van a mostrar en la sección de
-                  archivos, mientras que los archivos de tipo imagen se van a
-                  mostrar en el carrusel de imágenes.
+                  Los archivos de tipo texto se van a mostrar en la sección
+                  "Descargas / Documentos", mientras que los archivos de tipo
+                  imagen se van a mostrar en el carrusel de imágenes.
                 </span>
                 <div className="grid grid-cols-3 gap-2">
                   {carrouselPreview?.map((item, index) => (
