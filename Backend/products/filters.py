@@ -60,6 +60,8 @@ class UnaccentSearchFilter(SearchFilter):
                 term_query |= Q(**{f'{unaccent_alias(field)}__icontains': term_unaccented})
             # También buscar en código de variante (relación inversa Product -> ProductVariant)
             term_query |= Q(**{'variants__code__icontains': term_unaccented})
+            # También buscar en valores de especificaciones técnicas de variantes (columnas ad-hoc)
+            term_query |= Q(**{'variants__technical_specs__value__icontains': term_unaccented})
             conditions &= term_query
 
         return queryset.filter(conditions).distinct()
