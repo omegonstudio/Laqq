@@ -60,7 +60,12 @@ export function CascadeCategorySelect({
   );
   const menuItems = buildCategories(categories);
   const flatCategories = flattenCategories(menuItems);
-  const level0 = flatCategories.filter((c) => c.level === 0);
+
+  // Orden alfabético para todos los niveles en los dropdowns
+  const sortByName = (a: FlatCategory, b: FlatCategory) =>
+    a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+
+  const level0 = flatCategories.filter((c) => c.level === 0).sort(sortByName);
   // Reconstruir selecciones actuales a partir del value
   const buildSelections = (selectedId?: string): (string | undefined)[] => {
     if (!selectedId) return [undefined, undefined, undefined, undefined];
@@ -86,13 +91,13 @@ export function CascadeCategorySelect({
   const [sel0, sel1, sel2, sel3] = buildSelections(value);
 
   const level1 = sel0
-    ? flatCategories.filter((c) => c.level === 1 && c.parent === sel0)
+    ? flatCategories.filter((c) => c.level === 1 && c.parent === sel0).sort(sortByName)
     : [];
   const level2 = sel1
-    ? flatCategories.filter((c) => c.level === 2 && c.parent === sel1)
+    ? flatCategories.filter((c) => c.level === 2 && c.parent === sel1).sort(sortByName)
     : [];
   const level3 = sel2
-    ? flatCategories.filter((c) => c.level === 3 && c.parent === sel2)
+    ? flatCategories.filter((c) => c.level === 3 && c.parent === sel2).sort(sortByName)
     : [];
 
   const handleChange = (level: number, selectedValue: string) => {
