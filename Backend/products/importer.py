@@ -197,40 +197,95 @@ def _get_or_create_category_by_levels(level_0, level_1, level_2, level_3, catego
     category_cache[cache_key] = obj
     return obj
 
+def _cell_rich_text_to_html(cell):
+    """
+    Convierte el valor de una celda openpyxl a string, preservando formato
+    enriquecido (negrita, cursiva, subrayado) como HTML.
+
+    En XLSX, Excel almacena texto con formato como 'inline strings' con
+    múltiples 'runs', cada uno con sus propiedades de fuente.
+    openpyxl expone esto como objetos CellRichText (hereda de list).
+
+    Para celdas sin formato enriquecido, retorna el texto plano.
+    """
+    value = cell.value
+    if value is None:
+        return ''
+
+    # Detectar CellRichText: es un objeto tipo lista cuyos ítems tienen .font
+    if hasattr(value, '_rich_text') or (isinstance(value, (list, tuple)) and len(value) > 0):
+        try:
+            from openpyxl.richtext import CellRichText
+            if isinstance(value, CellRichText):
+                html_parts = []
+                for block in value:
+                    text = getattr(block, 'text', str(block)) or ''
+                    if not text:
+                        continue
+                    font = getattr(block, 'font', None)
+                    if font:
+                        if font.bold:
+                            text = f'<strong>{text}</strong>'
+                        if font.italic:
+                            text = f'<em>{text}</em>'
+                        if font.underline and font.underline != 'none':
+                            text = f'<u>{text}</u>'
+                    html_parts.append(text)
+                return ''.join(html_parts)
+        except ImportError:
+            pass
+
+    # Para strings planos, retornar tal cual
+    if isinstance(value, str):
+        return value
+
+    return str(value)
+
+
 def _read_excel_to_dicts(file_bytes):
     """
     Recibe bytes de un .xlsx y devuelve una lista de dicts (igual estructura que csv.DictReader).
     La primera fila se toma como cabecera.
+
+    Detecta automáticamente celdas con texto enriquecido (negrita, cursiva, etc.)
+    y las convierte a HTML (<strong>, <em>, <u>).
     """
     if openpyxl is None:
         raise RuntimeError("openpyxl no está instalado. Ejecutá: pip install openpyxl")
     wb = openpyxl.load_workbook(BytesIO(file_bytes), read_only=True, data_only=True)
     ws = wb.active  # primera hoja
     rows = []
-    iterator = ws.iter_rows(values_only=True)
+    # Usamos iter_rows() SIN values_only=True para obtener objetos Cell
+    # y poder detectar texto enriquecido en las celdas.
+    iterator = ws.iter_rows()
     try:
-        headers = next(iterator)
+        header_cells = next(iterator)
     except StopIteration:
         return []
     # Normalizar headers a strings
-    headers = [str(h).strip() if h is not None else '' for h in headers]
-    for row in iterator:
+    headers = [str(c.value).strip() if c.value is not None else '' for c in header_cells]
+    for row_cells in iterator:
         # Ignorar filas completamente vacías
-        if all(val is None for val in row):
+        if all(c.value is None for c in row_cells):
             continue
         d = {}
         for idx, h in enumerate(headers):
             if not h:
                 continue
-            val = row[idx] if idx < len(row) else None
-            if val is None:
+            cell = row_cells[idx] if idx < len(row_cells) else None
+            if cell is None or cell.value is None:
                 d[h] = ''
-            elif isinstance(val, str):
-                d[h] = val
-            elif isinstance(val, float) and val.is_integer():
-                d[h] = str(int(val))
             else:
-                d[h] = str(val)
+                # Intentar convertir formato enriquecido a HTML
+                rich_html = _cell_rich_text_to_html(cell)
+                if isinstance(cell.value, str):
+                    # Si es texto plano sin formato, rich_html es idéntico
+                    # Si es texto enriquecido, rich_html tiene tags HTML
+                    d[h] = rich_html if rich_html != cell.value else cell.value
+                elif isinstance(cell.value, float) and cell.value.is_integer():
+                    d[h] = str(int(cell.value))
+                else:
+                    d[h] = str(cell.value)
         rows.append(d)
     return rows
 
