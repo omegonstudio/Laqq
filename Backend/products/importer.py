@@ -303,6 +303,7 @@ def _text_runs_to_html(text):
     """
     Convierte los runs de un Text (openpyxl) a HTML.
     Cada run puede tener propiedades de fuente: bold, italic, underline.
+    Los saltos de línea dentro de cada run se convierten a <br>.
     """
     if not text.r:
         return None
@@ -312,6 +313,8 @@ def _text_runs_to_html(text):
         t = run.t or ''
         if not t:
             continue
+        # Convertir saltos de línea a <br>
+        t = t.replace('\n', '<br>')
         font = run.rPr
         if font:
             if font.b:
@@ -367,7 +370,10 @@ def _read_excel_to_dicts(file_bytes):
             elif isinstance(cell.value, str):
                 # Verificar si esta celda tiene texto enriquecido en el XML
                 rich_html = rich_text_map.get(cell.coordinate)
-                d[h] = rich_html if rich_html else cell.value
+                value = rich_html if rich_html else cell.value
+                # Normalizar saltos de linea a <br> para que el frontend los renderice
+                value = value.replace('\n', '<br>')
+                d[h] = value
             elif isinstance(cell.value, float) and cell.value.is_integer():
                 d[h] = str(int(cell.value))
             else:
@@ -561,11 +567,12 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                     else:
                         product_lookup = {'name': first_row.get('name') or ''}
 
+                raw_description = (first_row.get('description') or '').strip()
                 product_vals = {
                     'name': (first_row.get('name') or '').strip(),
                     'brand': brand,
                     'category': category,
-                    'description': (first_row.get('description') or '').strip() or None,
+                    'description': raw_description or None,
                     'is_active': parse_bool(first_row.get('is_active', 'TRUE')),
                 }
                 # Solo actualizar image_attachment si se proveyó un nombre de imagen explícito.
