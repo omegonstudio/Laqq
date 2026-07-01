@@ -200,11 +200,15 @@ def _get_or_create_category_by_levels(level_0, level_1, level_2, level_3, catego
 def _get_rich_text_map(file_bytes):
     """
     Lee el XML interno del .xlsx (que es un ZIP) para detectar celdas
-    con texto enriquecido (inlineStr con múltiples runs con formato).
+    con texto enriquecido (negrita, cursiva, subrayado).
 
     openpyxl descarta el formato durante la lectura (usa .content que
     concatena solo el texto plano), así que necesitamos parsear el XML
     directamente.
+
+    Soporta dos casos:
+    - shared strings (t='s'): el texto está en xl/sharedStrings.xml con índice
+    - inline strings (t='inlineStr'): el texto está directamente en la celda
 
     Retorna un dict: { 'A1': '<strong>text</strong><em>italic</em>', ... }
     """
@@ -216,22 +220,35 @@ def _get_rich_text_map(file_bytes):
         import xml.etree.ElementTree as etree
 
     NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
-    ns = {'s': NS, 'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'}
+    ns = {'s': NS}
     rich_text_map = {}
 
     try:
         with zipfile.ZipFile(BytesIO(file_bytes)) as z:
-            # 1. Leer workbook.xml para encontrar la primera hoja
+            # ---- Paso A: Leer shared strings con rich text ----
+            # Excel guarda el texto con formato en la tabla de strings compartidos
+            # (xl/sharedStrings.xml). Cada <si> puede tener múltiples <r> con <rPr>.
+            shared_rich = {}  # índice -> HTML con formato
+            if 'xl/sharedStrings.xml' in z.namelist():
+                ss_tree = etree.fromstring(z.read('xl/sharedStrings.xml'))
+                for idx, si_elem in enumerate(ss_tree.findall('s:si', ns)):
+                    text = Text.from_tree(si_elem)
+                    if text.r:  # Tiene runs con formato
+                        html = _text_runs_to_html(text)
+                        if html:
+                            shared_rich[idx] = html
+
+            # ---- Paso B: Encontrar el primer sheet ----
             wb_tree = etree.fromstring(z.read('xl/workbook.xml'))
-            sheets = wb_tree.findall('.//s:sheet', ns)
+            r_ns = {'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'}
+            ns_sheet = {**ns, **r_ns}
+            sheets = wb_tree.findall('.//s:sheet', ns_sheet)
             if not sheets:
                 return rich_text_map
 
-            # 2. Obtener el path del sheet desde las relaciones
             sheet_rel_id = sheets[0].get(
                 '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id'
             ) or sheets[0].get('r:id')
-
             if not sheet_rel_id:
                 return rich_text_map
 
@@ -240,8 +257,6 @@ def _get_rich_text_map(file_bytes):
             for rel in rels_tree:
                 if rel.get('Id') == sheet_rel_id:
                     target = rel.get('Target', '')
-                    # Las rutas en ZIP no tienen '/' inicial
-                    # Las rutas de relaciones pueden ser absolutas (/xl/...) o relativas (worksheets/...)
                     if target.startswith('/'):
                         sheet_path = target.lstrip('/')
                     else:
@@ -251,18 +266,30 @@ def _get_rich_text_map(file_bytes):
             if not sheet_path or sheet_path not in z.namelist():
                 return rich_text_map
 
-            # 3. Leer el sheet XML y buscar celdas inlineStr con formato
+            # ---- Paso C: Leer las celdas y buscar texto enriquecido ----
             sheet_tree = etree.fromstring(z.read(sheet_path))
-            for row_elem in sheet_tree.findall('.//s:row', ns):
-                for cell_elem in row_elem.findall('s:c', ns):
+            for row_elem in sheet_tree.findall('.//s:row', ns_sheet):
+                for cell_elem in row_elem.findall('s:c', ns_sheet):
                     cell_ref = cell_elem.get('r', '')
                     cell_type = cell_elem.get('t', '')
 
-                    if cell_type == 'inlineStr':
-                        is_elem = cell_elem.find('s:is', ns)
+                    if cell_type == 's':
+                        # Shared string: buscar índice en <v>
+                        v_elem = cell_elem.find('s:v', ns_sheet)
+                        if v_elem is not None and v_elem.text is not None:
+                            try:
+                                idx = int(v_elem.text.strip())
+                                if idx in shared_rich:
+                                    rich_text_map[cell_ref] = shared_rich[idx]
+                            except (ValueError, IndexError):
+                                pass
+
+                    elif cell_type == 'inlineStr':
+                        # Inline string: buscar runs directamente
+                        is_elem = cell_elem.find('s:is', ns_sheet)
                         if is_elem is not None:
                             text = Text.from_tree(is_elem)
-                            if text.r:  # Tiene runs con formato
+                            if text.r:
                                 html = _text_runs_to_html(text)
                                 if html:
                                     rich_text_map[cell_ref] = html
