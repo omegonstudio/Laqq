@@ -74,7 +74,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [IsReadOnlyOrAdmin]
     filter_backends = [DjangoFilterBackend, UnaccentSearchFilter, OrderingFilter]
     filterset_class = ProductFilter
-    search_fields = ['name', 'product_code', 'brand__name']
+    search_fields = ['name', 'product_code', 'brand__name', 'description']
     ordering_fields = ['name', 'created_at', 'updated_at']
     ordering = ['-created_at']
 
