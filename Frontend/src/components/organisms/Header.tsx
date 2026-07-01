@@ -242,8 +242,8 @@ const Header = () => {
                 Servicio técnico
               </Link>
 
-                   {/* Certificados — fixed link*/}
-                   <Link
+              {/* Certificados — fixed link*/}
+              <Link
                 to="/certificates"
                 className={`px-4 py-2 rounded-2xl text-sm font-medium border transition-colors ${
                   theme === "dark"
@@ -283,7 +283,6 @@ const Header = () => {
                   ))}
                 </SelectContent>
               </Select>
-         
             </div>
           </div>
         </nav>

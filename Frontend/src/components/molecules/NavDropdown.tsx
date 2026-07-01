@@ -7,11 +7,11 @@ import { CategoryUI } from "@/types/types";
 import { ChevronDown } from "lucide-react";
 import { SkeletonMenu } from "../atoms/SkeletonMenu";
 import { fetchAllCategories } from "@/store/categoriesSlice";
-import { buildCategories } from "@/utils/data/categories";
 import {
   selectCategoryMenuItems,
   selectCategoriesUiState,
 } from "@/store/selectors/categoriesSelectors";
+import { useNavigate } from "react-router-dom";
 
 export default function NavDropdown() {
   const dispatch = useAppDispatch();
@@ -41,10 +41,14 @@ export default function NavDropdown() {
       return next;
     });
   };
-
-  const handleClick = (id: string) => {
-    setFilter("category", id);
-    setActivePath([]);
+  const navigate = useNavigate();
+  const handleClick = (id: string, name: string) => {
+    if (name.trim().toLowerCase() === "mobiliario") {
+      navigate("/furniture");
+    } else {
+      setFilter("category", id);
+      setActivePath([]);
+    }
   };
 
   const toggle = (id: string) =>
@@ -55,8 +59,12 @@ export default function NavDropdown() {
     if (isMobile && item.subcategories.length > 0) {
       toggle(item.id);
     } else {
-      setFilter("category", item.id);
-      closeAll();
+      if (item.name.trim().toLowerCase() === "mobiliario") {
+        navigate("/furniture");
+      } else {
+        setFilter("category", item.id);
+        setActivePath([]);
+      }
     }
   };
   const handleRetry = () => {
@@ -117,7 +125,7 @@ export default function NavDropdown() {
                 {/* BOTÓN */}
                 <button
                   className="px-4 h-9 rounded-full border text-sm flex items-center gap-1"
-                  onClick={() => handleClick(item.id)}
+                  onClick={() => handleClick(item.id, item.name)}
                 >
                   <span>{item.name}</span>
 
@@ -255,8 +263,11 @@ const MobileMenuItem = ({
         }`}
         onClick={() => {
           if (hasChildren) {
+            console.log("aaaaaaaaaaaa");
             toggle(item.id);
           } else {
+            console.log("aaaaaaaaaaaa222");
+
             setFilter("category", item.id);
             closeAll();
           }
@@ -299,7 +310,9 @@ const Column = ({ items, level, onHover, onClick }: any) => {
           <div
             key={item.id}
             onMouseEnter={() => onHover(level, item)}
-            onClick={() => onClick(item.id)}
+            onClick={() => {
+              onClick(item.id);
+            }}
             className="px-3 py-2 text-sm rounded-md hover:bg-muted cursor-pointer flex justify-between"
           >
             <span>{item.name}</span>
