@@ -197,49 +197,105 @@ def _get_or_create_category_by_levels(level_0, level_1, level_2, level_3, catego
     category_cache[cache_key] = obj
     return obj
 
-def _cell_rich_text_to_html(cell):
+def _get_rich_text_map(file_bytes):
     """
-    Convierte el valor de una celda openpyxl a string, preservando formato
-    enriquecido (negrita, cursiva, subrayado) como HTML.
+    Lee el XML interno del .xlsx (que es un ZIP) para detectar celdas
+    con texto enriquecido (inlineStr con múltiples runs con formato).
 
-    En XLSX, Excel almacena texto con formato como 'inline strings' con
-    múltiples 'runs', cada uno con sus propiedades de fuente.
-    openpyxl expone esto como objetos CellRichText (hereda de list).
+    openpyxl descarta el formato durante la lectura (usa .content que
+    concatena solo el texto plano), así que necesitamos parsear el XML
+    directamente.
 
-    Para celdas sin formato enriquecido, retorna el texto plano.
+    Retorna un dict: { 'A1': '<strong>text</strong><em>italic</em>', ... }
     """
-    value = cell.value
-    if value is None:
-        return ''
+    import zipfile
+    from openpyxl.cell.text import Text
+    try:
+        from lxml import etree
+    except ImportError:
+        import xml.etree.ElementTree as etree
 
-    # Detectar CellRichText: es un objeto tipo lista cuyos ítems tienen .font
-    if hasattr(value, '_rich_text') or (isinstance(value, (list, tuple)) and len(value) > 0):
-        try:
-            from openpyxl.richtext import CellRichText
-            if isinstance(value, CellRichText):
-                html_parts = []
-                for block in value:
-                    text = getattr(block, 'text', str(block)) or ''
-                    if not text:
-                        continue
-                    font = getattr(block, 'font', None)
-                    if font:
-                        if font.bold:
-                            text = f'<strong>{text}</strong>'
-                        if font.italic:
-                            text = f'<em>{text}</em>'
-                        if font.underline and font.underline != 'none':
-                            text = f'<u>{text}</u>'
-                    html_parts.append(text)
-                return ''.join(html_parts)
-        except ImportError:
-            pass
+    NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
+    ns = {'s': NS, 'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'}
+    rich_text_map = {}
 
-    # Para strings planos, retornar tal cual
-    if isinstance(value, str):
-        return value
+    try:
+        with zipfile.ZipFile(BytesIO(file_bytes)) as z:
+            # 1. Leer workbook.xml para encontrar la primera hoja
+            wb_tree = etree.fromstring(z.read('xl/workbook.xml'))
+            sheets = wb_tree.findall('.//s:sheet', ns)
+            if not sheets:
+                return rich_text_map
 
-    return str(value)
+            # 2. Obtener el path del sheet desde las relaciones
+            sheet_rel_id = sheets[0].get(
+                '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id'
+            ) or sheets[0].get('r:id')
+
+            if not sheet_rel_id:
+                return rich_text_map
+
+            rels_tree = etree.fromstring(z.read('xl/_rels/workbook.xml.rels'))
+            sheet_path = None
+            for rel in rels_tree:
+                if rel.get('Id') == sheet_rel_id:
+                    target = rel.get('Target', '')
+                    # Las rutas en ZIP no tienen '/' inicial
+                    # Las rutas de relaciones pueden ser absolutas (/xl/...) o relativas (worksheets/...)
+                    if target.startswith('/'):
+                        sheet_path = target.lstrip('/')
+                    else:
+                        sheet_path = 'xl/' + target
+                    break
+
+            if not sheet_path or sheet_path not in z.namelist():
+                return rich_text_map
+
+            # 3. Leer el sheet XML y buscar celdas inlineStr con formato
+            sheet_tree = etree.fromstring(z.read(sheet_path))
+            for row_elem in sheet_tree.findall('.//s:row', ns):
+                for cell_elem in row_elem.findall('s:c', ns):
+                    cell_ref = cell_elem.get('r', '')
+                    cell_type = cell_elem.get('t', '')
+
+                    if cell_type == 'inlineStr':
+                        is_elem = cell_elem.find('s:is', ns)
+                        if is_elem is not None:
+                            text = Text.from_tree(is_elem)
+                            if text.r:  # Tiene runs con formato
+                                html = _text_runs_to_html(text)
+                                if html:
+                                    rich_text_map[cell_ref] = html
+    except Exception as e:
+        logger.warning("Error al leer XML para rich text: %s", e)
+
+    return rich_text_map
+
+
+def _text_runs_to_html(text):
+    """
+    Convierte los runs de un Text (openpyxl) a HTML.
+    Cada run puede tener propiedades de fuente: bold, italic, underline.
+    """
+    if not text.r:
+        return None
+
+    parts = []
+    for run in text.r:
+        t = run.t or ''
+        if not t:
+            continue
+        font = run.rPr
+        if font:
+            if font.b:
+                t = f'<strong>{t}</strong>'
+            if font.i:
+                t = f'<em>{t}</em>'
+            if font.u and font.u != 'none':
+                t = f'<u>{t}</u>'
+        parts.append(t)
+
+    return ''.join(parts) if parts else None
 
 
 def _read_excel_to_dicts(file_bytes):
@@ -249,14 +305,20 @@ def _read_excel_to_dicts(file_bytes):
 
     Detecta automáticamente celdas con texto enriquecido (negrita, cursiva, etc.)
     y las convierte a HTML (<strong>, <em>, <u>).
+
+    NOTA: openpyxl descarta el formato de texto al leer. Para preservarlo,
+    parseamos el XML interno del .xlsx directamente.
     """
     if openpyxl is None:
         raise RuntimeError("openpyxl no está instalado. Ejecutá: pip install openpyxl")
+
+    # Paso 1: Obtener mapa de texto enriquecido desde el XML crudo
+    rich_text_map = _get_rich_text_map(file_bytes)
+
+    # Paso 2: Usar openpyxl para leer los valores planos
     wb = openpyxl.load_workbook(BytesIO(file_bytes), read_only=True, data_only=True)
     ws = wb.active  # primera hoja
     rows = []
-    # Usamos iter_rows() SIN values_only=True para obtener objetos Cell
-    # y poder detectar texto enriquecido en las celdas.
     iterator = ws.iter_rows()
     try:
         header_cells = next(iterator)
@@ -275,17 +337,14 @@ def _read_excel_to_dicts(file_bytes):
             cell = row_cells[idx] if idx < len(row_cells) else None
             if cell is None or cell.value is None:
                 d[h] = ''
+            elif isinstance(cell.value, str):
+                # Verificar si esta celda tiene texto enriquecido en el XML
+                rich_html = rich_text_map.get(cell.coordinate)
+                d[h] = rich_html if rich_html else cell.value
+            elif isinstance(cell.value, float) and cell.value.is_integer():
+                d[h] = str(int(cell.value))
             else:
-                # Intentar convertir formato enriquecido a HTML
-                rich_html = _cell_rich_text_to_html(cell)
-                if isinstance(cell.value, str):
-                    # Si es texto plano sin formato, rich_html es idéntico
-                    # Si es texto enriquecido, rich_html tiene tags HTML
-                    d[h] = rich_html if rich_html != cell.value else cell.value
-                elif isinstance(cell.value, float) and cell.value.is_integer():
-                    d[h] = str(int(cell.value))
-                else:
-                    d[h] = str(cell.value)
+                d[h] = str(cell.value)
         rows.append(d)
     return rows
 
