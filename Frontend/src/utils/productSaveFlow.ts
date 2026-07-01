@@ -173,7 +173,7 @@ export const validateProductForm = (
       if (invalid) {
         return {
           isValid: false,
-          errorMessage: "Todas las variantes deben tener código",
+          errorMessage: "Todas las variantes deben tener modelo",
         };
       }
     }

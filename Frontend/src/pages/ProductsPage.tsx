@@ -64,7 +64,6 @@ const ProductsPage = () => {
 
     // Realizar la búsqueda con los filtros aplicados
     dispatch(fetchProducts(params));
-    console.log("ENTRASTE A FETCH PRODUCTS CON PARAMS:", params);
     setCurrentPage(1);
     setAllProducts([]); // Resetear productos acumulados
     setLocalLoading(false);

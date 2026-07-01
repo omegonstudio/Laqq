@@ -58,8 +58,10 @@ class UnaccentSearchFilter(SearchFilter):
             term_query = Q()
             for field in search_fields:
                 term_query |= Q(**{f'{unaccent_alias(field)}__icontains': term_unaccented})
-            # También buscar en código de variante (relación inversa Product -> ProductVariant)
+            # También buscar en modelo de variante (relación inversa Product -> ProductVariant)
             term_query |= Q(**{'variants__code__icontains': term_unaccented})
+            # También buscar en valores de especificaciones técnicas de variantes (columnas ad-hoc)
+            term_query |= Q(**{'variants__technical_specs__value__icontains': term_unaccented})
             conditions &= term_query
 
         return queryset.filter(conditions).distinct()
@@ -92,8 +94,8 @@ class ProductFilter(django_filters.FilterSet):
 
     variant_code = django_filters.CharFilter(
         method='filter_variant_code',
-        label='Código de variante',
-        help_text='Busca productos por código de variante (retorna el producto padre)'
+        label='Modelo de variante',
+        help_text='Busca productos por modelo de variante (retorna el producto padre)'
     )
 
     # Filtro recursivo de categoría
@@ -125,17 +127,17 @@ class ProductFilter(django_filters.FilterSet):
 
     def filter_variant_code(self, queryset, name, value):
         """
-        Filtra productos por código de variante.
+        Filtra productos por modelo de variante.
         Busca en el campo `code` de las variantes asociadas y retorna
         los productos padre que tengan al menos una variante que coincida.
 
         Args:
             queryset: QuerySet de productos
             name: Nombre del campo (no usado)
-            value: Texto a buscar en el código de variante
+            value: Texto a buscar en el modelo de variante
 
         Returns:
-            QuerySet filtrado con productos que tienen variantes cuyo código coincide
+            QuerySet filtrado con productos que tienen variantes cuyo modelo coincide
         """
         if not value:
             return queryset
