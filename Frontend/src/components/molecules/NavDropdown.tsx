@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useProductFilters } from "@/hooks/useFilters";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { CategoryUI } from "@/types/types";
@@ -32,14 +32,18 @@ export default function NavDropdown() {
   // Guarda el path activo (nivel 0 → nivel 3)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [activeRoot, setActiveRoot] = useState<any | null>(null);
+
+  const hoverTimeout = useRef<NodeJS.Timeout>();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [activePath, setActivePath] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleHover = (level: number, item: any) => {
-    setActivePath((prev) => {
-      const next = [...prev.slice(0, level), item];
-      return next;
-    });
+
+  const handleHover = (level: number, item: CategoryUI) => {
+    clearTimeout(hoverTimeout.current);
+
+    hoverTimeout.current = setTimeout(() => {
+      setActivePath((prev) => [...prev.slice(0, level), item]);
+    }, 100);
   };
   const navigate = useNavigate();
   const handleClick = (id: string, name: string) => {
@@ -311,7 +315,7 @@ const Column = ({ items, level, onHover, onClick }: any) => {
             key={item.id}
             onMouseEnter={() => onHover(level, item)}
             onClick={() => {
-              onClick(item.id);
+              onClick(item.id, item.name);
             }}
             className="px-3 py-2 text-sm rounded-md hover:bg-muted cursor-pointer flex justify-between"
           >

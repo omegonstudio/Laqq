@@ -197,40 +197,187 @@ def _get_or_create_category_by_levels(level_0, level_1, level_2, level_3, catego
     category_cache[cache_key] = obj
     return obj
 
+def _get_rich_text_map(file_bytes):
+    """
+    Lee el XML interno del .xlsx (que es un ZIP) para detectar celdas
+    con texto enriquecido (negrita, cursiva, subrayado).
+
+    openpyxl descarta el formato durante la lectura (usa .content que
+    concatena solo el texto plano), así que necesitamos parsear el XML
+    directamente.
+
+    Soporta dos casos:
+    - shared strings (t='s'): el texto está en xl/sharedStrings.xml con índice
+    - inline strings (t='inlineStr'): el texto está directamente en la celda
+
+    Retorna un dict: { 'A1': '<strong>text</strong><em>italic</em>', ... }
+    """
+    import zipfile
+    from openpyxl.cell.text import Text
+    try:
+        from lxml import etree
+    except ImportError:
+        import xml.etree.ElementTree as etree
+
+    NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
+    ns = {'s': NS}
+    rich_text_map = {}
+
+    try:
+        with zipfile.ZipFile(BytesIO(file_bytes)) as z:
+            # ---- Paso A: Leer shared strings con rich text ----
+            # Excel guarda el texto con formato en la tabla de strings compartidos
+            # (xl/sharedStrings.xml). Cada <si> puede tener múltiples <r> con <rPr>.
+            shared_rich = {}  # índice -> HTML con formato
+            if 'xl/sharedStrings.xml' in z.namelist():
+                ss_tree = etree.fromstring(z.read('xl/sharedStrings.xml'))
+                for idx, si_elem in enumerate(ss_tree.findall('s:si', ns)):
+                    text = Text.from_tree(si_elem)
+                    if text.r:  # Tiene runs con formato
+                        html = _text_runs_to_html(text)
+                        if html:
+                            shared_rich[idx] = html
+
+            # ---- Paso B: Encontrar el primer sheet ----
+            wb_tree = etree.fromstring(z.read('xl/workbook.xml'))
+            r_ns = {'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'}
+            ns_sheet = {**ns, **r_ns}
+            sheets = wb_tree.findall('.//s:sheet', ns_sheet)
+            if not sheets:
+                return rich_text_map
+
+            sheet_rel_id = sheets[0].get(
+                '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id'
+            ) or sheets[0].get('r:id')
+            if not sheet_rel_id:
+                return rich_text_map
+
+            rels_tree = etree.fromstring(z.read('xl/_rels/workbook.xml.rels'))
+            sheet_path = None
+            for rel in rels_tree:
+                if rel.get('Id') == sheet_rel_id:
+                    target = rel.get('Target', '')
+                    if target.startswith('/'):
+                        sheet_path = target.lstrip('/')
+                    else:
+                        sheet_path = 'xl/' + target
+                    break
+
+            if not sheet_path or sheet_path not in z.namelist():
+                return rich_text_map
+
+            # ---- Paso C: Leer las celdas y buscar texto enriquecido ----
+            sheet_tree = etree.fromstring(z.read(sheet_path))
+            for row_elem in sheet_tree.findall('.//s:row', ns_sheet):
+                for cell_elem in row_elem.findall('s:c', ns_sheet):
+                    cell_ref = cell_elem.get('r', '')
+                    cell_type = cell_elem.get('t', '')
+
+                    if cell_type == 's':
+                        # Shared string: buscar índice en <v>
+                        v_elem = cell_elem.find('s:v', ns_sheet)
+                        if v_elem is not None and v_elem.text is not None:
+                            try:
+                                idx = int(v_elem.text.strip())
+                                if idx in shared_rich:
+                                    rich_text_map[cell_ref] = shared_rich[idx]
+                            except (ValueError, IndexError):
+                                pass
+
+                    elif cell_type == 'inlineStr':
+                        # Inline string: buscar runs directamente
+                        is_elem = cell_elem.find('s:is', ns_sheet)
+                        if is_elem is not None:
+                            text = Text.from_tree(is_elem)
+                            if text.r:
+                                html = _text_runs_to_html(text)
+                                if html:
+                                    rich_text_map[cell_ref] = html
+    except Exception as e:
+        logger.warning("Error al leer XML para rich text: %s", e)
+
+    return rich_text_map
+
+
+def _text_runs_to_html(text):
+    """
+    Convierte los runs de un Text (openpyxl) a HTML.
+    Cada run puede tener propiedades de fuente: bold, italic, underline.
+    Los saltos de línea dentro de cada run se convierten a <br>.
+    """
+    if not text.r:
+        return None
+
+    parts = []
+    for run in text.r:
+        t = run.t or ''
+        if not t:
+            continue
+        # Convertir saltos de línea a <br>
+        t = t.replace('\n', '<br>')
+        font = run.rPr
+        if font:
+            if font.b:
+                t = f'<strong>{t}</strong>'
+            if font.i:
+                t = f'<em>{t}</em>'
+            if font.u and font.u != 'none':
+                t = f'<u>{t}</u>'
+        parts.append(t)
+
+    return ''.join(parts) if parts else None
+
+
 def _read_excel_to_dicts(file_bytes):
     """
     Recibe bytes de un .xlsx y devuelve una lista de dicts (igual estructura que csv.DictReader).
     La primera fila se toma como cabecera.
+
+    Detecta automáticamente celdas con texto enriquecido (negrita, cursiva, etc.)
+    y las convierte a HTML (<strong>, <em>, <u>).
+
+    NOTA: openpyxl descarta el formato de texto al leer. Para preservarlo,
+    parseamos el XML interno del .xlsx directamente.
     """
     if openpyxl is None:
         raise RuntimeError("openpyxl no está instalado. Ejecutá: pip install openpyxl")
+
+    # Paso 1: Obtener mapa de texto enriquecido desde el XML crudo
+    rich_text_map = _get_rich_text_map(file_bytes)
+
+    # Paso 2: Usar openpyxl para leer los valores planos
     wb = openpyxl.load_workbook(BytesIO(file_bytes), read_only=True, data_only=True)
     ws = wb.active  # primera hoja
     rows = []
-    iterator = ws.iter_rows(values_only=True)
+    iterator = ws.iter_rows()
     try:
-        headers = next(iterator)
+        header_cells = next(iterator)
     except StopIteration:
         return []
     # Normalizar headers a strings
-    headers = [str(h).strip() if h is not None else '' for h in headers]
-    for row in iterator:
+    headers = [str(c.value).strip() if c.value is not None else '' for c in header_cells]
+    for row_cells in iterator:
         # Ignorar filas completamente vacías
-        if all(val is None for val in row):
+        if all(c.value is None for c in row_cells):
             continue
         d = {}
         for idx, h in enumerate(headers):
             if not h:
                 continue
-            val = row[idx] if idx < len(row) else None
-            if val is None:
+            cell = row_cells[idx] if idx < len(row_cells) else None
+            if cell is None or cell.value is None:
                 d[h] = ''
-            elif isinstance(val, str):
-                d[h] = val
-            elif isinstance(val, float) and val.is_integer():
-                d[h] = str(int(val))
+            elif isinstance(cell.value, str):
+                # Verificar si esta celda tiene texto enriquecido en el XML
+                rich_html = rich_text_map.get(cell.coordinate)
+                value = rich_html if rich_html else cell.value
+                # Normalizar saltos de linea a <br> para que el frontend los renderice
+                value = value.replace('\n', '<br>')
+                d[h] = value
+            elif isinstance(cell.value, float) and cell.value.is_integer():
+                d[h] = str(int(cell.value))
             else:
-                d[h] = str(val)
+                d[h] = str(cell.value)
         rows.append(d)
     return rows
 
@@ -420,11 +567,12 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                     else:
                         product_lookup = {'name': first_row.get('name') or ''}
 
+                raw_description = (first_row.get('description') or '').strip()
                 product_vals = {
                     'name': (first_row.get('name') or '').strip(),
                     'brand': brand,
                     'category': category,
-                    'description': (first_row.get('description') or '').strip() or None,
+                    'description': raw_description or None,
                     'is_active': parse_bool(first_row.get('is_active', 'TRUE')),
                 }
                 # Solo actualizar image_attachment si se proveyó un nombre de imagen explícito.

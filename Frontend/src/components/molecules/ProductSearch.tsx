@@ -35,6 +35,12 @@ export function ProductSearchCombobox({
           if (product.name.toLowerCase().includes(search)) return true;
           // Buscar en código del producto
           if (product.product_code.toLowerCase().includes(search)) return true;
+          // Buscar en descripción del producto
+          if (
+            product.description &&
+            product.description.toLowerCase().includes(search)
+          )
+            return true;
           // Buscar en códigos de variantes
           if (
             product.variants?.some((v) =>
