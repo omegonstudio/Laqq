@@ -30,17 +30,17 @@ const cards = [
   {
     title: "GABINETES Y MESADAS",
     image: "/Koettermann_Labor_C_09.jpg",
-    pdf: "/pdfs/gabinetes-y-mesadas.pdf",
+    pdf: "/pdfs/Koettermann_MOBILIARIO.pdf",
   },
   {
     title: "DUCTOS DE SERVICIOS",
     image: "/instrumental.png",
-    pdf: "/pdfs/ductos-de-servicios.pdf",
+    pdf: "/pdfs/Koettermann_SERVICIOS.pdf",
   },
   {
     title: "CAMPANAS EXTRACTORAS",
     image: "/instrumental.png",
-    pdf: "/pdfs/campanas-extractoras.pdf",
+    pdf: "/pdfs/Koettermann_CAMARAS.pdf",
   },
 ];
 
