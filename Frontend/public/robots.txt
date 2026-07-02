@@ -1,14 +1,5 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# TODO: Sacar para PROD. Permitir indexación al publicar el sitio.
 User-agent: *
-Allow: /
+Disallow: /
+
+
