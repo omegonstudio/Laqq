@@ -115,6 +115,7 @@ class ProductVariant(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['product', 'code'], name='unique_variant_per_product_code')
         ]
+        ordering = ['created_at']
 
     def __str__(self):
         return f"{self.product} - {self.code}"
