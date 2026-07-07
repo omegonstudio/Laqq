@@ -7,6 +7,7 @@ Comportamiento:
 """
 import base64
 import logging
+from email.mime.base import MIMEBase
 from typing import List, Optional
 
 import requests
@@ -34,18 +35,51 @@ def _extract_html_from_email(email: EmailMultiAlternatives) -> Optional[str]:
 def _build_attachments_payload(attachments) -> List[dict]:
     """
     Convierte attachments de Django Email a la estructura esperada por Resend:
-    [{ "name": "file.pdf", "data": "<base64>", "type": "application/pdf" }, ...]
-    Django admite attachments como:
-      - list de tuplas (filename, content, mimetype)
-      - objetos MIME (no manejados aquí)
-    Ignoramos tipos no soportados para no romper el envío principal.
+    [{ "filename": "file.pdf", "content": "<base64>", "content_type": "application/pdf",
+       "content_id": "...", "disposition": "inline" }, ...]
+
+    Soporta:
+      - tuplas (filename, content, mimetype)
+      - objetos MIME (ej. MIMEImage para logos embebidos inline vía CID), necesarios
+        porque Gmail/Outlook bloquean imágenes data: URI. El Content-ID y la
+        disposición "inline" permiten referenciarlas en el HTML con cid:<id>.
     """
     payload = []
     if not attachments:
         return payload
 
     for att in attachments:
-        # att puede ser (filename, content, mimetype) ó (filename, content)
+        # Objetos MIME (ej. MIMEImage para logos inline CID)
+        if isinstance(att, MIMEBase):
+            filename = None
+            disp = att.get("Content-Disposition") or ""
+            for part in disp.split(";"):
+                part = part.strip()
+                if part.startswith("filename="):
+                    filename = part[len("filename="):].strip().strip('"')
+            if not filename:
+                cid = att.get("Content-ID")
+                filename = cid.strip("<>") if cid else "attachment"
+            try:
+                content_bytes = att.get_payload(decode=True) or b""
+                b64 = base64.b64encode(content_bytes).decode("ascii")
+            except Exception as e:
+                logger.warning("Skipping MIME attachment %s: %s", filename, e)
+                continue
+            item = {
+                "filename": filename,
+                "content": b64,
+                "content_type": att.get_content_type(),
+            }
+            cid = att.get("Content-ID")
+            if cid:
+                item["content_id"] = cid.strip("<>")
+            if "inline" in disp.lower():
+                item["disposition"] = "inline"
+            payload.append(item)
+            continue
+
+        # Tuplas (filename, content, mimetype)
         if isinstance(att, (list, tuple)) and len(att) >= 2:
             filename = att[0]
             content = att[1]
@@ -68,7 +102,6 @@ def _build_attachments_payload(attachments) -> List[dict]:
                 logger.warning("Skipping attachment %s due to error encoding: %s", filename, e)
                 continue
         else:
-            # No soportado (ej. EmailMessage._attachments MIME objects) -> ignorar
             logger.debug("Attachment type not supported for resend API, skipping: %r", type(att))
             continue
 
