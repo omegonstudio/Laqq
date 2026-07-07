@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Confirmación de Cotización {{ quote_number }}</title>
     <style>
-        /* ─── Reset & Base ─── */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             line-height: 1.6;
-            color: #222222;
+            color: #333333;
             margin: 0;
             padding: 0;
             background-color: #f8f9fa;
@@ -17,30 +16,66 @@
         .email-wrapper {
             max-width: 600px;
             margin: 0 auto;
-            background-color: #ffffff;
         }
-        /* ─── Header ─── */
+        .email-container {
+            background-color: #ffffff;
+            border-radius: 0 0 8px 8px;
+            overflow: hidden;
+        }
+
+        /* ─── Header Negro ─── */
         .header {
-            background-color: #ed742f;
-            padding: 32px 40px;
+            background-color: #1f1f1f;
+            padding: 24px 32px;
             text-align: center;
         }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
+        .header-logo {
+            max-width: 140px;
+            height: auto;
+        }
+
+        /* ─── Green Card ─── */
+        .hero-card {
+            background-color: #01a751;
+            padding: 48px 40px 40px;
+            text-align: center;
+        }
+        .hero-card h1 {
+            margin: 0 0 12px;
+            font-size: 26px;
             font-weight: 700;
             color: #ffffff;
             letter-spacing: -0.3px;
         }
-        .header p {
-            margin: 4px 0 0 0;
+        .hero-card p {
             font-size: 15px;
-            color: rgba(255,255,255,0.9);
-            font-weight: 400;
+            color: rgba(255,255,255,0.92);
+            margin: 8px 0;
         }
-        /* ─── Body ─── */
+        .hero-card .quote-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: rgba(255,255,255,0.7);
+            margin-top: 24px;
+            margin-bottom: 4px;
+        }
+        .hero-card .quote-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
+        .hero-card .response-info {
+            font-size: 14px;
+            color: rgba(255,255,255,0.85);
+            margin-top: 20px;
+            line-height: 1.5;
+        }
+
+        /* ─── Body content ─── */
         .body-content {
-            padding: 32px 40px 16px;
+            padding: 32px 32px 16px;
             background-color: #ffffff;
         }
         .greeting {
@@ -51,63 +86,11 @@
         .greeting strong {
             font-weight: 600;
         }
-        /* ─── Success Badge ─── */
-        .success-badge {
-            background-color: #d9ecdc;
-            border-radius: 8px;
-            padding: 16px 20px;
-            margin: 20px 0;
-            text-align: center;
-        }
-        .success-badge span {
-            font-size: 14px;
-            font-weight: 600;
-            color: #1a6b2e;
-        }
-        /* ─── Quote Number ─── */
-        .quote-number {
-            text-align: center;
-            margin: 20px 0;
-        }
-        .quote-number .label {
-            font-size: 12px;
-            color: #888888;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 4px;
-        }
-        .quote-number .number {
-            font-size: 28px;
-            font-weight: 700;
-            color: #ed742f;
-            letter-spacing: -0.5px;
-        }
-        /* ─── Separator ─── */
-        .divider {
-            height: 1px;
-            background-color: #dfe2e6;
-            margin: 24px 0;
-        }
-        /* ─── Info Box ─── */
-        .info-box {
-            background-color: #e9f3fe;
-            border-radius: 8px;
-            padding: 20px 24px;
-            margin: 24px 0;
-        }
-        .info-box p {
-            margin: 4px 0;
-            font-size: 14px;
-            color: #222222;
-        }
-        .info-box strong {
-            font-weight: 600;
-            color: #ed742f;
-        }
+
         /* ─── Section Card ─── */
         .section-card {
             background-color: #ffffff;
-            border: 1px solid #dfe2e6;
+            border: 1px solid #e0e0e0;
             border-radius: 8px;
             padding: 24px;
             margin: 20px 0;
@@ -118,10 +101,11 @@
             color: #222222;
             margin-bottom: 16px;
         }
+
         /* ─── Product List ─── */
         .product-item {
             padding: 12px 0;
-            border-bottom: 1px solid #dfe2e6;
+            border-bottom: 1px solid #e0e0e0;
         }
         .product-item:last-child {
             border-bottom: none;
@@ -140,10 +124,11 @@
             margin-right: 16px;
         }
         .product-variant {
-            color: #ed742f;
+            color: #01a751;
             font-size: 13px;
             font-weight: 500;
         }
+
         /* ─── Steps List ─── */
         .steps-list {
             padding: 0;
@@ -167,7 +152,7 @@
             top: 12px;
             width: 16px;
             height: 16px;
-            background-color: #d9ecdc;
+            background-color: #d4edda;
             border-radius: 50%;
         }
         .steps-list li::after {
@@ -176,9 +161,10 @@
             left: 3px;
             top: 10px;
             font-size: 10px;
-            color: #1a6b2e;
+            color: #01a751;
             font-weight: 700;
         }
+
         /* ─── Message Box ─── */
         .message-box {
             background-color: #fef9e8;
@@ -189,6 +175,7 @@
             font-size: 14px;
             color: #806620;
         }
+
         /* ─── Contact Section ─── */
         .contact-section {
             background-color: #fef9e8;
@@ -213,134 +200,123 @@
             display: inline-block;
             margin-top: 12px;
             padding: 10px 24px;
-            background-color: #ed742f;
+            background-color: #01a751;
             color: #ffffff;
             text-decoration: none;
             border-radius: 6px;
             font-size: 14px;
             font-weight: 600;
         }
-        .contact-section .contact-detail {
-            font-size: 13px;
-            color: #806620;
-            margin-top: 8px;
-        }
-        .contact-section .contact-detail strong {
-            font-weight: 600;
-        }
+
         /* ─── Footer ─── */
         .footer {
-            padding: 24px 40px 32px;
+            padding: 24px 32px 32px;
             text-align: center;
             background-color: #ffffff;
         }
         .footer p {
-            font-size: 13px;
-            color: #888888;
+            font-size: 12px;
+            color: #999999;
             margin: 6px 0;
         }
-        .footer .footer-ref {
-            font-size: 11px;
-            color: #aaaaaa;
-        }
+
         /* ─── Responsive ─── */
         @media (max-width: 600px) {
-            .header { padding: 24px 20px; }
-            .header h1 { font-size: 20px; }
-            .body-content { padding: 24px 20px 12px; }
+            .hero-card { padding: 32px 20px 28px; }
+            .hero-card h1 { font-size: 22px; }
+            .body-content { padding: 24px 16px 12px; }
             .section-card { padding: 16px; }
             .contact-section { padding: 20px 16px; }
-            .footer { padding: 16px 20px 24px; }
+            .footer { padding: 16px 16px 24px; }
         }
     </style>
 </head>
 <body>
     <div class="email-wrapper">
-        <!-- ═══ HEADER ═══ -->
-        <div class="header">
-            <h1>Solicitud de Cotización Recibida</h1>
-            <p>{{ business_name }}</p>
-        </div>
-        <!-- ═══ BODY ═══ -->
-        <div class="body-content">
-            <div class="greeting">
-                Hola <strong>{{ customer_name }}</strong>,
+        <div class="email-container">
+            <!-- ═══ HEADER NEGRO ═══ -->
+            <div class="header">
+                <img class="header-logo" src="https://laqq.com.ar/logo.png" alt="{{ business_name }}" width="140"/>
             </div>
-            <p style="font-size: 15px; color: #222222; margin: 0 0 4px;">
-                ¡Gracias por contactarnos! Hemos recibido correctamente tu solicitud de cotización
-                y nuestro equipo está revisando los detalles.
-            </p>
-            <!-- Success Badge -->
-            <div class="success-badge">
-                <span>✓ Tu solicitud ha sido registrada exitosamente</span>
+
+            <!-- ═══ HERO VERDE ═══ -->
+            <div class="hero-card">
+                <h1>Solicitud de Cotización Recibida</h1>
+                <p>Hemos recibido correctamente tu solicitud de cotización<br>y nuestro equipo está revisando los detalles.</p>
+                <div class="quote-label">Número de Cotización</div>
+                <div class="quote-number">{{ quote_number }}</div>
+                <div class="response-info">
+                    <strong>Tiempo estimado de respuesta:</strong> {{ response_time }}<br>
+                    Te enviaremos la cotización detallada a <strong>{{ contact.email }}</strong>
+                </div>
             </div>
-            <!-- Quote Number -->
-            <div class="quote-number">
-                <div class="label">Número de Cotización</div>
-                <div class="number">{{ quote_number }}</div>
-            </div>
-            <div class="divider"></div>
-            <!-- Info Box -->
-            <div class="info-box">
-                <p><strong>Tiempo estimado de respuesta:</strong> {{ response_time }}</p>
-                <p>Te enviaremos la cotización detallada a <strong>{{ contact.email }}</strong></p>
-            </div>
-            <!-- ═══ Products Summary ═══ -->
-            <div class="section-card">
-                <div class="section-title">Resumen de Productos Solicitados ({{ total_items }} item{{ total_items|pluralize }})</div>
-                {% for item in items %}
-                <div class="product-item">
-                    <div class="product-name">{{ item.product.name }}</div>
-                    {% if item.fixed_spec %}
-                    <div class="product-variant">Variante: {{ item.fixed_spec.key }}: {{ item.fixed_spec.value }}{% if item.fixed_spec.unit %} {{ item.fixed_spec.unit }}{% endif %}</div>
-                    {% endif %}
-                    <div class="product-detail">
-                        <span>Cantidad: {{ item.quantity }} unidad{{ item.quantity|pluralize:"es" }}</span>
-                        {% if item.product.product_code %}<span>Código: {{ item.product.product_code }}</span>{% endif %}
+
+            <!-- ═══ BODY ═══ -->
+            <div class="body-content">
+                <div class="greeting">
+                    Hola <strong>{{ customer_name }}</strong>,
+                </div>
+
+                <!-- ═══ Products Summary ═══ -->
+                <div class="section-card">
+                    <div class="section-title">Resumen de Productos Solicitados ({{ total_items }} item{{ total_items|pluralize }})</div>
+                    {% for item in items %}
+                    <div class="product-item">
+                        <div class="product-name">{{ item.product.name }}</div>
+                        {% if item.fixed_spec %}
+                        <div class="product-variant">Variante: {{ item.fixed_spec.key }}: {{ item.fixed_spec.value }}{% if item.fixed_spec.unit %} {{ item.fixed_spec.unit }}{% endif %}</div>
+                        {% endif %}
+                        <div class="product-detail">
+                            <span>Cantidad: {{ item.quantity }} unidad{{ item.quantity|pluralize:"es" }}</span>
+                            {% if item.product.product_code %}<span>Código: {{ item.product.product_code }}</span>{% endif %}
+                        </div>
                     </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
-            </div>
-            <!-- ═══ Customer Message ═══ -->
-            {% if message %}
-            <div class="section-card">
-                <div class="section-title">Tu Mensaje</div>
-                <div class="message-box">
-                    {{ message|linebreaks }}
+
+                <!-- ═══ Customer Message ═══ -->
+                {% if message %}
+                <div class="section-card">
+                    <div class="section-title">Tu Mensaje</div>
+                    <div class="message-box">{{ message|linebreaks }}</div>
                 </div>
-            </div>
-            {% endif %}
-            <!-- ═══ Next Steps ═══ -->
-            <div class="section-card">
-                <div class="section-title">Próximos Pasos</div>
-                <ul class="steps-list">
-                    <li>Nuestro equipo revisará tu solicitud en detalle</li>
-                    <li>Verificaremos disponibilidad de productos y precios actuales</li>
-                    <li>Te enviaremos la cotización completa dentro de {{ response_time }}</li>
-                    <li>Podrás revisar, consultar dudas y confirmar tu pedido</li>
-                </ul>
-            </div>
-            <!-- ═══ Contact Section ═══ -->
-            <div class="contact-section">
-                <h3>¿Necesitas ayuda o tienes consultas?</h3>
-                <p>No dudes en contactarnos:</p>
-                <a href="mailto:{{ business_email }}" class="contact-email">{{ business_email }}</a>
-                {% if business_phone %}
-                <div class="contact-detail"><strong>Teléfono:</strong> {{ business_phone }}</div>
                 {% endif %}
-                {% if business_address %}
-                <div class="contact-detail"><strong>Dirección:</strong> {{ business_address }}</div>
-                {% endif %}
+
+                <!-- ═══ Next Steps ═══ -->
+                <div class="section-card">
+                    <div class="section-title">Próximos Pasos</div>
+                    <ul class="steps-list">
+                        <li>Nuestro equipo revisará tu solicitud en detalle</li>
+                        <li>Verificaremos disponibilidad de productos y precios actuales</li>
+                        <li>Te enviaremos la cotización completa dentro de {{ response_time }}</li>
+                        <li>Podrás revisar, consultar dudas y confirmar tu pedido</li>
+                    </ul>
+                </div>
+
+                <!-- ═══ Contact Section ═══ -->
+                <div class="contact-section">
+                    <h3>¿Necesitas ayuda o tienes consultas?</h3>
+                    <p>No dudes en contactarnos:</p>
+                    <a href="mailto:{{ business_email }}" class="contact-email">{{ business_email }}</a>
+                    {% if business_phone %}
+                    <p style="margin-top: 10px; font-size: 13px;"><strong>Teléfono:</strong> {{ business_phone }}</p>
+                    {% endif %}
+                    {% if business_address %}
+                    <p style="font-size: 13px;"><strong>Dirección:</strong> {{ business_address }}</p>
+                    {% endif %}
+                </div>
+
+                <p style="text-align: center; font-size: 15px; color: #222222; margin: 24px 0 8px;">
+                    Gracias por confiar en <strong>{{ business_name }}</strong>.
+                    <br>¡Esperamos poder servirte pronto!
+                </p>
             </div>
-            <p style="text-align: center; font-size: 15px; color: #222222; margin: 24px 0 8px;">
-                Gracias por confiar en <strong>{{ business_name }}</strong>.
-                <br>¡Esperamos poder servirte pronto!
-            </p>
-        </div>
-        <!-- ═══ FOOTER ═══ -->
-        <div class="footer">
-            <p>Este es un mensaje automático, por favor no respondas a este correo.</p>
-            <p class="footer-ref">Cotización #{{ quote_number }} · {{ created_at|date:"d/m/Y H:i" }}</p>
+
+            <!-- ═══ FOOTER ═══ -->
+            <div class="footer">
+                <p>Este es un mensaje automático, por favor no respondas a este correo.</p>
+                <p>Cotización #{{ quote_number }} · {{ created_at|date:"d/m/Y H:i" }}</p>
+            </div>
         </div>
     </div>
 </body>
