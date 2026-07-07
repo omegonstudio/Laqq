@@ -38,10 +38,12 @@ def get_logo_url():
       which renders in Gmail/Outlook. Note: base64 ``data:`` URIs are blocked
       by those clients, so CID is used instead of data URIs.
     """
-    if getattr(settings, 'BUSINESS_LOGO_URL', ''):
-        return settings.BUSINESS_LOGO_URL
-    if _resolve_logo_path():
-        return f'cid:{LOGO_CID}'
+    configured = getattr(settings, 'BUSINESS_LOGO_URL', '')
+    if configured:
+        return configured
+    base = getattr(settings, 'FRONTEND_BASE_URL', '').rstrip('/')
+    if base:
+        return f'{base}/laqq_marca_color_neg.png'
     return ''
 
 
@@ -53,11 +55,10 @@ def attach_logo_inline(email):
 
     No-op when BUSINESS_LOGO_URL is used or when no raster logo file is found.
     """
-    if getattr(settings, 'BUSINESS_LOGO_URL', ''):
-        return False
-    path = _resolve_logo_path()
-    if not path:
-        return False
+    # Gmail/Outlook only render images from public absolute URLs, never CID
+    # inline attachments. The logo is now referenced by a hosted URL in the
+    # template, so there is nothing to attach here. Kept as a no-op for stability.
+    return False
     if not path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
         logger.warning(
             'El logo debe ser PNG/JPG para embeberlo inline; se omitió: %s', path

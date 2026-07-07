@@ -308,7 +308,11 @@ BUSINESS_LOGO_PATH = config(
     'BUSINESS_LOGO_PATH',
     default=str(BASE_DIR.parent / 'Frontend' / 'public' / 'laqq_marca_color_neg.png'),
 )
-# Optional absolute URL; if set it is used directly instead of embedding the file.
+# Base URL of the frontend (serves its public/ folder at the site root). Used to
+# build the absolute logo URL referenced by emails, because Gmail/Outlook only
+# render images from public absolute URLs (they block data: URIs and CID).
+FRONTEND_BASE_URL = config('FRONTEND_BASE_URL', default='https://laqq.omegon.com.ar')
+# Optional absolute URL; if set it overrides the auto-built frontend logo URL.
 BUSINESS_LOGO_URL = config('BUSINESS_LOGO_URL', default='')
 
 # Logging
