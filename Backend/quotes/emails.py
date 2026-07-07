@@ -5,6 +5,7 @@ Sends professional HTML emails to business and customers when quotes are created
 import logging
 import sys
 import os
+import base64
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
@@ -15,6 +16,40 @@ logger = logging.getLogger(__name__)
 
 # Control email output during tests
 SHOW_EMAIL_OUTPUT = os.environ.get('SHOW_EMAIL_OUTPUT', 'false').lower() == 'true'
+
+def get_logo_url():
+    """Return an absolute logo URL or a base64 data URI for embedding in emails.
+
+    If settings.BUSINESS_LOGO_URL is set, it is returned as-is (absolute URL).
+    Otherwise the file at settings.BUSINESS_LOGO_PATH is read and embedded as a
+    base64 data URI so the email is self-contained and works without external hosts.
+    """
+    configured = getattr(settings, 'BUSINESS_LOGO_URL', '')
+    if configured:
+        return configured
+
+    path = getattr(settings, 'BUSINESS_LOGO_PATH', '')
+    if not path or not os.path.exists(path):
+        return ''
+
+    ext = os.path.splitext(path)[1].lower()
+    mime = {
+        '.svg': 'image/svg+xml',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.webp': 'image/webp',
+        '.gif': 'image/gif',
+    }.get(ext, 'application/octet-stream')
+
+    try:
+        with open(path, 'rb') as f:
+            encoded = base64.b64encode(f.read()).decode('ascii')
+        return f'data:{mime};base64,{encoded}'
+    except Exception as exc:  # pragma: no cover - best effort
+        logger.warning('No se pudo embebir el logo del email: %s', exc)
+        return ''
+
 
 
 def safe_print(text):
@@ -86,6 +121,7 @@ def send_quote_to_business(quote):
             'items': items,
             'total_amount': quote.total_amount or sum(item.subtotal or 0 for item in items),
             'business_name': settings.BUSINESS_NAME,
+            'logo_url': get_logo_url(),
             'created_at': quote.created_at,
             'user': quote.user,
             'message': quote.message,
@@ -161,6 +197,7 @@ def send_quote_to_customer(quote):
             'items': items,
             'total_items': items.count(),
             'business_name': settings.BUSINESS_NAME,
+            'logo_url': get_logo_url(),
             'business_email': settings.BUSINESS_EMAIL,
             'business_phone': settings.BUSINESS_PHONE,
             'business_address': settings.BUSINESS_ADDRESS,
@@ -421,6 +458,7 @@ def send_updated_quote_to_customer(quote, pdf_file=None):
             'total_items': items.count(),
             'total_amount': quote.total_amount or sum(item.subtotal or 0 for item in items),
             'business_name': settings.BUSINESS_NAME,
+            'logo_url': get_logo_url(),
             'business_email': settings.BUSINESS_EMAIL,
             'business_phone': settings.BUSINESS_PHONE,
             'business_address': settings.BUSINESS_ADDRESS,
