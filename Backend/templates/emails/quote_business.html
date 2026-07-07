@@ -20,25 +20,26 @@
         .email-container {
             background-color: #ffffff;
             border-radius: 0 0 8px 8px;
-            overflow: hidden;
         }
 
-        /* ─── Header Negro ─── */
+        /* ─── Header Negro (parte superior de la card) ─── */
         .header {
             background-color: #1f1f1f;
             padding: 24px 32px;
             text-align: center;
+            border-radius: 12px 12px 0 0;
         }
         .header-logo {
             max-width: 140px;
             height: auto;
         }
 
-        /* ─── Hero Verde ─── */
+        /* ─── Hero Verde (parte inferior de la card) ─── */
         .hero-card {
             background-color: #01a751;
             padding: 36px 40px;
             text-align: center;
+            border-radius: 0 0 12px 12px;
         }
         .hero-card h1 {
             margin: 0 0 6px;
@@ -214,7 +215,7 @@
         <div class="email-container">
             <!-- ═══ HEADER NEGRO ═══ -->
             <div class="header">
-                <img class="header-logo" src="https://laqq.com.ar/logo.png" alt="{{ business_name }}" width="140"/>
+                <img class="header-logo" src="{{ logo_url }}" alt="{{ business_name }}" width="140"/>
             </div>
 
             <!-- ═══ HERO VERDE ═══ -->
