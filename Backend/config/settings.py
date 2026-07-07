@@ -300,10 +300,13 @@ BUSINESS_NAME = config('BUSINESS_NAME', default='La Química Quirúrgica')
 BUSINESS_PHONE = config('BUSINESS_PHONE', default='')
 BUSINESS_ADDRESS = config('BUSINESS_ADDRESS', default='')
 QUOTE_RESPONSE_TIME = config('QUOTE_RESPONSE_TIME', default='24-48 horas')
-# Logo embedded in emails as base64. White "neg" variant for the dark email header.
+# Logo embedded in emails as base64. Emails do NOT render SVG, so a PNG is required.
+# Prefer the white/"neg" PNG variant for the dark email header. If the PNG is missing,
+# the helper falls back to the SVG. Override with BUSINESS_LOGO_PATH (file) or
+# BUSINESS_LOGO_URL (absolute URL, e.g. a CDN/hosted PNG).
 BUSINESS_LOGO_PATH = config(
     'BUSINESS_LOGO_PATH',
-    default=str(BASE_DIR.parent / 'Frontend' / 'public' / 'laqq_marca_color_neg.svg'),
+    default=str(BASE_DIR.parent / 'Frontend' / 'public' / 'laqq_marca_color_neg.png'),
 )
 # Optional absolute URL; if set it is used directly instead of embedding the file.
 BUSINESS_LOGO_URL = config('BUSINESS_LOGO_URL', default='')

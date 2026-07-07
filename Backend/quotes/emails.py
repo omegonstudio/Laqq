@@ -29,7 +29,13 @@ def get_logo_url():
         return configured
 
     path = getattr(settings, 'BUSINESS_LOGO_PATH', '')
-    if not path or not os.path.exists(path):
+    # Fall back to the SVG sibling if the preferred PNG is not present yet.
+    candidates = [path]
+    if path:
+        base, _ = os.path.splitext(path)
+        candidates.extend([base + '.svg', base + '.png'])
+    path = next((c for c in candidates if c and os.path.exists(c)), '')
+    if not path:
         return ''
 
     ext = os.path.splitext(path)[1].lower()
