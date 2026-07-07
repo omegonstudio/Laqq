@@ -17,44 +17,64 @@ logger = logging.getLogger(__name__)
 # Control email output during tests
 SHOW_EMAIL_OUTPUT = os.environ.get('SHOW_EMAIL_OUTPUT', 'false').lower() == 'true'
 
-def get_logo_url():
-    """Return an absolute logo URL or a base64 data URI for embedding in emails.
+LOGO_CID = 'laqqlogo'
 
-    If settings.BUSINESS_LOGO_URL is set, it is returned as-is (absolute URL).
-    Otherwise the file at settings.BUSINESS_LOGO_PATH is read and embedded as a
-    base64 data URI so the email is self-contained and works without external hosts.
-    """
-    configured = getattr(settings, 'BUSINESS_LOGO_URL', '')
-    if configured:
-        return configured
 
+def _resolve_logo_path():
+    """Return the logo file path to embed, or '' if none is available."""
     path = getattr(settings, 'BUSINESS_LOGO_PATH', '')
-    # Fall back to the SVG sibling if the preferred PNG is not present yet.
     candidates = [path]
     if path:
         base, _ = os.path.splitext(path)
         candidates.extend([base + '.svg', base + '.png'])
-    path = next((c for c in candidates if c and os.path.exists(c)), '')
+    return next((c for c in candidates if c and os.path.exists(c)), '')
+
+
+def get_logo_url():
+    """Return the value to use in the template's <img src>.
+
+    - If BUSINESS_LOGO_URL is configured, return that absolute URL (hosted).
+    - Otherwise embed the logo as an inline CID attachment (``cid:laqqlogo``),
+      which renders in Gmail/Outlook. Note: base64 ``data:`` URIs are blocked
+      by those clients, so CID is used instead of data URIs.
+    """
+    if getattr(settings, 'BUSINESS_LOGO_URL', ''):
+        return settings.BUSINESS_LOGO_URL
+    if _resolve_logo_path():
+        return f'cid:{LOGO_CID}'
+    return ''
+
+
+def attach_logo_inline(email):
+    """Attach the logo image inline (CID) so it renders in Gmail/Outlook.
+
+    Email clients (and Gmail's image proxy) block base64 ``data:`` URIs, so inline
+    CID attachments are the reliable way to embed a self-contained logo.
+
+    No-op when BUSINESS_LOGO_URL is used or when no raster logo file is found.
+    """
+    if getattr(settings, 'BUSINESS_LOGO_URL', ''):
+        return False
+    path = _resolve_logo_path()
     if not path:
-        return ''
-
-    ext = os.path.splitext(path)[1].lower()
-    mime = {
-        '.svg': 'image/svg+xml',
-        '.png': 'image/png',
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.webp': 'image/webp',
-        '.gif': 'image/gif',
-    }.get(ext, 'application/octet-stream')
-
+        return False
+    if not path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
+        logger.warning(
+            'El logo debe ser PNG/JPG para embeberlo inline; se omitió: %s', path
+        )
+        return False
     try:
         with open(path, 'rb') as f:
-            encoded = base64.b64encode(f.read()).decode('ascii')
-        return f'data:{mime};base64,{encoded}'
+            data = f.read()
     except Exception as exc:  # pragma: no cover - best effort
-        logger.warning('No se pudo embebir el logo del email: %s', exc)
-        return ''
+        logger.warning('No se pudo leer el logo para embebir: %s', exc)
+        return False
+    from email.mime.image import MIMEImage
+    img = MIMEImage(data)
+    img.add_header('Content-ID', f'<{LOGO_CID}>')
+    img.add_header('Content-Disposition', 'inline', filename='logo.png')
+    email.attach(img)
+    return True
 
 
 
@@ -150,6 +170,7 @@ def send_quote_to_business(quote):
             to=to_email,
         )
         email.attach_alternative(html_content, "text/html")
+        attach_logo_inline(email)
 
         # Print email content to console for debugging (BEFORE sending)
         safe_print("\n" + "="*80)
@@ -228,6 +249,7 @@ def send_quote_to_customer(quote):
             to=to_email,
         )
         email.attach_alternative(html_content, "text/html")
+        attach_logo_inline(email)
 
         # Print email content to console for debugging (BEFORE sending)
         safe_print("\n" + "="*80)
@@ -490,6 +512,7 @@ def send_updated_quote_to_customer(quote, pdf_file=None):
             to=to_email,
         )
         email.attach_alternative(html_content, "text/html")
+        attach_logo_inline(email)
 
         # Adjuntar el PDF recibido del front-end directamente en memoria
         # (sin persistirlo en disco ni en la base de datos)
