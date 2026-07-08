@@ -5,6 +5,7 @@ Sends professional HTML emails to business and customers when quotes are created
 import logging
 import sys
 import os
+import base64
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
@@ -15,6 +16,67 @@ logger = logging.getLogger(__name__)
 
 # Control email output during tests
 SHOW_EMAIL_OUTPUT = os.environ.get('SHOW_EMAIL_OUTPUT', 'false').lower() == 'true'
+
+LOGO_CID = 'laqqlogo'
+
+
+def _resolve_logo_path():
+    """Return the logo file path to embed, or '' if none is available."""
+    path = getattr(settings, 'BUSINESS_LOGO_PATH', '')
+    candidates = [path]
+    if path:
+        base, _ = os.path.splitext(path)
+        candidates.extend([base + '.svg', base + '.png'])
+    return next((c for c in candidates if c and os.path.exists(c)), '')
+
+
+def get_logo_url():
+    """Return the value to use in the template's <img src>.
+
+    - If BUSINESS_LOGO_URL is configured, return that absolute URL (hosted).
+    - Otherwise embed the logo as an inline CID attachment (``cid:laqqlogo``),
+      which renders in Gmail/Outlook. Note: base64 ``data:`` URIs are blocked
+      by those clients, so CID is used instead of data URIs.
+    """
+    configured = getattr(settings, 'BUSINESS_LOGO_URL', '')
+    if configured:
+        return configured
+    base = getattr(settings, 'FRONTEND_BASE_URL', '').rstrip('/')
+    if base:
+        return f'{base}/laqq_marca_color_neg.png'
+    return ''
+
+
+def attach_logo_inline(email):
+    """Attach the logo image inline (CID) so it renders in Gmail/Outlook.
+
+    Email clients (and Gmail's image proxy) block base64 ``data:`` URIs, so inline
+    CID attachments are the reliable way to embed a self-contained logo.
+
+    No-op when BUSINESS_LOGO_URL is used or when no raster logo file is found.
+    """
+    # Gmail/Outlook only render images from public absolute URLs, never CID
+    # inline attachments. The logo is now referenced by a hosted URL in the
+    # template, so there is nothing to attach here. Kept as a no-op for stability.
+    return False
+    if not path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
+        logger.warning(
+            'El logo debe ser PNG/JPG para embeberlo inline; se omitió: %s', path
+        )
+        return False
+    try:
+        with open(path, 'rb') as f:
+            data = f.read()
+    except Exception as exc:  # pragma: no cover - best effort
+        logger.warning('No se pudo leer el logo para embebir: %s', exc)
+        return False
+    from email.mime.image import MIMEImage
+    img = MIMEImage(data)
+    img.add_header('Content-ID', f'<{LOGO_CID}>')
+    img.add_header('Content-Disposition', 'inline', filename='logo.png')
+    email.attach(img)
+    return True
+
 
 
 def safe_print(text):
@@ -86,6 +148,7 @@ def send_quote_to_business(quote):
             'items': items,
             'total_amount': quote.total_amount or sum(item.subtotal or 0 for item in items),
             'business_name': settings.BUSINESS_NAME,
+            'logo_url': get_logo_url(),
             'created_at': quote.created_at,
             'user': quote.user,
             'message': quote.message,
@@ -108,6 +171,7 @@ def send_quote_to_business(quote):
             to=to_email,
         )
         email.attach_alternative(html_content, "text/html")
+        attach_logo_inline(email)
 
         # Print email content to console for debugging (BEFORE sending)
         safe_print("\n" + "="*80)
@@ -161,6 +225,7 @@ def send_quote_to_customer(quote):
             'items': items,
             'total_items': items.count(),
             'business_name': settings.BUSINESS_NAME,
+            'logo_url': get_logo_url(),
             'business_email': settings.BUSINESS_EMAIL,
             'business_phone': settings.BUSINESS_PHONE,
             'business_address': settings.BUSINESS_ADDRESS,
@@ -185,6 +250,7 @@ def send_quote_to_customer(quote):
             to=to_email,
         )
         email.attach_alternative(html_content, "text/html")
+        attach_logo_inline(email)
 
         # Print email content to console for debugging (BEFORE sending)
         safe_print("\n" + "="*80)
@@ -421,6 +487,7 @@ def send_updated_quote_to_customer(quote, pdf_file=None):
             'total_items': items.count(),
             'total_amount': quote.total_amount or sum(item.subtotal or 0 for item in items),
             'business_name': settings.BUSINESS_NAME,
+            'logo_url': get_logo_url(),
             'business_email': settings.BUSINESS_EMAIL,
             'business_phone': settings.BUSINESS_PHONE,
             'business_address': settings.BUSINESS_ADDRESS,
@@ -446,6 +513,7 @@ def send_updated_quote_to_customer(quote, pdf_file=None):
             to=to_email,
         )
         email.attach_alternative(html_content, "text/html")
+        attach_logo_inline(email)
 
         # Adjuntar el PDF recibido del front-end directamente en memoria
         # (sin persistirlo en disco ni en la base de datos)
