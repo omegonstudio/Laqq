@@ -143,7 +143,7 @@ const ProductsPage = () => {
             Explora nuestra amplia selección de equipos y material de
             laboratorio
           </p>
-          <div className="w-full flex flex-col justify-center items-center gap-5">
+          {/* <div className="w-full flex flex-col justify-center items-center gap-5">
             <SearchBar
               debounceMs={300}
               maxResults={10}
@@ -151,7 +151,7 @@ const ProductsPage = () => {
               onViewAllResults={(q) => setFilter("search", q)}
             />
             <NavDropdown />
-          </div>
+          </div> */}
           <br></br>
           <div className="flex justify-between">
             {/* Mostrar filtro activo */}

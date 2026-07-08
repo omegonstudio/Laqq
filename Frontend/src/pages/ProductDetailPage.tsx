@@ -208,9 +208,8 @@ const ProductDetailPage = () => {
           Volver al Catálogo
         </Link>
 
-        <div className="grid lg:grid-cols-2 gap-12 mb-12">
-          <div className="bg-muted rounded-2xl p-8">
-            {/* Contenedor de la imagen con altura fija */}
+            <div className="grid lg:grid-cols-2 gap-12 items-start mb-12">
+            <div className="bg-background rounded-2xl p-8 border border-border">            {/* Contenedor de la imagen con altura fija */}
             <div className="relative h-[500px]">
               {" "}
               {/* Altura fija aquí */}
@@ -279,27 +278,34 @@ const ProductDetailPage = () => {
               {product.brand}
             </Badge>
             <h1 className="text-4xl font-bold mb-4">{product.name}</h1>
-            <div
-              className="
-                prose prose-sm max-w-none text-muted-foreground
-                text-justify
-                [--tw-prose-body:currentColor] [--tw-prose-bold:currentColor]
-                [--tw-prose-bullets:currentColor] [--tw-prose-counters:currentColor]
-                whitespace-normal
-                [&_table]:w-full
-                [&_table]:border-collapse
-                [&_table]:my-2
-                [&_th]:border
-                [&_td]:border
-                [&_th]:p-2
-                [&_td]:p-2
-                [&_p]:!text-justify
-                [&_li]:!text-justify
-                [&_td]:!text-justify "
-              dangerouslySetInnerHTML={{
-                __html: formattedDescription,
-              }}
-            />
+              <div className="max-h-[500px] overflow-y-auto pr-3">
+                <div
+                  className="
+                    prose prose-sm
+                    max-w-none
+                    text-muted-foreground
+                    text-justify
+                    [--tw-prose-body:currentColor]
+                    [--tw-prose-bold:currentColor]
+                    [--tw-prose-bullets:currentColor]
+                    [--tw-prose-counters:currentColor]
+                    whitespace-normal
+                    [&_table]:w-full
+                    [&_table]:border-collapse
+                    [&_table]:my-2
+                    [&_th]:border
+                    [&_td]:border
+                    [&_th]:p-2
+                    [&_td]:p-2
+                    [&_p]:!text-justify
+                    [&_li]:!text-justify
+                    [&_td]:!text-justify
+                  "
+                  dangerouslySetInnerHTML={{
+                    __html: formattedDescription,
+                  }}
+                />
+              </div>
             <br />
             <div className="flex flex-col sm:flex-row gap-3">
               {variantCount < 2 ? (
