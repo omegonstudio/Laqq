@@ -74,6 +74,13 @@ const Header = () => {
     { name: "Contacto", path: "/contact" },
   ];
 
+  const sortedBrands = [...brands].sort((a, b) =>
+  a.name.localeCompare(b.name, "es", {
+    sensitivity: "base",
+    numeric: true,
+  })
+);
+
   return (
     <>
       <header className="w-full sticky top-0 z-50">
@@ -123,7 +130,7 @@ const Header = () => {
                   <SelectItem value="all" className="rounded-xl">
                     Todas las marcas
                   </SelectItem>
-                  {brands.map((b) => (
+                  {sortedBrands.map((b) => (
                     <SelectItem key={b.id} value={b.id} className="rounded-xl">
                       {b.name}
                     </SelectItem>

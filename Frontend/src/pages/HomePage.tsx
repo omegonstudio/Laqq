@@ -5,7 +5,6 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useEffect } from "react";
 import { fetchAllProducts } from "@/store/productSlice";
 import { fetchAllBrands } from "@/store/brandSlice";
-import WhatsAppFloat from "@/components/WhatsAppFloat";
 
 const HomePage = () => {
   const dispatch = useAppDispatch();
@@ -28,7 +27,6 @@ const HomePage = () => {
         <ProductGrid products={productFilter()} title="Productos Destacados" />
       )}
       <BrandsGrid />
-     <WhatsAppFloat />
     </>
   );
 };

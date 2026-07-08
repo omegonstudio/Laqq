@@ -28,7 +28,7 @@ const HeroSection = () => {
             Equipos y Consumibles
             <br />
             <span className="text-foreground">para </span>
-            <span className="text-primary">Laboratorio Científicos</span>
+            <span className="text-primary">Laboratorios Científicos</span>
           </h1>
 
           <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
