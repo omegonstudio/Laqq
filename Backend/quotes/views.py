@@ -5,7 +5,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+from django.db.models import Prefetch
 from .models import QuoteType, QuoteState, Quote, QuoteItem
+from products.models import VariantTechnicalSpec
 from .serializers import QuoteTypeSerializer, QuoteStateSerializer, QuoteSerializer, QuoteItemSerializer, BulkQuoteItemSerializer, QuotePackageSerializer
 from .permissions import CanCreateOrAdmin, AllowPublicQuoteItems
 from .emails import send_updated_quote_to_customer
@@ -39,7 +41,10 @@ class QuoteViewSet(viewsets.ModelViewSet):
         'quoteitem_set__product__brand',
         'quoteitem_set__product__category',
         'quoteitem_set__variant',
-        'quoteitem_set__variant__technical_specs',
+        Prefetch(
+            'quoteitem_set__variant__variant_technical_specs',
+            queryset=VariantTechnicalSpec.objects.select_related('technical_spec'),
+        ),
     )
     serializer_class = QuoteSerializer
     permission_classes = [CanCreateOrAdmin]
