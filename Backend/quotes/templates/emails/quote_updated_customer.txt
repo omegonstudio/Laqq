@@ -26,10 +26,6 @@ PRODUCTOS SOLICITADOS ({{ total_items }} item{{ total_items|pluralize }})
    Código: {{ item.product.product_code }}{% endif %}{% if item.unit_price %}
    Precio: ${{ item.unit_price|floatformat:2 }}{% endif %}
 {% endfor %}
-{% if total_amount %}
-────────────────────────────────────────────────────────────
-TOTAL: ${{ total_amount|floatformat:2 }}
-{% endif %}
 ────────────────────────────────────────────────────────────
 {% if message %}
 MENSAJE ACTUALIZADO

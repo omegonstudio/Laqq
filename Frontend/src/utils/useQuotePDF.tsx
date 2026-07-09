@@ -430,13 +430,6 @@ const QuotePDF = ({
           );
         })}
 
-        {/* TOTAL */}
-        <View style={s.totalRow}>
-          <Text style={s.totalBadge}>
-            Total: {formatCurrency(quote.total_amount)}
-          </Text>
-        </View>
-
         {/* CONDICIONES GENERALES */}
         <View
           style={{
