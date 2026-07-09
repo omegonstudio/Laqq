@@ -299,13 +299,39 @@ const QuotePDF = ({
                       </Text>
                     )}
                     {item.variant && (
-                      <Text style={s.itemVariant}>
-                        <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                          Variedad:{" "}
-                        </Text>
+                      <View>
+                        <Text style={s.itemVariant}>
+                          <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                            Variedad:{" "}
+                          </Text>
 
-                        {item.variant.code ? ` · ${item.variant.code}` : ""}
-                      </Text>
+                          {item.variant.code ? ` · ${item.variant.code}` : ""}
+                        </Text>
+                        {item.variant.technical_specs &&
+                          item.variant.technical_specs.length > 0 && (
+                            <View style={{ marginTop: 4 }}>
+                              {item.variant.technical_specs.map(
+                                (spec: { key: string; value: string }, i: number) => (
+                                  <Text
+                                    key={i}
+                                    style={{
+                                      fontSize: 8.5,
+                                      color: "#555",
+                                      lineHeight: 1.5,
+                                    }}
+                                  >
+                                    <Text
+                                      style={{ fontFamily: "Helvetica-Bold" }}
+                                    >
+                                      {spec.key}:{" "}
+                                    </Text>
+                                    {spec.value}
+                                  </Text>
+                                )
+                              )}
+                            </View>
+                          )}
+                      </View>
                     )}
                   </View>
                   {item.product.image_url && (
