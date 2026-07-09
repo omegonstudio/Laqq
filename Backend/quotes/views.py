@@ -32,7 +32,15 @@ class QuoteStateViewSet(viewsets.ModelViewSet):
     ordering = ['name']
 
 class QuoteViewSet(viewsets.ModelViewSet):
-    queryset = Quote.objects.all()
+    queryset = Quote.objects.all().select_related(
+        'contact', 'quote_type', 'state', 'user'
+    ).prefetch_related(
+        'quoteitem_set__product',
+        'quoteitem_set__product__brand',
+        'quoteitem_set__product__category',
+        'quoteitem_set__variant',
+        'quoteitem_set__variant__technical_specs',
+    )
     serializer_class = QuoteSerializer
     permission_classes = [CanCreateOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
