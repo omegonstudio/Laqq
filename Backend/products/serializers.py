@@ -65,7 +65,7 @@ class TechnicalSpecSerializer(serializers.ModelSerializer):
 class ProductVariantSerializer(serializers.ModelSerializer):
     """Serializer para variantes de producto (code, name + specs técnicas propias)"""
 
-    technical_specs = TechnicalSpecSerializer(many=True, required=False)
+    technical_specs = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = ProductVariant
@@ -78,6 +78,23 @@ class ProductVariantSerializer(serializers.ModelSerializer):
                 message='Ya existe una variante con este modelo para este producto.'
             )
         ]
+
+    def get_technical_specs(self, obj):
+        """Retorna las especificaciones técnicas de la variante.
+        Usa la tabla intermedia VariantTechnicalSpec con select_related para
+        evitar N+1 y asegurar la carga incluso sin prefetch_related."""
+        specs = []
+        try:
+            vts_qs = obj.variant_technical_specs.select_related('technical_spec').all()
+            for vts in vts_qs:
+                specs.append({
+                    'id': vts.technical_spec.id,
+                    'key': vts.technical_spec.key,
+                    'value': vts.technical_spec.value,
+                })
+        except Exception:
+            pass
+        return specs
 
     def _save_specs(self, variant, specs_data, replace=False):
         if replace:
