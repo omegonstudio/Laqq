@@ -231,18 +231,7 @@
                     </tr>
                     {% endfor %}
                 </tbody>
-                <tfoot>
-                    <tr class="total-row">
-                        <td colspan="4" class="text-right">TOTAL:</td>
-                        <td class="text-right">
-                            {% if total_amount %}
-                            ${{ total_amount|floatformat:2 }}
-                            {% else %}
-                            A cotizar
-                            {% endif %}
-                        </td>
-                    </tr>
-                </tfoot>
+                
             </table>
         </div>
 

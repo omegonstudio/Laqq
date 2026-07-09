@@ -32,8 +32,6 @@ PRODUCTOS SOLICITADOS
    Subtotal:  {% if item.subtotal %}${{ item.subtotal|floatformat:2 }}{% else %}-{% endif %}
 
 {% endfor %}
-────────────────────────────────────────────────────────────
-TOTAL:              {% if total_amount %}${{ total_amount|floatformat:2 }}{% else %}A cotizar{% endif %}
 ════════════════════════════════════════════════════════════
 {% if message %}
 MENSAJE DEL CLIENTE
