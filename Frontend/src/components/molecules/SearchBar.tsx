@@ -56,7 +56,7 @@ export default function SearchBar({
     if (!hasUserInteracted) return;
 
     if (debouncedQuery.trim()) {
-      productsApi.list({ search: debouncedQuery }).then((response) => {
+      productsApi.list({ search: debouncedQuery, is_active: true }).then((response) => {
         setFilteredProducts(response.results);
       });
 

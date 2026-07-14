@@ -51,6 +51,29 @@ class CategorySerializer(serializers.ModelSerializer):
         return attrs
 
 
+class TechnicalSpecListField(serializers.ListField):
+    """
+    Campo personalizado para 'technical_specs' en ProductVariantSerializer.
+
+    - En LECTURA: recibe el ManyRelatedManager (M2M) del modelo,
+      llama a .all() y construye la lista de dicts con id, key, value.
+    - En ESCRITURA: acepta lista de dicts con key/value.
+    """
+
+    def to_representation(self, data):
+        # data puede ser ManyRelatedManager (del modelo) o una lista
+        if hasattr(data, 'all'):
+            data = data.all()
+        return [
+            {
+                'id': str(item.id),
+                'key': item.key,
+                'value': item.value,
+            }
+            for item in data
+        ]
+
+
 class TechnicalSpecSerializer(serializers.ModelSerializer):
     """Serializer para especificaciones técnicas dinámicas (clave-valor)"""
 
@@ -65,7 +88,11 @@ class TechnicalSpecSerializer(serializers.ModelSerializer):
 class ProductVariantSerializer(serializers.ModelSerializer):
     """Serializer para variantes de producto (code, name + specs técnicas propias)"""
 
-    technical_specs = TechnicalSpecSerializer(many=True, required=False)
+    technical_specs = TechnicalSpecListField(
+        child=serializers.DictField(),
+        required=False,
+        allow_empty=True,
+    )
 
     class Meta:
         model = ProductVariant
@@ -78,6 +105,23 @@ class ProductVariantSerializer(serializers.ModelSerializer):
                 message='Ya existe una variante con este modelo para este producto.'
             )
         ]
+
+    def _get_technical_specs(self, obj):
+        """Retorna las especificaciones técnicas de la variante.
+        Usa la tabla intermedia VariantTechnicalSpec con select_related para
+        evitar N+1 y asegurar la carga incluso sin prefetch_related."""
+        specs = []
+        try:
+            vts_qs = obj.variant_technical_specs.select_related('technical_spec').all()
+            for vts in vts_qs:
+                specs.append({
+                    'id': str(vts.technical_spec.id),
+                    'key': vts.technical_spec.key,
+                    'value': vts.technical_spec.value,
+                })
+        except Exception:
+            pass
+        return specs
 
     def _save_specs(self, variant, specs_data, replace=False):
         if replace:

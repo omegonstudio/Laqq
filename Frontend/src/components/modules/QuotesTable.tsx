@@ -86,6 +86,36 @@ const QuotesTable = () => {
       sortable: true,
       render: (value: QuoteStateType) => convertQuotesState(value),
     },
+    {
+      key: "created_at",
+      label: "Creado",
+      sortable: true,
+      render: (value: string) =>
+        value
+          ? new Date(value).toLocaleDateString("es-AR", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "-",
+    },
+    {
+      key: "updated_at",
+      label: "Última modificación",
+      sortable: true,
+      render: (value: string) =>
+        value
+          ? new Date(value).toLocaleDateString("es-AR", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "-",
+    },
   ];
   const handleOpenDeleteModal = (product: QuoteRender) => {
     setPreviewQuote(product);
