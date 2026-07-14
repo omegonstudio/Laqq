@@ -42,6 +42,7 @@ import { fetchAllBrands } from "./store/brandSlice";
 import PageTicket from "./pages/backofficeClients";
 import TicketsPage from "./pages/TicketsPage";
 import LibreriaPage from "./pages/LibreriaPage";
+import SeoHead from "./components/seo/SeoHead";
 
 const queryClient = new QueryClient();
 const App = () => {
@@ -61,6 +62,7 @@ const App = () => {
           <Sonner />
           <CartProvider>
             <BrowserRouter>
+              <SeoHead />
               <ScrollToTop />
               <ScrollToHash />
               <Routes>

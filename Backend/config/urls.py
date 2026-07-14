@@ -11,17 +11,22 @@ from django.conf.urls.static import static
 
 
 api_info = openapi.Info(
-    title="Mi API",
+    title="LaQQ API",
     default_version='v1',
     description="Documentación API - Swagger",
     contact=openapi.Contact(email="dev@miempresa.com"),
 )
 
+# PRE-LAUNCH
+# Documentación API restringida a staff/admin (IsAdminUser).
+# Cambiar a: permission_classes=(permissions.AllowAny,)
+# SOLO si se desea docs públicas (no recomendado en internet abierto).
+# Antes del GO LIVE: preferir mantener IsAdminUser + ENABLE_API_DOCS=True.
 schema_view = get_schema_view(
     api_info,
-    public=True,
-    permission_classes=(permissions.AllowAny,),  # podes limitar cuando no DEBUG
-    patterns=[                                    
+    public=False,
+    permission_classes=(permissions.IsAdminUser,),
+    patterns=[
         path('users/', include('users.urls')),
         path('products/', include('products.urls')),
         path('accessories/', include('accessories.urls')),
@@ -29,9 +34,10 @@ schema_view = get_schema_view(
         path('quotes/', include('quotes.urls')),
         path('notes/', include('notes.urls')),
         path('tickets/', include('tickets.urls')),
-        path('attachments/', include('attachments.urls')),  
+        path('attachments/', include('attachments.urls')),
     ]
 )
+
 
 @api_view(['GET'])
 @permission_classes([permissions.AllowAny])
@@ -85,6 +91,7 @@ def api_root(request):
         },
     })
 
+
 urlpatterns = [
     path('', api_root, name='api-root'),
     path('admin/', admin.site.urls),
@@ -101,16 +108,24 @@ urlpatterns = [
     path('quotes/', include('quotes.urls')),
     path('notes/', include('notes.urls')),
     path('tickets/', include('tickets.urls')),
-
-    # If you want a single "api/" aggregator, uncomment the next line and create project-level api/urls.py
-    # path('api/', include('api.urls')),
-
-    # Swagger/OpenAPI endpoints:
-    path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
-    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
-    path('docs/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-docs-alias'),
 ]
+
+# PRE-LAUNCH
+# Swagger/ReDoc deshabilitados mientras ENABLE_API_DOCS=False (default).
+# GO LIVE / acceso interno:
+#   1. ENABLE_API_DOCS=True en .env
+#   2. Redeploy / reiniciar backend
+#   3. Acceder autenticado como staff/admin a /api/swagger/
+#
+# Para volver a docs 100% públicas (no recomendado):
+#   permission_classes=(permissions.AllowAny,) y public=True en schema_view.
+if settings.ENABLE_API_DOCS:
+    urlpatterns += [
+        path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+        path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+        path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+        path('docs/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-docs-alias'),
+    ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

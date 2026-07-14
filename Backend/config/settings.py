@@ -43,6 +43,12 @@ CSRF_TRUSTED_ORIGINS = [
     "https://laqq.omegon.com.ar",
 ]
 
+# PRE-LAUNCH (y recomendado también en producción):
+# Documentación OpenAPI (Swagger/ReDoc) deshabilitada por defecto.
+# GO LIVE / acceso interno: ENABLE_API_DOCS=True en .env
+# (requiere usuario staff/admin autenticado).
+ENABLE_API_DOCS = config('ENABLE_API_DOCS', default=False, cast=bool)
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -242,6 +248,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8081",
     "http://127.0.0.1:8081",
     "http://laqq.omegon.com.ar",
+    "https://laqq.omegon.com.ar",
 ]
 
 CORS_ALLOW_CREDENTIALS = True

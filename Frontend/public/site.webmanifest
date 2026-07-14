@@ -1,0 +1,23 @@
+{
+  "name": "La Química Quirúrgica",
+  "short_name": "LaQQ",
+  "description": "Equipo y material de laboratorio",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#0b1f2a",
+  "lang": "es-AR",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/logo-laqq.png",
+      "sizes": "272x64",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

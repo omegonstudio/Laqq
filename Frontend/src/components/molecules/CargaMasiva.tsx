@@ -4,6 +4,8 @@ import Modal from "../common/Modal";
 import { useBulkUploadProducts } from "@/hooks/useProducts";
 import { InfoIcon } from "lucide-react";
 import { BulkUploadResponse } from "@/types/types";
+import cargaMasivaTemplateUrl from "@/assets/templates/TablaCargaMasiva.xlsx?url";
+
 const CargaMasivaProducts = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -69,9 +71,8 @@ const CargaMasivaProducts = () => {
         {/* === TEMPLATE === */}
         {!result && (
           <a
-            href="/TablaCargaMasiva.xlsx"
-            target="_blank"
-            rel="noopener noreferrer"
+            href={cargaMasivaTemplateUrl}
+            download="TablaCargaMasiva.xlsx"
             className="flex items-center gap-2 text-primary cursor-pointer mb-4"
           >
             <span>Excel de ejemplo</span>
