@@ -279,3 +279,18 @@ export interface AttachmentUpdatePayload {
   attachable_type?: string;
   attachable_id?: string;
 }
+
+export interface ConsumiblesProduct {
+  id: string;
+
+  code: string;      // Artículo
+  name: string;      // Detalle
+
+  cas?: string;
+
+  sedronar?: boolean;
+
+  especificacion_pdf?: string;
+
+  hds_pdf?: string;
+}

@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import ProductGrid from "@/components/organisms/ProductGrid";
 import SearchBar from "@/components/molecules/SearchBar";
-import { Product } from "@/types/types";
+import { ConsumiblesProduct, Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchAllProducts, fetchProducts } from "@/store/productSlice";
 import { useProductFilters } from "@/hooks/useFilters";
 import { fetchAllCategories } from "@/store/categoriesSlice";
 import NavDropdown from "@/components/molecules/NavDropdown";
 import { Loader, Loader2 } from "lucide-react";
+import ConsumiblesList from "@/components/organisms/ConsumiblesList";
 
 const ProductsPage = () => {
   const { searchParams, setFilter, clearBrand, clearCategory } =
@@ -134,6 +135,10 @@ const ProductsPage = () => {
   const activeBrand = brands.find((b) => b.id === activeBrandId);
   const activeCategory = categories.find((b) => b.id === activeCategoryId);
 
+    const showConsumibles = activeCategory?.name === "Insumos";
+    console.log(activeCategory);
+    console.log(showConsumibles);
+
   return (
     <div className="py-5">
       <div className="container mx-auto px-4">
@@ -197,12 +202,21 @@ const ProductsPage = () => {
           </div>
         </div>
       </div>
-      <ProductGrid
-        products={allProducts}
-        hasMore={hasMore}
-        onLoadMore={handleLoadMore}
-        loading={loading}
-      />
+      {showConsumibles ? (
+  <ConsumiblesList
+    products={allProducts as unknown as ConsumiblesProduct[]}
+    hasMore={hasMore}
+    onLoadMore={handleLoadMore}
+    loading={loading}
+  />
+) : (
+  <ProductGrid
+    products={allProducts}
+    hasMore={hasMore}
+    onLoadMore={handleLoadMore}
+    loading={loading}
+  />
+)}
     </div>
   );
 };
