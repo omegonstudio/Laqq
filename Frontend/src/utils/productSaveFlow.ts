@@ -23,10 +23,14 @@ export const CreateProduct = async ({
   dispatch,
   formState,
   attachmentId,
+  espAttachmentId,
+  hdsAttachmentId,
 }: {
   dispatch: AppDispatch;
   formState: ProductFormState;
   attachmentId?: string | null;
+  espAttachmentId?: string | null;
+  hdsAttachmentId?: string | null;
 }): Promise<Product> => {
   const payload: ProductCreateRequest = {
     image_attachment: attachmentId,
@@ -37,6 +41,11 @@ export const CreateProduct = async ({
     is_active: formState.is_active,
     related_product_ids: formState.related.map((r) => r.id),
     is_featured: formState.is_featured,
+    articulo: formState.articulo,
+    cas: formState.cas,
+    sedronar: formState.sedronar,
+    esp_attachment_id: espAttachmentId ?? formState.esp_attachment_id,
+    hds_attachment_id: hdsAttachmentId ?? formState.hds_attachment_id,
     // Solo incluir brand y category si el producto está activo
     ...(formState.is_active && {
       brand_id: formState.brand,
@@ -88,17 +97,23 @@ export const saveProductEntity = async ({
   formState,
   initialData,
   attachmentId,
+  espAttachmentId,
+  hdsAttachmentId,
 }: {
   dispatch: AppDispatch;
   formState: ProductFormState;
   initialData?: Product | null;
   attachmentId?: string | null;
+  espAttachmentId?: string | null;
+  hdsAttachmentId?: string | null;
 }): Promise<Product> => {
   // ===== UPDATE =====
   const updateRequest: ProductUpdateRequest = formStateToUpdateRequest(
     formState,
     initialData,
-    attachmentId
+    attachmentId,
+    espAttachmentId,
+    hdsAttachmentId
   );
 
   return dispatch(

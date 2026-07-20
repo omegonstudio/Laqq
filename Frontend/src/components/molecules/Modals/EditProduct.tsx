@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Button from "@/components/atoms/Button";
 import InputField from "@/components/atoms/InputField";
-import { Attachment, Product, ProductFormState } from "@/types/types";
+import { Attachment, Product, ProductFormState, SedronarOption } from "@/types/types";
 import {
   Select,
   SelectContent,
@@ -35,7 +35,56 @@ import ProductVariantsTable from "@/components/molecules/ProductVariantsTable";
 import type { Variants } from "@/components/molecules/ProductVariantsTable";
 import DescriptionEditor from "@/components/atoms/DescriptionProductEditor";
 import { CascadeCategorySelect } from "@/components/atoms/FlatCategories";
-import { Label } from "recharts";
+
+const SEDRONAR_OPTIONS: SedronarOption[] = [
+  "-",
+  "Lista 1",
+  "Lista 2",
+  "Lista 3",
+  "Lista 4",
+];
+
+const manageProductAttachment = async (
+  initialId: string | null | undefined,
+  currentFile: File | null,
+  currentAttachmentId: string | null | undefined,
+  role: Attachment["role"]
+): Promise<string | null | undefined> => {
+  const userRemoved = initialId && !currentFile && !currentAttachmentId;
+  if (userRemoved) {
+    await attachmentsApi.remove(initialId);
+    return null;
+  }
+  if (!initialId && currentFile) {
+    const attachment = await attachmentsApi.create({
+      file: currentFile,
+      role,
+      attachable_type: "product",
+    });
+    return attachment.id;
+  }
+  if (initialId && currentFile) {
+    const attachment = await attachmentsApi.update(initialId, {
+      file: currentFile,
+      role,
+    });
+    return attachment.id;
+  }
+  return undefined;
+};
+
+const isCategoryUnderInsumos = (
+  categoryId: string,
+  categories: { id: string; name: string; parent?: string }[]
+): boolean => {
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  let current = byId.get(categoryId);
+  while (current) {
+    if (current.name === "Insumos") return true;
+    current = current.parent ? byId.get(current.parent) : undefined;
+  }
+  return false;
+};
 
 interface ModalProductProps {
   isOpen: boolean;
@@ -99,11 +148,14 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   const dispatch = useAppDispatch();
   const { list: products } = useAppSelector((state) => state.products);
   const { list: brands } = useAppSelector((state) => state.brands);
+  const { list: categories } = useAppSelector((state) => state.categories);
 
   const [localState, setLocalState] = useState<ProductFormState>(
     getEmptyProductFormState()
   );
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [espPreview, setEspPreview] = useState<string | null>(null);
+  const [hdsPreview, setHdsPreview] = useState<string | null>(null);
   const [carrouselPreview, setCarrouselPreview] = useState<Array<{
     url: string;
     type: "existing" | "new";
@@ -148,17 +200,23 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         }))
       );
       setImagePreview(initialData.image_url);
+      setEspPreview(initialData.esp_url ?? null);
+      setHdsPreview(initialData.hds_url ?? null);
     } else {
       setLocalState({
         ...getEmptyProductFormState(),
         variants: [],
       });
       setCarrouselPreview(null);
+      setEspPreview(null);
+      setHdsPreview(null);
     }
   }, [initialData, isNew]);
   useEffect(() => {
     if (!isOpen) {
       setImagePreview(null);
+      setEspPreview(null);
+      setHdsPreview(null);
       setSelectedRelated("");
       setCarrouselDeleteIds([]);
       setActiveTab("general");
@@ -187,6 +245,14 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         skipBrandAndCategory: !localState.is_active,
       }),
     [localState]
+  );
+
+  const isInsumosCategory = useMemo(
+    () =>
+      localState.category
+        ? isCategoryUnderInsumos(localState.category, categories)
+        : false,
+    [localState.category, categories]
   );
   // useEffect(() => {
   // }, [initialData, localState]);
@@ -230,8 +296,29 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       JSON.stringify(normalizeVariants(localState.variants || [])) !==
       JSON.stringify(normalizeVariants(initialData?.variants || []));
 
+    const insumoFieldsChanged =
+      localState.articulo !== (initialData.articulo ?? "") ||
+      localState.cas !== (initialData.cas ?? "") ||
+      localState.sedronar !== (initialData.sedronar ?? "-");
+
+    const espChanged =
+      localState.esp_file !== null ||
+      localState.esp_attachment_id !==
+        (initialData.esp_attachment_id ?? null);
+
+    const hdsChanged =
+      localState.hds_file !== null ||
+      localState.hds_attachment_id !==
+        (initialData.hds_attachment_id ?? null);
+
     return (
-      productChanged || imageChanged || attachmentsChanged || variantsChanged
+      productChanged ||
+      imageChanged ||
+      attachmentsChanged ||
+      variantsChanged ||
+      insumoFieldsChanged ||
+      espChanged ||
+      hdsChanged
     );
   }, [localState, initialData, carrouselDeleteIds]);
 
@@ -253,6 +340,23 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         return;
       }
 
+      if (isInsumosCategory) {
+        if (!localState.articulo?.trim()) {
+          toast({
+            title: "El campo Artículo es obligatorio para Insumos",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (!localState.cas?.trim()) {
+          toast({
+            title: "El campo CAS es obligatorio para Insumos",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
       let product: Product;
 
       if (isNew) {
@@ -269,12 +373,36 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             attachmentId = attachment.id;
           }
 
+          let espAttachmentId: string | null | undefined =
+            localState.esp_attachment_id;
+          if (localState.esp_file) {
+            const attachment = await attachmentsApi.create({
+              file: localState.esp_file,
+              role: "datasheet",
+              attachable_type: "product",
+            });
+            espAttachmentId = attachment.id;
+          }
+
+          let hdsAttachmentId: string | null | undefined =
+            localState.hds_attachment_id;
+          if (localState.hds_file) {
+            const attachment = await attachmentsApi.create({
+              file: localState.hds_file,
+              role: "manual",
+              attachable_type: "product",
+            });
+            hdsAttachmentId = attachment.id;
+          }
+
           product = await CreateProduct({
             dispatch,
             formState: {
               ...localState,
             },
             attachmentId: attachmentId,
+            espAttachmentId,
+            hdsAttachmentId,
           });
           const variantsToCreate = (localState.variants || []).filter((v) =>
             v.code?.trim()
@@ -408,6 +536,30 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             });
           }
 
+          // 2b. GESTIÓN DE ESP / HDS
+          let espAttachmentId: string | null | undefined;
+          let hdsAttachmentId: string | null | undefined;
+          try {
+            espAttachmentId = await manageProductAttachment(
+              initialData.esp_attachment_id,
+              localState.esp_file,
+              localState.esp_attachment_id,
+              "datasheet"
+            );
+            hdsAttachmentId = await manageProductAttachment(
+              initialData.hds_attachment_id,
+              localState.hds_file,
+              localState.hds_attachment_id,
+              "manual"
+            );
+          } catch (insumoFileError) {
+            console.error("Error gestionando documentos de insumo:", insumoFileError);
+            toast({
+              title: "Error al actualizar documentación del insumo",
+              variant: "destructive",
+            });
+          }
+
           // 3. ACTUALIZAR PRODUCTO
           const updatedFormState = { ...localState };
 
@@ -416,6 +568,8 @@ const ModalProduct: React.FC<ModalProductProps> = ({
             formState: updatedFormState,
             initialData: initialData,
             attachmentId: attachmentId,
+            espAttachmentId,
+            hdsAttachmentId,
           });
           await syncVariants(
             initialData.id,
@@ -485,6 +639,77 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       image_attachment_id: null,
     });
     setImagePreview(null);
+  };
+
+  const handleInsumoFile = (
+    selectedFile: File | null,
+    field: "esp_file" | "hds_file",
+    setPreview: (url: string | null) => void
+  ) => {
+    if (selectedFile) {
+      setLocalState((prev) => ({ ...prev, [field]: selectedFile }));
+      setPreview(URL.createObjectURL(selectedFile));
+    } else {
+      setLocalState((prev) => ({ ...prev, [field]: null }));
+      setPreview(null);
+    }
+  };
+
+  const handleRemoveInsumoFile = (
+    fileField: "esp_file" | "hds_file",
+    attachmentField: "esp_attachment_id" | "hds_attachment_id",
+    setPreview: (url: string | null) => void
+  ) => {
+    setLocalState((prev) => ({
+      ...prev,
+      [fileField]: null,
+      [attachmentField]: null,
+    }));
+    setPreview(null);
+  };
+
+  const renderDocumentPreview = (
+    preview: string | null,
+    label: string,
+    onRemove: () => void
+  ) => {
+    if (!preview) return null;
+    const isPdf =
+      preview.toLowerCase().endsWith(".pdf") ||
+      preview.startsWith("blob:") ||
+      preview.includes("application/pdf");
+
+    return (
+      <div className="relative inline-block mt-2">
+        {isPdf ? (
+          <div className="flex items-center justify-center w-32 h-32 rounded-lg border bg-gray-100 text-sm font-medium text-gray-500">
+            PDF
+          </div>
+        ) : (
+          <img
+            src={preview}
+            alt={label}
+            className="w-32 h-32 object-cover rounded-lg border-2 border-gray-100"
+          />
+        )}
+        <a
+          href={preview}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-xs text-primary mt-1 truncate max-w-32"
+        >
+          Ver archivo
+        </a>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
+          title="Eliminar archivo"
+        >
+          ×
+        </button>
+      </div>
+    );
   };
 
   const handleRemoveCarouselItem = (index: number) => {
@@ -725,6 +950,110 @@ const ModalProduct: React.FC<ModalProductProps> = ({
                 </div>
               )}
             </div>
+
+            {isInsumosCategory && (
+              <>
+                <div className="space-y-4 pt-2">
+                  <h3 className="text-lg font-medium">Información del Insumo</h3>
+                  <div className="flex gap-5">
+                    <div>
+                      <label className="text-sm font-medium">
+                        Artículo
+                        <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <InputField
+                        label=""
+                        value={localState.articulo ?? ""}
+                        onChange={(e) =>
+                          setLocalState({ ...localState, articulo: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">
+                        CAS
+                        <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <InputField
+                        label=""
+                        value={localState.cas ?? ""}
+                        onChange={(e) =>
+                          setLocalState({ ...localState, cas: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="w-[50%]">
+                      <label className="text-sm font-medium">SEDRONAR</label>
+                      <Select
+                        value={localState.sedronar ?? "-"}
+                        onValueChange={(value: SedronarOption) =>
+                          setLocalState({ ...localState, sedronar: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar lista" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SEDRONAR_OPTIONS.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Documentación</h3>
+                  <div className="grid grid-cols-2 gap-10">
+                    <div>
+                      <UploadFile
+                        label="Especificaciones (ESP)"
+                        allowedTypes={["application/pdf"]}
+                        helpText="Click o arrastrá un archivo PDF"
+                        onFileChange={(file) =>
+                          handleInsumoFile(
+                            file as File | null,
+                            "esp_file",
+                            setEspPreview
+                          )
+                        }
+                      />
+                      {renderDocumentPreview(espPreview, "ESP", () =>
+                        handleRemoveInsumoFile(
+                          "esp_file",
+                          "esp_attachment_id",
+                          setEspPreview
+                        )
+                      )}
+                    </div>
+                    <div>
+                      <UploadFile
+                        label="Hoja de Seguridad (HDS)"
+                        allowedTypes={["application/pdf"]}
+                        helpText="Click o arrastrá un archivo PDF"
+                        onFileChange={(file) =>
+                          handleInsumoFile(
+                            file as File | null,
+                            "hds_file",
+                            setHdsPreview
+                          )
+                        }
+                      />
+                      {renderDocumentPreview(hdsPreview, "HDS", () =>
+                        handleRemoveInsumoFile(
+                          "hds_file",
+                          "hds_attachment_id",
+                          setHdsPreview
+                        )
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             <br />
 

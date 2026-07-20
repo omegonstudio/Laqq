@@ -15,7 +15,7 @@ export const accessories: Accessory[] = [
     marca: "Thermo Fisher",
     modelo: "TS-100",
     descripcion: "Tapa para tubo centrífuga 50ml",
-    categoria: "Consumibles",
+    categoria: "insumos",
   },
   {
     id: "2",

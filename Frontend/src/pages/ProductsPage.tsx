@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import ProductGrid from "@/components/organisms/ProductGrid";
 import SearchBar from "@/components/molecules/SearchBar";
-import { ConsumiblesProduct, Product } from "@/types/types";
+import { insumosProduct, Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchAllProducts, fetchProducts } from "@/store/productSlice";
 import { useProductFilters } from "@/hooks/useFilters";
 import { fetchAllCategories } from "@/store/categoriesSlice";
 import NavDropdown from "@/components/molecules/NavDropdown";
 import { Loader, Loader2 } from "lucide-react";
-import ConsumiblesList from "@/components/organisms/ConsumiblesList";
+import insumosList from "@/components/organisms/insumosList";
 
 const ProductsPage = () => {
   const { searchParams, setFilter, clearBrand, clearCategory } =
@@ -135,9 +135,9 @@ const ProductsPage = () => {
   const activeBrand = brands.find((b) => b.id === activeBrandId);
   const activeCategory = categories.find((b) => b.id === activeCategoryId);
 
-    const showConsumibles = activeCategory?.name === "Insumos";
+    const showinsumos = activeCategory?.name === "Insumos";
     console.log(activeCategory);
-    console.log(showConsumibles);
+    console.log(showinsumos);
 
   return (
     <div className="py-5">
@@ -202,9 +202,9 @@ const ProductsPage = () => {
           </div>
         </div>
       </div>
-      {showConsumibles ? (
-  <ConsumiblesList
-    products={allProducts as unknown as ConsumiblesProduct[]}
+      {showinsumos ? (
+  <insumosList
+    products={allProducts as unknown as insumosProduct[]}
     hasMore={hasMore}
     onLoadMore={handleLoadMore}
     loading={loading}

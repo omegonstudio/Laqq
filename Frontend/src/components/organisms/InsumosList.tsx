@@ -1,23 +1,23 @@
-import { ConsumiblesProduct } from "@/types/types";
 import { Loader2, PackageSearch, FileText, ShieldCheck, FileDown, Files, } from "lucide-react";
 import Button from "../atoms/Button";
 import { useNavigate } from "react-router-dom";
+import { Product } from "@/types/types";
 
-interface ConsumiblesListProps {
-  products: ConsumiblesProduct[];
+interface insumosListProps {
+  products: Product[];
   title?: string;
   hasMore?: boolean;
   onLoadMore?: () => void;
   loading?: boolean;
 }
 
-const ConsumiblesList = ({
+const insumosList = ({
   products,
   title,
   hasMore = false,
   onLoadMore,
   loading = false,
-}: ConsumiblesListProps) => {
+}: insumosListProps) => {
   if (loading && products.length === 0) {
     return (
       <div className="container mx-auto px-4 py-16 flex justify-center">
@@ -31,7 +31,7 @@ const ConsumiblesList = ({
       <div className="container mx-auto px-4 py-16 text-center">
         <PackageSearch className="mx-auto w-12 h-12 text-muted-foreground mb-4" />
         <p className="text-xl font-semibold">
-          No se encontraron consumibles
+          No se encontraron insumos
         </p>
       </div>
     );
@@ -75,7 +75,7 @@ const ConsumiblesList = ({
                     onClick={() => navigate(`/product/${product.id}`)}
                   >
                   <td className="px-4 py-4 font-medium">
-                    {product.code}
+                    {product.articulo}
                   </td>
 
                   <td className="px-4 py-4">
@@ -95,9 +95,9 @@ const ConsumiblesList = ({
                   </td>
 
                   <td className="px-4 py-4 text-center">
-                  {product.especificacion_pdf ? (
+                  {product.esp_url ? (
                     <a
-                      href={product.especificacion_pdf}
+                      href={product.esp_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
@@ -113,9 +113,9 @@ const ConsumiblesList = ({
                 </td>
 
                       <td className="px-4 py-4 text-center">
-                  {product.hds_pdf ? (
+                  {product.hds_url ? (
                     <a
-                      href={product.hds_pdf}
+                      href={product.hds_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
@@ -153,7 +153,7 @@ const ConsumiblesList = ({
                   Cargando...
                 </>
               ) : (
-                "Ver más consumibles"
+                "Ver más insumos"
               )}
             </Button>
 
@@ -165,4 +165,4 @@ const ConsumiblesList = ({
   );
 };
 
-export default ConsumiblesList;
+export default insumosList;
