@@ -111,7 +111,7 @@ const CompanySection = () => {
           <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
             {[
               { title: "Equipos", img: "/instrumental.png" },
-              { title: "insumos", img: "/insumos.png" },
+              { title: "Insumos", img: "/insumos.png" },
               { title: "Equipamiento para procesos", img: "/procesos.png" },
               { title: "Mobiliario", img: "/header.png" }, // cambiar si tenés imagen
               { title: "Servicio técnico", img: "/serviciotecnico.png" },
