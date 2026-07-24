@@ -40,6 +40,12 @@ COLUMN_NAME_MAP = {
     'codigo_variante':      'variant_code',  # compatibilidad hacia atrás
     'productos_relacionados': 'related_product_codes',
     'tiene_specs':          'is_specs_column',
+    # --- Campos específicos de Consumibles (Etapa 2) ---
+    'articulo':             'articulo',
+    'cas':                  'cas',
+    'sedronar':             'sedronar',
+    'archivo_esp':          'esp_file_name',
+    'archivo_hds':          'hds_file_name',
 }
 
 # Columnas ignoradas al importar (ej: columna "error" del Excel de errores descargado)
@@ -394,7 +400,7 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
       - true/1: NO crea Product, solo crea un ProductVariant. Requiere que exista un Product con ese product_code.
 
     Categorías:
-      - category_level_0: obligatorio si hay categoría. Solo acepta: insumos, procesos, equipos, mobiliario
+      - category_level_0: obligatorio si hay categoría. Solo acepta: consumibles, procesos, equipos, mobiliario
       - category_level_1: opcional, se crea si no existe
       - category_level_2: opcional, se crea si no existe (requiere level_1)
     image_name: nombre del archivo de imagen en la librería (ej: vaso.jpg)
@@ -511,6 +517,8 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
         'updated_variants': 0,
         'created_technical_specs': 0,
         'created_relations': 0,
+        'linked_esp_pdfs': 0,
+        'linked_hds_pdfs': 0,
         'errors': errors,
     }
 
@@ -555,6 +563,50 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                             'row_data': original_row_by_idx.get(first_row_idx, {}),
                         })
 
+                # PDFs de insumo (ESP / HDS) por nombre de archivo.
+                # Mismo patrón que image_name: si la celda viene vacía, se preserva
+                # el attachment existente en BD. Si viene con nombre y no se
+                # encuentra, se agrega warning a summary['errors'].
+                first_row_idx = data['rows'][0][0]
+
+                esp_file_name = (first_row.get('esp_file_name') or '').strip()
+                esp_attachment_provided = bool(esp_file_name)
+                esp_attachment = None
+                if esp_file_name and not skip_downloads:
+                    att = _get_attachment_by_name(esp_file_name)
+                    if att:
+                        esp_attachment = att
+                        summary['linked_esp_pdfs'] += 1
+                    else:
+                        logger.warning(
+                            "PDF ESP '%s' no encontrado en la librería para el producto '%s'",
+                            esp_file_name, product_key,
+                        )
+                        summary['errors'].append({
+                            'row': first_row_idx,
+                            'error': f'Fila {first_row_idx}: PDF ESP "{esp_file_name}" no encontrado en la librería de archivos — subí el PDF antes de importar o dejá el campo vacío.',
+                            'row_data': original_row_by_idx.get(first_row_idx, {}),
+                        })
+
+                hds_file_name = (first_row.get('hds_file_name') or '').strip()
+                hds_attachment_provided = bool(hds_file_name)
+                hds_attachment = None
+                if hds_file_name and not skip_downloads:
+                    att = _get_attachment_by_name(hds_file_name)
+                    if att:
+                        hds_attachment = att
+                        summary['linked_hds_pdfs'] += 1
+                    else:
+                        logger.warning(
+                            "PDF HDS '%s' no encontrado en la librería para el producto '%s'",
+                            hds_file_name, product_key,
+                        )
+                        summary['errors'].append({
+                            'row': first_row_idx,
+                            'error': f'Fila {first_row_idx}: PDF HDS "{hds_file_name}" no encontrado en la librería de archivos — subí el PDF antes de importar o dejá el campo vacío.',
+                            'row_data': original_row_by_idx.get(first_row_idx, {}),
+                        })
+
                 # lookup product by product_code if provided, else by name+brand
                 product_lookup = {}
                 provided_code = (first_row.get('product_code') or '').strip()
@@ -579,6 +631,19 @@ def import_products_csv(fileobj, *, encoding='utf-8', create_missing=True, skip_
                 # Si el campo está vacío, preservar la imagen existente en el producto.
                 if image_attachment_provided:
                     product_vals['image_attachment'] = image_attachment
+
+                # Campos de texto de insumo: si la celda viene vacía, preservar
+                # el valor existente (mismo patrón que image_name).
+                for field in ('articulo', 'cas', 'sedronar'):
+                    cell_value = (first_row.get(field) or '').strip()
+                    if cell_value:
+                        # sedronar tiene default '-' en el modelo, aceptamos '-' como valor válido
+                        product_vals[field] = cell_value
+                # PDFs de insumo: si la celda viene vacía, preservar attachment existente.
+                if esp_attachment_provided:
+                    product_vals['esp_attachment'] = esp_attachment
+                if hds_attachment_provided:
+                    product_vals['hds_attachment'] = hds_attachment
 
                 product, created = Product.objects.update_or_create(defaults=product_vals, **product_lookup)
                 if created:

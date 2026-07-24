@@ -31,7 +31,7 @@ const insumosList = ({
       <div className="container mx-auto px-4 py-16 text-center">
         <PackageSearch className="mx-auto w-12 h-12 text-muted-foreground mb-4" />
         <p className="text-xl font-semibold">
-          No se encontraron insumos
+          No se encontraron consumibles
         </p>
       </div>
     );
@@ -153,7 +153,7 @@ const insumosList = ({
                   Cargando...
                 </>
               ) : (
-                "Ver más insumos"
+                "Ver más consumibles"
               )}
             </Button>
 

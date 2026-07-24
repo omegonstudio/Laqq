@@ -73,14 +73,14 @@ const manageProductAttachment = async (
   return undefined;
 };
 
-const isCategoryUnderInsumos = (
+const isCategoryUnderConsumibles = (
   categoryId: string,
   categories: { id: string; name: string; parent?: string }[]
 ): boolean => {
   const byId = new Map(categories.map((c) => [c.id, c]));
   let current = byId.get(categoryId);
   while (current) {
-    if (current.name === "Insumos") return true;
+    if (current.name === "Consumibles") return true;
     current = current.parent ? byId.get(current.parent) : undefined;
   }
   return false;
@@ -247,10 +247,10 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     [localState]
   );
 
-  const isInsumosCategory = useMemo(
+  const isConsumiblesCategory = useMemo(
     () =>
       localState.category
-        ? isCategoryUnderInsumos(localState.category, categories)
+        ? isCategoryUnderConsumibles(localState.category, categories)
         : false,
     [localState.category, categories]
   );
@@ -340,17 +340,17 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         return;
       }
 
-      if (isInsumosCategory) {
+      if (isConsumiblesCategory) {
         if (!localState.articulo?.trim()) {
           toast({
-            title: "El campo Artículo es obligatorio para Insumos",
+            title: "El campo Artículo es obligatorio para Consumibles",
             variant: "destructive",
           });
           return;
         }
         if (!localState.cas?.trim()) {
           toast({
-            title: "El campo CAS es obligatorio para Insumos",
+            title: "El campo CAS es obligatorio para Consumibles",
             variant: "destructive",
           });
           return;
@@ -951,7 +951,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
               )}
             </div>
 
-            {isInsumosCategory && (
+            {isConsumiblesCategory && (
               <>
                 <div className="space-y-4 pt-2">
                   <h3 className="text-lg font-medium">Información del Insumo</h3>

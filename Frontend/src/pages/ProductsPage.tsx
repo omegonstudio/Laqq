@@ -135,7 +135,7 @@ const ProductsPage = () => {
   const activeBrand = brands.find((b) => b.id === activeBrandId);
   const activeCategory = categories.find((b) => b.id === activeCategoryId);
 
-    const showinsumos = activeCategory?.name === "Insumos";
+    const showinsumos = activeCategory?.name === "Consumibles";
     console.log(activeCategory);
     console.log(showinsumos);
 
