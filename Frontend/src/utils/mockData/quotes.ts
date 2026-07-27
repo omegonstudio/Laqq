@@ -30,7 +30,7 @@ export const mockQuotes: BackofficeQuote[] = [
     email: "compras@hospitalcentral.cl",
     usuario: "Pedro Ruiz",
     fecha: "2024-01-14",
-    tipo: "Insumos",
+    tipo: "Consumibles",
     estado: "Enviada"
   },
   {
