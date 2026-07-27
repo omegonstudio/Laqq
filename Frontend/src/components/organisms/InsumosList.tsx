@@ -87,11 +87,7 @@ const insumosList = ({
                   </td>
 
                   <td className="px-4 py-4 text-center">
-                    {product.sedronar ? (
-                      <ShieldCheck className="mx-auto w-5 h-5 text-green-600" />
-                    ) : (
-                      "-"
-                    )}
+                    {product.sedronar || "-"}
                   </td>
 
                   <td className="px-4 py-4 text-center">
