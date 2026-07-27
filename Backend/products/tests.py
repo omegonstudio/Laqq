@@ -458,7 +458,7 @@ class BulkUploadInsumoTestCase(APITestCase):
         wb.save(buf)
         buf.seek(0)
         return SimpleUploadedFile(
-            'consumibles_test.xlsx',
+            'insumos_test.xlsx',
             buf.read(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         )

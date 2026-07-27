@@ -137,7 +137,7 @@ await fetch(`/api/quotes/list/${quoteId}/`, {
   ```json
   { "detail": "No se pueden eliminar las categorías principales (nivel 0)." }
   ```
-  (Esto protege a las 4 categorías base: Insumos, Equipamientos/Equipos, Mobiliario, Procesos — la UI debería deshabilitar o mostrar mensaje al intentar borrar/editar el padre de estas.)
+  (Esto protege a las 4 categorías base: Consumibles, Equipamientos/Equipos, Mobiliario, Procesos — la UI debería deshabilitar o mostrar mensaje al intentar borrar/editar el padre de estas.)
 
 ---
 

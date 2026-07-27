@@ -8,7 +8,7 @@ import { useProductFilters } from "@/hooks/useFilters";
 import { fetchAllCategories } from "@/store/categoriesSlice";
 import NavDropdown from "@/components/molecules/NavDropdown";
 import { Loader, Loader2 } from "lucide-react";
-import InsumosList from "@/components/organisms/InsumosList";
+import ConsumiblesList from "@/components/organisms/ConsumiblesList";
 
 const ProductsPage = () => {
   const { searchParams, setFilter, clearBrand, clearCategory } =
@@ -203,7 +203,7 @@ const ProductsPage = () => {
         </div>
       </div>
       {showinsumos ? (
-  <InsumosList
+  <ConsumiblesList
     products={allProducts as unknown as insumosProduct[]}
     hasMore={hasMore}
     onLoadMore={handleLoadMore}

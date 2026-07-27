@@ -1,10 +1,10 @@
-# 📋 Análisis de Impacto y Factibilidad: Insumos como Subtipo de Producto
+# 📋 Análisis de Impacto y Factibilidad: Consumibles como Subtipo de Producto
 
 ## 1. Resumen Ejecutivo
 
-**Feature:** Soportar "insumos" (consumibles/supplies) dentro del modelo `Product` existente, usando la categoría raíz como discriminador natural, más campos específicos opcionales, y una experiencia de UI adaptada.
+**Feature:** Soportar "consumibles" (consumibles/supplies) dentro del modelo `Product` existente, usando la categoría raíz como discriminador natural, más campos específicos opcionales, y una experiencia de UI adaptada.
 
-**Contexto de negocio:** Los "insumos" no son una entidad diferente — son simplemente otro tipo de producto que se vende (equipos e insumos para laboratorios químicos). Llamarlos "insumos" es una nomenclatura comercial, no una distinción ontológica.
+**Contexto de negocio:** Los "consumibles" no son una entidad diferente — son simplemente otro tipo de producto que se vende (equipos e consumibles para laboratorios químicos). Llamarlos "consumibles" es una nomenclatura comercial, no una distinción ontológica.
 
 **Complejidad general:** ✅ **Media-baja** (~1 semana de desarrollo en paralelo Backend + Frontend)
 
@@ -32,7 +32,7 @@
 
 | App | Archivo | Impacto |
 |-----|---------|---------|
-| **Quotes** | `QuoteItem.product = FK(Product)` | 🟢 **Nulo** — los insumos **son** productos, no hay nada que cambiar |
+| **Quotes** | `QuoteItem.product = FK(Product)` | 🟢 **Nulo** — los consumibles **son** productos, no hay nada que cambiar |
 | **Dashboard** | `config/dashboard.py` | 🟢 Bajo - Solo suma counts |
 | **Tickets** | `models.py` | 🟢 Bajo - Referencia a producto es textual |
 | **Attachments** | `models.py` (GenericFK) | 🟢 Bajo - Ya soporta cualquier modelo via ContentType |
@@ -47,14 +47,14 @@
 | `src/utils/productConverters.ts` | ✅ Ya mapea los campos de API a form state |
 | `src/utils/productSaveFlow.ts` | ✅ Ya envía los campos al backend |
 | `src/components/molecules/Modals/EditProduct.tsx` | ✅ Ya renderiza los campos condicionalmente si es insumo |
-| `src/components/organisms/InsumosList.tsx` | ✅ Ya muestra la tabla con columnas Artículo, CAS, Sedronar, ESP, HDS |
+| `src/components/organisms/ConsumiblesList.tsx` | ✅ Ya muestra la tabla con columnas Artículo, CAS, Sedronar, ESP, HDS |
 
 ---
 
 ## 3. Opciones de Diseño
 
 > ⚠️ Las Opciones A, B y C fueron analizadas en el contexto original (crear un modelo separado).
-> La **Opción D** es el enfoque refinado adoptado tras entender que los "insumos" son, ontológicamente, productos.
+> La **Opción D** es el enfoque refinado adoptado tras entender que los "consumibles" son, ontológicamente, productos.
 
 ### Opción A: Modelo separado (`Insumo`) en nueva app `supplies`
 ✅ Aislamiento total, migraciones independientes, sin riesgo de romper `Product`  
@@ -71,12 +71,12 @@
 📐 No recomendada
 
 ### Opción D ✅ (RECOMENDADA): Un solo modelo `Product` con categoría raíz como discriminador
-✅ Sin modelo nuevo — los insumos **son** productos  
+✅ Sin modelo nuevo — los consumibles **son** productos  
 ✅ Sin impacto en Quotes (`QuoteItem.product` sigue siendo FK a `Product`)  
 ✅ Sin impacto en Attachments (mismo `attachable_type='product'`)  
 ✅ Sin impacto en Dashboard, Tickets, búsquedas, filtros  
 ✅ Sin duplicación de lógica futura  
-✅ Categoría raíz `"insumos"` ya existe en el sistema de categorías y se valida en el importador  
+✅ Categoría raíz `"consumibles"` ya existe en el sistema de categorías y se valida en el importador  
 ✅ Solo se agregan campos opcionales (`articulo`, `cas`, `sedronar`, `esp_attachment`, `hds_attachment`) + una cache `root_category` para filtrado eficiente  
 📐 **Recomendada por: menor riesgo, menor esfuerzo, máxima coherencia semántica**
 
@@ -92,7 +92,7 @@
 # Cache de categoría raíz para filtrado eficiente
 root_category = models.CharField(max_length=100, blank=True, default='')
 
-# Campos específicos de insumos (todos opcionales)
+# Campos específicos de consumibles (todos opcionales)
 articulo = models.CharField(max_length=100, blank=True, default='')
 cas = models.CharField(max_length=50, blank=True, default='')
 sedronar = models.CharField(max_length=20, blank=True, default='-')
@@ -154,7 +154,7 @@ root_category = django_filters.CharFilter(
 )
 ```
 
-Endpoint: `GET /products/list/?root_category=insumos`
+Endpoint: `GET /products/list/?root_category=consumibles`
 
 ### Backend — Admin (`admin.py`)
 
@@ -162,14 +162,14 @@ Agregar `root_category` a `list_display` y `list_filter` de `ProductAdmin`.
 
 ### Backend — Cotizaciones (Quotes)
 
-**🟢 Sin impacto.** Los insumos **son** productos. `QuoteItem.product` sigue siendo FK a `Product`.
+**🟢 Sin impacto.** Los consumibles **son** productos. `QuoteItem.product` sigue siendo FK a `Product`.
 No se requiere ningún cambio en Quotes, Attachments, Tickets ni Dashboard.
 
 ### Frontend
 
 **✅ Ya implementado.** El frontend ya:
 - Incluye los tipos `articulo`, `cas`, `sedronar`, `esp_attachment_id`, `hds_attachment_id`
-- Renderiza los campos condicionales en el modal de edición (solo si la categoría es "Insumos")
+- Renderiza los campos condicionales en el modal de edición (solo si la categoría es "Consumibles")
 - Muestra la tabla con columnas Artículo, CAS, Sedronar, ESP, HDS
 - Maneja la subida de archivos PDF y su referencia por UUID
 
@@ -181,10 +181,10 @@ No se requiere ningún cambio en Quotes, Attachments, Tickets ni Dashboard.
 |----------|----------|---------------|
 | **Campos fijos o JSONField?** | Campos concretos vs insumo_data JSONField | **Campos concretos** - solo 5 campos, dan integridad referencial |
 | **SEDRONAR como opciones fijas?** | CharField libre vs choices | **CharField libre** - el frontend ya maneja el dropdown |
-| **Validar campos obligatorios para insumos?** | Backend vs Frontend | **Solo frontend** - el backend trata todo como opcional |
-| **Variantes en insumos?** | Si / No | Por ahora No. Si se necesita, ProductVariant ya existe |
-| **Insumos en front publico?** | Si / No | Depende del negocio |
-| **Insumos en cotizaciones?** | Si / No | **Ya funciona** (son productos) - zero cambios |
+| **Validar campos obligatorios para consumibles?** | Backend vs Frontend | **Solo frontend** - el backend trata todo como opcional |
+| **Variantes en consumibles?** | Si / No | Por ahora No. Si se necesita, ProductVariant ya existe |
+| **Consumibles en front publico?** | Si / No | Depende del negocio |
+| **Consumibles en cotizaciones?** | Si / No | **Ya funciona** (son productos) - zero cambios |
 
 ---
 
@@ -257,8 +257,8 @@ Objetivo: Excel importa productos con campos de insumo y PDFs por nombre de arch
 | Riesgo | Probabilidad | Impacto | Mitigación |
 |--------|:-----------:|:-------:|------------|
 | **Integridad de `root_category`** si se mueven categorías | 🟡 Baja | 🟡 Medio | El campo se recalcula en cada `save()` |
-| **Campos de insumo en productos que no son insumos** | 🟢 Muy baja | 🟢 Bajo | Son NULL por defecto, no afectan nada |
-| **Categoría "insumos" renombrada en el futuro** | 🟡 Baja | 🟡 Medio | Se actualiza el nombre de la categoría y las queries que filtran por él |
+| **Campos de insumo en productos que no son consumibles** | 🟢 Muy baja | 🟢 Bajo | Son NULL por defecto, no afectan nada |
+| **Categoría "consumibles" renombrada en el futuro** | 🟡 Baja | 🟡 Medio | Se actualiza el nombre de la categoría y las queries que filtran por él |
 | **Necesidad de feature muy distinta entre tipos** | 🟢 Baja | 🟢 Bajo | Siempre se puede agregar un campo más o un JSONField si es muy diferente |
 
 **Riesgos eliminados respecto a la Opción A:**

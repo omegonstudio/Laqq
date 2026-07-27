@@ -225,7 +225,7 @@ const Header = () => {
         </div>
 
         {/* --- Bottom Navigation (sticky) --- */}
-        {/* Order: Equipamiento · Insumos · Procesos · Mobiliario | Servicio Técnico | Nosotros */}
+        {/* Order: Equipamiento · Consumibles · Procesos · Mobiliario | Servicio Técnico | Nosotros */}
         <nav
           className={`border-b ${
             theme === "dark"
@@ -234,7 +234,7 @@ const Header = () => {
           }`}
         >
           <div className="container md:flex md:flex-row flex-col mx-auto flex items-center gap-5 justify-center py-2 px-0">
-            {/* Product categories: Equipamiento, Insumos, Procesos, Mobiliario (fixed order via display_order) */}
+            {/* Product categories: Equipamiento, Consumibles, Procesos, Mobiliario (fixed order via display_order) */}
             <NavDropdown />
             <div className="flex justify-between md:justify-center gap-5">
               {/* Servicio Técnico — fixed link, always 5th */}
