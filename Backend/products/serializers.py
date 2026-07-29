@@ -9,15 +9,6 @@ from attachments.models import Attachment
 from attachments.serializers import AttachmentSerializer
 from drf_yasg import openapi
 
-
-class AttachmentIdField(serializers.PrimaryKeyRelatedField):
-    """Field que acepta null y usa el source correcto para FK a Attachment."""
-    def __init__(self, **kwargs):
-        kwargs.setdefault('queryset', Attachment.objects.all())
-        kwargs.setdefault('required', False)
-        kwargs.setdefault('allow_null', True)
-        super().__init__(**kwargs)
-
 class BrandSerializer(serializers.ModelSerializer):
     logo_url = serializers.SerializerMethodField(read_only=True)
 
@@ -235,16 +226,6 @@ class ProductSerializer(serializers.ModelSerializer):
         help_text='IDs de attachments a MANTENER. Los no mencionados se eliminarán.'
     )
 
-    # --- Campos específicos de Consumibles (opcionales) ---
-    root_category = serializers.CharField(read_only=True)
-    articulo = serializers.CharField(required=False, allow_blank=True)
-    cas = serializers.CharField(required=False, allow_blank=True)
-    sedronar = serializers.CharField(required=False, allow_blank=True)
-    esp_attachment_id = AttachmentIdField(source='esp_attachment')
-    hds_attachment_id = AttachmentIdField(source='hds_attachment')
-    esp_url = serializers.SerializerMethodField(read_only=True)
-    hds_url = serializers.SerializerMethodField(read_only=True)
-
     class Meta:
         model = Product
         fields = [
@@ -254,9 +235,6 @@ class ProductSerializer(serializers.ModelSerializer):
             'related_product_ids', 'related_product_codes',
             'related_products', 'related',
             'attachments_files', 'attachments_existing',
-            'root_category', 'articulo', 'cas', 'sedronar',
-            'esp_attachment', 'esp_attachment_id', 'esp_url',
-            'hds_attachment', 'hds_attachment_id', 'hds_url',
         ]
         read_only_fields = [
             'id', 'created_at', 'updated_at',
@@ -299,21 +277,6 @@ class ProductSerializer(serializers.ModelSerializer):
     def get_attachments(self, obj):
         qs = Attachment.objects.filter(attachable_type='product', attachable_id=obj.id).order_by('-created_at')
         return AttachmentSerializer(qs, many=True, context=self.context).data
-
-    def _attachment_url(self, attachment):
-        if attachment:
-            url = getattr(attachment, 'url', None)
-            request = self.context.get('request')
-            if url and request:
-                return request.build_absolute_uri(url)
-            return url
-        return None
-
-    def get_esp_url(self, obj):
-        return self._attachment_url(obj.esp_attachment)
-
-    def get_hds_url(self, obj):
-        return self._attachment_url(obj.hds_attachment)
 
     def _create_relations_by_codes(self, from_product, codes):
         if not codes:

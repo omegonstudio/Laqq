@@ -112,7 +112,7 @@ class ProductFilter(django_filters.FilterSet):
         help_text='Filtra productos solo por la categoría exacta (sin incluir subcategorías)'
     )
 
-        # Filtro explícito por brand_id (UUID exacto) — evita que ModelChoiceFilter
+    # Filtro explícito por brand_id (UUID exacto) — evita que ModelChoiceFilter
     # falle silenciosamente cuando la marca no tiene productos asociados.
     brand = django_filters.UUIDFilter(
         field_name='brand_id',
@@ -121,17 +121,9 @@ class ProductFilter(django_filters.FilterSet):
         help_text='Filtra productos por UUID exacto de la marca. Si no hay productos, retorna vacío.'
     )
 
-    # Filtro por tipo de producto (categoría raíz)
-    root_category = django_filters.CharFilter(
-        field_name='root_category',
-        lookup_expr='iexact',
-        label='Tipo de producto (raíz de categoría)',
-        help_text='Filtra productos por categoría raíz (ej: consumibles, equipos, procesos, mobiliario)'
-    )
-
     class Meta:
         model = Product
-        fields = ['name', 'product_code', 'variant_code', 'brand_name', 'category', 'root_category', 'is_active', 'is_featured']
+        fields = ['name', 'product_code', 'variant_code', 'brand_name', 'category', 'is_active', 'is_featured']
 
     def filter_variant_code(self, queryset, name, value):
         """

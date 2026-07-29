@@ -162,12 +162,10 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    
+    list_display = ['product_code', 'name', 'brand', 'category', 'is_active', 'is_featured', 'created_at']
     inlines = [ProductVariantInline, ProductTechnicalSpecInline, AttachmentInline, ProductRelationInline]
-    
-    list_display = ['product_code', 'name', 'brand', 'category', 'root_category', 'is_active', 'is_featured', 'created_at']
     search_fields = ['product_code', 'name', 'description']
-    list_filter = ['brand', 'category', 'root_category', 'is_active', 'is_featured']
+    list_filter = ['brand', 'category', 'is_active', 'is_featured']
     ordering = ['-created_at']
 
     change_list_template = "admin/products/change_list.html"

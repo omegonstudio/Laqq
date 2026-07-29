@@ -30,13 +30,6 @@ export const productToFormState = (product: Product): ProductFormState => {
     is_active: product.is_active,
     variants: product.variants || [],
     related: product.related || product.related_products || [],
-    articulo: product.articulo ?? "",
-    cas: product.cas ?? "",
-    sedronar: product.sedronar ?? "-",
-    esp_attachment_id: product.esp_attachment_id ?? null,
-    hds_attachment_id: product.hds_attachment_id ?? null,
-    esp_file: null,
-    hds_file: null,
   };
 };
 
@@ -56,20 +49,13 @@ export const formStateToCreateRequest = (
     image_attachment: attachmentId ?? null,
     is_active: formState.is_active,
     related_product_ids: formState.related?.map((rel) => rel.id) || [],
-    articulo: formState.articulo,
-    cas: formState.cas,
-    sedronar: formState.sedronar,
-    esp_attachment_id: formState.esp_attachment_id,
-    hds_attachment_id: formState.hds_attachment_id,
   };
 };
 
 export const formStateToUpdateRequest = (
   formState: ProductFormState,
   initialData: Product,
-  attachmentId?: string | null,
-  espAttachmentId?: string | null,
-  hdsAttachmentId?: string | null
+  attachmentId?: string | null
 ): ProductUpdateRequest => {
   const updateRequest: Partial<ProductUpdateRequest> = {};
   let hasRealChanges = false;
@@ -146,33 +132,6 @@ export const formStateToUpdateRequest = (
     hasRealChanges = true;
   }
 
-  if (formState.articulo !== (initialData.articulo ?? "")) {
-    updateRequest.articulo = formState.articulo;
-    hasRealChanges = true;
-  }
-  if (formState.cas !== (initialData.cas ?? "")) {
-    updateRequest.cas = formState.cas;
-    hasRealChanges = true;
-  }
-  if (formState.sedronar !== (initialData.sedronar ?? "-")) {
-    updateRequest.sedronar = formState.sedronar;
-    hasRealChanges = true;
-  }
-  if (
-    espAttachmentId !== undefined &&
-    espAttachmentId !== (initialData.esp_attachment_id ?? null)
-  ) {
-    updateRequest.esp_attachment_id = espAttachmentId;
-    hasRealChanges = true;
-  }
-  if (
-    hdsAttachmentId !== undefined &&
-    hdsAttachmentId !== (initialData.hds_attachment_id ?? null)
-  ) {
-    updateRequest.hds_attachment_id = hdsAttachmentId;
-    hasRealChanges = true;
-  }
-
   const currentRelatedIds =
     formState.related?.map((rel) => rel.id).sort() || [];
   const initialRelatedIds =
@@ -210,11 +169,4 @@ export const getEmptyProductFormState = (): ProductFormState => ({
   is_featured: false,
   attachments_existing: [],
   attachments_files: [],
-  articulo: "",
-  cas: "",
-  sedronar: "-",
-  esp_attachment_id: null,
-  hds_attachment_id: null,
-  esp_file: null,
-  hds_file: null,
 });
