@@ -20,7 +20,7 @@ El sistema de carga masiva ahora soporta la creación de **variantes de producto
 | `product_code` | Código único del producto | ✅ Sí |
 | `name` | Nombre del producto | ✅ Solo para productos (`is_variant=false`) |
 | `brand` | Marca del producto | ✅ Solo para productos activos |
-| `category_level_0` | Categoría raíz (consumibles/procesos/equipos/mobiliario) | ✅ Solo para productos activos |
+| `category_level_0` | Categoría raíz (insumos/procesos/equipos/mobiliario) | ✅ Solo para productos activos |
 | `category_level_1` | Subcategoría nivel 1 | ❌ Opcional |
 | `category_level_2` | Subcategoría nivel 2 | ❌ Opcional |
 | `description` | Descripción del producto | ❌ Opcional |
@@ -150,7 +150,7 @@ Si tu producto no tiene variantes, puedes omitir la columna `is_variant` o poner
 ```excel
 | product_code | name    | brand | category_level_0 | is_variant | spec_code | volume |
 |--------------|---------|-------|------------------|------------|-----------|--------|
-| VAR-001      | Vaso X  | Marca | consumibles      | false      | BASE      | 100ml  |
+| VAR-001      | Vaso X  | Marca | insumos          | false      | BASE      | 100ml  |
 | VAR-001      |         |       |                  | true       | 250       | 250ml  |
 | VAR-001      |         |       |                  | true       | 500       | 500ml  |
 ```
@@ -214,7 +214,7 @@ Al finalizar la importación, recibirás un resumen con:
 4. **Validar datos:**
    - Verificar que `product_code` sea único por producto
    - Verificar que `spec_code` sea único por variante
-   - Asegurar que las categorías nivel 0 existan (consumibles/procesos/equipos/mobiliario)
+   - Asegurar que las categorías nivel 0 existan (insumos/procesos/equipos/mobiliario)
 
 5. **Cargar el archivo:**
    - Usar la interfaz de carga masiva o API
@@ -268,42 +268,3 @@ R: No hay límite. Puedes tener tantas variantes como necesites.
 
 - [README_VARIANTES.md](./README_VARIANTES.md) - Documentación sobre el sistema de variantes
 - [examples/create_product_variants.py](./examples/create_product_variants.py) - Ejemplos programáticos
-
----
-
-## 🧪 Columnas específicas de Consumibles
-
-Si el producto pertenece a la categoría raíz `consumibles`, podés completar estas columnas adicionales. Todas son **opcionales** y se aplican solo a la fila del producto (no a sus variantes).
-
-| Columna | Descripción | Obligatorio |
-|---------|-------------|-------------|
-| `articulo` | Código de artículo interno del consumible | ❌ Opcional |
-| `cas` | Número CAS (Chemical Abstracts Service) | ❌ Opcional |
-| `sedronar` | Registro SEDRONAR (si aplica) | ❌ Opcional, default: `-` |
-| `archivo_esp` | Nombre exacto del PDF de **especificaciones** ya subido a la librería de archivos (ej: `reactivo-x-esp.pdf`) | ❌ Opcional |
-| `archivo_hds` | Nombre exacto del PDF de **hoja de seguridad (HDS/MSDS)** ya subido a la librería de archivos (ej: `reactivo-x-hds.pdf`) | ❌ Opcional |
-
-### Reglas de comportamiento
-
-- **PDFs por nombre**: las columnas `archivo_esp` y `archivo_hds` esperan el `file_name` exacto de un `Attachment` ya existente en la librería. El importador busca case-insensitive. Si el archivo no existe, se registra un warning en `summary['errors']` y el producto se crea igual sin ese PDF.
-- **Celdas vacías = preservar**: si reimportás un producto y dejás las celdas de consumibles vacías, **no se pisan** los valores previos en BD. Esto vale tanto para textos (`articulo`, `cas`, `sedronar`) como para los PDFs (`archivo_esp`, `archivo_hds`).
-- **No-consumibles**: si la categoría raíz no es `consumibles`, podés dejar todas estas columnas vacías sin problema — el producto se crea normal y los campos quedan en su valor por defecto.
-
-### Ejemplo: fila de consumible completa
-
-```excel
-| codigo_producto | nombre      | marca    | categoria_nivel_0 | categoria_nivel_1 | activo | es_variante | articulo | cas        | sedronar | archivo_esp          | archivo_hds          |
-|-----------------|-------------|----------|-------------------|-------------------|--------|-------------|----------|------------|----------|----------------------|----------------------|
-| CON-001         | Reactivo X  | MarcaLab | consumibles       | Reactivos         | 1      | 0           | ART-123  | 7732-18-5  | SED-001  | reactivo-x-esp.pdf   | reactivo-x-hds.pdf   |
-```
-
-### Resumen de importación: contadores nuevos
-
-El `summary` que devuelve la API ahora incluye dos contadores específicos:
-
-| Campo | Significado |
-|-------|-------------|
-| `linked_esp_pdfs` | PDFs de especificaciones enlazados al producto durante la importación |
-| `linked_hds_pdfs` | PDFs de hojas de seguridad enlazados al producto durante la importación |
-
-Si un PDF no se encuentra en la librería, se incrementa `errors` (no rompe la importación).
