@@ -36,7 +36,7 @@ const CompanySection = () => {
           <p>
             Somos una empresa especializada en soluciones integrales para
             laboratorios industriales y de investigación. Combinamos
-            asesoramiento técnico, provisión de insumos y equipamiento, y
+            asesoramiento técnico, provisión de consumibles y equipamiento, y
             soporte posventa confiable.
           </p>
 

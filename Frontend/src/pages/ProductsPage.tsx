@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Link } from "react-router-dom";
 import ProductGrid from "@/components/organisms/ProductGrid";
+import InsumosList from "@/components/organisms/InsumosList";
 import { Product, PaginationInfo } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { productsApi, ProductListParams } from "@/lib/api/products";
 import { useProductFilters } from "@/hooks/useFilters";
 import { fetchAllCategories } from "@/store/categoriesSlice";
-import { Link } from "react-router-dom";
 
 const INITIAL_PAGINATION: PaginationInfo = {
   count: 0,
@@ -140,6 +141,8 @@ const ProductsPage = () => {
   const activeBrand = brands.find((b) => b.id === activeBrandId);
   const activeCategory = categories.find((b) => b.id === activeCategoryId);
 
+  const showinsumos = activeCategory?.name === "Consumibles";
+
   return (
     <div className="py-5">
       <div className="container mx-auto px-4">
@@ -212,12 +215,21 @@ const ProductsPage = () => {
           </div>
         </div>
       </div>
-      <ProductGrid
-        products={allProducts}
-        hasMore={hasMore}
-        onLoadMore={handleLoadMore}
-        loading={loading}
-      />
+      {showinsumos ? (
+        <InsumosList
+          products={allProducts}
+          hasMore={hasMore}
+          onLoadMore={handleLoadMore}
+          loading={loading}
+        />
+      ) : (
+        <ProductGrid
+          products={allProducts}
+          hasMore={hasMore}
+          onLoadMore={handleLoadMore}
+          loading={loading}
+        />
+      )}
     </div>
   );
 };
