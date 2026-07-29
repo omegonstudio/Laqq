@@ -73,6 +73,13 @@ export interface RelatedProduct {
   relation_type?: string | null;
 }
 
+export type SedronarOption =
+  | "-"
+  | "Lista 1"
+  | "Lista 2"
+  | "Lista 3"
+  | "Lista 4";
+
 // ============================================
 // PRODUCT - Respuesta del backend (GET)
 // ============================================
@@ -95,6 +102,13 @@ export interface Product {
   related_products?: RelatedProduct[]; // Campo original del backend
   attachments: Attachment[];
   variants: Variants[];
+  articulo?: string;
+  cas?: string;
+  sedronar?: SedronarOption;
+  esp_attachment_id?: string | null;
+  hds_attachment_id?: string | null;
+  esp_url?: string | null;
+  hds_url?: string | null;
 }
 
 // ============================================
@@ -112,6 +126,11 @@ export interface ProductCreateRequest {
   related_product_ids?: string[]; // Array de UUIDs
   related_product_codes?: string[];
   is_featured?: boolean;
+  articulo?: string;
+  cas?: string;
+  sedronar?: SedronarOption;
+  esp_attachment_id?: string | null;
+  hds_attachment_id?: string | null;
 }
 
 export interface ProductUpdateRequest extends Partial<ProductCreateRequest> {
@@ -139,6 +158,13 @@ export interface ProductFormState {
   is_active: boolean;
   related: RelatedProduct[]; // Objetos completos para mostrar
   variants: Variants[]; // Especificaciones técnicas dinámicas
+  articulo?: string;
+  cas?: string;
+  sedronar?: SedronarOption;
+  esp_attachment_id?: string | null;
+  hds_attachment_id?: string | null;
+  esp_file?: File | null;
+  hds_file?: File | null;
 }
 
 // ============================================
@@ -279,3 +305,4 @@ export interface AttachmentUpdatePayload {
   attachable_type?: string;
   attachable_id?: string;
 }
+
