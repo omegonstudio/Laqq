@@ -36,7 +36,7 @@ const CompanySection = () => {
           <p>
             Somos una empresa especializada en soluciones integrales para
             laboratorios industriales y de investigación. Combinamos
-            asesoramiento técnico, provisión de insumos y equipamiento, y
+            asesoramiento técnico, provisión de consumibles y equipamiento, y
             soporte posventa confiable.
           </p>
 
@@ -111,7 +111,7 @@ const CompanySection = () => {
           <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
             {[
               { title: "Equipos", img: "/instrumental.png" },
-              { title: "Insumos", img: "/insumos.png" },
+              { title: "Consumibles", img: "/consumibles.png" },
               { title: "Equipamiento para procesos", img: "/procesos.png" },
               { title: "Mobiliario", img: "/header.png" }, // cambiar si tenés imagen
               { title: "Servicio técnico", img: "/serviciotecnico.png" },

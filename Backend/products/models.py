@@ -57,6 +57,23 @@ class Product(models.Model):
         related_name='products',
         blank=True
     )
+
+    # --- Cache de categoría raíz para filtrado eficiente ---
+    root_category = models.CharField(max_length=100, blank=True, default='')
+
+    # --- Campos específicos de Consumibles (todos opcionales) ---
+    articulo = models.CharField(max_length=100, blank=True, default='')
+    cas = models.CharField(max_length=50, blank=True, default='')
+    sedronar = models.CharField(max_length=20, blank=True, default='-')
+    esp_attachment = models.ForeignKey(
+        Attachment, on_delete=models.SET_NULL, blank=True, null=True,
+        related_name='esp_products'
+    )
+    hds_attachment = models.ForeignKey(
+        Attachment, on_delete=models.SET_NULL, blank=True, null=True,
+        related_name='hds_products'
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -70,6 +87,20 @@ class Product(models.Model):
     def save(self, *args, **kwargs):
         if not getattr(self, 'product_code', None):
             self.product_code = self._generate_product_code()
+
+        # Auto-asignar root_category desde la jerarquía de categorías.
+        # El valor cacheado es el nombre de la raíz en lower(). Convención
+        # actual del proyecto: la raíz de "Consumibles" se llama "Consumibles" en BD
+        # en la base de datos, por lo tanto root_category queda como
+        # "consumibles" para esos productos.
+        if self.category_id:
+            cat = self.category
+            while cat.parent:
+                cat = cat.parent
+            self.root_category = cat.name.lower()
+        else:
+            self.root_category = ''
+
         super().save(*args, **kwargs)
 
     def __str__(self):
