@@ -17,6 +17,8 @@ if [ -f "$ROOT/.env" ]; then
         esac
         # Quitar posibles quotes y espacios al inicio/final del valor
         value="$(echo "$rest" | sed -e "s/^['\"]//" -e "s/['\"]$//" -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+# Limpiar también la clave (por si hay espacios antes/después del =)
+        key="$(echo "$key" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
         export "$key=$value"
     done < "$ROOT/.env"
 fi
