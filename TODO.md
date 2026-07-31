@@ -4,6 +4,66 @@ Pendientes y notas surgidas durante el trabajo en `clean-users-and-permissions`.
 
 ---
 
+## Back — Restricciones del usuario `back` (backoffice) — APLICADO
+
+**Cambios aplicados en este commit (no commiteado aún):**
+
+### Permisos (matriz final)
+
+| Módulo | Método | admin | back | client | anónimo |
+|---|---|:-:|:-:|:-:|:-:|
+| `BrandViewSet` | GET | ✓ | ✓ | ✓ | ✓ |
+| | POST / PUT / PATCH / DELETE | ✓ | ✗ | ✗ | ✗ |
+| `CategoryViewSet` | GET | ✓ | ✓ | ✓ | ✓ |
+| | POST / PUT / PATCH / DELETE | ✓ | ✗ | ✗ | ✗ |
+| `ServiceTicketViewSet` | GET | ✓ | ✓ | ✓ (propios) | ✓ (con ?email=) |
+| | POST | ✓ | ✓ | ✓ | ✓ |
+| | PUT / PATCH / DELETE | ✓ | ✗ | ✗ | ✗ |
+| `QuoteViewSet` | POST público | ✓ | ✓ | ✓ | ✓ |
+| | GET / PUT / PATCH / DELETE | ✓ | ✓ | ✗ | ✗ |
+| | `attach_file` | ✓ | ✓ | ✓ (propios) | ✗ |
+| | `assign / start / resolve / close` | ✓ | ✗ | ✗ | ✗ |
+| | `statistics` | ✓ | ✓ | ✗ | ✗ |
+| `TicketStateViewSet` y `TicketPriorityViewSet` | GET | ✓ | ✓ | ✓ | ✓ |
+| | POST / PUT / PATCH / DELETE | ✓ | ✗ | ✗ | ✗ |
+| `AttachmentViewSet` (galería) | GET | ✓ | ✓ | ✓ | ✓ |
+| | POST / PUT / PATCH / DELETE | ✓ | ✗ | ✗ | ✗ |
+
+`ProductViewSet.upload_attachment*` y `delete_attachment` NO se tocan (siguen siendo `IsAuthenticatedOrReadOnly`).
+
+### Archivos modificados
+
+- `Backend/products/permissions.py` — sin permisos nuevos; `IsReadOnlyOrAdmin` ya cumplía para marcas.
+- `Backend/products/views.py` — `BrandViewSet` usa `[IsReadOnlyOrAdmin]` (antes `[AllowAny]`).
+- `Backend/tickets/permissions.py` — `CanCreateTicketOrStaff` ahora rechaza PUT/PATCH/DELETE del `back`; agregada clase `IsAdminOnly`.
+- `Backend/tickets/views.py` — 4 acciones (assign/start/resolve/close) usan `[IsAuthenticated, IsAdminOnly]`; `TicketStateViewSet` y `TicketPriorityViewSet` usan `[IsAuthenticated, IsAdminOnly]` para escritura.
+- `Backend/attachments/permissions.py` — nuevo archivo con `IsAdminOrAttachmentReadOnly`.
+- `Backend/attachments/views.py` — `AttachmentViewSet` usa `[IsAdminOrAttachmentReadOnly]` (antes `[AllowAny]`).
+- `Frontend/src/hooks/usePermissions.ts` — agregados `useCanManageBrands`, `useCanManageAttachments`, `useCanRunTicketActions`. `useCanManageQuotes` vuelve a "admin o back" (era la función principal del backoffice). **Cambio de semántica**: `useCanManageTickets` pasó de "admin+back" a "solo admin".
+- `Frontend/src/components/modules/BrandsABM.tsx` — el back solo ve la tabla y la búsqueda; botones editar/eliminar y "Nueva marca" solo visibles para admin. Pasa `canManageAttachments` al modal.
+- `Frontend/src/components/modules/TicketsABM.tsx` — usa `useCanManageTickets` (ya solo admin); pasa `canRunTicketActions` al modal de edición.
+- `Frontend/src/components/molecules/Modals/editTicket.tsx` — prop `canRunTicketActions` deshabilita "Cerrar ticket" y "Guardar cambios" para `back`.
+- `Frontend/src/components/molecules/Modals/editBrand.tsx` — prop `canManageAttachments` deshabilita la subida de logo; el `back` puede seguir editando nombre/descripción.
+- `Frontend/src/pages/LibreriaPage.tsx` — botón "Cargar archivos" y "Eliminar" por tarjeta solo visibles para admin.
+
+### Pendiente (verificación en local)
+
+- Correr `python manage.py test products.tests tickets.tests attachments.tests quotes.tests` (los archivos de tests están fuera del alcance del cambio; los existentes deberían pasar con `admin`). **No se pudo correr acá** porque el entorno no tiene el venv de Django instalado (el check rápido de sintaxis sí pasó en los 6 archivos modificados).
+- Considerar agregar nuevos tests:
+  - `BackOfficeRestrictionsTestCase` en `Backend/tickets/tests.py`: `back` recibe 403 en PUT/PATCH/DELETE y en `assign/start/resolve/close`; `back` SÍ puede GET y `attach_file`.
+  - `BackOfficeRestrictionsTestCase` en `Backend/attachments/tests.py`: solo admin puede POST/PUT/PATCH/DELETE; GET público.
+  - `BackOfficeRestrictionsTestCase` en `Backend/products/tests.py`: `back` puede POST/PUT/PATCH en marcas pero NO DELETE; `back` recibe 403 en categorías.
+
+### Bug preexistente (no introducido por este cambio)
+
+`Backend/products/tests.py:346` (`BulkUploadBackofficeTestCase`) crea un `UserType` con `id='BACKOFFICE'` (mayúsculas). Las permissions de este cambio usan `id='back'`. Si ese test ya fallaba antes, debería corregirse a `id='back'`. **Verificar antes de tocar**: si el test está fallando, arreglarlo; si pasa por casualidad, dejar y anotar.
+
+### Cambio de semántica para tener en cuenta
+
+`useCanManageTickets` pasó de "admin+back" a "solo admin". Solo se consume en `TicketsABM.tsx`. Verificado por grep que no haya otros consumidores.
+
+---
+
 ## Front — UsersTable: tipo de usuario en el dropdown de creación
 
 **Problema**
@@ -61,6 +121,26 @@ El `Topbar` (`Frontend/src/components/layout/Topbar.tsx`) leía de `useAuth` (`A
 
 **Acción para que se vea**
 Hacer logout y volver a entrar: el `user_type_id` solo se hidrata al ejecutar `loginThunk`. Si no se reloguea, queda con el estado anterior al fix.
+
+---
+
+## Back — Quotes: backoffice perdió PATCH/PUT/DELETE en el commit `clean-users-and-permissions` (RESUELTO)
+
+**Problema**
+Después del commit `bb5a5dc`, el usuario `back` no podía editar cotizaciones en el backoffice (el flujo de "Guardar y Enviar" se cortaba: `updateQuote` (PUT/PATCH) y `deleteQuoteItem`/`updateQuoteItem` retornaban 403).
+
+**Causa**
+En `Backend/quotes/permissions.py`, el commit cambió `user.user_type_id in ['ADMIN', 'admin']` por `user.user_type_id == 'admin'`, dejando a `back` sin permisos de escritura tanto en `QuoteViewSet` como en `QuoteItemViewSet`.
+
+**Fix aplicado**
+- `CanCreateOrAdmin.has_permission` (QuoteViewSet): PUT/PATCH/DELETE → `['admin', 'back']` (en vez de `=='admin'`).
+- `AllowPublicQuoteItems.has_permission` (QuoteItemViewSet): misma corrección.
+- Docstrings de ambas clases actualizados para reflejar el cambio.
+
+`send-updated` NO estaba afectado (siempre usó `IsAuthenticated`).
+
+**Pendiente**
+- Verificar que `Backend/quotes/tests.py` use `user_type` con `id in {'admin', 'back'}` para los tests de PATCH/DELETE.
 
 ---
 

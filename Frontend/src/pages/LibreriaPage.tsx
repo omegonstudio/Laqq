@@ -14,6 +14,7 @@ import {
 import { Attachment } from "@/types/types";
 import Button from "@/components/atoms/Button";
 import { toast } from "@/hooks/use-toast";
+import { useCanManageAttachments } from "@/hooks/usePermissions";
 
 interface AttachmentListResponse {
   count: number;
@@ -27,6 +28,7 @@ interface AttachmentListResponse {
 
 const LibreriaPage = () => {
   const dispatch = useAppDispatch();
+  const canManageAttachments = useCanManageAttachments();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -187,31 +189,33 @@ const LibreriaPage = () => {
           </div>
 
           {/* Botón de carga */}
-          <div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={(e) => handleFileUpload(e.target.files)}
-            />
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Subiendo...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-5 h-5" />
-                  Cargar archivos
-                </>
-              )}
-            </Button>
-          </div>
+          {canManageAttachments && (
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => handleFileUpload(e.target.files)}
+              />
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Subiendo...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-5 h-5" />
+                    Cargar archivos
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -283,12 +287,14 @@ const LibreriaPage = () => {
                         <Copy size={20} />
                       </Button>
                     </div>
-                    <Button
-                      variant="secondary"
-                      onClick={() => handleDelete(attachment.id)}
-                    >
-                      <Trash2 />
-                    </Button>
+                    {canManageAttachments && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => handleDelete(attachment.id)}
+                      >
+                        <Trash2 />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

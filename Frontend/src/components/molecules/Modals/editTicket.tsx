@@ -40,6 +40,11 @@ interface EditContactModalProps {
   states: TicketState[];
   users: UserData[];
   priorities: TicketPriority[];
+  /**
+   * Si es false, el modal queda en solo lectura: no se pueden disparar
+   * acciones de workflow (assign/start/resolve/close). Default: true.
+   */
+  canRunTicketActions?: boolean;
 }
 
 export function EditTicketsService({
@@ -49,6 +54,7 @@ export function EditTicketsService({
   states,
   users = [],
   priorities,
+  canRunTicketActions = true,
 }: EditContactModalProps) {
   const [formData, setFormData] = useState<UpdateTicketPayload>({
     id: "",
@@ -350,6 +356,7 @@ export function EditTicketsService({
               <Toggle
                 pressed={closed}
                 onPressedChange={(pressed) => setIsClosed(pressed)}
+                disabled={!canRunTicketActions}
               >
                 {!closed ? "Cerrar ticket" : "Abrir ticket"}
               </Toggle>
@@ -396,7 +403,15 @@ export function EditTicketsService({
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button
+              type="submit"
+              disabled={isLoading || !canRunTicketActions}
+              title={
+                canRunTicketActions
+                  ? undefined
+                  : "Solo el administrador puede modificar el estado del ticket"
+              }
+            >
               {isLoading && <Loader2 className="animate-spin mr-2" />}
               {isLoading ? "Guardando..." : "Guardar cambios"}
             </Button>

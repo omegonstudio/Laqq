@@ -32,7 +32,7 @@ from attachments.models import Attachment
 class BrandViewSet(viewsets.ModelViewSet):
     queryset = Brand.objects.all()
     serializer_class = BrandSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsReadOnlyOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['name']
     search_fields = ['name', 'description']

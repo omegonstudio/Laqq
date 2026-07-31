@@ -4,8 +4,8 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 class CanCreateTicketOrStaff(BasePermission):
     """
     POST: Público (permite crear tickets sin autenticación desde la web)
-    GET: Solo autenticados (admin/backoffice ven todos, clientes ven solo los suyos)
-    PUT/PATCH/DELETE: Solo admin/backoffice
+    GET: Solo autenticados (admin ven todos, clientes ven solo los suyos)
+    PUT/PATCH/DELETE: Solo admin (backoffice NO puede modificar tickets)
     """
     def has_permission(self, request, view):
         # POST público para crear tickets desde la web
@@ -29,8 +29,22 @@ class CanCreateTicketOrStaff(BasePermission):
         if request.method in SAFE_METHODS:
             return user.user_type_id in ['admin', 'back', 'client']
 
-        # PUT/PATCH/DELETE: solo admin/backoffice
-        return user.user_type_id in ['admin', 'back']
+        # PUT/PATCH/DELETE: solo admin (backoffice ya no)
+        return user.user_type_id == 'admin'
+
+
+class IsAdminOnly(BasePermission):
+    """
+    Solo admin (y superuser). Aplicable a acciones assign/start/resolve/close
+    del ServiceTicketViewSet y al CRUD de TicketState / TicketPriority.
+    """
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        return user.user_type_id == 'admin'
 
 
 class IsAdminOrBackOffice(BasePermission):

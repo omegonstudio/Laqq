@@ -14,6 +14,11 @@ interface ModalBrandsProps {
   onClose: () => void;
   initialData: Brand | null;
   isNew: boolean;
+  /**
+   * Si es false, el control de subida de logo se deshabilita y se evita
+   * cualquier llamada a Attachment endpoints. Default: true (compatibilidad).
+   */
+  canManageAttachments?: boolean;
 }
 
 const ModalBrands: React.FC<ModalBrandsProps> = ({
@@ -21,6 +26,7 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
   onClose,
   initialData,
   isNew,
+  canManageAttachments = true,
 }) => {
   const dispatch = useAppDispatch();
 
@@ -104,7 +110,7 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
 
       if (!isNew) {
         // ========== EDITAR MARCA EXISTENTE ==========
-        if (imageFile && !initialImage) {
+        if (canManageAttachments && imageFile && !initialImage) {
           // Si hay un nuevo archivo, subirlo
           try {
             const attachment = await attachmentsApi.create({
@@ -120,10 +126,10 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
             });
             throw error;
           }
-        } else if (initialImage && !currentImage) {
+        } else if (canManageAttachments && initialImage && !currentImage) {
           const attachment = await attachmentsApi.remove(initialImage);
           attachmentId = null;
-        } else if (initialImage && currentImage) {
+        } else if (canManageAttachments && initialImage && currentImage) {
           const attachment = await attachmentsApi.update(initialImage, {
             file: imageFile,
           });
@@ -149,7 +155,7 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
         toast({ title: "Marca actualizada exitosamente" });
       } else {
         // ========== CREAR NUEVA MARCA ==========
-        if (imageFile) {
+        if (canManageAttachments && imageFile) {
           // Si hay un nuevo archivo, subirlo
           try {
             const attachment = await attachmentsApi.create({
@@ -237,24 +243,42 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
 
         <div className="space-y-2">
           <label className="block text-sm font-medium">Logo</label>
-          <UploadFile onFileChange={handleFile} />
-
-          {/* Preview de la imagen */}
-          {imagePreview && (
-            <div className="relative inline-block mt-2">
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="w-32 h-32 object-cover rounded-lg border-2 border-gray-300"
-              />
-              <button
-                type="button"
-                onClick={handleRemoveImage}
-                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
-                title="Eliminar imagen"
-              >
-                ×
-              </button>
+          {canManageAttachments ? (
+            <>
+              <UploadFile onFileChange={handleFile} />
+              {/* Preview de la imagen */}
+              {imagePreview && (
+                <div className="relative inline-block mt-2">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-32 h-32 object-cover rounded-lg border-2 border-gray-300"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
+                    title="Eliminar imagen"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground border border-dashed border-input rounded-md p-3">
+              {imagePreview ? (
+                <img
+                  src={imagePreview}
+                  alt="Logo actual"
+                  className="w-16 h-16 object-cover rounded border border-gray-200"
+                />
+              ) : (
+                <span>Sin logo cargado.</span>
+              )}
+              <span>
+                Solo el administrador puede subir o reemplazar el logo.
+              </span>
             </div>
           )}
         </div>

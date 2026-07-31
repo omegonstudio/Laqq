@@ -9,9 +9,15 @@ import { deleteBrand, fetchBrands } from "@/store/brandSlice";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import ModalBrands from "../molecules/Modals/editBrand";
 import { toast } from "@/hooks/use-toast";
+import {
+  useCanManageBrands,
+  useCanManageAttachments,
+} from "@/hooks/usePermissions";
 
 const BrandsABM = () => {
   const dispatch = useAppDispatch();
+  const canManageBrands = useCanManageBrands();
+  const canManageAttachments = useCanManageAttachments();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1); // 👈 página controlada por el padre
@@ -101,15 +107,20 @@ const BrandsABM = () => {
     { key: "description", label: "Descripción", sortable: true },
   ];
 
-  const actions = [
-    { icon: <Edit2 size={16} />, onClick: handleEdit, label: "Editar" },
-    {
+  const actions = [];
+  if (canManageBrands) {
+    actions.push({
+      icon: <Edit2 size={16} />,
+      onClick: handleEdit,
+      label: "Editar",
+    });
+    actions.push({
       icon: <Trash2 size={16} />,
       onClick: handleOpenDeleteModal,
       color: "red",
       label: "Eliminar",
-    },
-  ];
+    });
+  }
 
   return (
     <div className="space-y-4">
@@ -122,14 +133,16 @@ const BrandsABM = () => {
             className="max-w-md"
           />
         </div>
-        <Button
-          variant="primary"
-          className="flex items-center gap-2"
-          onClick={handleCreate}
-        >
-          <Plus size={18} />
-          Nueva marca
-        </Button>
+        {canManageBrands && (
+          <Button
+            variant="primary"
+            className="flex items-center gap-2"
+            onClick={handleCreate}
+          >
+            <Plus size={18} />
+            Nueva marca
+          </Button>
+        )}
       </div>
 
       <Table
@@ -144,6 +157,7 @@ const BrandsABM = () => {
         isOpen={isModalEditOpen}
         onClose={() => setIsModalEditOpen(false)}
         initialData={currentBrand}
+        canManageAttachments={canManageAttachments}
       />
       <ModalDelete
         isOpen={isModalDeleteOpen}

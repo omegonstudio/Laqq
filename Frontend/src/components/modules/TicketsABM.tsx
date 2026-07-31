@@ -21,7 +21,7 @@ import { fetchUsers } from "@/store/usersSlice";
 import { ViewTicketModal } from "../molecules/Modals/ViewTicketService";
 import { useUserAdmins } from "@/hooks/useUsers";
 import { fetchAllProducts } from "@/store/productSlice";
-import { useCanManageTickets } from "@/hooks/usePermissions";
+import { useCanManageTickets, useCanRunTicketActions } from "@/hooks/usePermissions";
 
 const TicketsABM = () => {
   // const [contacts] = useState<Contact[]>(mockContacts);
@@ -30,6 +30,7 @@ const TicketsABM = () => {
     null
   );
   const canManageTickets = useCanManageTickets();
+  const canRunTicketActions = useCanRunTicketActions();
 
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -249,6 +250,7 @@ const TicketsABM = () => {
         states={states}
         users={users?.results ?? []}
         priorities={priorities}
+        canRunTicketActions={canRunTicketActions}
         // users={users} // Pasá la lista de usuarios si la tenés disponible
       />
       <ModalDelete
