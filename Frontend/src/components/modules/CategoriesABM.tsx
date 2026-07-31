@@ -11,8 +11,10 @@ import InputField from "../atoms/InputField";
 import { toast } from "@/hooks/use-toast";
 import { extractErrorMessage } from "@/lib/api/client";
 import Modal from "../common/Modal";
+import { useCanManageCategories } from "@/hooks/usePermissions";
 
 const CategoriesABM = () => {
+  const canManageCategories = useCanManageCategories();
   const { list: categories, loading: loadingCategories } = useAppSelector(
     (state) => state.categories
   );
@@ -97,15 +99,17 @@ const CategoriesABM = () => {
     { key: "parentName", label: "Categoría padre", sortable: true },
   ];
 
-  const actions = [
-    { icon: <Edit2 size={16} />, onClick: handleEdit, label: "Editar" },
-    {
-      icon: <Trash2 size={16} />,
-      onClick: handleOpenDeleteModal,
-      color: "red",
-      label: "Eliminar",
-    },
-  ];
+  const actions = canManageCategories
+    ? [
+        { icon: <Edit2 size={16} />, onClick: handleEdit, label: "Editar" },
+        {
+          icon: <Trash2 size={16} />,
+          onClick: handleOpenDeleteModal,
+          color: "red",
+          label: "Eliminar",
+        },
+      ]
+    : [];
 
   return (
     <div className="space-y-4">
@@ -123,14 +127,16 @@ const CategoriesABM = () => {
             </span>
           )}
         </div>
-        <Button
-          variant="primary"
-          className="flex items-center gap-2"
-          onClick={handleNewCategory}
-        >
-          <Plus size={18} />
-          Nueva Categoría
-        </Button>
+        {canManageCategories && (
+          <Button
+            variant="primary"
+            className="flex items-center gap-2"
+            onClick={handleNewCategory}
+          >
+            <Plus size={18} />
+            Nueva Categoría
+          </Button>
+        )}
       </div>
 
       {loadingCategories ? (

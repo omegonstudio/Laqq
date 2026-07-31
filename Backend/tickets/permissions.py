@@ -27,10 +27,10 @@ class CanCreateTicketOrStaff(BasePermission):
 
         # GET: admin, backoffice o cliente
         if request.method in SAFE_METHODS:
-            return user.user_type_id in ['ADMIN', 'BACKOFFICE', 'admin', 'back', 'client', 'CLIENT']
+            return user.user_type_id in ['admin', 'back', 'client']
 
         # PUT/PATCH/DELETE: solo admin/backoffice
-        return user.user_type_id in ['ADMIN', 'BACKOFFICE', 'admin', 'back']
+        return user.user_type_id in ['admin', 'back']
 
 
 class IsAdminOrBackOffice(BasePermission):
@@ -43,7 +43,7 @@ class IsAdminOrBackOffice(BasePermission):
             return False
         if user.is_superuser:
             return True
-        return user.user_type_id in ['ADMIN', 'BACKOFFICE', 'admin', 'back']
+        return user.user_type_id in ['admin', 'back']
 
 
 class IsClientOwnerOrStaff(BasePermission):
@@ -57,11 +57,11 @@ class IsClientOwnerOrStaff(BasePermission):
             return False
 
         # Admin y backoffice tienen acceso completo
-        if user.is_superuser or user.user_type_id in ['ADMIN', 'BACKOFFICE', 'admin', 'back']:
+        if user.is_superuser or user.user_type_id in ['admin', 'back']:
             return True
 
         # Clientes solo pueden leer (GET, HEAD, OPTIONS)
-        if user.user_type_id in ['client', 'CLIENT']:
+        if user.user_type_id == 'client':
             return request.method in SAFE_METHODS
 
         return False
@@ -74,11 +74,11 @@ class IsClientOwnerOrStaff(BasePermission):
         user = request.user
 
         # Admin y backoffice tienen acceso completo
-        if user.is_superuser or user.user_type_id in ['ADMIN', 'BACKOFFICE', 'admin', 'back']:
+        if user.is_superuser or user.user_type_id in ['admin', 'back']:
             return True
 
         # Cliente solo puede ver tickets de su contacto (email matching)
-        if user.user_type_id in ['client', 'CLIENT']:
+        if user.user_type_id == 'client':
             # Verificar que el email del ticket coincida con el email del usuario
             return obj.contact.email == user.email
 
@@ -96,7 +96,7 @@ class CanAttachFiles(BasePermission):
             return False
 
         # Admin, backoffice y clientes pueden adjuntar archivos
-        if user.is_superuser or user.user_type_id in ['ADMIN', 'BACKOFFICE', 'admin', 'back', 'client', 'CLIENT']:
+        if user.is_superuser or user.user_type_id in ['admin', 'back', 'client']:
             return True
 
         return False
@@ -108,11 +108,11 @@ class CanAttachFiles(BasePermission):
         user = request.user
 
         # Admin y backoffice tienen acceso completo
-        if user.is_superuser or user.user_type_id in ['ADMIN', 'BACKOFFICE', 'admin', 'back']:
+        if user.is_superuser or user.user_type_id in ['admin', 'back']:
             return True
 
         # Cliente solo puede adjuntar a tickets de su contacto
-        if user.user_type_id in ['client', 'CLIENT']:
+        if user.user_type_id == 'client':
             return obj.contact.email == user.email
 
         return False

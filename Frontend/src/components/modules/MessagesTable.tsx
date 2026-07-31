@@ -13,6 +13,7 @@ import ModalDelete from "../molecules/Modals/ModalDelete";
 import { toast } from "@/hooks/use-toast";
 import { formatDate } from "@/utils/formatDate";
 import { EditMessage } from "../molecules/Modals/EditMessage";
+import { useCanManageMessages } from "@/hooks/usePermissions";
 
 const MessagesTable = () => {
   const dispatch = useAppDispatch();
@@ -102,7 +103,7 @@ const MessagesTable = () => {
       render: (value: stateEnum) => convertStateContact(value),
     },
   ];
-  const { user } = useAppSelector((state) => state.auth);
+  const canManageMessages = useCanManageMessages();
 
   const actions = [
     { icon: <Eye size={16} />, onClick: handleView, label: "Ver detalles" },
@@ -117,7 +118,7 @@ const MessagesTable = () => {
       onClick: handleDelete,
       color: "red",
       label: "Eliminar",
-      disabled: !user?.is_superuser, // Solo superusuarios pueden eliminar
+      disabled: !canManageMessages, // Solo admin puede eliminar
     },
   ];
 

@@ -21,6 +21,7 @@ import { fetchUsers } from "@/store/usersSlice";
 import { ViewTicketModal } from "../molecules/Modals/ViewTicketService";
 import { useUserAdmins } from "@/hooks/useUsers";
 import { fetchAllProducts } from "@/store/productSlice";
+import { useCanManageTickets } from "@/hooks/usePermissions";
 
 const TicketsABM = () => {
   // const [contacts] = useState<Contact[]>(mockContacts);
@@ -28,7 +29,7 @@ const TicketsABM = () => {
   const [selectedTicket, setSelectedTicket] = useState<ServiceTicket | null>(
     null
   );
-  const { user } = useAppSelector((state) => state.auth);
+  const canManageTickets = useCanManageTickets();
 
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -169,14 +170,14 @@ const TicketsABM = () => {
       icon: <Edit2 size={16} />,
       onClick: handleEdit,
       label: "Editar",
-      disabled: !user.is_superuser,
+      disabled: !canManageTickets,
     },
     {
       icon: <Trash2 size={16} />,
       onClick: handleOpenDeleteModal,
       color: "red",
       label: "Eliminar",
-      disabled: !user.is_superuser,
+      disabled: !canManageTickets,
     },
   ];
   const handlePageChange = (newPage: number) => {
