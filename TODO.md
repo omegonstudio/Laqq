@@ -64,6 +64,74 @@ Pendientes y notas surgidas durante el trabajo en `clean-users-and-permissions`.
 
 ---
 
+## Back — Logger nativo de auditoría CRUD (pendiente, plan)
+
+**Idea general**
+Auditar todas las peticiones CRUD (no solo DELETE). Usar **logger nativo de Django** + un modelo `AuditLog` propio, sin dependencias externas. Registrar quién, cuándo, qué acción, sobre qué objeto, desde qué IP/ruta.
+
+**Por qué no `django-auditlog`**
+- No necesitamos dependencias nuevas.
+- No queremos el diff de campos en updates (solo el "qué").
+- El esquema queda 100% a medida (un único modelo legible).
+
+**Componentes a crear**
+
+1. `Backend/audit/` — app nueva:
+   - `models.py`: `AuditLog(timestamp, user FK nullable, username, action [CREATE/UPDATE/DELETE], method [POST/PUT/PATCH/DELETE], app_label, model_name, object_id, object_repr, remote_addr, path)`.
+   - `signals.py`: handlers `post_save` y `post_delete` (genéricos, filtran modelos auditables).
+   - `apps.py`: `ready()` conecta las signals; define `AUDIT_EXCLUDED_MODELS` (ej. `Session`, `LogEntry`, `ContentType`, `AuditLog`).
+   - `admin.py`: list_display con timestamp, user, action, modelo, repr, IP. Filtros por user/action/model.
+   - `middleware.py` (15 líneas): setea thread-local `audit_request` con `request.user` + `request.META['REMOTE_ADDR']` + `request.path` para que las signals accedan al contexto de la request.
+   - `__init__.py`, `apps.py`, `migrations/0001_initial.py` autogenerada.
+
+2. `Backend/config/settings.py`:
+   - `INSTALLED_APPS += ['audit']`.
+   - `MIDDLEWARE += ['audit.middleware.AuditMiddleware']` (después de `AuthenticationMiddleware`).
+   - `LOGGING`: nuevo logger `'audit'` con handler `file` a `logs/audit.log` + rotación diaria (TimedRotatingFileHandler). Nivel `INFO`.
+
+3. Modelos a registrar en `AUDITED_MODELS` (whitelist explícita para no auditar cosas inútiles):
+   - `products`: `Brand`, `Category`, `Product`, `ProductVariant`, `TechnicalSpec`, `ProductRelation`.
+   - `quotes`: `Quote`, `QuoteItem`, `QuoteType`, `QuoteState`.
+   - `tickets`: `ServiceTicket`, `TicketState`, `TicketPriority`.
+   - `users`: `User`, `UserType`, `UserState`.
+   - `attachments`: `Attachment`.
+   - `contacts`: `Contact`, `Message`, `ContactState`.
+   - `accessories`: `Accessory`, `ProductAccessory`.
+   - `notes`: `Note`, `NoteType`, `NoteState`.
+
+**Lo que se captura**
+
+| Campo | Ejemplo |
+|---|---|
+| `timestamp` | `2026-07-31 14:23:11` |
+| `user` | `adrianpizani` |
+| `action` | `DELETE` |
+| `method` | `DELETE` (cuando se conoce; para `post_save` no siempre = verb de la request) |
+| `app_label.model` | `products.Brand` |
+| `object_id` | `uuid...` o `int` |
+| `object_repr` | `Brand: Sony` |
+| `remote_addr` | `127.0.0.1` |
+| `path` | `/api/products/brands/<id>/` |
+
+**Cobertura**
+
+- ✅ Borraos directos por API (`DELETE /api/...`).
+- ✅ Borraos por cascada (borrar Product → borra Variants → cada uno genera entrada).
+- ✅ Creaciones y updates vía viewset DRF.
+- ❌ Login/logout (no están en `AUDITED_MODELS`; se pueden sumar aparte con `user_logged_in` signal).
+- ❌ Lo que pase por management commands (no hay request asociada — queda con `user=NULL`, `path=''`).
+
+**Pendiente / decisiones**
+
+- ¿Querés que se registren también `POST /login`, `POST /token/` (auditoría de accesos)? Hoy no se planea.
+- Tamaño esperado: pocas filas/día salvo migraciones masivas. Rotación diaria del log file + retención 30 días.
+- Si más adelante se quiere exponer vía API para ver desde el front, hacer un `AuditLogViewSet` con `IsAdminOnly`.
+- Tests: `AuditSignalTestCase` que crea/edita/borra un `Brand` y verifica que se generaron 3 filas con los datos correctos.
+
+**No se requieren migraciones de modelos existentes** (es una app nueva con su propia tabla).
+
+---
+
 ## Front — UsersTable: tipo de usuario en el dropdown de creación
 
 **Problema**
