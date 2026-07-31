@@ -2,8 +2,8 @@ import { useAuth } from "@/components/auth/useAuth";
 import { useNavigate } from "react-router-dom";
 import { LogOut, User } from "lucide-react";
 import Button from "@/components/atoms/Button";
-import { useDispatch } from "react-redux";
-import { AppDispatch } from "@/store";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/store";
 import { logout as logoutAction } from "@/store/authSlice";
 
 // user_type.id -> etiqueta legible para el topbar
@@ -23,17 +23,21 @@ const getUserTypeLabel = (
 };
 
 const Topbar = () => {
-  const { user, logout } = useAuth();
+  const { logout: clearLocalAuth } = useAuth();
+  const authUser = useSelector((state: RootState) => state.auth.user);
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
 
   const handleLogout = async () => {
-    logout(); // tu hook (si hace algo extra)
-    await dispatch(logoutAction()); // la acción de Redux
+    clearLocalAuth(); // limpia la sesión del AuthContext (localStorage)
+    await dispatch(logoutAction()); // limpia el slice de Redux
     navigate("/login");
   };
 
-  const userTypeLabel = getUserTypeLabel(user?.user_type_id, user?.is_superuser);
+  const userTypeLabel = getUserTypeLabel(
+    authUser?.user_type_id,
+    authUser?.is_superuser
+  );
 
   return (
     <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between mb-6">
@@ -51,7 +55,7 @@ const Topbar = () => {
           <User size={18} className="text-muted-foreground" />
           <div className="flex flex-col">
             <span className="font-medium text-foreground">
-              {user?.username ?? "—"}
+              {authUser?.username ?? "—"}
             </span>
             <span className="text-xs text-muted-foreground">
               {userTypeLabel}
