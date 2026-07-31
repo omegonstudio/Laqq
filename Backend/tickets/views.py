@@ -20,6 +20,7 @@ from .serializers import (
 )
 from .permissions import (
     IsAdminOrBackOffice,
+    IsAdminOnly,
     CanAttachFiles,
     CanCreateTicketOrStaff
 )
@@ -52,7 +53,7 @@ class TicketStateViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
             return [AllowAny()]
-        return [IsAuthenticated(), IsAdminOrBackOffice()]
+        return [IsAuthenticated(), IsAdminOnly()]
 
 
 # -------------------------
@@ -72,7 +73,7 @@ class TicketPriorityViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
             return [AllowAny()]
-        return [IsAuthenticated(), IsAdminOrBackOffice()]
+        return [IsAuthenticated(), IsAdminOnly()]
 
 
 # -------------------------
@@ -257,7 +258,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
     # Assign / state changes
     # -------------------------
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOrBackOffice])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOnly])
     def assign(self, request, pk=None):
         ticket = self.get_object()
 
@@ -279,7 +280,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOrBackOffice])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOnly])
     def start(self, request, pk=None):
         ticket = self.get_object()
         state = TicketState.objects.get(id='in_progress')
@@ -295,7 +296,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOrBackOffice])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOnly])
     def resolve(self, request, pk=None):
         ticket = self.get_object()
         state = TicketState.objects.get(id='resolved')
@@ -318,7 +319,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOrBackOffice])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOnly])
     def close(self, request, pk=None):
         ticket = self.get_object()
         state = TicketState.objects.get(id='closed')

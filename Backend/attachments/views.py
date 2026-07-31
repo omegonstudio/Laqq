@@ -4,16 +4,17 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import HttpResponse, Http404, FileResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny  
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny
 
 from .models import Attachment
 from .serializers import AttachmentSerializer
+from .permissions import IsAdminOrAttachmentReadOnly
 
 
 class AttachmentViewSet(viewsets.ModelViewSet):
     queryset = Attachment.objects.all()
     serializer_class = AttachmentSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAdminOrAttachmentReadOnly]
     parser_classes = [MultiPartParser, FormParser]  # permite multipart uploads
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['attachable_type', 'attachable_id', 'created_by', 'content_type_str', 'role']
