@@ -19,6 +19,7 @@ import { fetchUsers } from "@/store/usersSlice";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import { toast } from "@/hooks/use-toast";
 import Button from "../atoms/Button";
+import { useCanManageContacts, useCanCreateContacts } from "@/hooks/usePermissions";
 
 const contactInitialData: Contact = {
   id: "",
@@ -39,7 +40,8 @@ const ContactsABM = () => {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(
     contactInitialData
   );
-  const { user } = useAppSelector((state: RootState) => state.auth);
+  const canManageContacts = useCanManageContacts();
+  const canCreateContacts = useCanCreateContacts();
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
@@ -162,7 +164,7 @@ const ContactsABM = () => {
       onClick: handleOpenDeleteModal,
       color: "red",
       label: "Eliminar",
-      disabled: !user?.is_superuser, // Solo superusuarios pueden eliminar
+      disabled: !canManageContacts, // Solo admin puede eliminar
     },
   ];
   const handlePageChange = (newPage: number) => {
@@ -209,14 +211,16 @@ const ContactsABM = () => {
             className="max-w-xs"
           />
         </div>
-        <Button
-          className="flex items-center gap-2"
-          variant="primary"
-          onClick={handleCreate}
-        >
-          <Plus size={18} />
-          Crear contacto
-        </Button>
+        {canCreateContacts && (
+          <Button
+            className="flex items-center gap-2"
+            variant="primary"
+            onClick={handleCreate}
+          >
+            <Plus size={18} />
+            Crear contacto
+          </Button>
+        )}
       </div>
       <Table
         columns={columns}

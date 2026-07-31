@@ -148,7 +148,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
         # Usuario autenticado
         if user.is_authenticated:
             # Admin/backoffice → todos los tickets
-            if user.is_superuser or (user.user_type_id and user.user_type_id.upper() in ['ADMIN', 'BACKOFFICE', 'BACK']):
+            if user.is_superuser or (user.user_type_id and user.user_type_id in ['admin', 'back']):
                 return queryset
 
             # Usuario normal → solo sus propios tickets

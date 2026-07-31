@@ -41,7 +41,9 @@ def create_if_not_exists(model, lookup: dict, defaults: dict = None):
 
 def seed_user_types():
     print("Seeding UserType...")
-    types = ["ADMIN", "BACKOFFICE"]
+    # Estos tipos ya los crea populate_user_data con más detalle.
+    # Aquí solo nos aseguramos de que existan para crear los usuarios seed.
+    types = ["admin", "back"]
 
     objs = []
     for t in types:
@@ -74,8 +76,8 @@ def seed_user_states():
 def seed_users():
     print("Seeding Users...")
 
-    admin_type = UserType.objects.get(id="ADMIN")
-    backoffice_type = UserType.objects.get(id="BACKOFFICE")
+    admin_type = UserType.objects.get(id="admin")
+    backoffice_type = UserType.objects.get(id="back")
 
     active_state = UserState.objects.get(id="ACTIVE")
 
@@ -124,7 +126,7 @@ def seed_contacts():
     print("Seeding Contacts...")
 
     state = ContactState.objects.get(id="NEW")
-    assigned = User.objects.filter(user_type__id="BACKOFFICE").first()
+    assigned = User.objects.filter(user_type__id="back").first()
 
     for i in range(3):
         email = f"cliente{i}@mail.com"

@@ -16,10 +16,11 @@ import QuotePreviewDialog from "../atoms/QuotePreview";
 import { convertQuotesState, convertQuotesTypes } from "@/utils/quotesConvert";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import { toast } from "@/hooks/use-toast";
+import { useCanManageQuotes } from "@/hooks/usePermissions";
 
 const QuotesTable = () => {
   const dispatch = useAppDispatch();
-  const { user } = useAppSelector((state) => state.auth);
+  const canManageQuotes = useCanManageQuotes();
 
   const { list: quotes, pagination } = useAppSelector((state) => state.quotes);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
@@ -126,28 +127,43 @@ const QuotesTable = () => {
     setIsModalEditOpen(true);
   };
 
-  const actions = [
-    {
-      icon: <Edit2 size={16} />,
-      label: "Ver / Editar",
-      onClick: handleEdit,
-    },
-    {
-      icon: <FileText size={16} />,
-      label: "PDF",
-      onClick: (quote: QuoteRender) => {
-        generateQuotePdf(quote);
-        toast({ title: "PDF generado" });
-      },
-    },
-    {
-      icon: <Trash2 size={16} />,
-      label: "Eliminar",
-      color: "red",
-      onClick: handleOpenDeleteModal,
-      disabled: !user?.is_superuser, // Solo superusuarios pueden eliminar
-    },
-  ];
+  const actions = canManageQuotes
+    ? [
+        {
+          icon: <Edit2 size={16} />,
+          label: "Ver / Editar",
+          onClick: handleEdit,
+        },
+        {
+          icon: <FileText size={16} />,
+          label: "PDF",
+          onClick: (quote: QuoteRender) => {
+            generateQuotePdf(quote);
+            toast({ title: "PDF generado" });
+          },
+        },
+        {
+          icon: <Trash2 size={16} />,
+          label: "Eliminar",
+          color: "red",
+          onClick: handleOpenDeleteModal,
+        },
+      ]
+    : [
+        {
+          icon: <Edit2 size={16} />,
+          label: "Ver",
+          onClick: handleEdit,
+        },
+        {
+          icon: <FileText size={16} />,
+          label: "PDF",
+          onClick: (quote: QuoteRender) => {
+            generateQuotePdf(quote);
+            toast({ title: "PDF generado" });
+          },
+        },
+      ];
   const handleConfirmDelete = async () => {
     if (!previewQuote) return;
 

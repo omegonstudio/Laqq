@@ -7,7 +7,7 @@ class IsAdminUserType(BasePermission):
             return False
         if user.is_superuser:
             return True
-        return user.user_type_id in ['ADMIN', 'admin', 'BACKOFFICE', 'backoffice']
+        return user.user_type_id in ['admin', 'back']
 
 class IsReadOnlyOrAdmin(BasePermission):
     def has_permission(self, request, view):
@@ -20,4 +20,4 @@ class IsReadOnlyOrAdmin(BasePermission):
             return False
         if user.is_superuser:
             return True
-        return user.user_type_id in ['ADMIN', 'admin']
+        return user.user_type_id == 'admin'

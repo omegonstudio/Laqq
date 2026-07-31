@@ -58,6 +58,11 @@ class UserCreateSerializer(UserSerializer):
                 counter += 1
             validated_data['username'] = username
 
+        # Auto-asignar is_staff=True para usuarios admin/back (acceso al panel Django)
+        user_type = validated_data.get('user_type')
+        if user_type and user_type.id in ('admin', 'back'):
+            validated_data.setdefault('is_staff', True)
+
         user = User(**validated_data)
         user.set_password(password)
         user.save()

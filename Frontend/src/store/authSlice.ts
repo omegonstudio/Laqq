@@ -19,9 +19,14 @@ export const decryptToken = (encryptedToken: string): string => {
 };
 
 interface AuthState {
-  user: { username: string; is_superuser: boolean; is_staff: boolean } | null; // ❌ NUNCA guardes password
-  access: string | null; // Guardará el token encriptado
-  refresh: string | null; // Guardará el token encriptado
+  user: {
+    username: string;
+    is_superuser: boolean;
+    is_staff: boolean;
+    user_type_id: string | null;
+  } | null;
+  access: string | null;
+  refresh: string | null;
   loading: boolean;
 }
 
@@ -55,7 +60,7 @@ export const loginThunk = createAsyncThunk(
 
       const data = await res.json();
 
-      // Encriptar tokens antes de guardarlos
+            // Encriptar tokens antes de guardarlos
       return {
         access: encryptToken(data.access),
         refresh: encryptToken(data.refresh),
@@ -63,6 +68,7 @@ export const loginThunk = createAsyncThunk(
           username: username,
           is_staff: data.is_staff,
           is_superuser: data.is_superuser,
+          user_type_id: data.user_type?.id ?? null,
         },
       };
     } catch (e) {
@@ -127,6 +133,7 @@ const authSlice = createSlice({
           username: action.payload.user.username,
           is_superuser: action.payload.user.is_superuser,
           is_staff: action.payload.user.is_staff,
+          user_type_id: action.payload.user.user_type_id,
         };
         state.access = action.payload.access; // Ya encriptado
         state.refresh = action.payload.refresh; // Ya encriptado

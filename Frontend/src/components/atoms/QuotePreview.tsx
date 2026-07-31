@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { useCanManageQuotes } from "@/hooks/usePermissions";
 import {
   createQuoteItem,
   deleteQuoteItem,
@@ -73,7 +74,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
     page: 1,
     page_size: 50,
   });
-  const { user } = useAppSelector((state) => state.auth);
+  const canManageQuotes = useCanManageQuotes();
   const { list: products, loading: loadingProducts } = useAppSelector(
     (state) => state.products
   );
@@ -798,7 +799,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
           initialData={specs!}
         />
 
-        {user?.is_superuser && (
+        {canManageQuotes && (
           <div className="flex grid grid-cols-3 gap-20">
             <Button
               variant={edit ? "secondary" : "primary"}

@@ -20,6 +20,7 @@ import type { UserCreate, UserData } from "@/types/api";
 import { toast } from "@/hooks/use-toast";
 import { useAppSelector } from "@/store/hooks";
 import { RootState } from "@/store";
+import { useCanManageUsers } from "@/hooks/usePermissions";
 
 type UserRow = {
   id: string;
@@ -46,6 +47,8 @@ type UserFormState = {
 const PAGE_SIZE = 200;
 
 const UsersTable = () => {
+  const canManageUsers = useCanManageUsers();
+
   const {
     data: usersData,
     isLoading,
@@ -111,7 +114,7 @@ const UsersTable = () => {
     const items = userTypesData?.results ?? [];
     return [
       { value: "", label: "Sin tipo" },
-      ...items.map((t) => ({ value: t.id, label: t.first_name })),
+      ...items.map((t) => ({ value: t.id, label: t.name })),
     ];
   }, [userTypesData?.results]);
 
@@ -262,14 +265,14 @@ const UsersTable = () => {
       icon: <Edit2 size={16} />,
       onClick: handleEdit,
       label: "Editar",
-      disabled: !user?.is_superuser,
+      disabled: !canManageUsers,
     },
     {
       icon: <Trash2 size={16} />,
       onClick: handleDelete,
       color: "red",
       label: "Eliminar",
-      disabled: !user?.is_superuser, // Solo superusuarios pueden eliminar
+      disabled: !canManageUsers,
     },
   ];
 
@@ -282,14 +285,16 @@ const UsersTable = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-md"
         />
-        <Button
-          variant="primary"
-          className="whitespace-nowrap w-fit"
-          onClick={openCreateModal}
-        >
-          <Plus size={18} />
-          Nuevo Usuario
-        </Button>
+        {canManageUsers && (
+          <Button
+            variant="primary"
+            className="whitespace-nowrap w-fit"
+            onClick={openCreateModal}
+          >
+            <Plus size={18} />
+            Nuevo Usuario
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
