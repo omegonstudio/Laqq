@@ -114,7 +114,7 @@ const UsersTable = () => {
     const items = userTypesData?.results ?? [];
     return [
       { value: "", label: "Sin tipo" },
-      ...items.map((t) => ({ value: t.id, label: t.first_name })),
+      ...items.map((t) => ({ value: t.id, label: t.name })),
     ];
   }, [userTypesData?.results]);
 
