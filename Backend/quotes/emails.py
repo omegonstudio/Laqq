@@ -162,7 +162,7 @@ def send_quote_to_business(quote):
         customer_display_name = quote.contact.company_name or f"{quote.contact.first_name} {quote.contact.last_name}".strip() or "Cliente"
         subject = f'Nueva Cotización #{quote.quote_number} de {customer_display_name}'
         from_email = f'{settings.DEFAULT_FROM_NAME} <{settings.DEFAULT_FROM_EMAIL}>'
-        to_email = [settings.BUSINESS_EMAIL]
+        to_email = [settings.QUOTES_EMAIL]
 
         email = EmailMultiAlternatives(
             subject=subject,
@@ -175,7 +175,7 @@ def send_quote_to_business(quote):
 
         # Print email content to console for debugging (BEFORE sending)
         safe_print("\n" + "="*80)
-        safe_print(f"EMAIL TO BUSINESS: {settings.BUSINESS_EMAIL}")
+        safe_print(f"EMAIL TO BUSINESS: {settings.QUOTES_EMAIL}")
         safe_print("="*80)
         safe_print(f"Subject: {subject}")
         safe_print(f"From: {from_email}")
@@ -186,7 +186,7 @@ def send_quote_to_business(quote):
 
         # Send email via Resend API (or locmem during tests)
         send_email_message(email)
-        logger.info(f"Quote #{quote.quote_number} email sent to business: {settings.BUSINESS_EMAIL}")
+        logger.info(f"Quote #{quote.quote_number} email sent to business: {settings.QUOTES_EMAIL}")
 
         return True
 
@@ -344,7 +344,7 @@ def send_quote_updated_to_business(quote):
         customer_display_name = quote.contact.company_name or f"{quote.contact.first_name} {quote.contact.last_name}".strip() or "Cliente"
         subject = f'Cotización #{quote.quote_number} Actualizada - {customer_display_name}'
         from_email = f'{settings.DEFAULT_FROM_NAME} <{settings.DEFAULT_FROM_EMAIL}>'
-        to_email = [settings.BUSINESS_EMAIL]
+        to_email = [settings.QUOTES_EMAIL]
 
         email = EmailMultiAlternatives(
             subject=subject,
@@ -355,7 +355,7 @@ def send_quote_updated_to_business(quote):
 
         # Print email content to console for debugging (BEFORE sending)
         safe_print("\n" + "="*80)
-        safe_print(f"UPDATE EMAIL TO BUSINESS: {settings.BUSINESS_EMAIL}")
+        safe_print(f"UPDATE EMAIL TO BUSINESS: {settings.QUOTES_EMAIL}")
         safe_print("="*80)
         safe_print(f"Subject: {subject}")
         safe_print(f"From: {from_email}")
@@ -366,7 +366,7 @@ def send_quote_updated_to_business(quote):
 
         # Send email via Resend API (or locmem during tests)
         send_email_message(email)
-        logger.info(f"Quote #{quote.quote_number} update email sent to business: {settings.BUSINESS_EMAIL}")
+        logger.info(f"Quote #{quote.quote_number} update email sent to business: {settings.QUOTES_EMAIL}")
 
         return True
 

@@ -98,8 +98,7 @@ const ContactForm = () => {
                   </div>
                   <div>
                     <h3 className="font-bold mb-1">Email</h3>
-                    <p className="text-muted-foreground">marketing@laqq.com.ar</p>
-                    <p className="text-muted-foreground">info@laqq.com</p>
+                    <p className="text-muted-foreground">consultasweb@laqq.com.ar</p>
                   </div>
                 </div>
 
