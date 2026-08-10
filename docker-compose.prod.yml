@@ -61,6 +61,7 @@ services:
         condition: service_healthy
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - backend_static:/var/www/static
       - backend_media:/var/www/media
