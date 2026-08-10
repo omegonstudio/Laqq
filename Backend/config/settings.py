@@ -31,7 +31,7 @@ ALLOWED_HOSTS = [
     h.strip()
     for h in config(
         'ALLOWED_HOSTS',
-        default='localhost,127.0.0.1,0.0.0.0,backend,laqq.omegon.com.ar'
+        default='localhost,127.0.0.1,0.0.0.0,backend,laqq.com.ar'
     ).split(',')
     if h.strip()
 ]
@@ -39,8 +39,8 @@ ALLOWED_HOSTS = [
 AUTH_USER_MODEL = 'users.User'
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://laqq.omegon.com.ar",
-    "https://laqq.omegon.com.ar",
+    "http://laqq.com.ar",
+    "https://laqq.com.ar",
 ]
 
 # PRE-LAUNCH (y recomendado también en producción):
@@ -247,8 +247,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8080",
     "http://localhost:8081",
     "http://127.0.0.1:8081",
-    "http://laqq.omegon.com.ar",
-    "https://laqq.omegon.com.ar",
+    "http://laqq.com.ar",
+    "https://laqq.com.ar",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -322,7 +322,7 @@ BUSINESS_LOGO_PATH = config(
 # Base URL of the frontend (serves its public/ folder at the site root). Used to
 # build the absolute logo URL referenced by emails, because Gmail/Outlook only
 # render images from public absolute URLs (they block data: URIs and CID).
-FRONTEND_BASE_URL = config('FRONTEND_BASE_URL', default='https://laqq.omegon.com.ar')
+FRONTEND_BASE_URL = config('FRONTEND_BASE_URL', default='https://laqq.com.ar')
 # Optional absolute URL; if set it overrides the auto-built frontend logo URL.
 BUSINESS_LOGO_URL = config('BUSINESS_LOGO_URL', default='')
 
