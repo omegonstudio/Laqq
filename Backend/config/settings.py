@@ -245,6 +245,12 @@ SIMPLE_JWT = {
 # CORS Settings
 FRONTEND_PORT = config('FRONTEND_PORT', default='3000')
 CORS_ALLOWED_ORIGINS = [
+    f"http://localhost:{FRONTEND_PORT}",
+    f"http://127.0.0.1:{FRONTEND_PORT}",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "http://localhost:8081",
+    "http://127.0.0.1:8081",
     "http://laqq.com.ar",
     "https://laqq.com.ar",
     "http://www.laqq.com.ar",
