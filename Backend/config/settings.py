@@ -31,7 +31,7 @@ ALLOWED_HOSTS = [
     h.strip()
     for h in config(
         'ALLOWED_HOSTS',
-        default='laqq.com,laqq.com.ar,www.laqq.com.ar'
+        default='localhost,127.0.0.1,0.0.0.0,backend,laqq.com,laqq.com.ar,www.laqq.com.ar'
     ).split(',')
     if h.strip()
 ]
