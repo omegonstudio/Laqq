@@ -31,7 +31,7 @@ ALLOWED_HOSTS = [
     h.strip()
     for h in config(
         'ALLOWED_HOSTS',
-        default='localhost,127.0.0.1,0.0.0.0,backend,laqq.com.ar'
+        default='laqq.com,laqq.com.ar,www.laqq.com.ar'
     ).split(',')
     if h.strip()
 ]
@@ -40,7 +40,11 @@ AUTH_USER_MODEL = 'users.User'
 
 CSRF_TRUSTED_ORIGINS = [
     "http://laqq.com.ar",
+    "http://www.laqq.com.ar",
+    "http://laqq.com",
     "https://laqq.com.ar",
+    "https://www.laqq.com.ar",
+    "https://laqq.com",
 ]
 
 # PRE-LAUNCH (y recomendado también en producción):
@@ -241,14 +245,14 @@ SIMPLE_JWT = {
 # CORS Settings
 FRONTEND_PORT = config('FRONTEND_PORT', default='3000')
 CORS_ALLOWED_ORIGINS = [
-    f"http://localhost:{FRONTEND_PORT}",
-    f"http://127.0.0.1:{FRONTEND_PORT}",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-    "http://localhost:8081",
-    "http://127.0.0.1:8081",
     "http://laqq.com.ar",
     "https://laqq.com.ar",
+    "http://www.laqq.com.ar",
+    "https://www.laqq.com.ar",
+    "http://laqq.com",
+    "https://laqq.com",
+    "http://www.laqq.com",
+    "https://www.laqq.com",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
