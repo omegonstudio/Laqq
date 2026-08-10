@@ -5,7 +5,7 @@
 # bloqueadas por robots.txt" (comportamiento observado en Search Console).
 #
 # GO LIVE: mantener Allow: / y añadir:
-# Sitemap: https://laqq.omegon.com.ar/sitemap.xml
+# Sitemap: https://laqq.com.ar/sitemap.xml
 #
 # Cambiar únicamente si se decide otra estrategia (p. ej. Basic Auth).
 
