@@ -64,6 +64,7 @@ services:
     volumes:
       - backend_static:/var/www/static
       - backend_media:/var/www/media
+      - /var/www/certbot:/var/www/certbot:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
       interval: 30s
