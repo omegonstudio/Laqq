@@ -34,19 +34,19 @@ const cards = [
   },
   {
     title: "DUCTOS DE SERVICIOS",
-    image: "/instrumental.png",
+    image: "/carrusel1.jpg",
     pdf: "/pdfs/Koettermann_SERVICIOS.pdf",
   },
   {
     title: "CAMPANAS EXTRACTORAS",
-    image: "/instrumental.png",
+    image: "/carrusel2.jpg",
     pdf: "/pdfs/Koettermann_CAMARAS.pdf",
   },
 ];
 
 // TODO: reemplazar por las imágenes numeradas "1 Carrousel", "2 Carrousel", etc.
 // que Kottermann envió, respetando ese orden.
-const carouselImages = ["/Koettermann_Labor_C_09.jpg" , "/instrumental.png"];
+const carouselImages = ["/carrusel1.jpg" , "/carrusel2.jpg", "/carrusel3.jpg", "/carrusel4.png"];
 
 const FurnitureSection = () => {
   const [current, setCurrent] = useState(0);

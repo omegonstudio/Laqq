@@ -212,7 +212,6 @@ const CompanySection = () => {
             "cannon.svg",
             "fisher.svg",
             "hirschmann.svg",
-            "honeywell.svg",
             "julabo.svg",
             "kottermann.svg",
             "labconco.svg",
@@ -226,6 +225,13 @@ const CompanySection = () => {
             "thermo.svg",
             "velp.svg",
             "wiggens.svg",
+            "2mag.jpg",
+            "bel.png",
+            "boeco.jpg",
+            "ech.png",
+            "iludest.svg",
+            "scavini.jpg",
+            "stakpure.png"
           ].map((logo, index) => (
             <div
             key={index}
