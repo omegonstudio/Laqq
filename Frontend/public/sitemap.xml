@@ -1,17 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  Sitemap de rutas públicas estáticas (SPA).
 
-  PRE-LAUNCH: NO referenciar desde robots.txt hasta el GO LIVE
-  (evitar descubrimiento agresivo del sitemap mientras hay noindex).
-  Google puede rastrear URLs individuales y aplicar meta / X-Robots-Tag.
-
-  GO LIVE:
-  1. En robots.txt añadir:
-     Sitemap: https://laqq.com.ar/sitemap.xml
-  2. Enviar este sitemap en Google Search Console.
-  3. (Opcional) Ampliar con URLs dinámicas /product/{id} vía backend.
--->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://laqq.com.ar/</loc>
