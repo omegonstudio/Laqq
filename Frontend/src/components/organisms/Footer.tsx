@@ -24,7 +24,7 @@ const Footer = () => {
         <div className="grid md:grid-cols-4 gap-8 mb-12">
           <div>
             <Logo variant="dark" showLink={false} />
-            <p className="text-sm opacity-80">
+            <p className="mt-3 text-sm opacity-80">
               Proveedor especializado en equipo de laboratorio y servicios
               técnicos
             </p>
