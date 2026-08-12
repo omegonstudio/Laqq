@@ -31,7 +31,7 @@ ALLOWED_HOSTS = [
     h.strip()
     for h in config(
         'ALLOWED_HOSTS',
-        default='localhost,127.0.0.1,0.0.0.0,backend,laqq.com,laqq.com.ar,www.laqq.com.ar'
+        default='localhost,127.0.0.1,0.0.0.0,backend,laqq.com,laqq.com.ar,www.laqq.com.ar,www.laqq.com,104.248.189.220'
     ).split(',')
     if h.strip()
 ]
@@ -45,6 +45,8 @@ CSRF_TRUSTED_ORIGINS = [
     "https://laqq.com.ar",
     "https://www.laqq.com.ar",
     "https://laqq.com",
+    "http://www.laqq.com",
+    "https://www.laqq.com"
 ]
 
 # PRE-LAUNCH (y recomendado también en producción):

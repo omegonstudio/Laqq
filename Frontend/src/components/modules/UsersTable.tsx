@@ -7,11 +7,10 @@ import Select from "@/components/atoms/Select";
 import Modal from "@/components/common/Modal";
 import ModalDelete from "@/components/molecules/Modals/ModalDelete";
 import {
+  useAllUsers,
   useCreateUser,
   useDeleteUser,
   usePatchUser,
-  useUserAdmins,
-  useUsersList,
   useUserStates,
   useUserTypes,
 } from "@/hooks/useUsers";
@@ -53,7 +52,7 @@ const UsersTable = () => {
     data: usersData,
     isLoading,
     error,
-  } = useUserAdmins({
+  } = useAllUsers({
     page: 1,
     page_size: PAGE_SIZE,
   });
