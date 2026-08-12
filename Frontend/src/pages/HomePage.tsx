@@ -24,7 +24,12 @@ const HomePage = () => {
         <HeroSection />
       </div>
       {productFilter().length > 0 && (
-        <ProductGrid products={productFilter()} title="Productos Destacados" />
+        <section className="pt-16">
+          <ProductGrid
+            products={productFilter()}
+            title="Productos Destacados"
+          />
+        </section>
       )}
       <BrandsGrid />
     </>

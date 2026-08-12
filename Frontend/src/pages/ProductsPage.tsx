@@ -1,120 +1,125 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import ProductGrid from "@/components/organisms/ProductGrid";
-import SearchBar from "@/components/molecules/SearchBar";
-import { Product } from "@/types/types";
+import { Product, PaginationInfo } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchAllProducts, fetchProducts } from "@/store/productSlice";
+import { productsApi, ProductListParams } from "@/lib/api/products";
 import { useProductFilters } from "@/hooks/useFilters";
 import { fetchAllCategories } from "@/store/categoriesSlice";
-import NavDropdown from "@/components/molecules/NavDropdown";
-import { Loader, Loader2 } from "lucide-react";
+
+const INITIAL_PAGINATION: PaginationInfo = {
+  count: 0,
+  next: null,
+  previous: null,
+  page_size: 9,
+  current_page: 1,
+  total_pages: 1,
+};
 
 const ProductsPage = () => {
-  const { searchParams, setFilter, clearBrand, clearCategory } =
-    useProductFilters();
+  const { searchParams, clearBrand, clearCategory } = useProductFilters();
   const search = searchParams.get("search") ?? "";
   const category = searchParams.get("category");
   const brand = searchParams.get("brand");
 
   const dispatch = useAppDispatch();
-  const {
-    list: products,
-    pagination,
-    loading,
-  } = useAppSelector((state) => state.products);
   const { list: brands } = useAppSelector((state) => state.brands);
   const { list: categories } = useAppSelector((state) => state.categories);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [localLoading, setLocalLoading] = useState<boolean>(false);
 
-  // Cargar categorías y marcas al montar el componente
+  // Estado 100% local: esta página ya no depende del slice compartido de
+  // productos en Redux (evita que respuestas de otros filtros/páginas lo pisen).
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [pagination, setPagination] =
+    useState<PaginationInfo>(INITIAL_PAGINATION);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Token de secuencia: descarta respuestas fuera de orden. Cada cambio de
+  // filtro o "Ver más" incrementa el token; solo se aplica la respuesta que
+  // corresponde al token más reciente. Esto elimina el race condition que
+  // mostraba productos del filtro anterior o de otras marcas al scrollear.
+  const requestSeqRef = useRef(0);
+
+  const buildParams = useCallback(
+    (page: number): ProductListParams => {
+      const params: ProductListParams = {
+        page,
+        page_size: 9,
+        is_active: true,
+      };
+      if (search) params.search = search;
+      if (category) params.category_recursive = category;
+      if (brand) params.brand = brand;
+      return params;
+    },
+    [search, category, brand]
+  );
+
+  // Cargar categorías al montar el componente
   useEffect(() => {
-    // dispatch(fetchProducts({ page: 1, page_size: 9, is_active: true }));
-    setCurrentPage(1);
-    // dispatch(fetchAllBrands());
     dispatch(fetchAllCategories({}));
   }, [dispatch]);
 
-  // Cargar productos cuando cambian los filtros
+  // Cargar la primera página cuando cambian los filtros
   useEffect(() => {
+    const seq = ++requestSeqRef.current;
+
+    setLoading(true);
+    // Resetear productos acumulados para no mostrar datos del filtro anterior
     setAllProducts([]);
-    // Construir parámetros de filtrado para el backend
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const params: any = {
-      page: 1,
-      page_size: 9,
-      is_active: true,
-    };
-
-    // Agregar búsqueda si existe
-    if (search) {
-      params.search = search;
-    }
-
-    // Usar category_recursive para filtrado recursivo de categorías
-    if (category) {
-      params.category_recursive = category;
-    }
-
-    // Agregar marca si existe
-    if (brand) {
-      params.brand = brand;
-    }
-
-    // Realizar la búsqueda con los filtros aplicados
-    dispatch(fetchProducts(params));
     setCurrentPage(1);
-    setAllProducts([]); // Resetear productos acumulados
-    setLocalLoading(false);
-  }, [dispatch, search, category, brand]);
 
-  // Acumular productos cuando llegan nuevos
-  useEffect(() => {
-    if (products.length === 0) {
-      setAllProducts([]); // Si la API devuelve vacío, limpiar productos mostrados
-      return;
-    }
-    if (products.length > 0) {
-      setAllProducts((prev) => {
-        // Si es la página 1, reemplazar todo
-        if (currentPage === 1) {
-          return products;
-        }
-        // Si es página siguiente, agregar sin duplicados
-        const existingIds = new Set(prev.map((p) => p.id));
-        const newProducts = products.filter((p) => !existingIds.has(p.id));
-        return [...prev, ...newProducts];
+    productsApi
+      .list(buildParams(1))
+      .then((res) => {
+        if (seq !== requestSeqRef.current) return; // Respuesta obsoleta, ignorar
+        setPagination({
+          count: res.count,
+          next: res.next,
+          previous: res.previous,
+          page_size: res.page_size,
+          current_page: res.current_page,
+          total_pages: res.total_pages,
+        });
+        setAllProducts(res.results);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (seq !== requestSeqRef.current) return;
+        setLoading(false);
       });
-    } else setAllProducts([]); // Si no hay productos, limpiar (ej: al cambiar filtros)
-  }, [products]);
+  }, [search, category, brand, buildParams]);
 
   // Handler para "Ver más"
   const handleLoadMore = () => {
     const nextPage = currentPage + 1;
-    setCurrentPage(nextPage);
+    const seq = ++requestSeqRef.current;
 
-    // Construir parámetros con filtros actuales para la siguiente página
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const params: any = {
-      page: nextPage,
-      page_size: 9,
-      is_active: true,
-    };
+    setLoading(true);
 
-    if (search) {
-      params.search = search;
-    }
-
-    if (category) {
-      params.category_recursive = category;
-    }
-
-    if (brand) {
-      params.brand = brand;
-    }
-
-    dispatch(fetchProducts(params));
+    productsApi
+      .list(buildParams(nextPage))
+      .then((res) => {
+        if (seq !== requestSeqRef.current) return; // Respuesta obsoleta, ignorar
+        setPagination({
+          count: res.count,
+          next: res.next,
+          previous: res.previous,
+          page_size: res.page_size,
+          current_page: res.current_page,
+          total_pages: res.total_pages,
+        });
+        setAllProducts((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          const newProducts = res.results.filter((p) => !existingIds.has(p.id));
+          return [...prev, ...newProducts];
+        });
+        setCurrentPage(nextPage);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (seq !== requestSeqRef.current) return;
+        setLoading(false);
+      });
   };
 
   // Determinar si hay más páginas
