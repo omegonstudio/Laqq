@@ -25,14 +25,21 @@ from .serializers import (
 )
 from .permissions import IsReadOnlyOrAdmin, IsAdminUserType
 from .filters import ProductFilter, UnaccentSearchFilter
+from config.authentication import OptionalJWTAuthentication
+from rest_framework.authentication import SessionAuthentication
 
 from attachments.serializers import AttachmentSerializer
 from attachments.models import Attachment
+
+# Autenticación tolerante para endpoints públicos de catálogo: un Bearer
+# vencido/inválido no rompe la lectura pública (ver config/authentication.py).
+CATALOG_AUTH = [OptionalJWTAuthentication, SessionAuthentication]
 
 class BrandViewSet(viewsets.ModelViewSet):
     queryset = Brand.objects.all()
     serializer_class = BrandSerializer
     permission_classes = [IsReadOnlyOrAdmin]
+    authentication_classes = CATALOG_AUTH
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['name']
     search_fields = ['name', 'description']
@@ -43,6 +50,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [IsReadOnlyOrAdmin]
+    authentication_classes = CATALOG_AUTH
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['parent', 'display_order', 'level']
     search_fields = ['name', 'description']
@@ -72,6 +80,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     )
     serializer_class = ProductSerializer
     permission_classes = [IsReadOnlyOrAdmin]
+    authentication_classes = CATALOG_AUTH
     filter_backends = [DjangoFilterBackend, UnaccentSearchFilter, OrderingFilter]
     filterset_class = ProductFilter
     search_fields = ['name', 'product_code', 'brand__name', 'description']
@@ -250,6 +259,7 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
     queryset = ProductVariant.objects.all().prefetch_related('technical_specs')
     serializer_class = ProductVariantSerializer
     permission_classes = [AllowAny]
+    authentication_classes = CATALOG_AUTH
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['product', 'code']
     search_fields = ['code', 'name', 'product__name']
@@ -333,6 +343,7 @@ class TechnicalSpecViewSet(viewsets.ModelViewSet):
     queryset = TechnicalSpec.objects.all()
     serializer_class = TechnicalSpecSerializer
     permission_classes = [IsReadOnlyOrAdmin]
+    authentication_classes = CATALOG_AUTH
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ['key', 'value']
     ordering_fields = ['key', 'created_at', 'updated_at']

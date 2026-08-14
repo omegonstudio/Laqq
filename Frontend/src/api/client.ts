@@ -14,6 +14,24 @@ const BASE_URL = (env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(
   ""
 );
 
+/**
+ * Determina si un JWT de acceso ya expiró (decodificando la claim `exp`).
+ * Si no se puede decodificar, asume que NO expiró para evitar forzar
+ * refetches innecesarios.
+ */
+const isJwtExpired = (token: string): boolean => {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return true;
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = payload + "=".repeat((4 - (payload.length % 4)) % 4);
+    const decoded = JSON.parse(atob(padded));
+    return typeof decoded.exp === "number" && decoded.exp * 1000 <= Date.now();
+  } catch {
+    return false;
+  }
+};
+
 interface ApiError {
   message: string;
   status: number;
@@ -174,13 +192,37 @@ class ApiClient {
   }
 
   /**
+   * Devuelve un access token utilizable para la petición:
+   * si el guardado está vencido intenta refrescarlo; si no hay sesión
+   * válida devuelve null para que la petición salga ANÓNIMA (y así los
+   * endpoints públicos de catálogo no se rompan con un Bearer vencido).
+   */
+  private async resolveUsableToken(): Promise<string | null> {
+    const stored = this.getAccessToken();
+    if (!stored) return null;
+
+    if (!isJwtExpired(stored)) {
+      return stored;
+    }
+
+    // Token vencido: intentar refrescar una vez.
+    try {
+      await this.ensureFreshToken();
+      return this.getAccessToken();
+    } catch {
+      // Sin refresh válido → enviar anónimo (no hacer logout de un visitante).
+      return null;
+    }
+  }
+
+  /**
    * Realiza una petición con manejo automático de refresh token
    */
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const token = this.getAccessToken();
+    const token = await this.resolveUsableToken();
 
     const isFormData = options.body instanceof FormData;
     const headers: HeadersInit = {
