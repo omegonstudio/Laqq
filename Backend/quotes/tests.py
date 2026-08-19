@@ -55,7 +55,7 @@ class QuoteAPITestCase(APITestCase):
             state=self.contact_state
         )
         self.quote_type = QuoteType.objects.create(id='standard', name='Standard')
-        self.quote_state = QuoteState.objects.create(id='draft', name='Draft')
+        self.quote_state = QuoteState.objects.create(id='pending', name='Pendiente')
 
         self.quote = Quote.objects.create(
             quote_number='Q-2025-00001',
@@ -84,6 +84,7 @@ class QuoteAPITestCase(APITestCase):
         self.assertIn('quote_number', response.data)
         self.assertTrue(response.data['quote_number'].startswith('Q-'))
         self.assertEqual(response.data['currency'], 'ARS')
+        self.assertEqual(response.data['state'], 'pending')
 
     def test_quote_defaults_to_ars(self):
         """Las cotizaciones existentes quedan en pesos."""
@@ -140,9 +141,8 @@ class QuoteAPITestCase(APITestCase):
 
     def test_assign_user_sets_assigned_state_and_emails(self):
         """Al asignar un usuario, el estado pasa a Asignada y se envía un mail."""
-        pending = QuoteState.objects.create(id='pending', name='Pendiente')
         assigned = QuoteState.objects.create(id='assigned', name='Asignada')
-        self.quote.state = pending
+        self.quote.state = self.quote_state
         self.quote.save(update_fields=['state'])
 
         assignee = User.objects.create_user(
@@ -479,7 +479,7 @@ class QuoteEmailNotificationTestCase(APITestCase):
             state=self.contact_state
         )
         self.quote_type = QuoteType.objects.create(id='standard', name='Standard')
-        self.quote_state = QuoteState.objects.create(id='draft', name='Draft')
+        self.quote_state = QuoteState.objects.create(id='pending', name='Pendiente')
 
         # Create products
         self.brand = Brand.objects.create(name='Test Brand')
