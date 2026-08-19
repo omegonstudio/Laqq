@@ -431,7 +431,14 @@ class QuoteSendUpdatedTestCase(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user_type = UserType.objects.create(id='admin', name='Admin')
-        self.user = User.objects.create_user(username='testuser', password='testpass123', is_staff=True)
+        self.user = User.objects.create_user(
+            username='testuser',
+            password='testpass123',
+            email='adrian@laqq.com',
+            first_name='Adrian',
+            last_name='Pizani',
+            is_staff=True,
+        )
         self.user.user_type = self.user_type
         self.user.save()
         self.client.force_authenticate(user=self.user)
@@ -499,6 +506,12 @@ class QuoteSendUpdatedTestCase(APITestCase):
         sent_email = mail.outbox[0]
         self.assertIn('customer@test.com', sent_email.to)
         self.assertIn('Q-2026-00001', sent_email.subject)
+        body = sent_email.body
+        html = sent_email.alternatives[0][0] if sent_email.alternatives else ''
+        self.assertIn('Adrian Pizani', body)
+        self.assertIn('adrian@laqq.com', body)
+        self.assertIn('Adrian Pizani', html)
+        self.assertIn('adrian@laqq.com', html)
 
     def test_send_updated_quote_no_email(self):
         """Verificar error cuando el contacto no tiene email"""

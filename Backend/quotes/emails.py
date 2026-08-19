@@ -91,6 +91,23 @@ def safe_print(text):
         sys.stdout.buffer.write((text + '\n').encode('utf-8', errors='replace'))
 
 
+def _sender_from_user(user):
+    """Nombre, apellido y email del usuario que editó/envió la cotización."""
+    if not user:
+        return None
+    full_name = f"{getattr(user, 'first_name', '') or ''} {getattr(user, 'last_name', '') or ''}".strip()
+    email = getattr(user, 'email', '') or ''
+    if not full_name and not email:
+        full_name = getattr(user, 'username', '') or ''
+    if not full_name and not email:
+        return None
+    return {
+        'name': full_name,
+        'email': email,
+        'display': f"{full_name} ({email})" if full_name and email else (full_name or email),
+    }
+
+
 def send_quote_created_email(quote):
     """
     Send email notifications when a new quote is created.
@@ -451,7 +468,7 @@ def send_quote_updated_to_customer(quote):
         raise
 
 
-def send_updated_quote_to_customer(quote, pdf_file=None):
+def send_updated_quote_to_customer(quote, pdf_file=None, sender=None):
     """
     Send updated quote with full details to customer (manual send from backoffice).
     This is called manually when the user presses the "Send" button.
@@ -462,6 +479,8 @@ def send_updated_quote_to_customer(quote, pdf_file=None):
             en el front-end. Se adjunta directamente al correo en memoria, sin
             guardarlo en disco ni en la base de datos. Si es None, el correo
             se envía sin adjunto.
+        sender: Usuario autenticado que edita y envía (request.user). Se muestra
+            en el mail como leyenda (nombre, apellido y email).
 
     Returns:
         bool: True if email sent successfully, False otherwise
@@ -477,6 +496,8 @@ def send_updated_quote_to_customer(quote, pdf_file=None):
 
         # Build customer full name
         customer_name = f"{quote.contact.first_name} {quote.contact.last_name}".strip() or "Cliente"
+
+        sender_info = _sender_from_user(sender) or _sender_from_user(getattr(quote, 'user', None))
 
         context = {
             'quote': quote,
@@ -495,6 +516,9 @@ def send_updated_quote_to_customer(quote, pdf_file=None):
             'updated_at': quote.updated_at,
             'message': quote.message,
             'observaciones': quote.observaciones,
+            'sender_name': sender_info['name'] if sender_info else '',
+            'sender_email': sender_info['email'] if sender_info else '',
+            'sender_display': sender_info['display'] if sender_info else '',
         }
 
         # Render HTML and text versions

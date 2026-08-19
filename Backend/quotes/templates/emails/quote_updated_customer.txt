@@ -7,6 +7,10 @@ Hola {{ customer_name }},
 
 Tu cotización ha sido actualizada. A continuación encontrarás
 los detalles actualizados de tu solicitud.
+{% if sender_display %}
+Enviada por: {{ sender_display }}
+{% endif %}
+Visualizá el archivo adjunto para mayor información sobre tu presupuesto.
 
 NÚMERO DE COTIZACIÓN: {{ quote_number }}
 
