@@ -26,6 +26,7 @@ class UserSerializer(serializers.ModelSerializer):
     state_id = serializers.PrimaryKeyRelatedField(
         queryset=UserState.objects.all(), source='state', write_only=True, allow_null=True, required=False
     )
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = User
@@ -33,17 +34,41 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
             'user_type', 'user_type_id', 'state', 'state_id',
-            'is_active', 'is_staff', 'is_superuser',
+            'is_active', 'is_staff', 'is_superuser', 'password',
             'last_login', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'last_login', 'created_at', 'updated_at']
 
+    def validate(self, attrs):
+        password = attrs.get('password')
+        if password:
+            # En updates, solo el propio usuario puede cambiar su contraseña.
+            if self.instance is not None:
+                request = self.context.get('request')
+                requester = getattr(request, 'user', None)
+                if (
+                    requester is None
+                    or not requester.is_authenticated
+                    or requester.pk != self.instance.pk
+                ):
+                    raise serializers.ValidationError({
+                        'password': 'Solo podés cambiar la contraseña de tu propio usuario.'
+                    })
+        else:
+            attrs.pop('password', None)
+        return attrs
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        instance = super().update(instance, validated_data)
+        if password:
+            instance.set_password(password)
+            instance.save(update_fields=['password'])
+        return instance
+
 class UserCreateSerializer(UserSerializer):
     password = serializers.CharField(write_only=True, required=True)
     username = serializers.CharField(required=False, allow_blank=True, default='')
-
-    class Meta(UserSerializer.Meta):
-        fields = UserSerializer.Meta.fields + ['password']
 
     def create(self, validated_data):
         password = validated_data.pop('password')
