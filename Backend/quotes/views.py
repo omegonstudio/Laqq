@@ -324,7 +324,9 @@ class QuoteViewSet(viewsets.ModelViewSet):
 
         try:
             # Send the email (con o sin adjunto, según corresponda)
-            success = send_updated_quote_to_customer(quote, pdf_file=pdf_file)
+            success = send_updated_quote_to_customer(
+                quote, pdf_file=pdf_file, sender=request.user
+            )
 
             if success:
                 logger.info(f"Updated quote #{quote.quote_number} sent manually to {quote.contact.email}")
