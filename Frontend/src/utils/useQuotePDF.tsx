@@ -1,5 +1,9 @@
 import { QuoteItemRender, QuoteRender } from "@/types/api";
-import { convertQuotesState, convertQuotesTypes } from "./quotesConvert";
+import {
+  convertQuotesState,
+  convertQuotesTypes,
+  formatQuoteAmount,
+} from "./quotesConvert";
 import {
   Document,
   Page,
@@ -20,14 +24,6 @@ Font.registerHyphenationCallback((word) => {
   }
   return parts;
 });
-
-const formatCurrency = (value: string | number | null): string => {
-  if (value === null || value === undefined) return "$0,00";
-  return `$${Number(value).toLocaleString("es-AR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-};
 
 const formatDate = (dateStr: string): string => {
   return new Date(dateStr).toLocaleDateString("es-AR", {
@@ -391,13 +387,13 @@ const QuotePDF = ({
                     <Text style={{ fontFamily: "Helvetica-Bold" }}>
                       Precio unitario:{" "}
                     </Text>
-                    {formatCurrency(item.unit_price)}
+                    {formatQuoteAmount(item.unit_price, quote.currency)}
                   </Text>
                   <Text>
                     <Text style={{ fontFamily: "Helvetica-Bold" }}>
                       Subtotal:{" "}
                     </Text>
-                    {formatCurrency(subtotal)}
+                    {formatQuoteAmount(subtotal, quote.currency)}
                   </Text>
                 </View>
               </View>
@@ -448,10 +444,10 @@ const QuotePDF = ({
                 {item.quantity}
               </PdfTableCell>
               <PdfTableCell width={colWidths.price} right>
-                {formatCurrency(item.unit_price)}
+                {formatQuoteAmount(item.unit_price, quote.currency)}
               </PdfTableCell>
               <PdfTableCell width={colWidths.sub} right>
-                {formatCurrency(subtotal)}
+                {formatQuoteAmount(subtotal, quote.currency)}
               </PdfTableCell>
             </View>
           );

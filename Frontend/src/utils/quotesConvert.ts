@@ -1,4 +1,49 @@
-import { QuoteStateType, QuoteTypeEnum } from "@/types/api";
+import { QuoteCurrency, QuoteStateType, QuoteTypeEnum } from "@/types/api";
+
+export const QUOTE_CURRENCIES: { value: QuoteCurrency; label: string }[] = [
+  { value: "ARS", label: "Pesos" },
+  { value: "USD", label: "Dólares" },
+  { value: "EUR", label: "Euros" },
+];
+
+export const currencySymbol = (
+  currency?: QuoteCurrency | string | null
+): string => {
+  switch (currency) {
+    case "USD":
+      return "US$";
+    case "EUR":
+      return "€";
+    default:
+      return "$";
+  }
+};
+
+export const convertQuoteCurrency = (
+  currency?: QuoteCurrency | string | null
+): string => {
+  return (
+    QUOTE_CURRENCIES.find((item) => item.value === currency)?.label ?? "Pesos"
+  );
+};
+
+export const formatQuoteAmount = (
+  value: string | number | null | undefined,
+  currency?: QuoteCurrency | string | null
+): string => {
+  const symbol = currencySymbol(currency);
+  if (value === null || value === undefined || value === "") {
+    return `${symbol}0,00`;
+  }
+  const amount = Number(value);
+  if (Number.isNaN(amount)) {
+    return `${symbol}0,00`;
+  }
+  return `${symbol}${amount.toLocaleString("es-AR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+};
 
 export const convertQuotesState = (state: QuoteStateType): string => {
   switch (state.toLowerCase()) {
@@ -8,6 +53,8 @@ export const convertQuotesState = (state: QuoteStateType): string => {
       return "Expirada";
     case "pending":
       return "Pendiente";
+    case "assigned":
+      return "Asignada";
     case "rejected":
       return "Rechazada";
     case "sent":
@@ -44,6 +91,8 @@ export const revertQuotesState = (state: string): QuoteStateType => {
       return "expired";
     case "Pendiente":
       return "pending";
+    case "Asignada":
+      return "assigned";
     case "Rechazada":
       return "rejected";
     case "Enviada":

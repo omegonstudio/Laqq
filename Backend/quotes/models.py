@@ -21,6 +21,20 @@ class QuoteState(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 class Quote(models.Model):
+    CURRENCY_ARS = 'ARS'
+    CURRENCY_USD = 'USD'
+    CURRENCY_EUR = 'EUR'
+    CURRENCY_CHOICES = [
+        (CURRENCY_ARS, 'Pesos'),
+        (CURRENCY_USD, 'Dólares'),
+        (CURRENCY_EUR, 'Euros'),
+    ]
+    CURRENCY_SYMBOLS = {
+        CURRENCY_ARS: '$',
+        CURRENCY_USD: 'US$',
+        CURRENCY_EUR: '€',
+    }
+
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
     quote_number = models.CharField(max_length=100, unique=True, blank=True)
     contact = models.ForeignKey(Contact, on_delete=models.CASCADE)
@@ -30,9 +44,18 @@ class Quote(models.Model):
     message = models.TextField(blank=True, null=True)
     observaciones = models.TextField(blank=True, null=True)
     total_amount = models.DecimalField(max_digits=14, decimal_places=2, blank=True, null=True)
+    currency = models.CharField(
+        max_length=3,
+        choices=CURRENCY_CHOICES,
+        default=CURRENCY_ARS,
+    )
     specs = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def currency_symbol(self):
+        return self.CURRENCY_SYMBOLS.get(self.currency, '$')
 
     def save(self, *args, **kwargs):
         """

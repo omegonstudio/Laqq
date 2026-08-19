@@ -18,18 +18,23 @@ INFORMACIÓN DEL CLIENTE
 {% endif %}Nombre:             {{ contact.first_name }} {{ contact.last_name }}
 Email:              {{ contact.email }}
 {% if contact.phone %}Teléfono:           {{ contact.phone }}
-{% endif %}{% if contact.address %}Dirección:          {{ contact.address }}
+{% endif %}{% if contact.country %}País:               {{ contact.country }}
 {% endif %}
 
-PRODUCTOS SOLICITADOS
+PRESUPUESTO SOLICITADO ({{ item_rows|length }} ítem{{ item_rows|length|pluralize }})
 ────────────────────────────────────────────────────────────
-{% for item in items %}
-{{ forloop.counter }}. {{ item.product.name }}{% if item.product.brand %} - {{ item.product.brand.name }}{% endif %}
-   Código:    {{ item.product.product_code|default:"-" }}
-   Cantidad:  {{ item.quantity }}
-   Precio:    {% if item.unit_price %}${{ item.unit_price|floatformat:2 }}{% else %}-{% endif %}
-   Subtotal:  {% if item.subtotal %}${{ item.subtotal|floatformat:2 }}{% else %}-{% endif %}
-
+{% for row in item_rows %}
+{{ forloop.counter }}. {{ row.name }}
+   Cantidad:  {{ row.quantity }}
+{% if row.category %}   Tipo:      {{ row.category }}
+{% endif %}{% if row.brand %}   Marca:     {{ row.brand }}
+{% endif %}{% if row.code %}   Código:    {{ row.code }}
+{% endif %}   Variante:  {{ row.variant|default:"—" }}
+{% if row.unit_price %}   Precio:    {{ quote.currency_symbol }}{{ row.unit_price|floatformat:2 }}
+{% endif %}{% if row.specs %}   Info técnica:
+{% for spec in row.specs %}      - {{ spec.key }}: {{ spec.value }}
+{% endfor %}{% endif %}
+{% empty %}Esta solicitud no incluye productos.
 {% endfor %}
 ════════════════════════════════════════════════════════════
 {% if message %}

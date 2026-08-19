@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import QuoteType, QuoteState, Quote, QuoteItem
+from .emails import send_quote_assigned_email
 from contacts.models import Contact, ContactState
 from products.models import Product, ProductVariant
 from products.serializers import ProductSerializer, ProductVariantSerializer
@@ -97,7 +98,7 @@ class QuoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Quote
         fields = '__all__'
-        read_only_fields = ['quote_number', 'contact', 'items']
+        read_only_fields = ['quote_number', 'contact', 'items', 'state']
         extra_kwargs = {
             'quote_number': {'required': False, 'allow_blank': True}
         }
@@ -125,6 +126,25 @@ class QuoteSerializer(serializers.ModelSerializer):
         merged.update(instance.specs or {})
         data['specs'] = merged
         return data
+
+    def update(self, instance, validated_data):
+        old_user = instance.user
+        new_user = validated_data.get('user', old_user)
+        instance = super().update(instance, validated_data)
+
+        user_changed = bool(new_user) and (old_user is None or old_user.pk != new_user.pk)
+        if not user_changed:
+            return instance
+
+        terminal_states = {'sent', 'confirmed', 'rejected', 'expired'}
+        if instance.state_id not in terminal_states:
+            assigned_state = QuoteState.objects.filter(id='assigned').first()
+            if assigned_state and instance.state_id != assigned_state.id:
+                instance.state = assigned_state
+                instance.save(update_fields=['state', 'updated_at'])
+
+        send_quote_assigned_email(instance, new_user)
+        return instance
 
 class BulkQuoteItemSerializer(serializers.Serializer):
     """
