@@ -1,0 +1,16 @@
+Nueva cotización asignada — {{ business_name }}
+
+Hola {{ assignee_name }},
+
+Se te asignó la cotización #{{ quote_number }}.
+
+Empresa:  {{ company_name }}
+Contacto: {{ contact_name }}
+Email:    {{ contact_email }}
+
+Podés revisarla y continuar el presupuesto desde el backoffice.
+{% if backoffice_url %}
+{{ backoffice_url }}
+{% endif %}
+
+Aviso interno de {{ business_name }} · Cotización #{{ quote_number }}

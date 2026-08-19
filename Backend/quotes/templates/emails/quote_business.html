@@ -60,38 +60,55 @@
             flex: 1;
             color: #333;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
+        .item-card {
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 14px;
         }
-        thead {
-            background-color: #FF6B00;
-            color: white;
+        .item-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 10px;
         }
-        th {
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-        }
-        td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-        }
-        tbody tr:hover {
-            background-color: #f9f9f9;
-        }
-        .text-right {
-            text-align: right;
-        }
-        .total-row {
-            background-color: #f8f9fa;
-            font-weight: bold;
+        .item-card-header h3 {
+            margin: 0;
             font-size: 16px;
+            color: #222;
         }
-        .total-row td {
-            border-bottom: none;
-            padding: 15px 12px;
+        .qty-badge {
+            background-color: #FF6B00;
+            color: #fff;
+            font-weight: 700;
+            font-size: 13px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+        .item-meta {
+            font-size: 13px;
+            color: #555;
+            margin: 3px 0;
+        }
+        .item-meta strong {
+            color: #333;
+        }
+        .specs-table {
+            width: 100%;
+            margin-top: 10px;
+            border: 1px solid #eee;
+        }
+        .specs-table th {
+            background-color: #f4f5f7;
+            color: #333;
+            font-size: 12px;
+            padding: 8px 10px;
+        }
+        .specs-table td {
+            padding: 8px 10px;
+            font-size: 13px;
         }
         .message-box {
             background-color: #fff9e6;
@@ -179,60 +196,62 @@
                 <span class="info-value">{{ contact.phone }}</span>
             </div>
             {% endif %}
-            {% if contact.address %}
+            {% if contact.country %}
             <div class="info-row">
-                <span class="info-label">Dirección:</span>
-                <span class="info-value">{{ contact.address }}</span>
+                <span class="info-label">País:</span>
+                <span class="info-value">{{ contact.country }}</span>
             </div>
             {% endif %}
         </div>
 
         <!-- Quote Items -->
         <div class="section">
-            <div class="section-title">🛒 Productos Solicitados</div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th>Código</th>
-                        <th class="text-right">Cantidad</th>
-                        <th class="text-right">Precio Unit.</th>
-                        <th class="text-right">Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in items %}
-                    <tr>
-                        <td>
-                            <strong>{{ item.product.name }}</strong>
-                            {% if item.fixed_spec %}
-                            <br><small style="color: #FF6B00;">Variante: {{ item.fixed_spec.key }}: {{ item.fixed_spec.value }}{% if item.fixed_spec.unit %} {{ item.fixed_spec.unit }}{% endif %}</small>
-                            {% endif %}
-                            {% if item.product.brand %}
-                            <br><small style="color: #666;">{{ item.product.brand.name }}</small>
-                            {% endif %}
-                        </td>
-                        <td>{{ item.product.product_code|default:"-" }}</td>
-                        <td class="text-right">{{ item.quantity }}</td>
-                        <td class="text-right">
-                            {% if item.unit_price %}
-                            ${{ item.unit_price|floatformat:2 }}
-                            {% else %}
-                            -
-                            {% endif %}
-                        </td>
-                        <td class="text-right">
-                            {% if item.subtotal %}
-                            ${{ item.subtotal|floatformat:2 }}
-                            {% else %}
-                            -
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-                
-            </table>
+            <div class="section-title">Presupuesto solicitado ({{ item_rows|length }} ítem{{ item_rows|length|pluralize }})</div>
+            {% for row in item_rows %}
+            <div class="item-card">
+                <div class="item-card-header">
+                    <h3>{{ forloop.counter }}. {{ row.name }}</h3>
+                    <span class="qty-badge">Cantidad: {{ row.quantity }}</span>
+                </div>
+                {% if row.category %}
+                <div class="item-meta"><strong>Tipo:</strong> {{ row.category }}</div>
+                {% endif %}
+                {% if row.brand %}
+                <div class="item-meta"><strong>Marca:</strong> {{ row.brand }}</div>
+                {% endif %}
+                {% if row.code %}
+                <div class="item-meta"><strong>Código:</strong> {{ row.code }}</div>
+                {% endif %}
+                {% if row.variant %}
+                <div class="item-meta"><strong>Variante:</strong> {{ row.variant }}</div>
+                {% else %}
+                <div class="item-meta"><strong>Variante:</strong> —</div>
+                {% endif %}
+                {% if row.unit_price %}
+                <div class="item-meta"><strong>Precio unit.:</strong> {{ quote.currency_symbol }}{{ row.unit_price|floatformat:2 }}</div>
+                {% endif %}
+                {% if row.specs %}
+                <table class="specs-table">
+                    <thead>
+                        <tr>
+                            <th>Info técnica</th>
+                            <th>Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for spec in row.specs %}
+                        <tr>
+                            <td>{{ spec.key }}</td>
+                            <td>{{ spec.value }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+            </div>
+            {% empty %}
+            <p>Esta solicitud no incluye productos.</p>
+            {% endfor %}
         </div>
 
         <!-- Customer Message -->

@@ -28,7 +28,7 @@ PRODUCTOS SOLICITADOS ({{ total_items }} item{{ total_items|pluralize }})
 {{ forloop.counter }}. {{ item.product.name }}
    Cantidad: {{ item.quantity }} unidad{{ item.quantity|pluralize:"es" }}{% if item.product.product_code %}
    Código: {{ item.product.product_code }}{% endif %}{% if item.unit_price %}
-   Precio: ${{ item.unit_price|floatformat:2 }}{% endif %}
+   Precio: {{ quote.currency_symbol }}{{ item.unit_price|floatformat:2 }}{% endif %}
 {% endfor %}
 ────────────────────────────────────────────────────────────
 {% if message %}
