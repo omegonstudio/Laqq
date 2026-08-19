@@ -96,6 +96,16 @@ export function EditMessage({ message, open, onOpenChange }: MessageEdit) {
                   <CopyButton value={message.email} />
                 </div>
               </div>
+
+              <div className="grid gap-1 grid-cols-2 w-full">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Teléfono
+                </p>
+                <div className="flex">
+                  <p className="text-foreground">{message.phone}</p>
+                  <CopyButton value={message.phone} />
+                </div>
+              </div>
             </div>
           )}
 

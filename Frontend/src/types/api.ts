@@ -50,8 +50,8 @@ export interface Contact {
 export interface Message {
   id: string;
   company_name: string | null;
-  first_name: string | null;
-  last_name: string | null;
+  first_name: string;
+  last_name: string;
   country: string | null;
   message: string;
   state: string;
@@ -59,15 +59,17 @@ export interface Message {
   created_at: string;
   updated_at: string;
   email: string;
+  phone: string;
 }
 export interface MessageCreate {
   company_name: string | null;
-  first_name: string | null;
-  last_name: string | null;
+  first_name: string;
+  last_name: string;
   country: string | null;
   message: string;
   state: string;
   email: string;
+  phone: string;
 }
 
 export interface NoteType {

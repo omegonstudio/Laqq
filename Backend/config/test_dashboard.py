@@ -73,6 +73,9 @@ class DashboardSummaryTestCase(TestCase):
             first_name='Jane',
             last_name='Smith',
             company_name='Another Company',
+            email='jane@example.com',
+            phone='+541152777200',
+            country='Argentina',
             message='Test message',
             state=contact_state
         )

@@ -31,9 +31,9 @@ const MessagesTable = () => {
 
   const filteredMessages = messages.filter((message) => {
     const matchesSearch =
-      message.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.last_name.toLowerCase().includes(searchTerm.toLowerCase());
+      (message.company_name ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (message.first_name ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (message.last_name ?? "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       statusFilter === "all" || message.state === statusFilter;
     return matchesSearch && matchesStatus;
@@ -88,6 +88,7 @@ const MessagesTable = () => {
     { key: "company_name", label: "Empresa", sortable: true },
     { key: "last_name", label: "Apellido", sortable: true },
     { key: "first_name", label: "Nombre", sortable: true },
+    { key: "phone", label: "Teléfono", sortable: false },
     { key: "country", label: "País", sortable: true },
     {
       key: "created_at",

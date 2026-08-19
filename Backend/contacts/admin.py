@@ -16,7 +16,7 @@ class ContactAdmin(admin.ModelAdmin):
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ['company_name', 'first_name', 'last_name', 'state', 'assigned_user', 'created_at']
-    search_fields = ['company_name', 'first_name', 'last_name', 'message']
+    list_display = ['company_name', 'first_name', 'last_name', 'email', 'phone', 'state', 'assigned_user', 'created_at']
+    search_fields = ['company_name', 'first_name', 'last_name', 'email', 'phone', 'message']
     list_filter = ['state', 'assigned_user']
     ordering = ['-created_at']
