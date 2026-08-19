@@ -247,6 +247,8 @@ def send_message_to_business(message):
             'company_name': message.company_name,
             'first_name': message.first_name,
             'last_name': message.last_name,
+            'email': message.email,
+            'phone': message.phone,
             'country': message.country,
             'message_text': message.message,
             'state': message.state,
