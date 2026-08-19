@@ -223,6 +223,47 @@ class AuthenticationAPITestCase(APITestCase):
         self.assertIn('refresh', response.data)
 
 
+    def test_user_can_change_own_password(self):
+        """Un usuario autenticado puede cambiar su propia contraseña."""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.patch(
+            f'/users/list/{self.admin_user.id}/',
+            {'password': 'NuevaPass123!'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.admin_user.refresh_from_db()
+        self.assertTrue(self.admin_user.check_password('NuevaPass123!'))
+
+
+    def test_admin_cannot_change_another_user_password(self):
+        """Nadie puede cambiar la contraseña de otro usuario, ni siquiera un admin."""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.patch(
+            f'/users/list/{self.backoffice_user.id}/',
+            {'password': 'HackedPass123!'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('password', response.data)
+        self.backoffice_user.refresh_from_db()
+        self.assertTrue(self.backoffice_user.check_password('BackofficePass123!'))
+
+
+    def test_admin_can_edit_other_user_without_password(self):
+        """Un admin sí puede editar otros campos de otro usuario."""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.patch(
+            f'/users/list/{self.backoffice_user.id}/',
+            {'first_name': 'NuevoNombre'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.backoffice_user.refresh_from_db()
+        self.assertEqual(self.backoffice_user.first_name, 'NuevoNombre')
+        self.assertTrue(self.backoffice_user.check_password('BackofficePass123!'))
+
+
 class UserTypeAPITestCase(APITestCase):
     """
     Tests para el endpoint de tipos de usuario
