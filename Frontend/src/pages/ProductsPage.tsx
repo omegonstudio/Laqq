@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { productsApi, ProductListParams } from "@/lib/api/products";
 import { useProductFilters } from "@/hooks/useFilters";
 import { fetchAllCategories } from "@/store/categoriesSlice";
+import { Link } from "react-router-dom";
 
 const INITIAL_PAGINATION: PaginationInfo = {
   count: 0,
@@ -144,9 +145,18 @@ const ProductsPage = () => {
       <div className="container mx-auto px-4">
         <div className="max-w-3xl mx-auto text-center mb-3">
           <h1 className="text-4xl font-bold mb-4">Catálogo de Productos</h1>
-          <p className="text-xl text-muted-foreground mb-8">
+          <p className="text-xl text-muted-foreground mb-2">
             Explora nuestra amplia selección de equipos y material de
             laboratorio
+          </p>
+          <p className="text-base text-muted-foreground mb-8">
+            ¿No encontrás el producto que estás buscando?{" "}
+            <Link
+              to="/contact"
+              className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+            >
+              Contactanos
+            </Link>
           </p>
           {/* <div className="w-full flex flex-col justify-center items-center gap-5">
             <SearchBar

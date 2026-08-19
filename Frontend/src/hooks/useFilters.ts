@@ -16,6 +16,12 @@ export const useProductFilters = () => {
       params.delete(key);
     } else {
       params.set(key, value);
+      // Marca y búsqueda de producto son excluyentes: no se combinan.
+      if (key === "search") {
+        params.delete("brand");
+      } else if (key === "brand") {
+        params.delete("search");
+      }
     }
 
     navigateWithParams(params);
