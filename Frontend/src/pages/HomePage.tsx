@@ -13,7 +13,7 @@ const HomePage = () => {
     dispatch(fetchAllBrands());
   }, [dispatch]);
 
-  const { list } = useAppSelector((state) => state.products);
+  const { list, loading } = useAppSelector((state) => state.products);
 
   const productFilter = () => {
     return list.filter((product) => product.is_featured);
@@ -23,11 +23,12 @@ const HomePage = () => {
       <div style={{ position: "relative" }}>
         <HeroSection />
       </div>
-      {productFilter().length > 0 && (
-        <section className="pt-16">
+      {(loading || productFilter().length > 0) && (
+        <section className="pt-16" style={{ minHeight: 720 }}>
           <ProductGrid
             products={productFilter()}
             title="Productos Destacados"
+            loading={loading}
           />
         </section>
       )}

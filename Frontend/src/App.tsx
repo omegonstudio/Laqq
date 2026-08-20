@@ -36,13 +36,14 @@ import RRHHPage from "./pages/complementary/RRHHPage";
 import AccessoriesPage from "./pages/complementary/AccessoriesPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { useAppDispatch } from "./store/hooks";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { fetchAllCategories } from "./store/categoriesSlice";
 import { fetchAllBrands } from "./store/brandSlice";
 import PageTicket from "./pages/backofficeClients";
 import TicketsPage from "./pages/TicketsPage";
 import LibreriaPage from "./pages/LibreriaPage";
 import SeoHead from "./components/seo/SeoHead";
+import AppShellSkeleton from "./components/layout/AppShellSkeleton";
 
 const queryClient = new QueryClient();
 const App = () => {
@@ -53,6 +54,33 @@ const App = () => {
     dispatch(fetchAllBrands());
     // dispatch(fetchAllProducts());
   }, [dispatch]);
+
+
+  useEffect(() => {
+    let cancelled = false;
+    const hide = () => {
+      if (cancelled) return;
+      const el = document.getElementById("boot-shell");
+      if (!el) return;
+      el.style.opacity = "0";
+      el.style.transition = "opacity 120ms ease";
+      window.setTimeout(() => el.remove(), 160);
+    };
+    const run = () => {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(hide));
+    };
+    const timeout = window.setTimeout(run, 400);
+    if (document.fonts?.ready) {
+      document.fonts.ready.then(() => {
+        window.clearTimeout(timeout);
+        run();
+      });
+    }
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -65,6 +93,7 @@ const App = () => {
               <SeoHead />
               <ScrollToTop />
               <ScrollToHash />
+              <Suspense fallback={<AppShellSkeleton />}>
               <Routes>
                 <Route path="/tickets" element={<PageTicket />} />
                 {/* Public routes */}
@@ -170,6 +199,7 @@ const App = () => {
                 {/* Catch-all */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </Suspense>
             </BrowserRouter>
           </CartProvider>
         </TooltipProvider>

@@ -9,13 +9,15 @@ interface MainLayoutProps {
 
 const MainLayout = ({ children }: MainLayoutProps) => {
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-      <main className="flex-1">{children}</main>
-     <WhatsAppFloat />
-
-      <Footer />
-    </div>
+    <>
+      <div className="min-h-screen">
+        <div className="h-[10.0625rem]" aria-hidden="true" />
+        <Header />
+        <main>{children}</main>
+        <Footer />
+      </div>
+      <WhatsAppFloat />
+    </>
   );
 };
 
