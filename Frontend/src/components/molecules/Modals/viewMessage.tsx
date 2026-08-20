@@ -8,7 +8,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Building2, User, Globe, Calendar, MessageSquare } from "lucide-react";
+import { Building2, User, Globe, Calendar, MessageSquare, Mail, Phone } from "lucide-react";
 import { Message } from "@/types/api";
 
 interface MessageDetailModalProps {
@@ -81,6 +81,28 @@ export function MessageDetailModal({
               </div>
             </div>
           )}
+
+          {/* Email */}
+          <div className="flex items-start gap-3">
+            <Mail className="mt-0.5 size-5 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Email
+              </p>
+              <p className="text-foreground">{message.email}</p>
+            </div>
+          </div>
+
+          {/* Phone */}
+          <div className="flex items-start gap-3">
+            <Phone className="mt-0.5 size-5 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Teléfono
+              </p>
+              <p className="text-foreground">{message.phone}</p>
+            </div>
+          </div>
 
           {/* Country */}
           {message.country && (

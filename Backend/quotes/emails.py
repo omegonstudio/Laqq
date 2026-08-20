@@ -14,6 +14,48 @@ from config.resend_mail import send_email_message
 
 logger = logging.getLogger(__name__)
 
+
+def _quote_item_email_rows(quote):
+    """Filas listas para el mail interno: producto, variante, specs y cantidad."""
+    items = (
+        quote.quoteitem_set
+        .select_related('product', 'product__brand', 'product__category', 'variant')
+        .prefetch_related('product__technical_specs', 'variant__technical_specs')
+        .all()
+    )
+    rows = []
+    for item in items:
+        product = item.product
+        specs = []
+        if item.variant_id:
+            specs = list(item.variant.technical_specs.all())
+        if not specs and product:
+            specs = list(product.technical_specs.all())
+
+        variant_label = ''
+        if item.variant:
+            variant_label = item.variant.code or ''
+            if item.variant.name:
+                variant_label = (
+                    f"{variant_label} — {item.variant.name}"
+                    if variant_label
+                    else item.variant.name
+                )
+
+        rows.append({
+            'item': item,
+            'name': product.name if product else '',
+            'code': getattr(product, 'product_code', None) or '',
+            'brand': product.brand.name if product and product.brand else '',
+            'category': product.category.name if product and product.category else '',
+            'variant': variant_label,
+            'specs': specs,
+            'quantity': item.quantity,
+            'unit_price': item.unit_price,
+            'subtotal': item.subtotal,
+        })
+    return rows
+
 # Control email output during tests
 SHOW_EMAIL_OUTPUT = os.environ.get('SHOW_EMAIL_OUTPUT', 'false').lower() == 'true'
 
@@ -91,6 +133,23 @@ def safe_print(text):
         sys.stdout.buffer.write((text + '\n').encode('utf-8', errors='replace'))
 
 
+def _sender_from_user(user):
+    """Nombre, apellido y email del usuario que editó/envió la cotización."""
+    if not user:
+        return None
+    full_name = f"{getattr(user, 'first_name', '') or ''} {getattr(user, 'last_name', '') or ''}".strip()
+    email = getattr(user, 'email', '') or ''
+    if not full_name and not email:
+        full_name = getattr(user, 'username', '') or ''
+    if not full_name and not email:
+        return None
+    return {
+        'name': full_name,
+        'email': email,
+        'display': f"{full_name} ({email})" if full_name and email else (full_name or email),
+    }
+
+
 def send_quote_created_email(quote):
     """
     Send email notifications when a new quote is created.
@@ -138,14 +197,15 @@ def send_quote_to_business(quote):
         bool: True if email sent successfully, False otherwise
     """
     try:
-        # Prepare context for template
-        items = quote.quoteitem_set.select_related('product', 'product__brand', 'product__category').all()
+        item_rows = _quote_item_email_rows(quote)
+        items = [row['item'] for row in item_rows]
 
         context = {
             'quote': quote,
             'quote_number': quote.quote_number,
             'contact': quote.contact,
             'items': items,
+            'item_rows': item_rows,
             'total_amount': quote.total_amount or sum(item.subtotal or 0 for item in items),
             'business_name': settings.BUSINESS_NAME,
             'logo_url': get_logo_url(),
@@ -321,14 +381,15 @@ def send_quote_updated_to_business(quote):
         bool: True if email sent successfully, False otherwise
     """
     try:
-        # Prepare context for template
-        items = quote.quoteitem_set.select_related('product', 'product__brand', 'product__category').all()
+        item_rows = _quote_item_email_rows(quote)
+        items = [row['item'] for row in item_rows]
 
         context = {
             'quote': quote,
             'quote_number': quote.quote_number,
             'contact': quote.contact,
             'items': items,
+            'item_rows': item_rows,
             'total_amount': quote.total_amount or sum(item.subtotal or 0 for item in items),
             'business_name': settings.BUSINESS_NAME,
             'created_at': quote.created_at,
@@ -451,7 +512,7 @@ def send_quote_updated_to_customer(quote):
         raise
 
 
-def send_updated_quote_to_customer(quote, pdf_file=None):
+def send_updated_quote_to_customer(quote, pdf_file=None, sender=None):
     """
     Send updated quote with full details to customer (manual send from backoffice).
     This is called manually when the user presses the "Send" button.
@@ -462,6 +523,8 @@ def send_updated_quote_to_customer(quote, pdf_file=None):
             en el front-end. Se adjunta directamente al correo en memoria, sin
             guardarlo en disco ni en la base de datos. Si es None, el correo
             se envía sin adjunto.
+        sender: Usuario autenticado que edita y envía (request.user). Se muestra
+            en el mail como leyenda (nombre, apellido y email).
 
     Returns:
         bool: True if email sent successfully, False otherwise
@@ -477,6 +540,8 @@ def send_updated_quote_to_customer(quote, pdf_file=None):
 
         # Build customer full name
         customer_name = f"{quote.contact.first_name} {quote.contact.last_name}".strip() or "Cliente"
+
+        sender_info = _sender_from_user(sender) or _sender_from_user(getattr(quote, 'user', None))
 
         context = {
             'quote': quote,
@@ -495,6 +560,9 @@ def send_updated_quote_to_customer(quote, pdf_file=None):
             'updated_at': quote.updated_at,
             'message': quote.message,
             'observaciones': quote.observaciones,
+            'sender_name': sender_info['name'] if sender_info else '',
+            'sender_email': sender_info['email'] if sender_info else '',
+            'sender_display': sender_info['display'] if sender_info else '',
         }
 
         # Render HTML and text versions
@@ -544,3 +612,76 @@ def send_updated_quote_to_customer(quote, pdf_file=None):
     except Exception as e:
         logger.error(f"Failed to send updated quote email to customer: {str(e)}")
         raise
+
+
+def send_quote_assigned_email(quote, assignee):
+    """
+    Aviso interno al usuario del backoffice al que se le asignó una cotización.
+    """
+    if not assignee or not getattr(assignee, 'email', None):
+        logger.warning(
+            "Quote #%s: no se envía aviso de asignación (usuario sin email)",
+            quote.quote_number,
+        )
+        return False
+
+    try:
+        assignee_name = f"{assignee.first_name or ''} {assignee.last_name or ''}".strip() or assignee.username
+        contact = quote.contact
+        contact_name = ""
+        if contact:
+            contact_name = f"{contact.first_name or ''} {contact.last_name or ''}".strip()
+
+        frontend_base = getattr(settings, 'FRONTEND_BASE_URL', '').rstrip('/')
+        backoffice_url = f"{frontend_base}/backoffice/quotes" if frontend_base else ''
+
+        context = {
+            'quote': quote,
+            'quote_number': quote.quote_number,
+            'assignee_name': assignee_name,
+            'contact': contact,
+            'contact_name': contact_name or '—',
+            'company_name': (contact.company_name if contact else None) or '—',
+            'contact_email': (contact.email if contact else None) or '—',
+            'business_name': settings.BUSINESS_NAME,
+            'logo_url': get_logo_url(),
+            'backoffice_url': backoffice_url,
+            'created_at': quote.created_at,
+        }
+
+        html_content = render_to_string('emails/quote_assigned.html', context)
+        text_content = render_to_string('emails/quote_assigned.txt', context)
+
+        subject = f'Te asignaron la cotización #{quote.quote_number}'
+        from_email = f'{settings.DEFAULT_FROM_NAME} <{settings.DEFAULT_FROM_EMAIL}>'
+
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=from_email,
+            to=[assignee.email],
+        )
+        email.attach_alternative(html_content, "text/html")
+        attach_logo_inline(email)
+
+        safe_print("\n" + "=" * 80)
+        safe_print(f"QUOTE ASSIGNED EMAIL TO USER: {assignee.email}")
+        safe_print("=" * 80)
+        safe_print(text_content)
+        safe_print("=" * 80 + "\n")
+
+        send_email_message(email)
+        logger.info(
+            "Quote #%s assignment notice sent to %s",
+            quote.quote_number,
+            assignee.email,
+        )
+        return True
+    except Exception as e:
+        logger.error(
+            "Failed to send assignment email for quote #%s: %s",
+            quote.quote_number,
+            e,
+        )
+        return False
+

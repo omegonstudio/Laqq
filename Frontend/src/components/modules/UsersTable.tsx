@@ -61,7 +61,7 @@ const UsersTable = () => {
   const createUserMutation = useCreateUser();
   const patchUserMutation = usePatchUser();
   const deleteUserMutation = useDeleteUser();
-  const { user } = useAppSelector((state: RootState) => state.auth);
+  const { user: authUser } = useAppSelector((state: RootState) => state.auth);
   const [searchTerm, setSearchTerm] = useState("");
   const [isUpsertOpen, setIsUpsertOpen] = useState(false);
   const [upsertMode, setUpsertMode] = useState<"create" | "edit">("create");
@@ -214,7 +214,8 @@ const UsersTable = () => {
         is_active: form.is_active === "true",
       };
 
-      if (form.password.trim()) {
+      const isEditingSelf = selectedUser.username === authUser?.username;
+      if (isEditingSelf && form.password.trim()) {
         patchPayload.password = form.password;
       }
 
@@ -382,17 +383,22 @@ const UsersTable = () => {
               error={formErrors.is_active}
             />
 
-            <InputField
-              label={
-                upsertMode === "create" ? "Contraseña" : "Contraseña (opcional)"
-              }
-              type="password"
-              value={form.password}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, password: e.target.value }))
-              }
-              error={formErrors.password}
-            />
+            {(upsertMode === "create" ||
+              selectedUser?.username === authUser?.username) && (
+              <InputField
+                label={
+                  upsertMode === "create"
+                    ? "Contraseña"
+                    : "Contraseña (opcional)"
+                }
+                type="password"
+                value={form.password}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, password: e.target.value }))
+                }
+                error={formErrors.password}
+              />
+            )}
           </div>
 
           {formErrors.non_field_errors && (

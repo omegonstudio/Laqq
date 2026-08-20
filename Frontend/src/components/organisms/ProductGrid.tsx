@@ -2,6 +2,7 @@ import { Product } from "@/types/types";
 import ProductCard from "../molecules/ProductCard";
 import Button from "../atoms/Button";
 import { Loader2, PackageSearch } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface ProductGridProps {
   products: Product[];
@@ -25,10 +26,15 @@ const EmptyState = () => (
     <div className="inline-block p-8 rounded-2xl bg-muted/50 border-2 border-dashed border-border">
       <PackageSearch className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
       <p className="text-2xl font-semibold text-muted-foreground mb-2">
-        No se encontraron productos
+        ¿No encontrás el producto que estás buscando?
       </p>
       <p className="text-sm text-muted-foreground">
-        Intenta ajustar los filtros de búsqueda
+        <Link
+          to="/contact"
+          className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+        >
+          Contactanos
+        </Link>
       </p>
     </div>
   </div>

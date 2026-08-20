@@ -26,9 +26,10 @@ class Contact(models.Model):
 class Message(models.Model):
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
     company_name = models.CharField(max_length=120, blank=True, null=True)
-    first_name = models.CharField(max_length=80, blank=True, null=True)
-    last_name = models.CharField(max_length=80, blank=True, null=True)
+    first_name = models.CharField(max_length=80)
+    last_name = models.CharField(max_length=80)
     email = models.EmailField()
+    phone = models.CharField(max_length=30)
     country = models.CharField(max_length=80, blank=True, null=True)
     message = models.TextField()
     state = models.ForeignKey(ContactState, on_delete=models.PROTECT)

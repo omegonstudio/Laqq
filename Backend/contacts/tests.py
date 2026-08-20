@@ -97,6 +97,8 @@ class MessageAPITestCase(APITestCase):
             first_name='John',
             last_name='Doe',
             email='john@example.com',
+            phone='+541152777200',
+            country='Argentina',
             message='This is a test message with enough characters to pass validation.',
             state=self.contact_state
         )
@@ -111,19 +113,56 @@ class MessageAPITestCase(APITestCase):
         """Crear un nuevo mensaje desde formulario de contacto"""
         data = {
             'company_name': 'New Company',
+            'first_name': 'Jane',
+            'last_name': 'Smith',
             'email': 'newcustomer@example.com',
+            'phone': '+541152777200',
+            'country': 'Argentina',
             'message': 'This is a new message with enough characters to pass validation.',
             'state': self.contact_state.id
         }
         response = self.client.post('/contacts/messages/', data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Message.objects.count(), 2)
+        self.assertEqual(response.data['phone'], '+541152777200')
+
+    def test_create_message_requires_core_fields(self):
+        """Nombre, apellido, teléfono, email y mensaje son obligatorios; empresa y país no."""
+        data = {
+            'email': 'newcustomer@example.com',
+            'message': 'This is a new message with enough characters to pass validation.',
+            'state': self.contact_state.id
+        }
+        response = self.client.post('/contacts/messages/', data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('first_name', response.data)
+        self.assertIn('last_name', response.data)
+        self.assertIn('phone', response.data)
+        self.assertNotIn('company_name', response.data)
+        self.assertNotIn('country', response.data)
+
+    def test_create_message_without_company_and_country(self):
+        """Se puede crear un mensaje sin empresa ni país."""
+        data = {
+            'first_name': 'Jane',
+            'last_name': 'Smith',
+            'email': 'newcustomer@example.com',
+            'phone': '+541152777200',
+            'message': 'This is a new message with enough characters to pass validation.',
+            'state': self.contact_state.id
+        }
+        response = self.client.post('/contacts/messages/', data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_validate_short_message(self):
         """Validar que el mensaje tenga al menos 10 caracteres"""
         data = {
             'company_name': 'Test Company',
+            'first_name': 'John',
+            'last_name': 'Doe',
             'email': 'test@example.com',
+            'phone': '+541152777200',
+            'country': 'Argentina',
             'message': 'Short',
             'state': self.contact_state.id
         }
@@ -134,7 +173,26 @@ class MessageAPITestCase(APITestCase):
         """Validar que el email tenga formato correcto en mensajes"""
         data = {
             'company_name': 'Test Company',
+            'first_name': 'John',
+            'last_name': 'Doe',
             'email': 'invalid-email',
+            'phone': '+541152777200',
+            'country': 'Argentina',
+            'message': 'This is a valid message with enough characters.',
+            'state': self.contact_state.id
+        }
+        response = self.client.post('/contacts/messages/', data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_validate_short_phone_in_message(self):
+        """Validar que el teléfono tenga al menos 7 caracteres"""
+        data = {
+            'company_name': 'Test Company',
+            'first_name': 'John',
+            'last_name': 'Doe',
+            'email': 'test@example.com',
+            'phone': '123',
+            'country': 'Argentina',
             'message': 'This is a valid message with enough characters.',
             'state': self.contact_state.id
         }

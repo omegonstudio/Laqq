@@ -32,10 +32,7 @@ const Header = () => {
   };
 
   useEffect(() => {
-    const brandParam = searchParams.get("brand");
-    if (brandParam) {
-      setSelectedBrand(brandParam);
-    }
+    setSelectedBrand(searchParams.get("brand") || "all");
   }, [searchParams]);
 
   // Encontrar el nombre de la marca seleccionada

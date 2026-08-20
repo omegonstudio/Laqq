@@ -49,6 +49,12 @@ class Command(BaseCommand):
                 'description': 'Cotización recibida, pendiente de revisión',
             },
             {
+                'id': 'assigned',
+                'name': 'Asignada',
+                'color': '#8e44ad',
+                'description': 'Cotización asignada a un usuario del backoffice',
+            },
+            {
                 'id': 'sent',
                 'name': 'Enviada',
                 'color': '#3498db',
