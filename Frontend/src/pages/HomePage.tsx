@@ -1,37 +1,46 @@
 import HeroSection from "@/components/organisms/HeroSection";
 import ProductGrid from "@/components/organisms/ProductGrid";
 import BrandsGrid from "@/components/organisms/BrandsGrid";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { useEffect } from "react";
-import { fetchAllProducts } from "@/store/productSlice";
-import { fetchAllBrands } from "@/store/brandSlice";
+import { useEffect, useState } from "react";
+import { productsApi } from "@/lib/api/products";
+import { Product } from "@/types/types";
 
 const HomePage = () => {
-  const dispatch = useAppDispatch();
+  const [featured, setFeatured] = useState<Product[]>([]);
+  const [loadingFeatured, setLoadingFeatured] = useState(true);
+
   useEffect(() => {
-    dispatch(fetchAllProducts({ is_active: true }));
-    dispatch(fetchAllBrands());
-  }, [dispatch]);
+    let cancelled = false;
+    setLoadingFeatured(true);
+    productsApi
+      .list({ is_active: true, is_featured: true, page_size: 12 })
+      .then((response) => {
+        if (!cancelled) setFeatured(response.results);
+      })
+      .catch(() => {
+        if (!cancelled) setFeatured([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingFeatured(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const { list, loading } = useAppSelector((state) => state.products);
-
-  const productFilter = () => {
-    return list.filter((product) => product.is_featured);
-  };
   return (
     <>
       <div style={{ position: "relative" }}>
         <HeroSection />
       </div>
-      {(loading || productFilter().length > 0) && (
-        <section className="pt-16" style={{ minHeight: 720 }}>
-          <ProductGrid
-            products={productFilter()}
-            title="Productos Destacados"
-            loading={loading}
-          />
-        </section>
-      )}
+      <section className="pt-16" style={{ minHeight: 720 }}>
+        <ProductGrid
+          products={featured}
+          title="Productos Destacados"
+          loading={loadingFeatured}
+          showEmpty={false}
+        />
+      </section>
       <BrandsGrid />
     </>
   );

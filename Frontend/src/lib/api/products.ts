@@ -27,6 +27,7 @@ export interface ProductListParams extends PaginationParams {
   category?: string; // Filtrado exacto (solo productos de esta categoría)
   category_recursive?: string; // Filtrado recursivo (incluye subcategorías)
   is_active?: boolean;
+  is_featured?: boolean;
 }
 
 export const productsApi = {
