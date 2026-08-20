@@ -9,6 +9,12 @@ const useUserRole = (): UserRole => {
   return user.user_type_id ?? null;
 };
 
+/** Productos: ¿puede exportar el Excel? Admin y back (mismo criterio que el endpoint). */
+export const useCanExportProducts = () => {
+  const role = useUserRole();
+  return role === "admin" || role === "back";
+};
+
 /** Productos: ¿puede crear/editar/eliminar? Solo admin. */
 export const useCanManageProducts = () => {
   const role = useUserRole();

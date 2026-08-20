@@ -7,6 +7,8 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { productsApi, ProductListParams } from "@/lib/api/products";
 import { useProductFilters } from "@/hooks/useFilters";
 import { fetchAllCategories } from "@/store/categoriesSlice";
+import { isCategoryUnderConsumibles, buildCatalogCrumbs } from "@/utils/data/categories";
+import CatalogBreadcrumb from "@/components/molecules/CatalogBreadcrumb";
 
 const INITIAL_PAGINATION: PaginationInfo = {
   count: 0,
@@ -141,11 +143,20 @@ const ProductsPage = () => {
   const activeBrand = brands.find((b) => b.id === activeBrandId);
   const activeCategory = categories.find((b) => b.id === activeCategoryId);
 
-  const showinsumos = activeCategory?.name === "Consumibles";
+  const showinsumos = Boolean(
+    activeCategoryId &&
+      isCategoryUnderConsumibles(activeCategoryId, categories)
+  );
+
+  const crumbs = buildCatalogCrumbs({
+    categories,
+    categoryId: activeCategoryId,
+  });
 
   return (
     <div className="py-5">
       <div className="container mx-auto px-4">
+        <CatalogBreadcrumb items={crumbs} />
         <div className="max-w-3xl mx-auto text-center mb-3">
           <h1 className="text-4xl font-bold mb-4">Catálogo de Productos</h1>
           <p className="text-xl text-muted-foreground mb-2">

@@ -73,6 +73,7 @@ class Product(models.Model):
         Attachment, on_delete=models.SET_NULL, blank=True, null=True,
         related_name='hds_products'
     )
+    spec_table = models.JSONField(blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

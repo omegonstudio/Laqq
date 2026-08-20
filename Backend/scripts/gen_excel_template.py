@@ -1,6 +1,17 @@
 """
-Script para regenerar TablaCargaMasiva.xlsx con los nuevos campos del refactor.
-Ejecutar desde Backend/: venv/Scripts/python.exe scripts/gen_excel_template.py
+NO USAR.
+
+Este script regenera TablaCargaMasiva.xlsx desde cero y pisa el template
+armado a mano (incluye columnas de Consumibles: articulo, cas, sedronar,
+archivo_esp, archivo_hds). El flujo real es editar el Excel a mano.
+
+Plantilla canónica (la que descarga el backoffice):
+  Frontend/src/assets/templates/TablaCargaMasiva.xlsx
+Copia de referencia / README:
+  Backend/TablaCargaMasiva.xlsx
+
+Si alguna vez hiciera falta regenerar, hay que copiar esas columnas al
+nuevo archivo. No ejecutar este script contra el xlsx de trabajo.
 """
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side

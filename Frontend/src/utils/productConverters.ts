@@ -7,6 +7,7 @@ import type {
   TecnicalSpecs,
   Variants,
 } from "@/types/types";
+import { EMPTY_SPEC_TABLE } from "@/types/types";
 
 /**
  * Convierte un Product (del backend) a ProductFormState (para el formulario)
@@ -37,6 +38,7 @@ export const productToFormState = (product: Product): ProductFormState => {
     hds_attachment_id: product.hds_attachment_id ?? null,
     esp_file: null,
     hds_file: null,
+    spec_table: product.spec_table ?? { ...EMPTY_SPEC_TABLE },
   };
 };
 
@@ -61,6 +63,7 @@ export const formStateToCreateRequest = (
     sedronar: formState.sedronar,
     esp_attachment_id: formState.esp_attachment_id,
     hds_attachment_id: formState.hds_attachment_id,
+    spec_table: formState.spec_table ?? EMPTY_SPEC_TABLE,
   };
 };
 
@@ -173,6 +176,17 @@ export const formStateToUpdateRequest = (
     hasRealChanges = true;
   }
 
+  const currentSpecTable = JSON.stringify(
+    formState.spec_table ?? EMPTY_SPEC_TABLE
+  );
+  const initialSpecTable = JSON.stringify(
+    initialData.spec_table ?? EMPTY_SPEC_TABLE
+  );
+  if (currentSpecTable !== initialSpecTable) {
+    updateRequest.spec_table = formState.spec_table ?? EMPTY_SPEC_TABLE;
+    hasRealChanges = true;
+  }
+
   const currentRelatedIds =
     formState.related?.map((rel) => rel.id).sort() || [];
   const initialRelatedIds =
@@ -217,4 +231,5 @@ export const getEmptyProductFormState = (): ProductFormState => ({
   hds_attachment_id: null,
   esp_file: null,
   hds_file: null,
+  spec_table: { ...EMPTY_SPEC_TABLE },
 });

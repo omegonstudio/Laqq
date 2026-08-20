@@ -88,6 +88,34 @@ class ProductViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     @swagger_auto_schema(
+        operation_description=(
+            "Exporta productos a Excel en el formato de carga masiva. "
+            "Aplica los mismos filtros que el listado (search, brand, etc.). "
+            "Incluye activos e inactivos salvo que se filtre is_active. Solo staff."
+        ),
+        responses={200: "Archivo Excel"},
+    )
+    @action(detail=False, methods=['get'], url_path='export', permission_classes=[IsAdminUserType])
+    def export(self, request):
+        from .exporter import build_products_workbook, export_queryset
+
+        queryset = self.filter_queryset(export_queryset())
+        try:
+            buffer = build_products_workbook(queryset)
+        except ImportError:
+            return Response(
+                {'error': 'openpyxl no está instalado en el servidor.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = 'attachment; filename="productos.xlsx"'
+        return response
+
+    @swagger_auto_schema(
         operation_description="Sube un archivo y lo asocia al producto",
         manual_parameters=[
             openapi.Parameter('file', openapi.IN_FORM, type=openapi.TYPE_FILE, required=True),

@@ -18,6 +18,7 @@ import {
   formStateToUpdateRequest,
   hasProductChanges,
 } from "@/utils/productConverters";
+import { isCategoryUnderConsumibles } from "@/utils/data/categories";
 import {
   validateProductForm,
   CreateProduct,
@@ -32,6 +33,7 @@ import { toast } from "@/hooks/use-toast";
 import { productsApi } from "@/lib/api/products";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProductVariantsTable from "@/components/molecules/ProductVariantsTable";
+import ProductSpecTableEditor from "@/components/molecules/ProductSpecTableEditor";
 import type { Variants } from "@/components/molecules/ProductVariantsTable";
 import DescriptionEditor from "@/components/atoms/DescriptionProductEditor";
 import { CascadeCategorySelect } from "@/components/atoms/FlatCategories";
@@ -71,19 +73,6 @@ const manageProductAttachment = async (
     return attachment.id;
   }
   return undefined;
-};
-
-const isCategoryUnderConsumibles = (
-  categoryId: string,
-  categories: { id: string; name: string; parent?: string }[]
-): boolean => {
-  const byId = new Map(categories.map((c) => [c.id, c]));
-  let current = byId.get(categoryId);
-  while (current) {
-    if (current.name === "Consumibles") return true;
-    current = current.parent ? byId.get(current.parent) : undefined;
-  }
-  return false;
 };
 
 interface ModalProductProps {
@@ -172,6 +161,12 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     setLocalState((prev) => ({
       ...prev,
       variants: vars,
+    }));
+  };
+  const handleSpecTableChange = (spec_table: ProductFormState["spec_table"]) => {
+    setLocalState((prev) => ({
+      ...prev,
+      spec_table,
     }));
   };
 
@@ -798,6 +793,9 @@ const ModalProduct: React.FC<ModalProductProps> = ({
           <TabsTrigger value="general" className="flex-1">
             General
           </TabsTrigger>
+          <TabsTrigger value="especificaciones" className="flex-1">
+            Especificaciones
+          </TabsTrigger>
           <TabsTrigger value="variedades" className="flex-1">
             Tabla de Variedades
           </TabsTrigger>
@@ -1134,6 +1132,21 @@ const ModalProduct: React.FC<ModalProductProps> = ({
                 </div>
               </div>
             </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="especificaciones">
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Tabla independiente de la descripción y de las variedades. Se
+              muestra en la ficha pública, antes de las variantes, si tiene
+              contenido.
+            </p>
+            <ProductSpecTableEditor
+              key={`${isOpen}-${localState.id ?? "new"}`}
+              value={localState.spec_table}
+              onChange={handleSpecTableChange}
+            />
           </div>
         </TabsContent>
 

@@ -2,7 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from django.contrib.auth import get_user_model
-from .models import Brand, Category, Product, ProductVariant
+from .models import Brand, Category, Product, ProductVariant, ProductRelation, TechnicalSpec, VariantTechnicalSpec
 from attachments.models import Attachment
 from users.models import UserType
 
@@ -252,6 +252,33 @@ class ProductAPITestCase(APITestCase):
         self.assertEqual(Product.objects.count(), 2)
         self.assertEqual(response.data['brand'], self.brand.name)
         self.assertEqual(response.data['category'], self.category.name)
+
+    def test_update_spec_table(self):
+        """Se puede guardar una tabla de especificaciones con filas y columnas."""
+        payload = {
+            'spec_table': {
+                'columns': ['Parámetro', 'Valor'],
+                'rows': [['Voltaje', '220V'], ['Frecuencia', '50Hz']],
+            }
+        }
+        response = self.client.patch(
+            f'/products/list/{self.product.id}/',
+            payload,
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['spec_table']['columns'], ['Parámetro', 'Valor'])
+        self.assertEqual(len(response.data['spec_table']['rows']), 2)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.spec_table['rows'][0][1], '220V')
+
+    def test_invalid_spec_table_rejected(self):
+        response = self.client.patch(
+            f'/products/list/{self.product.id}/',
+            {'spec_table': ['no', 'es', 'objeto']},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_filter_by_brand(self):
         """Filtrar productos por marca específica"""
@@ -579,3 +606,124 @@ class BulkUploadInsumoTestCase(APITestCase):
         self.assertEqual(product.sedronar, '-')  # default del modelo
         self.assertIsNone(product.esp_attachment)
         self.assertIsNone(product.hds_attachment)
+
+
+class ProductExportTestCase(APITestCase):
+    """Excel de productos en formato CargaMasiva."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user_type = UserType.objects.create(id='admin', name='Admin')
+        self.user = User.objects.create_user(username='exportadmin', password='testpass123')
+        self.user.user_type = self.user_type
+        self.user.save()
+        self.client.force_authenticate(user=self.user)
+
+        self.root = Category.objects.create(name='Equipos')
+        self.sub = Category.objects.create(name='Centrifugas', parent=self.root)
+        self.brand_a = Brand.objects.create(name='LabEquip')
+        self.brand_b = Brand.objects.create(name='OtraMarca')
+
+        self.active = Product.objects.create(
+            name='Centrifuga Activa',
+            product_code='CEN-001',
+            brand=self.brand_a,
+            category=self.sub,
+            is_active=True,
+            description='Equipo de lab',
+        )
+        self.inactive = Product.objects.create(
+            name='Centrifuga Inactiva',
+            product_code='CEN-002',
+            brand=self.brand_b,
+            category=self.sub,
+            is_active=False,
+        )
+        self.consumible_root = Category.objects.create(name='Consumibles')
+        self.consumible = Product.objects.create(
+            name='Acido clorhidrico',
+            product_code='CON-001',
+            brand=self.brand_a,
+            category=self.consumible_root,
+            is_active=True,
+            articulo='ART-123',
+            cas='7647-01-0',
+            sedronar='Lista 1',
+        )
+        ProductRelation.objects.create(from_product=self.consumible, to_product=self.active)
+
+        v1 = ProductVariant.objects.create(product=self.active, code='CEN-001-A')
+        v2 = ProductVariant.objects.create(product=self.active, code='CEN-001-B')
+        spec_a = TechnicalSpec.objects.create(key='potencia', value='20hp')
+        spec_b = TechnicalSpec.objects.create(key='potencia', value='40hp')
+        VariantTechnicalSpec.objects.create(variant=v1, technical_spec=spec_a)
+        VariantTechnicalSpec.objects.create(variant=v2, technical_spec=spec_b)
+
+    def _load_sheet(self, response):
+        import openpyxl
+        from io import BytesIO
+        wb = openpyxl.load_workbook(BytesIO(response.content))
+        return wb.active
+
+    def test_anonymous_cannot_export(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.get('/products/list/export/')
+        self.assertIn(response.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))
+
+    def test_export_includes_inactive_and_variants(self):
+        response = self.client.get('/products/list/export/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(
+            'spreadsheetml',
+            response['Content-Type'],
+        )
+        ws = self._load_sheet(response)
+        headers = [cell.value for cell in ws[1]]
+        self.assertEqual(headers[0], 'codigo_producto')
+        self.assertIn('articulo', headers)
+        self.assertIn('es_variante', headers)
+        self.assertIn('spec_1', headers)
+        self.assertNotIn('spec_table', headers)
+
+        rows = [[cell.value for cell in row] for row in ws.iter_rows(min_row=2, values_only=False)]
+        codes = [row[0] for row in rows]
+        self.assertIn('CEN-001', codes)
+        self.assertIn('CEN-002', codes)
+        self.assertIn('CON-001', codes)
+
+        parent = next(row for row in rows if row[0] == 'CEN-001' and row[headers.index('es_variante')] == 'false')
+        self.assertEqual(parent[headers.index('categoria_nivel_0')], 'Equipos')
+        self.assertEqual(parent[headers.index('categoria_nivel_1')], 'Centrifugas')
+        self.assertEqual(parent[headers.index('tiene_specs')], 'true')
+        self.assertEqual(parent[headers.index('spec_1')], 'potencia')
+
+        variant_codes = [
+            row[headers.index('modelo_variante')]
+            for row in rows
+            if row[0] == 'CEN-001' and row[headers.index('es_variante')] == 'true'
+        ]
+        self.assertEqual(sorted(variant_codes), ['CEN-001-A', 'CEN-001-B'])
+
+        consumible = next(row for row in rows if row[0] == 'CON-001')
+        self.assertEqual(consumible[headers.index('articulo')], 'ART-123')
+        self.assertEqual(consumible[headers.index('cas')], '7647-01-0')
+        self.assertEqual(consumible[headers.index('productos_relacionados')], 'CEN-001')
+        self.assertEqual(consumible[headers.index('activo')], 'true')
+
+        inactive = next(row for row in rows if row[0] == 'CEN-002')
+        self.assertEqual(inactive[headers.index('activo')], 'false')
+
+    def test_export_applies_brand_filter(self):
+        response = self.client.get(f'/products/list/export/?brand={self.brand_b.id}')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ws = self._load_sheet(response)
+        codes = {row[0].value for row in ws.iter_rows(min_row=2) if row[0].value}
+        self.assertEqual(codes, {'CEN-002'})
+
+    def test_export_applies_search(self):
+        response = self.client.get('/products/list/export/?search=Acido')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ws = self._load_sheet(response)
+        codes = {row[0].value for row in ws.iter_rows(min_row=2) if row[0].value}
+        self.assertEqual(codes, {'CON-001'})
+

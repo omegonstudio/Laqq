@@ -46,6 +46,7 @@ export const CreateProduct = async ({
     sedronar: formState.sedronar,
     esp_attachment_id: espAttachmentId ?? formState.esp_attachment_id,
     hds_attachment_id: hdsAttachmentId ?? formState.hds_attachment_id,
+    spec_table: formState.spec_table,
     // Solo incluir brand y category si el producto está activo
     ...(formState.is_active && {
       brand_id: formState.brand,
@@ -133,6 +134,11 @@ export const buildProductUploadFormData = (
 
     if (key === "files" && Array.isArray(value)) {
       value.forEach((file) => formData.append("files", file));
+      return;
+    }
+
+    if (key === "spec_table" && typeof value === "object") {
+      formData.append(key, JSON.stringify(value));
       return;
     }
 
