@@ -46,7 +46,7 @@ const Footer = () => {
                 <p className="opacity-80">No se pudieron cargar las categorías.</p>
                 <button
                   onClick={handleRetry}
-                  className="px-2 py-1 rounded border border-secondary-foreground/30 hover:bg-secondary-foreground/10 transition-colors"
+                  className="min-h-11 px-3 py-2 rounded border border-secondary-foreground/30 hover:bg-secondary-foreground/10 transition-colors"
                 >
                   Reintentar
                 </button>
@@ -57,12 +57,13 @@ const Footer = () => {
               <ul className="space-y-2 text-sm">
                 {menuItems.map((item) => (
                   <li key={item.id}>
-                    <p
+                    <button
+                      type="button"
                       onClick={() => setFilter("category", item.id)}
-                      className="opacity-80 hover:opacity-100 hover:underline transition-opacity cursor-pointer"
+                      className="min-h-11 text-left opacity-80 hover:opacity-100 hover:underline transition-opacity"
                     >
                       {item.name}
-                    </p>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -109,7 +110,7 @@ const Footer = () => {
               <li>
                 <Link
                   to="/quote"
-                  className="opacity-80 hover:opacity-100 transition-opacity"
+                  className="inline-flex min-h-11 items-center opacity-80 hover:opacity-100 transition-opacity"
                 >
                   Cotizaciones
                 </Link>
@@ -117,7 +118,7 @@ const Footer = () => {
               <li>
                 <Link
                   to="/support"
-                  className="opacity-80 hover:opacity-100 transition-opacity"
+                  className="inline-flex min-h-11 items-center opacity-80 hover:opacity-100 transition-opacity"
                 >
                   Servicio Técnico
                 </Link>
@@ -125,7 +126,7 @@ const Footer = () => {
               <li>
                 <Link
                   to="/certificates"
-                  className="opacity-80 hover:opacity-100 transition-opacity"
+                  className="inline-flex min-h-11 items-center opacity-80 hover:opacity-100 transition-opacity"
                 >
                   Certificados
                 </Link>
@@ -139,7 +140,7 @@ const Footer = () => {
               <li>
                 <Link
                   to="/company"
-                  className="opacity-80 hover:opacity-100 transition-opacity"
+                  className="inline-flex min-h-11 items-center opacity-80 hover:opacity-100 transition-opacity"
                 >
                   Sobre Nosotros
                 </Link>
@@ -147,7 +148,7 @@ const Footer = () => {
               <li>
                 <Link
                   to="/contact"
-                  className="opacity-80 hover:opacity-100 transition-opacity"
+                  className="inline-flex min-h-11 items-center opacity-80 hover:opacity-100 transition-opacity"
                 >
                   Contacto
                 </Link>

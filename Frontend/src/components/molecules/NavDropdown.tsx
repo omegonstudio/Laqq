@@ -128,7 +128,7 @@ export default function NavDropdown() {
               >
                 {/* BOTÓN */}
                 <button
-                  className="px-4 h-9 rounded-full border text-sm flex items-center gap-1"
+                  className="min-h-11 px-4 h-9 rounded-full border text-sm flex items-center gap-1"
                   onClick={() => handleClick(item.id, item.name)}
                 >
                   <span>{item.name}</span>
@@ -175,7 +175,7 @@ export default function NavDropdown() {
           <div key={item.id} className="relative">
             {/* TRIGGER */}
             <button
-              className={`px-3 h-8 rounded-full border text-xs w-full flex items-center gap-1 whitespace-nowrap truncate min-w-0 transition-colors ${
+              className={`px-3 min-h-11 h-11 rounded-full border text-xs w-full flex items-center gap-1 whitespace-nowrap truncate min-w-0 transition-colors ${
                 openMap[item.id]
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border"
@@ -198,7 +198,7 @@ export default function NavDropdown() {
                 <div className="p-2 space-y-1 max-h-[300px] overflow-y-auto">
                   {/* Ver todo button */}
                   <button
-                    className="w-full text-left px-3 py-2 text-xs font-medium text-primary hover:bg-muted rounded-lg transition-colors"
+                    className="w-full min-h-11 text-left px-3 py-2 text-xs font-medium text-[#c2410c] hover:bg-muted rounded-lg transition-colors"
                     onClick={() => {
                       setFilter("category", item.id);
                       closeAll();
@@ -262,16 +262,13 @@ const MobileMenuItem = ({
   return (
     <div>
       <button
-        className={`w-full text-left px-3 py-2 text-xs hover:bg-muted rounded-lg transition-colors flex items-center justify-between ${
+        className={`w-full min-h-11 text-left px-3 py-2 text-xs hover:bg-muted rounded-lg transition-colors flex items-center justify-between ${
           depth > 0 ? "pl-5" : ""
         }`}
         onClick={() => {
           if (hasChildren) {
-            console.log("aaaaaaaaaaaa");
             toggle(item.id);
           } else {
-            console.log("aaaaaaaaaaaa222");
-
             setFilter("category", item.id);
             closeAll();
           }
@@ -311,17 +308,18 @@ const Column = ({ items, level, onHover, onClick }: any) => {
     <div className="min-w-[220px] border-r last:border-r-0">
       <div className="p-2 max-h-[300px] overflow-y-auto">
         {items.map((item: CategoryUI) => (
-          <div
+          <button
+            type="button"
             key={item.id}
             onMouseEnter={() => onHover(level, item)}
             onClick={() => {
               onClick(item.id, item.name);
             }}
-            className="px-3 py-2 text-sm rounded-md hover:bg-muted cursor-pointer flex justify-between"
+            className="w-full min-h-11 px-3 py-2 text-sm rounded-md hover:bg-muted cursor-pointer flex justify-between items-center text-left"
           >
             <span>{item.name}</span>
             {item.subcategories?.length > 0 && "›"}
-          </div>
+          </button>
         ))}
       </div>
     </div>

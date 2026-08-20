@@ -51,16 +51,16 @@ const HeroSection = () => {
           </div>
 
           <div className="flex flex-wrap justify-center gap-2 pt-4">
-            <Link to="/products">
-              <Button size="lg" className="px-8">
+            <Link to="/products" className="inline-flex min-h-11">
+              <Button size="lg" className="px-8 min-h-11">
                 Explorar Productos
               </Button>
             </Link>
-            <Link to="/contact">
+            <Link to="/contact" className="inline-flex min-h-11">
               <Button
                 variant="outline"
                 size="lg"
-                className="px-8 bg-white/80 dark:bg-background/80 backdrop-blur-sm"
+                className="px-8 min-h-11 bg-white/80 dark:bg-background/80 backdrop-blur-sm"
               >
                 Contactar
               </Button>

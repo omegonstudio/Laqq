@@ -227,7 +227,7 @@ const ProductDetailPage = () => {
                 <>
                   <button
                     onClick={goToPrevious}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 hover:bg-white p-2 rounded-full shadow-lg transition-all z-10"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 hover:bg-white min-h-11 min-w-11 p-2 rounded-full shadow-lg transition-all z-10 inline-flex items-center justify-center"
                     aria-label="Imagen anterior"
                   >
                     <ChevronLeft className="w-6 h-6 hover:bg-black" />
@@ -235,7 +235,7 @@ const ProductDetailPage = () => {
 
                   <button
                     onClick={goToNext}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 hover:bg-white p-2 rounded-full shadow-lg transition-all z-10"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 hover:bg-white min-h-11 min-w-11 p-2 rounded-full shadow-lg transition-all z-10 inline-flex items-center justify-center"
                     aria-label="Imagen siguiente"
                   >
                     <ChevronRight className="w-6 h-6 hover:bg-black" />
@@ -259,7 +259,7 @@ const ProductDetailPage = () => {
                   >
                     <img
                       src={image.url || placeholderImage}
-                      alt={`Miniatura ${index + 1}`}
+                      alt={`Miniatura ${index + 1} de ${product.name}`}
                       width={64}
                       height={64}
                       className="w-full h-full object-cover"

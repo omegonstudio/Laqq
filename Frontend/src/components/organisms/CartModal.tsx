@@ -22,7 +22,8 @@ const CartModal = ({ isOpen, onClose }: CartModalProps) => {
           <h2 className="text-2xl font-bold">Carrito ({totalItems})</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-muted rounded-lg transition-colors"
+            className="min-h-11 min-w-11 p-2 hover:bg-muted rounded-lg transition-colors inline-flex items-center justify-center"
+            aria-label="Cerrar carrito"
           >
             <X className="w-5 h-5" />
           </button>
@@ -67,9 +68,10 @@ const CartModal = ({ isOpen, onClose }: CartModalProps) => {
                           onClick={() =>
                             updateQuantity(item.id, item.quantity - 1)
                           }
-                          className="p-1 hover:bg-muted rounded transition-colors"
+                          className="min-h-11 min-w-11 p-1 hover:bg-muted rounded transition-colors inline-flex items-center justify-center"
+                          aria-label={`Quitar una unidad de ${item.name}`}
                         >
-                          <Minus className="w-4 h-4" />
+                          <Minus className="w-4 h-4" aria-hidden="true" />
                         </button>
                         <span className="text-sm font-medium w-8 text-center">
                           {item.quantity}
@@ -78,15 +80,17 @@ const CartModal = ({ isOpen, onClose }: CartModalProps) => {
                           onClick={() =>
                             updateQuantity(item.id, item.quantity + 1)
                           }
-                          className="p-1 hover:bg-muted rounded transition-colors"
+                          className="min-h-11 min-w-11 p-1 hover:bg-muted rounded transition-colors inline-flex items-center justify-center"
+                          aria-label={`Agregar una unidad de ${item.name}`}
                         >
-                          <Plus className="w-4 h-4" />
+                          <Plus className="w-4 h-4" aria-hidden="true" />
                         </button>
                         <button
                           onClick={() => removeFromCart(item.id)}
-                          className="ml-auto p-1 hover:bg-destructive/10 text-destructive rounded transition-colors"
+                          className="ml-auto min-h-11 min-w-11 p-1 hover:bg-destructive/10 text-destructive rounded transition-colors inline-flex items-center justify-center"
+                          aria-label={`Eliminar ${item.name} del carrito`}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4" aria-hidden="true" />
                         </button>
                       </div>
                     </div>
