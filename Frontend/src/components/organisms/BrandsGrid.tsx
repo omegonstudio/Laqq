@@ -1,11 +1,10 @@
 import { useAppSelector } from "@/store/hooks";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useMemo } from "react";
 // import { brands } from "@/utils/data/brands";
 
 const BrandsGrid = () => {
-  const { list, loading } = useAppSelector((state) => state.brands);
-  const navigate = useNavigate();
+  const { list } = useAppSelector((state) => state.brands);
   const sortedBrands = useMemo(
     () =>
       [...list].sort((a, b) =>
@@ -13,9 +12,6 @@ const BrandsGrid = () => {
       ),
     [list]
   );
-  const handleBrandClick = (brandId: string) => {
-    navigate(`/products?brand=${brandId}`);
-  };
 
   return (
     <section className="py-16 bg-background">
@@ -24,10 +20,11 @@ const BrandsGrid = () => {
 
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 items-center justify-items-center">
           {sortedBrands.map((brand) => (
-            <div
+            <Link
               key={brand.id}
-              onClick={() => handleBrandClick(brand.id)}
-              className="flex items-center justify-center p-4 grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer hover:scale-110"
+              to={`/products?brand=${brand.id}`}
+              aria-label={`Ver productos de ${brand.name}`}
+              className="flex min-h-11 min-w-[120px] items-center justify-center p-4 grayscale hover:grayscale-0 transition-all duration-300 hover:scale-105"
             >
               {brand.logo_url ? (
                 <img
@@ -44,7 +41,7 @@ const BrandsGrid = () => {
                   {brand.name}
                 </span>
               )}
-            </div>
+            </Link>
           ))}
         </div>
       </div>
