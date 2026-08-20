@@ -53,6 +53,7 @@ import { Textarea } from "../ui/textarea";
 import { quotesApi } from "@/lib/api/quotes";
 import { DialogDescription } from "@radix-ui/react-dialog";
 import GeneralSpecificationsDialog from "../molecules/Modals/GeneralSpecificationsDialog";
+import { generateQuotePdfBlob } from "@/utils/useQuotePDF";
 
 interface Props {
   open: boolean;
@@ -407,7 +408,6 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         return;
       }
 
-      const { generateQuotePdfBlob } = await import("@/utils/useQuotePDF");
       const pdfBlob = await generateQuotePdfBlob(updatedQuote);
 
       const formData = new FormData();

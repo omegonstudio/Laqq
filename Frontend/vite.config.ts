@@ -21,32 +21,6 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  build: {
-    sourcemap: true,
-    cssCodeSplit: true,
-    assetsInlineLimit: 4096,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return;
-          if (
-            id.includes("/node_modules/react/") ||
-            id.includes("/node_modules/react-dom/") ||
-            id.includes("/node_modules/scheduler/")
-          ) {
-            return "react";
-          }
-          if (
-            id.includes("/node_modules/@reduxjs/") ||
-            id.includes("/node_modules/react-redux/") ||
-            id.includes("/node_modules/redux-persist/")
-          ) {
-            return "redux";
-          }
-        },
-      },
-    },
-  },
   test: {
     globals: true,
     environment: "jsdom",
