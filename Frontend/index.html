@@ -21,12 +21,13 @@
     <!-- Canonical (HTTPS listo para producción) -->
     <link rel="canonical" href="https://laqq.com.ar/" />
 
-    <!-- Performance: fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Fuente crítica autocontenida (sin Google Fonts bloqueante) -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      href="/fonts/roboto-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
 
     <!-- LCP: la imagen del hero se descubre en el HTML, no después del JS -->
