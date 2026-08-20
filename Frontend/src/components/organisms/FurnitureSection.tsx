@@ -29,24 +29,24 @@ const whyChoose = [
 const cards = [
   {
     title: "GABINETES Y MESADAS",
-    image: "/Koettermann_Labor_C_09.jpg",
+    image: "/Koettermann_Labor_C_09.webp",
     pdf: "/pdfs/Koettermann_MOBILIARIO.pdf",
   },
   {
     title: "DUCTOS DE SERVICIOS",
-    image: "/carrusel1.jpg",
+    image: "/carrusel1.webp",
     pdf: "/pdfs/Koettermann_SERVICIOS.pdf",
   },
   {
     title: "CAMPANAS EXTRACTORAS",
-    image: "/carrusel2.jpg",
+    image: "/carrusel2.webp",
     pdf: "/pdfs/Koettermann_CAMARAS.pdf",
   },
 ];
 
 // TODO: reemplazar por las imágenes numeradas "1 Carrousel", "2 Carrousel", etc.
 // que Kottermann envió, respetando ese orden.
-const carouselImages = ["/carrusel1.jpg" , "/carrusel2.jpg", "/carrusel3.jpg", "/carrusel4.png"];
+const carouselImages = ["/carrusel1.webp" , "/carrusel2.webp", "/carrusel3.webp", "/carrusel4.webp"];
 
 const FurnitureSection = () => {
   const [current, setCurrent] = useState(0);
@@ -83,6 +83,8 @@ const FurnitureSection = () => {
               <img
                 src="/kottermann.svg"
                 alt="Kottermann"
+                width={260}
+                height={80}
                 className="w-full max-w-[260px] object-contain"
               />
             </a>
@@ -96,6 +98,10 @@ const FurnitureSection = () => {
             <img
               src={carouselImages[current]}
               alt="Laboratorio"
+              width={1600}
+              height={610}
+              fetchPriority="high"
+              decoding="async"
               className="w-full h-full object-cover object-center transition duration-700"
             />
 
@@ -201,6 +207,10 @@ const FurnitureSection = () => {
       <img
         src={card.image}
         alt={card.title}
+        width={800}
+        height={190}
+        loading="lazy"
+        decoding="async"
         className="w-full h-[190px] object-cover transition-transform duration-500 group-hover:scale-105"
       />
 

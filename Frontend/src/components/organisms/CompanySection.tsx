@@ -16,8 +16,12 @@ const CompanySection = () => {
       <div className="relative w-full h-[70vh] flex items-center justify-center overflow-hidden">
         {/* Imagen */}
         <img
-          src="/header.png"
+          src="/header.webp"
           alt="Laboratorio"
+          width={1600}
+          height={1066}
+          fetchPriority="high"
+          decoding="async"
           className="absolute inset-0 w-full h-full object-cover"
         />
 
@@ -86,8 +90,12 @@ const CompanySection = () => {
           {/* Imagen */}
           <div className="relative w-full h-[400px] rounded-2xl overflow-hidden">
             <img
-              src="/soluciones.png"
+              src="/soluciones.webp"
               alt="Equipamiento de laboratorio"
+              width={1065}
+              height={1080}
+              loading="lazy"
+              decoding="async"
               className="object-cover w-full h-full"
             />
           </div>
@@ -110,11 +118,11 @@ const CompanySection = () => {
           {/* Cards */}
           <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
             {[
-              { title: "Equipos", img: "/instrumental.png" },
-              { title: "Consumibles", img: "/consumibles.png" },
-              { title: "Equipamiento para procesos", img: "/procesos.png" },
-              { title: "Mobiliario", img: "/header.png" }, // cambiar si tenés imagen
-              { title: "Servicio técnico", img: "/serviciotecnico.png" },
+              { title: "Equipos", img: "/instrumental.webp" },
+              { title: "Consumibles", img: "/consumibles.webp" },
+              { title: "Equipamiento para procesos", img: "/procesos.webp" },
+              { title: "Mobiliario", img: "/header.webp" },
+              { title: "Servicio técnico", img: "/serviciotecnico.webp" },
             ].map((item, index) => (
               <div
                 key={index}
@@ -123,6 +131,10 @@ const CompanySection = () => {
                 <img
                   src={item.img}
                   alt={item.title}
+                  width={900}
+                  height={600}
+                  loading="lazy"
+                  decoding="async"
                   className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-500"
                 />
 
@@ -158,16 +170,16 @@ const CompanySection = () => {
           {/* Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
             {[
-              { title: "Farmacéutica", img: "/farma.png" },
-              { title: "Energía", img: "/petroleo.png" },
-              { title: "Alimentos", img: "/alimentos2.png" },
-              { title: "Química", img: "/quimica.jpg" },
-              { title: "Metalúrgica", img: "/metalurgia.png" },
-              { title: "Minería", img: "/mineria.png" },
-              { title: "Agro", img: "/Agro.png" },
-              { title: "I+D", img: "/I+D.png" },
-              { title: "Automotriz", img: "/automotriz.png" },
-              { title: "Medio ambiente", img: "/medioambiente.png" },
+              { title: "Farmacéutica", img: "/farma.webp" },
+              { title: "Energía", img: "/petroleo.webp" },
+              { title: "Alimentos", img: "/alimentos2.webp" },
+              { title: "Química", img: "/quimica.webp" },
+              { title: "Metalúrgica", img: "/metalurgia.webp" },
+              { title: "Minería", img: "/mineria.webp" },
+              { title: "Agro", img: "/Agro.webp" },
+              { title: "I+D", img: "/I+D.webp" },
+              { title: "Automotriz", img: "/automotriz.webp" },
+              { title: "Medio ambiente", img: "/medioambiente.webp" },
             ].map((sector, index) => (
               <div
                 key={index}
@@ -176,6 +188,10 @@ const CompanySection = () => {
                 <img
                   src={sector.img}
                   alt={sector.title}
+                  width={800}
+                  height={500}
+                  loading="lazy"
+                  decoding="async"
                   className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-500"
                 />
 
@@ -225,10 +241,10 @@ const CompanySection = () => {
             "thermo.svg",
             "velp.svg",
             "wiggens.svg",
-            "2mag.jpg",
+            "2mag.webp",
             "bel.png",
             "boeco.jpg",
-            "ech.png",
+            "ech.webp",
             "iludest.svg",
             "scavini.jpg",
             "stakpure.png"
@@ -241,7 +257,11 @@ const CompanySection = () => {
           >
             <img
               src={`/${logo}`}
-              alt={logo.replace(".svg", "")}
+              alt={logo.replace(/\.(svg|png|jpe?g|webp)$/i, "")}
+              width={160}
+              height={40}
+              loading="lazy"
+              decoding="async"
               className="max-h-10 object-contain transition duration-300"
             />
           </div>

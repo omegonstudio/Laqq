@@ -16,7 +16,11 @@ const WhatsAppFloat = () => {
     >
    <img
      src="/WhatsApp.webp"
-     alt="WhatsApp"
+     alt=""
+     width={40}
+     height={40}
+     loading="lazy"
+     decoding="async"
      className="h-10 w-10 object-contain opacity-80 transition-opacity group-hover:opacity-100"
    />    
     </a>

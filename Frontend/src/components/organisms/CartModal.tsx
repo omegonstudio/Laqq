@@ -50,6 +50,8 @@ const CartModal = ({ isOpen, onClose }: CartModalProps) => {
                       <img
                         src={item.image_url ? item.image_url : placeholderImage}
                         alt={item.name}
+                        width={80}
+                        height={80}
                         className="w-full h-full object-contain p-2"
                       />
                     </div>
