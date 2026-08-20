@@ -11,7 +11,6 @@ import {
   fetchQuoteTypes,
 } from "@/store/quotesSlice";
 import { QuoteRender, QuoteStateType, QuoteTypeEnum } from "@/types/api";
-import { generateQuotePdf } from "@/utils/useQuotePDF";
 import QuotePreviewDialog from "../atoms/QuotePreview";
 import { convertQuotesState, convertQuotesTypes } from "@/utils/quotesConvert";
 import ModalDelete from "../molecules/Modals/ModalDelete";
@@ -137,7 +136,8 @@ const QuotesTable = () => {
         {
           icon: <FileText size={16} />,
           label: "PDF",
-          onClick: (quote: QuoteRender) => {
+          onClick: async (quote: QuoteRender) => {
+            const { generateQuotePdf } = await import("@/utils/useQuotePDF");
             generateQuotePdf(quote);
             toast({ title: "PDF generado" });
           },
@@ -158,7 +158,8 @@ const QuotesTable = () => {
         {
           icon: <FileText size={16} />,
           label: "PDF",
-          onClick: (quote: QuoteRender) => {
+          onClick: async (quote: QuoteRender) => {
+            const { generateQuotePdf } = await import("@/utils/useQuotePDF");
             generateQuotePdf(quote);
             toast({ title: "PDF generado" });
           },
