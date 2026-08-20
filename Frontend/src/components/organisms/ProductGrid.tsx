@@ -10,6 +10,7 @@ interface ProductGridProps {
   hasMore?: boolean;
   onLoadMore?: () => void;
   loading?: boolean;
+  showEmpty?: boolean;
 }
 
 // ---- Sub-componentes locales ----
@@ -63,6 +64,7 @@ const ProductGrid = ({
   hasMore = false,
   onLoadMore,
   loading = false,
+  showEmpty = true,
 }: ProductGridProps) => {
   // Caso 1: carga inicial, todavía no hay nada que mostrar
   if (loading && products.length === 0) {
@@ -80,6 +82,7 @@ const ProductGrid = ({
 
   // Caso 2: terminó de cargar pero no hubo resultados
   if (!loading && products.length === 0) {
+    if (!showEmpty) return null;
     return (
       <section className="py-16">
         <div className="container mx-auto px-4">
