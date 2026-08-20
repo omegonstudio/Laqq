@@ -38,7 +38,12 @@ const Logo = ({
     <img
       src={logoSrc}
       alt="La Química Quirúrgica"
-      className={cn("h-9 w-auto transition-opacity duration-200", className)}
+      width={170}
+      height={40}
+      className={cn(
+        "h-9 w-[9.5625rem] aspect-[849/200] object-contain transition-opacity duration-200",
+        className
+      )}
       draggable={false}
     />
   );

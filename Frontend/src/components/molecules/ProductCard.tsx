@@ -75,6 +75,10 @@ const ProductCard = ({ product }: ProductCardProps) => {
                 : placeholderImageDark
             }
             alt={product.name}
+            width={400}
+            height={400}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-contain p-4 cursor-pointer transition-transform duration-300 group-hover:scale-110"
           />
         </Link>
