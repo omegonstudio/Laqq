@@ -170,6 +170,7 @@ export default function SearchBar({
             }
           }}
           placeholder={"Buscar productos..."}
+          aria-label="Buscar productos"
           className={`${
             radius ? " rounded-full" : " rounded-lg"
           } w-full h-full pl-12 pr-4 py-3 border border-input focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent bg-background text-foreground placeholder:text-muted-foreground transition-all`}
@@ -194,10 +195,11 @@ export default function SearchBar({
             <>
               <div className="max-h-[400px] overflow-y-auto">
                 {filteredProducts.map((product, index) => (
-                  <div
+                  <button
+                    type="button"
                     key={product.id}
                     onClick={() => handleProductClick(product)}
-                    className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-accent transition-colors text-left ${
+                    className={`w-full min-h-11 px-4 py-3 flex items-center gap-3 hover:bg-accent transition-colors text-left ${
                       highlightedIndex === index ? "bg-accent" : ""
                     }`}
                     onMouseEnter={() => setHighlightedIndex(index)}
@@ -224,7 +226,7 @@ export default function SearchBar({
                         ${product.price.toFixed(2)}
                       </div>
                     )} */}
-                  </div>
+                  </button>
                 ))}
               </div>
 

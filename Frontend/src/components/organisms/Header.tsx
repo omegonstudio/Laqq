@@ -92,7 +92,7 @@ const Header = () => {
         >
           <div className="container mx-auto flex items-center justify-between py-3 px-4 md:px-6">
             {/* Logo */}
-            <a href="/">
+            <a href="/" aria-label="Ir al inicio">
               <Logo variant="auto" className="h-8 md:h-10" showLink={false} />
             </a>
 
@@ -115,7 +115,8 @@ const Header = () => {
                 onValueChange={(value) => setFilter("brand", value)}
               >
                 <SelectTrigger
-                  className={`w-[180px] text-sm rounded-2xl px-4 py-2 border transition-colors ${
+                  aria-label="Filtrar por marca"
+                  className={`min-h-11 w-[180px] text-sm rounded-2xl px-4 py-2 border transition-colors ${
                     theme === "dark"
                       ? "bg-[#0a0a0a] border-gray-700 text-gray-200"
                       : "bg-white border-gray-300 text-gray-700"
@@ -140,7 +141,7 @@ const Header = () => {
             <div className="hidden md:flex items-center gap-4 ">
               <button
                 onClick={() => setCartOpen(true)}
-                className="relative p-2 hover:bg-muted rounded-lg transition-colors"
+                className="relative min-h-11 min-w-11 p-2 hover:bg-muted rounded-lg transition-colors"
                 aria-label="Carrito de compras"
               >
                 <ShoppingCart
@@ -157,8 +158,12 @@ const Header = () => {
 
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="p-2 rounded-lg hover:bg-muted transition-colors"
-                aria-label="Toggle theme"
+                className="min-h-11 min-w-11 p-2 rounded-lg hover:bg-muted transition-colors"
+                aria-label={
+                  theme === "dark"
+                    ? "Cambiar a modo claro"
+                    : "Cambiar a modo oscuro"
+                }
               >
                 {theme === "dark" ? (
                   <Sun className="w-6 h-6 text-gray-200" />
@@ -169,7 +174,8 @@ const Header = () => {
 
               <Link
                 to="/login"
-                className={`p-2 rounded-lg hover:bg-muted transition-colors ${
+                aria-label="Iniciar sesión"
+                className={`min-h-11 min-w-11 p-2 rounded-lg hover:bg-muted transition-colors inline-flex items-center justify-center ${
                   theme === "dark"
                     ? "text-gray-300 hover:text-primary"
                     : "text-gray-600 hover:text-primary"
@@ -183,7 +189,7 @@ const Header = () => {
             <div className="flex md:hidden items-center gap-2">
               <button
                 onClick={() => setCartOpen(true)}
-                className="relative p-2 hover:bg-muted rounded-lg transition-colors"
+                className="relative min-h-11 min-w-11 p-2 hover:bg-muted rounded-lg transition-colors"
                 aria-label="Carrito de compras"
               >
                 <ShoppingCart
@@ -200,8 +206,8 @@ const Header = () => {
 
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 hover:bg-muted rounded-lg transition-colors"
-                aria-label="Menú"
+                className="min-h-11 min-w-11 p-2 hover:bg-muted rounded-lg transition-colors"
+                aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
               >
                 {mobileMenuOpen ? (
                   <X
@@ -224,7 +230,7 @@ const Header = () => {
         {/* --- Bottom Navigation (sticky) --- */}
         {/* Order: Equipamiento · Insumos · Procesos · Mobiliario | Servicio Técnico | Nosotros */}
         <nav
-          className={`border-b ${
+          className={`border-b min-h-[52px] ${
             theme === "dark"
               ? "border-gray-800 bg-[#0a0a0a]"
               : "border-gray-200 bg-white"
@@ -237,10 +243,10 @@ const Header = () => {
               {/* Servicio Técnico — fixed link, always 5th */}
               <Link
                 to="/support"
-                className={`px-4 py-2 rounded-2xl text-sm font-medium border transition-colors ${
+                className={`min-h-11 px-4 py-2 rounded-2xl text-sm font-medium border transition-colors inline-flex items-center ${
                   theme === "dark"
-                    ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
-                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
+                    ? "border-[#fb923c] text-[#fb923c] hover:bg-orange-500/10"
+                    : "border-[#c2410c] text-[#c2410c] hover:bg-orange-50"
                 }`}
               >
                 Servicio técnico
@@ -249,10 +255,10 @@ const Header = () => {
               {/* Certificados — fixed link*/}
               <Link
                 to="/certificates"
-                className={`px-4 py-2 rounded-2xl text-sm font-medium border transition-colors ${
+                className={`min-h-11 px-4 py-2 rounded-2xl text-sm font-medium border transition-colors inline-flex items-center ${
                   theme === "dark"
-                    ? "border-orange-500 text-orange-500 hover:bg-orange-500/10"
-                    : "border-orange-500 text-orange-600 hover:bg-orange-50"
+                    ? "border-[#fb923c] text-[#fb923c] hover:bg-orange-500/10"
+                    : "border-[#c2410c] text-[#c2410c] hover:bg-orange-50"
                 }`}
               >
                 Certificados
@@ -266,7 +272,8 @@ const Header = () => {
                 }}
               >
                 <SelectTrigger
-                  className={`w-auto text-sm rounded-2xl px-4 py-1 border transition-colors ${
+                  aria-label="Menú Nosotros"
+                  className={`min-h-11 w-auto text-sm rounded-2xl px-4 py-1 border transition-colors ${
                     theme === "dark"
                       ? "bg-[#0a0a0a] border-gray-700 text-gray-200"
                       : "bg-white border-gray-300 text-gray-700"
@@ -319,7 +326,8 @@ const Header = () => {
               onValueChange={(value) => setFilter("brand", value)}
             >
               <SelectTrigger
-                className={`w-full text-sm rounded-2xl px-4 py-2 border transition-colors ${
+                aria-label="Filtrar por marca"
+                className={`min-h-11 w-full text-sm rounded-2xl px-4 py-2 border transition-colors ${
                   theme === "dark"
                     ? "bg-[#0a0a0a] border-gray-700 text-gray-200"
                     : "bg-white border-gray-300 text-gray-700"
@@ -400,8 +408,12 @@ const Header = () => {
 
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors"
-                aria-label="Toggle theme"
+                className="flex min-h-11 items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors"
+                aria-label={
+                  theme === "dark"
+                    ? "Cambiar a modo claro"
+                    : "Cambiar a modo oscuro"
+                }
               >
                 {theme === "dark" ? (
                   <>

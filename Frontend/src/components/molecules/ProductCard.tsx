@@ -64,8 +64,8 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const shouldShowDescription = truncatedDescription.length > 0;
   return (
     <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-xl hover:scale-[1.02] hover:border-primary/50 transition-all duration-300 group">
-      <div className="aspect-square bg-white rounded-xl mb-4 overflow-hidden relative">
-        <Link to={`/product/${product.id}`}>
+      <div className="aspect-square bg-muted rounded-xl mb-4 overflow-hidden relative">
+        <Link to={`/product/${product.id}`} aria-label={product.name}>
           <img
             src={
               product.image_url
@@ -103,14 +103,14 @@ const ProductCard = ({ product }: ProductCardProps) => {
       <div className="flex gap-2">
         <Button
           variant="primary"
-          className="flex-1 flex items-center justify-center gap-2"
+          className="flex-1 min-h-11 flex items-center justify-center gap-2"
           onClick={handleAddToCart}
         >
-          <ShoppingCart size={16} />
+          <ShoppingCart size={16} aria-hidden="true" />
           Agregar
         </Button>
         <Link to={`/product/${product.id}`} className="flex-1">
-          <Button variant="outline" className="w-full">
+          <Button variant="outline" className="w-full min-h-11">
             Ver Detalles
           </Button>
         </Link>
