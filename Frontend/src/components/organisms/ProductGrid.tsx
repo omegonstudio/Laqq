@@ -14,10 +14,25 @@ interface ProductGridProps {
 
 // ---- Sub-componentes locales ----
 
+const ProductCardSkeleton = () => (
+  <div className="bg-card border border-border rounded-2xl p-6">
+    <div className="aspect-square bg-muted rounded-xl mb-4 animate-pulse" />
+    <div className="h-5 w-20 bg-muted rounded mb-3 animate-pulse" />
+    <div className="h-6 w-3/4 bg-muted rounded mb-3 animate-pulse" />
+    <div className="h-4 w-full bg-muted rounded mb-2 animate-pulse" />
+    <div className="h-4 w-2/3 bg-muted rounded mb-4 animate-pulse" />
+    <div className="flex gap-2">
+      <div className="h-11 flex-1 bg-muted rounded-2xl animate-pulse" />
+      <div className="h-11 flex-1 bg-muted rounded-2xl animate-pulse" />
+    </div>
+  </div>
+);
+
 const InitialLoader = () => (
-  <div className="w-full flex flex-col items-center justify-center py-24 gap-4">
-    <Loader2 className="w-16 h-16 animate-spin text-primary" />
-    <p className="text-muted-foreground">Cargando productos...</p>
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {Array.from({ length: 3 }).map((_, i) => (
+      <ProductCardSkeleton key={i} />
+    ))}
   </div>
 );
 

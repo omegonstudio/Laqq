@@ -80,7 +80,7 @@ const Header = () => {
 
   return (
     <>
-      <header className="w-full sticky top-0 z-50">
+      <header className="fixed top-0 inset-x-0 z-50 min-h-[10.0625rem] bg-background">
         {/* --- Top Bar --- */}
         <div
           className={`w-full border-b
@@ -93,7 +93,11 @@ const Header = () => {
           <div className="container mx-auto flex items-center justify-between py-3 px-4 md:px-6">
             {/* Logo */}
             <a href="/" aria-label="Ir al inicio">
-              <Logo variant="auto" className="h-8 md:h-10" showLink={false} />
+              <Logo
+                variant="auto"
+                className="h-8 w-[8.5rem] md:h-10 md:w-[10.625rem]"
+                showLink={false}
+              />
             </a>
 
             {/* Search Section - Hidden on mobile */}
