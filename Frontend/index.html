@@ -29,6 +29,16 @@
       rel="stylesheet"
     />
 
+    <!-- LCP: la imagen del hero se descubre en el HTML, no después del JS -->
+    <link
+      rel="preload"
+      as="image"
+      href="/hero-lab.webp"
+      imagesrcset="/hero-lab-1280.webp 1280w, /hero-lab.webp 1920w"
+      imagesizes="(max-width: 1280px) 100vw, 1280px"
+      fetchpriority="high"
+    />
+
     <!--
       PRE-LAUNCH
       Cambiar a: content="index, follow"

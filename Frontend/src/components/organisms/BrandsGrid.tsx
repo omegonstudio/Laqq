@@ -33,6 +33,10 @@ const BrandsGrid = () => {
                 <img
                   src={brand.logo_url}
                   alt={brand.name}
+                  width={120}
+                  height={48}
+                  loading="lazy"
+                  decoding="async"
                   className="h-12 w-auto max-w-[120px] object-contain"
                 />
               ) : (

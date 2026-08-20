@@ -217,6 +217,8 @@ const ProductDetailPage = () => {
                 <img
                   src={images[currentImageIndex]?.url || placeholderImage}
                   alt={`${product.name} - Imagen ${currentImageIndex + 1}`}
+                  width={800}
+                  height={500}
                   className="max-w-full max-h-full object-contain rounded-lg"
                 />
               </div>
@@ -258,6 +260,8 @@ const ProductDetailPage = () => {
                     <img
                       src={image.url || placeholderImage}
                       alt={`Miniatura ${index + 1}`}
+                      width={64}
+                      height={64}
                       className="w-full h-full object-cover"
                     />
                   </button>
