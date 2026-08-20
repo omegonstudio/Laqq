@@ -1,10 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { Moon, Sun, User, ShoppingCart, X, Menu } from "lucide-react";
 import NavDropdown from "../molecules/NavDropdown";
 import { useTheme } from "next-themes";
 import { useCart } from "@/contexts/CartContext";
-import CartModal from "./CartModal";
 import {
   Select,
   SelectContent,
@@ -16,6 +15,8 @@ import { useAppSelector } from "@/store/hooks";
 import SearchBar from "../molecules/SearchBar";
 import { useProductFilters } from "@/hooks/useFilters";
 import Logo from "../atoms/Logo";
+
+const CartModal = lazy(() => import("./CartModal"));
 
 const Header = () => {
   const { searchParams, setFilter } = useProductFilters();
@@ -435,7 +436,11 @@ const Header = () => {
           </div>
         </div>
       </header>
-      <CartModal isOpen={cartOpen} onClose={() => setCartOpen(false)} />
+      {cartOpen && (
+        <Suspense fallback={null}>
+          <CartModal isOpen={cartOpen} onClose={() => setCartOpen(false)} />
+        </Suspense>
+      )}
     </>
   );
 };
