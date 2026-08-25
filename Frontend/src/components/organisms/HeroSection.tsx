@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import Button from "../atoms/Button";
 import SearchBar from "../molecules/SearchBar";
-import heroImage from "@/assets/hero-lab.jpg";
 import { useProductFilters } from "@/hooks/useFilters";
 
 const HeroSection = () => {
@@ -15,9 +14,15 @@ const HeroSection = () => {
       {/* Background image with gradient overlay */}
       <div className="absolute inset-0 z-0">
         <img
-          src={heroImage}
+          src="/hero-lab.webp"
+          srcSet="/hero-lab-1280.webp 1280w, /hero-lab.webp 1920w"
+          sizes="(max-width: 1280px) 100vw, 1280px"
+          width={1920}
+          height={1080}
           alt="Laboratorio moderno"
           className="w-full h-full object-cover"
+          fetchPriority="high"
+          decoding="async"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 dark:from-background/90 dark:via-background/80 dark:to-background/95" />
       </div>
@@ -46,16 +51,16 @@ const HeroSection = () => {
           </div>
 
           <div className="flex flex-wrap justify-center gap-2 pt-4">
-            <Link to="/products">
-              <Button size="lg" className="px-8">
+            <Link to="/products" className="inline-flex min-h-11">
+              <Button size="lg" className="px-8 min-h-11">
                 Explorar Productos
               </Button>
             </Link>
-            <Link to="/contact">
+            <Link to="/contact" className="inline-flex min-h-11">
               <Button
                 variant="outline"
                 size="lg"
-                className="px-8 bg-white/80 dark:bg-background/80 backdrop-blur-sm"
+                className="px-8 min-h-11 bg-white/80 dark:bg-background/80 backdrop-blur-sm"
               >
                 Contactar
               </Button>

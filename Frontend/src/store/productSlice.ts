@@ -14,6 +14,7 @@ interface FetchProductsParams {
   brand?: string;
   category?: string;
   is_active?: boolean;
+  is_featured?: boolean;
 }
 
 // ============================================

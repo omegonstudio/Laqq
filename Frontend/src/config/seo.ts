@@ -2,7 +2,7 @@
  * Configuración SEO canónica del sitio.
  * Usar siempre HTTPS en metadatos absolutos (listo para GO LIVE con TLS).
  */
-export const SITE_ORIGIN = "https://laqq.omegon.com.ar";
+export const SITE_ORIGIN = "https://laqq.com.ar";
 
 export const SITE_NAME = "La Química Quirúrgica";
 

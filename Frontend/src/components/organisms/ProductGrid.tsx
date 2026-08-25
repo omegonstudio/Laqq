@@ -2,6 +2,7 @@ import { Product } from "@/types/types";
 import ProductCard from "../molecules/ProductCard";
 import Button from "../atoms/Button";
 import { Loader2, PackageSearch } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface ProductGridProps {
   products: Product[];
@@ -9,14 +10,30 @@ interface ProductGridProps {
   hasMore?: boolean;
   onLoadMore?: () => void;
   loading?: boolean;
+  showEmpty?: boolean;
 }
 
 // ---- Sub-componentes locales ----
 
+const ProductCardSkeleton = () => (
+  <div className="bg-card border border-border rounded-2xl p-6">
+    <div className="aspect-square bg-muted rounded-xl mb-4 animate-pulse" />
+    <div className="h-5 w-20 bg-muted rounded mb-3 animate-pulse" />
+    <div className="h-6 w-3/4 bg-muted rounded mb-3 animate-pulse" />
+    <div className="h-4 w-full bg-muted rounded mb-2 animate-pulse" />
+    <div className="h-4 w-2/3 bg-muted rounded mb-4 animate-pulse" />
+    <div className="flex gap-2">
+      <div className="h-11 flex-1 bg-muted rounded-2xl animate-pulse" />
+      <div className="h-11 flex-1 bg-muted rounded-2xl animate-pulse" />
+    </div>
+  </div>
+);
+
 const InitialLoader = () => (
-  <div className="w-full flex flex-col items-center justify-center py-24 gap-4">
-    <Loader2 className="w-16 h-16 animate-spin text-primary" />
-    <p className="text-muted-foreground">Cargando productos...</p>
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {Array.from({ length: 3 }).map((_, i) => (
+      <ProductCardSkeleton key={i} />
+    ))}
   </div>
 );
 
@@ -25,10 +42,15 @@ const EmptyState = () => (
     <div className="inline-block p-8 rounded-2xl bg-muted/50 border-2 border-dashed border-border">
       <PackageSearch className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
       <p className="text-2xl font-semibold text-muted-foreground mb-2">
-        No se encontraron productos
+        ¿No encontrás el producto que estás buscando?
       </p>
       <p className="text-sm text-muted-foreground">
-        Intenta ajustar los filtros de búsqueda
+        <Link
+          to="/contact"
+          className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+        >
+          Contactanos
+        </Link>
       </p>
     </div>
   </div>
@@ -42,6 +64,7 @@ const ProductGrid = ({
   hasMore = false,
   onLoadMore,
   loading = false,
+  showEmpty = true,
 }: ProductGridProps) => {
   // Caso 1: carga inicial, todavía no hay nada que mostrar
   if (loading && products.length === 0) {
@@ -59,6 +82,7 @@ const ProductGrid = ({
 
   // Caso 2: terminó de cargar pero no hubo resultados
   if (!loading && products.length === 0) {
+    if (!showEmpty) return null;
     return (
       <section className="py-16">
         <div className="container mx-auto px-4">

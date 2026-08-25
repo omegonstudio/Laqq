@@ -225,3 +225,48 @@ Componentes protegidos (`ProtectedRoute`), `LoginPage`, y otros consumidores lee
 - Migrar todos los consumidores de `useAuth` al slice de Redux (o agregar `user_type_id` al `AuthContext`).
 - Decidir una única fuente de verdad y eliminar el otro sistema.
 - Mientras convivan, cualquier nuevo consumidor debe usar el slice (es el que tiene los datos reales que devuelve el backend).
+
+---
+
+## Auth — Recupero de contraseña desde el login (pendiente, plan)
+
+**Contexto**
+Hoy un admin no puede cambiar la contraseña de otro usuario (solo la propia). Si alguien olvida la clave, el único camino es Django shell. Falta un flujo público desde `/login`.
+
+**Flujo**
+1. En `LoginPage` (`Frontend/src/pages/LoginPage.tsx`): link "¿Olvidaste tu contraseña?".
+2. Formulario pide **email** (el user ya puede loguear con email vía `EmailBackend`).
+3. Backend envía un mail con link de un solo uso (token).
+4. El usuario abre `/reset-password?uid=...&token=...`, elige nueva clave, confirma.
+5. Éxito → redirigir a `/login`.
+
+**Backend (`users/`)**
+- Endpoints públicos (`AllowAny`):
+  - `POST /users/password/forgot/` — body `{ email }`. Siempre 200 (no filtrar si el mail existe).
+  - `POST /users/password/reset/` — body `{ uid, token, password }`. Valida token y hace `set_password`.
+- Token: `django.contrib.auth.tokens.PasswordResetTokenGenerator` (sin deps nuevas).
+- Mail: reutilizar `config.resend_mail.send_email_message` (mismo canal que tickets/quotes). Template en `users/templates/emails/`.
+- Link: `{FRONTEND_URL}/reset-password?uid=...&token=...`. Falta variable de entorno `FRONTEND_URL` (hoy no está; en prod sería `https://laqq.com.ar`).
+- Invalidar JWT viejos no es obligatorio en v1 (access dura 1 h). Si se quiere: blacklist del refresh o rotar password cambia el hash y alcanza para el próximo login.
+
+**Frontend**
+- Link en el form de login + página `/reset-password` (pública, no `ProtectedRoute`).
+- Validar password + confirmación en el cliente; el error de token vencido/inválido lo muestra el backend.
+- No tocar `authSlice` ni tokens: el usuario no está logueado.
+
+**Seguridad**
+- Mismo mensaje si el email existe o no ("Si el correo está registrado, vas a recibir instrucciones").
+- Rate limit básico en `forgot` (por IP/email) para no spamear.
+- Token de corta vida (default Django ~1 día; se puede bajar a unas horas).
+- Solo usuarios `is_active=True`.
+
+**Tests**
+- Email existente → se encola/envía mail y el token resetea.
+- Email inexistente → 200, sin mail.
+- Token inválido/vencido → 400, password no cambia.
+- Usuario inactivo → no envía (o no resetea).
+
+**Decisiones al implementar**
+- ¿También para clientes del portal, o solo staff/backoffice (login actual)?
+- Texto del mail (es/AR) y remitente (`DEFAULT_FROM_EMAIL`).
+- ¿Pedir username o solo email? Recomendado: solo email.

@@ -42,7 +42,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['state', 'assigned_user', 'country']
-    search_fields = ['company_name', 'first_name', 'last_name', 'email', 'message']
+    search_fields = ['company_name', 'first_name', 'last_name', 'email', 'phone', 'message']
     ordering_fields = ['created_at', 'updated_at']
     ordering = ['-created_at']
 

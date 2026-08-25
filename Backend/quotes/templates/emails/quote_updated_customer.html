@@ -83,8 +83,23 @@
             margin-bottom: 20px;
             color: #222222;
         }
-        .greeting strong {
-            font-weight: 600;
+        .sender-legend {
+            font-size: 13px;
+            color: #555555;
+            background-color: #f5f5f5;
+            border-left: 3px solid #01a751;
+            padding: 12px 16px;
+            margin: 20px 0 8px;
+            border-radius: 0 6px 6px 0;
+        }
+        .sender-legend a {
+            color: #01a751;
+            text-decoration: none;
+        }
+        .attachment-hint {
+            font-size: 14px;
+            color: #333333;
+            margin: 8px 0 20px;
         }
 
         /* ─── Section Card ─── */
@@ -258,6 +273,16 @@
                     Hola <strong>{{ customer_name }}</strong>,
                 </div>
 
+                {% if sender_display %}
+                <div class="sender-legend">
+                    Esta cotización fue actualizada y enviada por
+                    {% if sender_name %}<strong>{{ sender_name }}</strong>{% endif %}{% if sender_name and sender_email %} · {% endif %}{% if sender_email %}<a href="mailto:{{ sender_email }}">{{ sender_email }}</a>{% endif %}
+                </div>
+                {% endif %}
+                <p class="attachment-hint">
+                    Visualizá el archivo adjunto para mayor información sobre tu presupuesto.
+                </p>
+
                 <!-- ═══ Products Table ═══ -->
                 <div class="section-card">
                     <div class="section-title">Detalle de Productos y Precios</div>
@@ -283,8 +308,8 @@
                                     {% endif %}
                                 </td>
                                 <td style="text-align: center;">{{ item.quantity }}</td>
-                                <td class="price">${{ item.unit_price|floatformat:2 }}</td>
-                                <td class="price">${{ item.subtotal|floatformat:2 }}</td>
+                                <td class="price">{{ quote.currency_symbol }}{{ item.unit_price|floatformat:2 }}</td>
+                                <td class="price">{{ quote.currency_symbol }}{{ item.subtotal|floatformat:2 }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>

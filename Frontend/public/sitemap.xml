@@ -1,55 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  Sitemap de rutas públicas estáticas (SPA).
 
-  PRE-LAUNCH: NO referenciar desde robots.txt hasta el GO LIVE
-  (evitar descubrimiento agresivo del sitemap mientras hay noindex).
-  Google puede rastrear URLs individuales y aplicar meta / X-Robots-Tag.
-
-  GO LIVE:
-  1. En robots.txt añadir:
-     Sitemap: https://laqq.omegon.com.ar/sitemap.xml
-  2. Enviar este sitemap en Google Search Console.
-  3. (Opcional) Ampliar con URLs dinámicas /product/{id} vía backend.
--->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://laqq.omegon.com.ar/</loc>
+    <loc>https://laqq.com.ar/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://laqq.omegon.com.ar/products</loc>
+    <loc>https://laqq.com.ar/products</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://laqq.omegon.com.ar/furniture</loc>
+    <loc>https://laqq.com.ar/furniture</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://laqq.omegon.com.ar/company</loc>
+    <loc>https://laqq.com.ar/company</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://laqq.omegon.com.ar/contact</loc>
+    <loc>https://laqq.com.ar/contact</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://laqq.omegon.com.ar/quote</loc>
+    <loc>https://laqq.com.ar/quote</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://laqq.omegon.com.ar/support</loc>
+    <loc>https://laqq.com.ar/support</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://laqq.omegon.com.ar/certificates</loc>
+    <loc>https://laqq.com.ar/certificates</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>

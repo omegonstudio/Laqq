@@ -104,8 +104,12 @@ export const refreshThunk = createAsyncThunk(
 
       const data = await res.json();
 
-      // Encriptar el nuevo access token
-      return encryptToken(data.access);
+      // Guardar el nuevo access token y, si el backend rota (ROTATE_REFRESH_TOKENS),
+      // también el nuevo refresh, para no reutilizar el refresh ya rotado.
+      return {
+        access: encryptToken(data.access),
+        refresh: data.refresh ? encryptToken(data.refresh) : undefined,
+      };
     } catch {
       return thunkAPI.rejectWithValue("Error al refrescar");
     }
@@ -144,7 +148,12 @@ const authSlice = createSlice({
 
       // REFRESH
       .addCase(refreshThunk.fulfilled, (state, action) => {
-        state.access = action.payload; // Ya encriptado
+        state.access = action.payload.access; // Ya encriptado
+        // Si el backend rotó el refresh (ROTATE_REFRESH_TOKENS=True),
+        // actualizarlo, si no lo devuelve mantenemos el anterior.
+        if (action.payload.refresh) {
+          state.refresh = action.payload.refresh;
+        }
       })
       .addCase(refreshThunk.rejected, (state) => {
         // Si falla el refresh, hacer logout

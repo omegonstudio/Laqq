@@ -1,5 +1,9 @@
 import { QuoteItemRender, QuoteRender } from "@/types/api";
-import { convertQuotesState, convertQuotesTypes } from "./quotesConvert";
+import {
+  convertQuotesState,
+  convertQuotesTypes,
+  formatQuoteAmount,
+} from "./quotesConvert";
 import {
   Document,
   Page,
@@ -8,15 +12,18 @@ import {
   Image,
   StyleSheet,
   pdf,
+  Font,
 } from "@react-pdf/renderer";
 
-const formatCurrency = (value: string | number | null): string => {
-  if (value === null || value === undefined) return "$0,00";
-  return `$${Number(value).toLocaleString("es-AR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-};
+// Permite que códigos/nombres largos sin espacios bajen de línea en vez de solaparse.
+Font.registerHyphenationCallback((word) => {
+  if (word.length <= 14) return [word];
+  const parts: string[] = [];
+  for (let i = 0; i < word.length; i += 8) {
+    parts.push(word.slice(i, i + 8));
+  }
+  return parts;
+});
 
 const formatDate = (dateStr: string): string => {
   return new Date(dateStr).toLocaleDateString("es-AR", {
@@ -111,12 +118,11 @@ const s = StyleSheet.create({
   itemHeader: {
     backgroundColor: LIGHT_BG,
     padding: "6 10",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: "column",
+    alignItems: "flex-start",
   },
   itemTitle: { fontFamily: "Helvetica-Bold", fontSize: 10.5, color: ORANGE },
-  itemCode: { fontSize: 8.5, color: "#666" },
+  itemCode: { fontSize: 8.5, color: "#666", marginTop: 2 },
   itemBody: { padding: "8 10" },
   itemRow: {
     flexDirection: "row",
@@ -130,21 +136,22 @@ const s = StyleSheet.create({
   itemVariant: { fontSize: 8.5, color: "#555", marginBottom: 6 },
   itemImage: { width: 120, height: 90, objectFit: "contain", marginLeft: 12 },
 
-  // Tabla resumen
-  tableHeader: { flexDirection: "row", backgroundColor: ORANGE },
-  tableHeaderCell: {
-    padding: "5 8",
-    color: "white",
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
-  },
+  // Tabla resumen — el ancho va en el View, no en el Text, para que wrapee
+  tableHeader: { flexDirection: "row", backgroundColor: ORANGE, alignItems: "stretch" },
   tableRow: {
     flexDirection: "row",
+    alignItems: "flex-start",
     borderBottomWidth: 0.5,
     borderBottomColor: "#e8e8e8",
   },
-  tableCell: { padding: "5 8", fontSize: 9 },
-  tableCellRight: { padding: "5 8", fontSize: 9, textAlign: "right" },
+  tableCol: { padding: "5 6", overflow: "hidden" },
+  tableHeaderText: {
+    color: "white",
+    fontFamily: "Helvetica-Bold",
+    fontSize: 8,
+  },
+  tableCellText: { fontSize: 8 },
+  tableCellTextRight: { fontSize: 8, textAlign: "right" },
 
   // Total
   totalRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 10 },
@@ -186,6 +193,32 @@ const s = StyleSheet.create({
   },
 });
 
+const PdfTableCell = ({
+  width,
+  children,
+  header = false,
+  right = false,
+}: {
+  width: string;
+  children: string | number;
+  header?: boolean;
+  right?: boolean;
+}) => (
+  <View style={[s.tableCol, { width }]}>
+    <Text
+      style={
+        header
+          ? [s.tableHeaderText, right ? { textAlign: "right" } : {}]
+          : right
+            ? s.tableCellTextRight
+            : s.tableCellText
+      }
+    >
+      {children}
+    </Text>
+  </View>
+);
+
 // ─── Componente PDF ───────────────────────────────────────────────────────────
 
 const QuotePDF = ({
@@ -202,18 +235,23 @@ const QuotePDF = ({
       .replace(/<[^>]*>/g, " ")
       .replace(/\s+/g, " ")
       .trim();
-  // Anchos de columnas de la tabla
   const colWidths = hasVariants
     ? {
-        name: "22%",
-        code: "12%",
-        varName: "18%",
-        varCode: "11%",
-        qty: "8%",
-        price: "13%",
-        sub: "13%",
+        name: "26%",
+        code: "14%",
+        model: "14%",
+        qty: "10%",
+        price: "18%",
+        sub: "18%",
       }
-    : { name: "30%", code: "18%", qty: "12%", price: "18%", sub: "18%" };
+    : {
+        name: "34%",
+        code: "16%",
+        model: "0%",
+        qty: "12%",
+        price: "19%",
+        sub: "19%",
+      };
 
   return (
     <Document>
@@ -349,13 +387,13 @@ const QuotePDF = ({
                     <Text style={{ fontFamily: "Helvetica-Bold" }}>
                       Precio unitario:{" "}
                     </Text>
-                    {formatCurrency(item.unit_price)}
+                    {formatQuoteAmount(item.unit_price, quote.currency)}
                   </Text>
                   <Text>
                     <Text style={{ fontFamily: "Helvetica-Bold" }}>
                       Subtotal:{" "}
                     </Text>
-                    {formatCurrency(subtotal)}
+                    {formatQuoteAmount(subtotal, quote.currency)}
                   </Text>
                 </View>
               </View>
@@ -365,93 +403,52 @@ const QuotePDF = ({
 
         {/* TABLA RESUMEN */}
         <View style={s.tableHeader}>
-          <Text
-            style={[
-              s.tableHeaderCell,
-              { width: hasVariants ? colWidths.name : colWidths.name },
-            ]}
-          >
+          <PdfTableCell width={colWidths.name} header>
             Producto
-          </Text>
-          <Text style={[s.tableHeaderCell, { width: colWidths.code }]}>
+          </PdfTableCell>
+          <PdfTableCell width={colWidths.code} header>
             Código
-          </Text>
+          </PdfTableCell>
           {hasVariants && (
-            <>
-              <Text
-                style={[
-                  s.tableHeaderCell,
-                  {
-                    width: (colWidths as typeof colWidths & { varName: string })
-                      .varCode,
-                  },
-                ]}
-              >
-                Modelo
-              </Text>
-            </>
+            <PdfTableCell width={colWidths.model} header>
+              Modelo
+            </PdfTableCell>
           )}
-          <Text
-            style={[
-              s.tableHeaderCell,
-              { width: colWidths.qty, textAlign: "right" },
-            ]}
-          >
+          <PdfTableCell width={colWidths.qty} header right>
             Cantidad
-          </Text>
-          <Text
-            style={[
-              s.tableHeaderCell,
-              { width: colWidths.price, textAlign: "right" },
-            ]}
-          >
+          </PdfTableCell>
+          <PdfTableCell width={colWidths.price} header right>
             Precio unit.
-          </Text>
-          <Text
-            style={[
-              s.tableHeaderCell,
-              { width: colWidths.sub, textAlign: "right" },
-            ]}
-          >
+          </PdfTableCell>
+          <PdfTableCell width={colWidths.sub} header right>
             Subtotal
-          </Text>
+          </PdfTableCell>
         </View>
 
         {items.map((item, index) => {
           const subtotal = Number(item.quantity) * Number(item.unit_price);
           return (
-            <View key={index} style={s.tableRow}>
-              <Text style={[s.tableCell, { width: colWidths.name }]}>
+            <View key={index} style={s.tableRow} wrap={false}>
+              <PdfTableCell width={colWidths.name}>
                 {item.product.name ?? "—"}
-              </Text>
-              <Text style={[s.tableCell, { width: colWidths.code }]}>
+              </PdfTableCell>
+              <PdfTableCell width={colWidths.code}>
                 {item.product.product_code ?? "—"}
-              </Text>
+              </PdfTableCell>
               {hasVariants && (
-                <>
-                  <Text
-                    style={[
-                      s.tableCell,
-                      {
-                        width: (
-                          colWidths as typeof colWidths & { varCode: string }
-                        ).varCode,
-                      },
-                    ]}
-                  >
-                    {item.variant?.code ?? "—"}
-                  </Text>
-                </>
+                <PdfTableCell width={colWidths.model}>
+                  {item.variant?.code ?? "—"}
+                </PdfTableCell>
               )}
-              <Text style={[s.tableCellRight, { width: colWidths.qty }]}>
+              <PdfTableCell width={colWidths.qty} right>
                 {item.quantity}
-              </Text>
-              <Text style={[s.tableCellRight, { width: colWidths.price }]}>
-                {formatCurrency(item.unit_price)}
-              </Text>
-              <Text style={[s.tableCellRight, { width: colWidths.sub }]}>
-                {formatCurrency(subtotal)}
-              </Text>
+              </PdfTableCell>
+              <PdfTableCell width={colWidths.price} right>
+                {formatQuoteAmount(item.unit_price, quote.currency)}
+              </PdfTableCell>
+              <PdfTableCell width={colWidths.sub} right>
+                {formatQuoteAmount(subtotal, quote.currency)}
+              </PdfTableCell>
             </View>
           );
         })}

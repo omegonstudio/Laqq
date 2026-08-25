@@ -117,7 +117,9 @@ jobs:
                 echo "DB healthy"
                 break
               fi
+
               sleep 2
+
               if [ "$i" -eq 30 ]; then
                 docker compose -f "$COMPOSE" logs db --tail=200
                 exit 1
@@ -138,10 +140,12 @@ jobs:
                 exit 1
               fi
               sleep 5
+
               if [ "$i" -eq 60 ]; then
                 docker compose -f "$COMPOSE" logs backend --tail=100
                 exit 1
               fi
+
             done
             echo "-> Frontend"
             docker compose -f "$COMPOSE" up -d frontend

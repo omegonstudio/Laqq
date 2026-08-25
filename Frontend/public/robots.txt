@@ -1,13 +1,3 @@
-# PRE-LAUNCH
-# Google debe poder rastrear el sitio para detectar el noindex
-# (meta robots + X-Robots-Tag). Bloquear con Disallow: / impide
-# que Google lea esas señales y puede dejar URLs "indexadas aunque
-# bloqueadas por robots.txt" (comportamiento observado en Search Console).
-#
-# GO LIVE: mantener Allow: / y añadir:
-# Sitemap: https://laqq.omegon.com.ar/sitemap.xml
-#
-# Cambiar únicamente si se decide otra estrategia (p. ej. Basic Auth).
-
 User-agent: *
 Allow: /
+Sitemap: https://laqq.com.ar/sitemap.xml

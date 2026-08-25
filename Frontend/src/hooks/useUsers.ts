@@ -41,6 +41,46 @@ export const useUserAdmins = (params?: UserListParams) =>
     placeholderData: (prev) => prev,
   });
 
+/**
+ * Trae TODOS los usuarios (incluidos los de tipo "client") recorriendo todas
+ * las páginas de la API. Se usa en la tabla de usuarios para que nada quede
+ * oculto, evitando también el límite fijo de una sola página.
+ */
+export const useAllUsers = (params?: UserListParams) =>
+  useQuery<PaginatedResponse<UserData>, NormalizedApiError>({
+    queryKey: [...usersListKey(params), "all"],
+    queryFn: async () => {
+      const pageSize = params?.page_size ?? 200;
+      const firstPage = params?.page ?? 1;
+      const allResults: UserData[] = [];
+
+      let page = firstPage;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await usersApi.list({
+          ...params,
+          page,
+          page_size: pageSize,
+        });
+        allResults.push(...response.results);
+        hasMore = response.next !== null;
+        page += 1;
+      }
+
+      return {
+        results: allResults,
+        count: allResults.length,
+        next: null,
+        previous: null,
+        page_size: pageSize,
+        current_page: 1,
+        total_pages: 1,
+      };
+    },
+    placeholderData: (prev) => prev,
+  });
+
 export const useUser = (id?: string) =>
   useQuery<UserData, NormalizedApiError>({
     queryKey: userDetailKey(id),

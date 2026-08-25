@@ -16,6 +16,7 @@ const ContactForm = () => {
     message: "",
     state: "new",
     email: "",
+    phone: "",
   });
   const [messageError, setMessageError] = useState<string>("");
 
@@ -62,6 +63,7 @@ const ContactForm = () => {
         message: "",
         state: "new",
         email: "",
+        phone: "",
       });
       setMessageError(""); // Limpiar el error
     } catch (error) {
@@ -173,19 +175,29 @@ const ContactForm = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, country: e.target.value })
                     }
-                    required
                   />
                 </div>
-                <InputField
-                  label="Email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  required
-                  // required
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField
+                    label="Email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    required
+                  />
+                  <InputField
+                    label="Teléfono"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                    required
+                    minLength={7}
+                  />
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-2">

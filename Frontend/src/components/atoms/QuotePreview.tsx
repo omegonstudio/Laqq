@@ -19,6 +19,7 @@ import {
   QuoteItemRender,
   QuoteStateType,
   QuoteTypeEnum,
+  QuoteCurrency,
   UserData,
   SpecificationsForm,
 } from "@/types/api";
@@ -33,7 +34,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { convertQuotesState, convertQuotesTypes } from "@/utils/quotesConvert";
+import {
+  convertQuoteCurrency,
+  convertQuotesState,
+  convertQuotesTypes,
+  currencySymbol,
+  formatQuoteAmount,
+  QUOTE_CURRENCIES,
+} from "@/utils/quotesConvert";
 import { fetchUsers } from "@/store/usersSlice";
 import { toast } from "@/hooks/use-toast";
 import { ProductSearchCombobox } from "../molecules/ProductSearch";
@@ -45,7 +53,6 @@ import { Textarea } from "../ui/textarea";
 import { quotesApi } from "@/lib/api/quotes";
 import { DialogDescription } from "@radix-ui/react-dialog";
 import GeneralSpecificationsDialog from "../molecules/Modals/GeneralSpecificationsDialog";
-import { generateQuotePdfBlob } from "@/utils/useQuotePDF";
 
 interface Props {
   open: boolean;
@@ -56,6 +63,7 @@ interface Props {
 interface EditableData {
   state: QuoteStateType;
   quote_type: QuoteTypeEnum;
+  currency: QuoteCurrency;
   items: (QuoteItemEditable & { existing: boolean })[];
   user: UserData;
   message?: string;
@@ -141,6 +149,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       setFormState({
         state: quote.state,
         quote_type: quote.quote_type,
+        currency: quote.currency ?? "ARS",
         items: quote.items
           ? quote.items.map((item) => ({ ...item, existing: true }))
           : [],
@@ -154,7 +163,6 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   }, [quote]);
 
   const quotesTypes = useAppSelector((state) => state.quotes.types);
-  const quotesStates = useAppSelector((state) => state.quotes.states);
 
   useEffect(() => {
     if (quote) {
@@ -170,6 +178,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       setFormState({
         state: quote.state,
         quote_type: quote.quote_type,
+        currency: quote.currency ?? "ARS",
         items,
         user: users?.results?.find(
           (item) => item.id === quote.user
@@ -193,11 +202,12 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
     setFormState({
       state: quote.state,
       quote_type: quote.quote_type,
+      currency: quote.currency ?? "ARS",
       items: quote.items
         ? quote.items.map((item) => ({ ...item, existing: true }))
         : [],
       user: users?.results?.find((item) => item.id === quote.user) as UserData,
-      observaciones: "",
+      observaciones: quote.observaciones,
     });
     setEdit(false);
   };
@@ -300,7 +310,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
             total_amount: calculateTotal().toFixed(2),
             user: formState.user.id,
             quote_type: formState.quote_type,
-            state: formState.state,
+            currency: formState.currency,
             observaciones: formState.observaciones,
             specs: specs,
           },
@@ -354,9 +364,11 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       ]);
 
       const updatedQuote = await dispatch(fetchQuote(quote.id)).unwrap();
+      setQuote(updatedQuote);
       setFormState({
         state: updatedQuote.state,
         quote_type: updatedQuote.quote_type,
+        currency: updatedQuote.currency ?? "ARS",
         items:
           updatedQuote.items?.map((item) => ({ ...item, existing: true })) ??
           [],
@@ -395,6 +407,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         return;
       }
 
+      const { generateQuotePdfBlob } = await import("@/utils/useQuotePDF");
       const pdfBlob = await generateQuotePdfBlob(updatedQuote);
 
       const formData = new FormData();
@@ -406,6 +419,9 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       );
 
       await quotesApi.sendClient(updatedQuote.id, formData);
+
+      const refreshed = await dispatch(fetchQuote(updatedQuote.id)).unwrap();
+      setQuote(refreshed);
 
       toast({ title: "Correo enviado al cliente" });
     } catch (error) {
@@ -468,34 +484,12 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
           <p>{formState.message ?? "Sin mensaje"}</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 text-sm h-[4rem] m-h-fit">
+        <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <label>Estado</label>
-            {edit ? (
-              <Select
-                value={formState.state || ""}
-                onValueChange={(value: QuoteStateType) =>
-                  setFormState((prev) =>
-                    prev ? { ...prev, state: value } : null
-                  )
-                }
-              >
-                <SelectTrigger className="h-9 ">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {quotesStates.map((state) => (
-                    <SelectItem key={state.id} value={state.id}>
-                      {state.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <p className="text-muted-foreground">
-                {convertQuotesState(formState.state as QuoteStateType)}
-              </p>
-            )}
+            <p className="text-muted-foreground">
+              {convertQuotesState(formState.state as QuoteStateType)}
+            </p>
           </div>
 
           <div>
@@ -523,6 +517,35 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
             ) : (
               <p className="text-muted-foreground">
                 {convertQuotesTypes(formState.quote_type as QuoteTypeEnum)}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label>Moneda</label>
+            {edit ? (
+              <Select
+                value={formState.currency}
+                onValueChange={(value: QuoteCurrency) =>
+                  setFormState((prev) =>
+                    prev ? { ...prev, currency: value } : null
+                  )
+                }
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {QUOTE_CURRENCIES.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label} ({currencySymbol(option.value)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-muted-foreground">
+                {`${convertQuoteCurrency(formState.currency)} (${currencySymbol(formState.currency)})`}
               </p>
             )}
           </div>
@@ -638,10 +661,13 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                     </td>
                     <td className="p-2 text-center">{item.quantity}</td>
                     <td className="p-2 text-center whitespace-nowrap">
-                      {`$ ${parseFloat(item.unit_price).toFixed(2)}`}
+                      {formatQuoteAmount(
+                        item.unit_price,
+                        formState.currency
+                      )}
                     </td>
                     <td className="p-2 text-center font-medium whitespace-nowrap">
-                      {`$ ${parseFloat(item.subtotal).toFixed(2)}`}
+                      {formatQuoteAmount(item.subtotal, formState.currency)}
                     </td>
                   </tr>
                 ))}
@@ -740,7 +766,9 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                     </div>
 
                     <div>
-                      <label className="text-xs">Precio:</label>
+                      <label className="text-xs">
+                        Precio ({currencySymbol(formState.currency)}):
+                      </label>
                       <InputField
                         aria-description="Precio unitario del producto"
                         type="number"
@@ -764,7 +792,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         )}
 
         <div className="text-right text-lg font-semibold pt-2 border-t">
-          Total: ${total}
+          Total: {formatQuoteAmount(total, formState.currency)}
         </div>
 
         <label>Observaciones</label>

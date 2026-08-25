@@ -49,7 +49,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
     serializer_class = QuoteSerializer
     permission_classes = [CanCreateOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['contact', 'user', 'quote_type', 'state']
+    filterset_fields = ['contact', 'user', 'quote_type', 'state', 'currency']
     search_fields = [
         'quote_number',
         'message',
@@ -324,9 +324,15 @@ class QuoteViewSet(viewsets.ModelViewSet):
 
         try:
             # Send the email (con o sin adjunto, según corresponda)
-            success = send_updated_quote_to_customer(quote, pdf_file=pdf_file)
+            success = send_updated_quote_to_customer(
+                quote, pdf_file=pdf_file, sender=request.user
+            )
 
             if success:
+                sent_state = QuoteState.objects.filter(id='sent').first()
+                if sent_state and quote.state_id != sent_state.id:
+                    quote.state = sent_state
+                    quote.save(update_fields=['state', 'updated_at'])
                 logger.info(f"Updated quote #{quote.quote_number} sent manually to {quote.contact.email}")
                 response_data = {
                     'message': f'Updated quote sent successfully to {quote.contact.email}',

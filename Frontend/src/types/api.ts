@@ -50,8 +50,8 @@ export interface Contact {
 export interface Message {
   id: string;
   company_name: string | null;
-  first_name: string | null;
-  last_name: string | null;
+  first_name: string;
+  last_name: string;
   country: string | null;
   message: string;
   state: string;
@@ -59,15 +59,17 @@ export interface Message {
   created_at: string;
   updated_at: string;
   email: string;
+  phone: string;
 }
 export interface MessageCreate {
   company_name: string | null;
-  first_name: string | null;
-  last_name: string | null;
+  first_name: string;
+  last_name: string;
   country: string | null;
   message: string;
   state: string;
   email: string;
+  phone: string;
 }
 
 export interface NoteType {
@@ -156,6 +158,7 @@ export type QuoteStateType =
   | "confirmed"
   | "expired"
   | "pending"
+  | "assigned"
   | "rejected"
   | "sent";
 export type QuoteTypeEnum =
@@ -165,6 +168,8 @@ export type QuoteTypeEnum =
   | "supplies"
   | "standard"
   | "express";
+
+export type QuoteCurrency = "ARS" | "USD" | "EUR";
 
 // =================== QUOTE TYPES ===================
 
@@ -178,6 +183,7 @@ export interface Quote {
   state: QuoteStateType;
   message: string | null;
   total_amount: string | null;
+  currency?: QuoteCurrency;
   created_at?: string;
   updated_at?: string;
 }
@@ -201,6 +207,7 @@ export interface QuoteRender {
   state: QuoteStateType;
   message: string | null;
   total_amount: string | null;
+  currency: QuoteCurrency;
   created_at: string;
   updated_at: string;
   items: QuoteItemRender[]; // Items con productos completos
@@ -255,6 +262,7 @@ export interface QuoteCreatePayload {
   contact_id?: string;
   message?: string | null;
   total_amount?: string | null;
+  currency?: QuoteCurrency;
   user?: string | null;
   quote_type: QuoteTypeEnum;
   state: QuoteStateType;
@@ -266,6 +274,7 @@ export interface QuoteUpdatePayload {
   contact_id?: string;
   message?: string | null;
   total_amount?: string | null;
+  currency?: QuoteCurrency;
   user?: string | null;
   quote_type?: QuoteTypeEnum;
   state?: QuoteStateType;

@@ -15,9 +15,9 @@ class QuoteStateAdmin(admin.ModelAdmin):
 
 @admin.register(Quote)
 class QuoteAdmin(admin.ModelAdmin):
-    list_display = ['quote_number', 'contact', 'user', 'quote_type', 'state', 'total_amount', 'created_at']
+    list_display = ['quote_number', 'contact', 'user', 'quote_type', 'state', 'currency', 'total_amount', 'created_at']
     search_fields = ['quote_number', 'message']
-    list_filter = ['quote_type', 'state', 'user']
+    list_filter = ['quote_type', 'state', 'currency', 'user']
     ordering = ['-created_at']
 
 @admin.register(QuoteItem)
