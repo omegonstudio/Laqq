@@ -84,8 +84,8 @@ jobs:
             set -euo pipefail
             echo "========================================"
             echo " DEPLOY LAQQ"
-            echo " Branch: \$BRANCH"
-            echo " Dir: \$DIR"
+            echo " Branch: $BRANCH"
+            echo " Dir: $DIR"
             echo "========================================"
             REPO="https://github.com/omegonstudio/Laqq.git"
             COMPOSE="docker-compose.prod.yml"
@@ -93,7 +93,7 @@ jobs:
             cd "$DIR"
             if [ ! -d ".git" ]; then
               echo "-> Clonando repositorio"
-              git clone "$REPO" .
+              git clone "${REPO}" .
             fi
             echo "-> Commit previo"
             git rev-parse --short HEAD > .last_deploy_commit || true
