@@ -80,7 +80,7 @@ jobs:
           DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
         run: |
           ssh "deploy@$DROPLET_HOST" \
-          "BRANCH=${BRANCH} DIR=${DEPLOY_DIR} bash -s" <<'REMOTE'
+          "env BRANCH=${BRANCH} DIR=${DEPLOY_DIR} bash -s" <<'REMOTE'
             set -euo pipefail
             echo "========================================"
             echo " DEPLOY LAQQ"
