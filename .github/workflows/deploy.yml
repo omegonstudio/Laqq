@@ -79,7 +79,7 @@ jobs:
           DROPLET_HOST: ${{ env.IS_MAIN == 'true' && secrets.DROPLET_HOST || secrets.DROPLET_HOST_DEV }}
           DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
         run: |
-          ssh "$deploy@$DROPLET_HOST" \
+          ssh "deploy@$DROPLET_HOST" \
           "BRANCH=${BRANCH} DIR=${DEPLOY_DIR} bash -s" <<'REMOTE'
             set -euo pipefail
             echo "========================================"
