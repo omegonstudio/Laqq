@@ -79,9 +79,15 @@ jobs:
           DROPLET_HOST: ${{ env.IS_MAIN == 'true' && secrets.DROPLET_HOST || secrets.DROPLET_HOST_DEV }}
           DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
         run: |
+          # Pasar args con printf %q evita que un \n final en el secret DEPLOY_DIR
+          # parta el comando remoto en `env ...` + `bash -s` sin variables.
           ssh "deploy@$DROPLET_HOST" \
-          "env BRANCH=${BRANCH} DIR=${DEPLOY_DIR} bash -s" <<'REMOTE'
+            "bash -s -- $(printf '%q' "$BRANCH") $(printf '%q' "$DEPLOY_DIR")" <<'REMOTE'
             set -euo pipefail
+            BRANCH="$1"
+            DIR="$2"
+            DIR="${DIR//$'\r'/}"
+            DIR="${DIR%%$'\n'}"
             echo "========================================"
             echo " DEPLOY LAQQ"
             echo " Branch: $BRANCH"
