@@ -1,6 +1,17 @@
 """
-Script para regenerar TablaCargaMasiva.xlsx con los nuevos campos del refactor.
-Ejecutar desde Backend/: venv/Scripts/python.exe scripts/gen_excel_template.py
+NO USAR.
+
+Este script regenera TablaCargaMasiva.xlsx desde cero y pisa el template
+armado a mano (incluye columnas de Consumibles: articulo, cas, sedronar,
+archivo_esp, archivo_hds). El flujo real es editar el Excel a mano.
+
+Plantilla canónica (la que descarga el backoffice):
+  Frontend/src/assets/templates/TablaCargaMasiva.xlsx
+Copia de referencia / README:
+  Backend/TablaCargaMasiva.xlsx
+
+Si alguna vez hiciera falta regenerar, hay que copiar esas columnas al
+nuevo archivo. No ejecutar este script contra el xlsx de trabajo.
 """
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -120,12 +131,12 @@ ws.row_dimensions[1].height = 32
 cat0_col = get_column_letter(headers.index('categoria_nivel_0') + 1)
 dv_cat0 = DataValidation(
     type='list',
-    formula1='"Insumos,Procesos,Equipamiento,Mobiliario"',
+    formula1='"Consumibles,Procesos,Equipamiento,Mobiliario"',
     allow_blank=True,
     showDropDown=False,  # False = el selector es visible en Excel
     showErrorMessage=True,
     errorTitle='Categoría inválida',
-    error='Seleccioná una categoría de la lista: Insumos, Procesos, Equipamiento, Mobiliario.',
+    error='Seleccioná una categoría de la lista: Consumibles, Procesos, Equipamiento, Mobiliario.',
     showInputMessage=True,
     promptTitle='Categoría nivel 0',
     prompt='Seleccioná la categoría raíz del producto.',
@@ -152,7 +163,7 @@ instrucciones = [
     ('   codigo_producto        Codigo unico del producto (obligatorio)', 'normal'),
     ('   nombre                 Nombre del producto', 'normal'),
     ('   marca                  Marca del producto', 'normal'),
-    ('   categoria_nivel_0      Categoria raiz — debe coincidir con una categoria existente en la base de datos (ej: Insumos, Procesos, Equipamiento, Mobiliario)', 'normal'),
+    ('   categoria_nivel_0      Categoria raiz — debe coincidir con una categoria existente en la base de datos (ej: Consumibles, Procesos, Equipamiento, Mobiliario)', 'normal'),
     ('   categoria_nivel_1      Subcategoria nivel 1 (se crea si no existe)', 'normal'),
     ('   categoria_nivel_2      Subcategoria nivel 2 (se crea si no existe; requiere categoria_nivel_1)', 'normal'),
     ('   categoria_nivel_3      Subcategoria nivel 3 (se crea si no existe; requiere categoria_nivel_2)', 'normal'),
@@ -211,7 +222,7 @@ instrucciones = [
     ('', None),
     ('   ERROR: Fila N: error al procesar producto "X" — Categoria nivel 0 no encontrada', 'error'),
     ('   Causa:    El valor de categoria_nivel_0 no coincide con ninguna categoria raiz en la base de datos.', 'normal'),
-    ('   Solucion: Verificar el nombre exacto de la categoria raiz en el sistema (ej: Insumos, Procesos, Equipamiento, Mobiliario).', 'normal'),
+    ('   Solucion: Verificar el nombre exacto de la categoria raiz en el sistema (ej: Consumibles, Procesos, Equipamiento, Mobiliario).', 'normal'),
     ('', None),
     ('   ERROR: Fila N: producto relacionado con codigo "X" no encontrado', 'error'),
     ('   Causa:    Un codigo en productos_relacionados no existe en la DB ni en el archivo.', 'normal'),

@@ -1,5 +1,90 @@
 import { Category, CategoryUI } from "@/types/types";
 
+const CONSUMIBLES_ROOT_NAME = "Consumibles";
+
+type CategoryParentRef = {
+  id: string;
+  name: string;
+  parent?: string | null;
+};
+
+/** True si la categoría es Consumibles o cuelga de ella (cualquier nivel). */
+export function isCategoryUnderConsumibles(
+  categoryId: string,
+  categories: CategoryParentRef[]
+): boolean {
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  let current = byId.get(categoryId);
+  while (current) {
+    if (current.name === CONSUMIBLES_ROOT_NAME) return true;
+    current = current.parent ? byId.get(current.parent) : undefined;
+  }
+  return false;
+}
+
+export type CatalogCrumb = {
+  label: string;
+  href?: string;
+};
+
+export function categoryListingHref(category: {
+  id: string;
+  name: string;
+}): string {
+  if (category.name.trim().toLowerCase() === "mobiliario") {
+    return "/furniture";
+  }
+  return `/products?category=${category.id}`;
+}
+
+/** Cadena raíz → hoja. Vacía si el id no está en la lista. */
+export function getCategoryAncestry(
+  categoryId: string | null | undefined,
+  categories: CategoryParentRef[]
+): CategoryParentRef[] {
+  if (!categoryId) return [];
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  const chain: CategoryParentRef[] = [];
+  const seen = new Set<string>();
+  let current = byId.get(categoryId);
+  while (current && !seen.has(current.id)) {
+    seen.add(current.id);
+    chain.push(current);
+    current = current.parent ? byId.get(current.parent) : undefined;
+  }
+  return chain.reverse();
+}
+
+export function buildCatalogCrumbs({
+  categories,
+  categoryId,
+  productName,
+}: {
+  categories: CategoryParentRef[];
+  categoryId?: string | null;
+  productName?: string | null;
+}): CatalogCrumb[] {
+  const crumbs: CatalogCrumb[] = [
+    { label: "Inicio", href: "/" },
+    { label: "Catálogo", href: "/products" },
+  ];
+
+  for (const cat of getCategoryAncestry(categoryId, categories)) {
+    crumbs.push({
+      label: cat.name,
+      href: categoryListingHref(cat),
+    });
+  }
+
+  if (productName?.trim()) {
+    crumbs.push({ label: productName.trim() });
+  }
+
+  const last = crumbs[crumbs.length - 1];
+  crumbs[crumbs.length - 1] = { label: last.label };
+  return crumbs;
+}
+
 export function buildCategories(categories: readonly Category[]): CategoryUI[] {
   if (!categories.length) return [];
 

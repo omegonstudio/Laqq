@@ -1,6 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
   ChevronLeft,
   ChevronRight,
   ShoppingCart,
@@ -11,6 +10,10 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearSelected, fetchProduct } from "@/store/productSlice";
+import { fetchAllCategories } from "@/store/categoriesSlice";
+import { hasSpecTableContent } from "@/types/types";
+import { buildCatalogCrumbs } from "@/utils/data/categories";
+import CatalogBreadcrumb from "@/components/molecules/CatalogBreadcrumb";
 import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
 
 const formatDescription = (description: string) => {
@@ -40,6 +43,7 @@ const ProductDetailPage = () => {
     selectedLoading,
     selectedError,
   } = useAppSelector((state) => state.products);
+  const { list: categories } = useAppSelector((state) => state.categories);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const variantsRef = useRef<HTMLDivElement>(null);
@@ -61,6 +65,12 @@ const ProductDetailPage = () => {
     };
   }, [id, dispatch]);
 
+  useEffect(() => {
+    if (categories.length === 0) {
+      dispatch(fetchAllCategories({}));
+    }
+  }, [categories.length, dispatch]);
+
   // ─── ZONA 2: Derivaciones ─────────────────────────────────────────────────
   const isImage = (contentType?: string) => contentType?.startsWith("image/");
   const variantCount = product?.variants?.length ?? 0;
@@ -75,7 +85,18 @@ const ProductDetailPage = () => {
     product?.attachments?.filter((att) => isImage(att.content_type_str)) ?? [];
   const fileAttachments =
     product?.attachments?.filter((att) => !isImage(att.content_type_str)) ?? [];
+  const specTable = product?.spec_table;
+  const showSpecTable = hasSpecTableContent(specTable);
   const showDetailsSection = hasVariants || fileAttachments.length > 0;
+  const crumbs = useMemo(
+    () =>
+      buildCatalogCrumbs({
+        categories,
+        categoryId: product?.category_id,
+        productName: product?.name,
+      }),
+    [categories, product?.category_id, product?.name]
+  );
 
   // ─── ZONA 2b: useEffect que depende de las derivaciones ──────────────────
   useEffect(() => {
@@ -200,13 +221,7 @@ const ProductDetailPage = () => {
   return (
     <div className="py-16">
       <div className="container mx-auto px-4">
-        <Link
-          to="/products"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver al Catálogo
-        </Link>
+        <CatalogBreadcrumb items={crumbs} className="mb-8" />
 
             <div className="grid lg:grid-cols-2 gap-12 items-start mb-12">
             <div className="bg-background rounded-2xl p-8 border border-border">            {/* Contenedor de la imagen con altura fija */}
@@ -364,6 +379,42 @@ const ProductDetailPage = () => {
             </div>
           </div>
         </div>
+
+        {showSpecTable && specTable && (
+          <div className="bg-card border border-border rounded-2xl p-8 mb-8">
+            <p className="font-bold mb-5">Especificaciones técnicas</p>
+            <div className="overflow-x-auto">
+              <table className="w-full border border-border rounded-xl overflow-hidden text-center">
+                <thead className="bg-primary/10">
+                  <tr>
+                    {specTable.columns.map((col, index) => (
+                      <th
+                        key={`${col}-${index}`}
+                        className="px-4 py-3 text-center font-bold"
+                      >
+                        {col || "\u00A0"}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {specTable.rows.map((row, rowIndex) => (
+                    <tr key={rowIndex} className="border-t border-border">
+                      {specTable.columns.map((_, colIndex) => (
+                        <td
+                          key={colIndex}
+                          className="px-4 py-3 text-sm text-center"
+                        >
+                          {row[colIndex]?.trim() ? row[colIndex] : "-"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Solo mostrar esta sección si hay especificaciones o productos relacionados */}
         {showDetailsSection && (
