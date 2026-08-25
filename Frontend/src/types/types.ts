@@ -73,6 +73,31 @@ export interface RelatedProduct {
   relation_type?: string | null;
 }
 
+export type SedronarOption =
+  | "-"
+  | "Lista 1"
+  | "Lista 2"
+  | "Lista 3"
+  | "Lista 4";
+
+export interface ProductSpecTable {
+  columns: string[];
+  rows: string[][];
+}
+
+export const EMPTY_SPEC_TABLE: ProductSpecTable = { columns: [], rows: [] };
+
+export const hasSpecTableContent = (
+  table?: ProductSpecTable | null
+): boolean => {
+  if (!table) return false;
+  const hasColumns = table.columns?.some((col) => col?.trim());
+  const hasCells = table.rows?.some((row) =>
+    row?.some((cell) => cell?.trim())
+  );
+  return Boolean(hasColumns || hasCells);
+};
+
 // ============================================
 // PRODUCT - Respuesta del backend (GET)
 // ============================================
@@ -95,6 +120,14 @@ export interface Product {
   related_products?: RelatedProduct[]; // Campo original del backend
   attachments: Attachment[];
   variants: Variants[];
+  spec_table?: ProductSpecTable;
+  articulo?: string;
+  cas?: string;
+  sedronar?: SedronarOption;
+  esp_attachment_id?: string | null;
+  hds_attachment_id?: string | null;
+  esp_url?: string | null;
+  hds_url?: string | null;
 }
 
 // ============================================
@@ -112,6 +145,12 @@ export interface ProductCreateRequest {
   related_product_ids?: string[]; // Array de UUIDs
   related_product_codes?: string[];
   is_featured?: boolean;
+  articulo?: string;
+  cas?: string;
+  sedronar?: SedronarOption;
+  esp_attachment_id?: string | null;
+  hds_attachment_id?: string | null;
+  spec_table?: ProductSpecTable;
 }
 
 export interface ProductUpdateRequest extends Partial<ProductCreateRequest> {
@@ -139,6 +178,14 @@ export interface ProductFormState {
   is_active: boolean;
   related: RelatedProduct[]; // Objetos completos para mostrar
   variants: Variants[]; // Especificaciones técnicas dinámicas
+  articulo?: string;
+  cas?: string;
+  sedronar?: SedronarOption;
+  esp_attachment_id?: string | null;
+  hds_attachment_id?: string | null;
+  esp_file?: File | null;
+  hds_file?: File | null;
+  spec_table?: ProductSpecTable;
 }
 
 // ============================================
@@ -279,3 +326,4 @@ export interface AttachmentUpdatePayload {
   attachable_type?: string;
   attachable_id?: string;
 }
+

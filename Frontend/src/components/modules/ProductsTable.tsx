@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Edit2, Trash2, Plus } from "lucide-react";
+import { Edit2, Trash2, Plus, Download } from "lucide-react";
 import Table from "@/components/common/Table";
 import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
@@ -7,11 +7,13 @@ import Button from "@/components/atoms/Button";
 import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { deleteProduct, fetchProducts } from "@/store/productSlice";
-import { useCanManageProducts } from "@/hooks/usePermissions";
+import { useCanExportProducts, useCanManageProducts } from "@/hooks/usePermissions";
 import ModalProduct from "../molecules/Modals/EditProduct";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import CargaMasivaProducts from "../molecules/CargaMasiva";
 import { toast } from "@/hooks/use-toast";
+import { productsApi } from "@/lib/api/products";
+import { extractErrorMessage } from "@/lib/api/client";
 
 const currentInitialData: Product = {
   id: "",
@@ -34,6 +36,7 @@ const currentInitialData: Product = {
 
 const ProductsTable: React.FC = () => {
   const canManageProducts = useCanManageProducts();
+  const canExportProducts = useCanExportProducts();
   const { list: products, pagination, loading: loadingProducts } = useAppSelector((state) => state.products);
   const { list: brands } = useAppSelector((state) => state.brands);
   const dispatch = useAppDispatch();
@@ -45,6 +48,7 @@ const ProductsTable: React.FC = () => {
   const [isNew, setIsNew] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<Product | null>(currentInitialData);
   const [currentPageState, setCurrentPageState] = useState(1);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => { setDebouncedSearch(searchTerm); }, 400);
@@ -79,6 +83,31 @@ const ProductsTable: React.FC = () => {
 
   const handleCreate = () => { setIsNew(true); setCurrentProduct(currentInitialData); setIsModalEditOpen(true); };
   const handlePageChange = (newPage: number) => setCurrentPageState(newPage);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const params: { search?: string; brand?: string } = {};
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+      if (brandFilter !== "all") params.brand = brandFilter;
+      const { blob, filename } = await productsApi.exportExcel(params);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || "productos.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error: unknown) {
+      toast({
+        title: extractErrorMessage(error, "Error al exportar productos"),
+        variant: "destructive",
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => { setCurrentPageState(1); }, [debouncedSearch, brandFilter]);
 
@@ -128,6 +157,19 @@ const ProductsTable: React.FC = () => {
           onPageChange: handlePageChange,
         }}
       />
+      {canExportProducts && (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            className="flex items-center gap-2"
+            onClick={handleExport}
+            disabled={exporting}
+          >
+            <Download size={18} />
+            {exporting ? "Exportando..." : "Exportar productos"}
+          </Button>
+        </div>
+      )}
       <ModalProduct isNew={isNew} isOpen={isModalEditOpen} onClose={() => setIsModalEditOpen(false)} initialData={currentProduct} />
       <ModalDelete isOpen={isModalDeleteOpen} onClose={() => { setIsModalDeleteOpen(false); setCurrentProduct(currentInitialData); }} itemName={currentProduct?.name || ""} onConfirm={handleConfirmDelete} />
     </div>

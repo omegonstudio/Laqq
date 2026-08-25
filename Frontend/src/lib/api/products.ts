@@ -70,6 +70,8 @@ export const productsApi = {
         value.forEach((file) => {
           formData.append("files", file);
         });
+      } else if (key === "spec_table" && typeof value === "object") {
+        formData.append(key, JSON.stringify(value));
       } else if (Array.isArray(value)) {
         value.forEach((v) => formData.append(key, String(v)));
       } else {
@@ -138,4 +140,6 @@ export const productsApi = {
   // Bulk upload (multipart)
   bulkUploadProducts: (formData: FormData) =>
     api.post<BulkUploadResponse>(`${BASE}/bulk-upload/`, formData),
+  exportExcel: (params?: ProductListParams) =>
+    api.getBlob(`${BASE}/list/export/`, cleanParams(params as QueryParams)),
 };

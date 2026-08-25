@@ -281,6 +281,62 @@ class ApiClient {
   }
 
   /**
+   * GET que descarga un archivo binario (Excel, PDF, etc.).
+   */
+  async getBlob(
+    endpoint: string,
+    params?: Record<string, any>
+  ): Promise<{ blob: Blob; filename: string }> {
+    const queryString = this.serializeParams(params);
+    const token = await this.resolveUsableToken();
+    const headers: HeadersInit = {
+      Accept:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/octet-stream, application/json",
+    };
+    if (token) {
+      (headers as Record<string, string>).Authorization = `Bearer ${token}`;
+    }
+
+    const url = this.buildUrl(`${endpoint}${queryString}`);
+    let response = await fetch(url, { method: "GET", headers });
+
+    const isAuthEndpoint =
+      endpoint.includes("/users/token/") ||
+      endpoint.includes("/users/token/refresh/");
+
+    if (response.status === 401 && token && !isAuthEndpoint) {
+      try {
+        await this.ensureFreshToken();
+        const newToken = this.getAccessToken();
+        if (newToken) {
+          (headers as Record<string, string>).Authorization = `Bearer ${newToken}`;
+          response = await fetch(this.buildUrl(`${endpoint}${queryString}`), {
+            method: "GET",
+            headers,
+          });
+        }
+      } catch {
+        const store = this.getStore();
+        store.dispatch(logout());
+        window.location.href = "/login";
+        throw new Error("Sesión expirada");
+      }
+    }
+
+    if (!response.ok) {
+      return this.handleResponse(response);
+    }
+
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = /filename\*?=(?:UTF-8''|"?)([^\";]+)/i.exec(disposition);
+    const filename = match
+      ? decodeURIComponent(match[1].replace(/"/g, "").trim())
+      : "productos.xlsx";
+
+    return { blob: await response.blob(), filename };
+  }
+
+  /**
    * GET request
    */
   async get<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
