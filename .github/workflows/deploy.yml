@@ -84,8 +84,8 @@ jobs:
             set -euo pipefail
             echo "========================================"
             echo " DEPLOY LAQQ"
-            echo " Branch: $BRANCH"
-            echo " Dir: $DIR"
+            echo " Branch: \$BRANCH"
+            echo " Dir: \$DIR"
             echo "========================================"
             REPO="https://github.com/omegonstudio/Laqq.git"
             COMPOSE="docker-compose.prod.yml"
