@@ -24,7 +24,7 @@ const HomePage = () => {
         <HeroSection />
       </div>
       {productFilter().length > 0 && (
-        <ProductGrid products={productFilter()} title="Productos Destacados" />
+        <ProductGrid products={productFilter()} title="Productos Destacados DEV TEST" />
       )}
       <BrandsGrid />
     </>
