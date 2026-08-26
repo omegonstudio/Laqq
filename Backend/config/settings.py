@@ -36,6 +36,11 @@ ALLOWED_HOSTS = [
     if h.strip()
 ]
 
+# Nginx (frontend) envía X-Forwarded-Proto: $scheme al proxy /api/.
+# Sin esto, gunicorn ve HTTP interno y build_absolute_uri() genera http:// en PROD.
+# DEV manda "http" → is_secure() sigue False. No activar SECURE_SSL_REDIRECT aquí.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 AUTH_USER_MODEL = 'users.User'
 
 # Origins CSV vía .env (DEV/PROD). Default = lista histórica de PROD (comportamiento idéntico
