@@ -81,17 +81,20 @@ jobs:
         run: |
           # Pasar args con printf %q evita que un \n final en el secret DEPLOY_DIR
           # parta el comando remoto en `env ...` + `bash -s` sin variables.
+          # $3 = IS_MAIN → valida .env DEV vs PROD sin cambiar el flujo si la config es correcta.
           ssh "deploy@$DROPLET_HOST" \
-            "bash -s -- $(printf '%q' "$BRANCH") $(printf '%q' "$DEPLOY_DIR")" <<'REMOTE'
+            "bash -s -- $(printf '%q' "$BRANCH") $(printf '%q' "$DEPLOY_DIR") $(printf '%q' "$IS_MAIN")" <<'REMOTE'
             set -euo pipefail
             BRANCH="$1"
             DIR="$2"
+            IS_MAIN="$3"
             DIR="${DIR//$'\r'/}"
             DIR="${DIR%%$'\n'}"
             echo "========================================"
             echo " DEPLOY LAQQ"
             echo " Branch: $BRANCH"
             echo " Dir: $DIR"
+            echo " Entorno: $([ "$IS_MAIN" = "true" ] && echo PROD || echo DEV)"
             echo "========================================"
             REPO="https://github.com/omegonstudio/Laqq.git"
             COMPOSE="docker-compose.prod.yml"
@@ -107,6 +110,58 @@ jobs:
             git fetch origin
             echo "-> Checkout $BRANCH"
             git reset --hard origin/$BRANCH
+
+            # R3: fallar temprano si falta .env o la config de build del entorno es incorrecta.
+            # No imprime secretos; solo claves no sensibles usadas en build/compose.
+            echo "-> Validando .env del servidor"
+            if [ ! -f .env ]; then
+              echo "ERROR: falta archivo .env en $DIR"
+              echo "       El workflow no lo crea. Debe existir en el droplet (DEV/PROD)."
+              exit 1
+            fi
+
+            get_env_value() {
+              local key="$1"
+              local default="${2:-}"
+              local line
+              line="$(grep -E "^${key}=" .env 2>/dev/null | tail -n 1 || true)"
+              if [ -n "$line" ]; then
+                printf '%s' "${line#*=}" | tr -d '\r' | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"
+              else
+                printf '%s' "$default"
+              fi
+            }
+
+            NGINX_CONFIG_EFF="$(get_env_value NGINX_CONFIG nginx.conf)"
+            VITE_SITE_ORIGIN_EFF="$(get_env_value VITE_SITE_ORIGIN https://laqq.com.ar)"
+
+            echo "-> Config efectiva de build (sin secretos)"
+            echo "   NGINX_CONFIG=$NGINX_CONFIG_EFF"
+            echo "   VITE_SITE_ORIGIN=$VITE_SITE_ORIGIN_EFF"
+
+            if [ "$IS_MAIN" = "true" ]; then
+              if [ "$NGINX_CONFIG_EFF" = "nginx.dev.conf" ]; then
+                echo "ERROR: PROD no puede usar NGINX_CONFIG=nginx.dev.conf"
+                echo "       Usá nginx.conf (o omití la variable; default=nginx.conf)."
+                exit 1
+              fi
+            else
+              if [ "$NGINX_CONFIG_EFF" != "nginx.dev.conf" ]; then
+                echo "ERROR: DEV requiere NGINX_CONFIG=nginx.dev.conf"
+                echo "       valor actual: '${NGINX_CONFIG_EFF}'"
+                echo "       Sin eso el build usa nginx.conf (SSL PROD) y el frontend falla."
+                exit 1
+              fi
+              case "$VITE_SITE_ORIGIN_EFF" in
+                http://laqq.omegon.com.ar|http://laqq.omegon.com.ar/)
+                  ;;
+                *)
+                  echo "WARN: en DEV se recomienda VITE_SITE_ORIGIN=http://laqq.omegon.com.ar"
+                  echo "      valor actual: '${VITE_SITE_ORIGIN_EFF}' (el deploy continúa)"
+                  ;;
+              esac
+            fi
+
             echo "-> Validando compose"
             docker compose -f "$COMPOSE" config -q
             echo "-> Levantando DB"
