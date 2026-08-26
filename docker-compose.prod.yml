@@ -54,6 +54,9 @@ services:
       args:
         # Ruta relativa: funciona con HTTP actual y HTTPS en GO LIVE.
         VITE_API_BASE_URL: /api
+        # PROD (.env): NGINX_CONFIG=nginx.conf (default)
+        # DEV  (.env): NGINX_CONFIG=nginx.dev.conf
+        NGINX_CONFIG: ${NGINX_CONFIG:-nginx.conf}
     container_name: laqq-frontend
     depends_on:
       backend:

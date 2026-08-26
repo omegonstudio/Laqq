@@ -20,7 +20,11 @@ FROM nginx:1.27-alpine
 RUN apk add --no-cache curl
 
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# nginx.conf = PROD (HTTPS/Let's Encrypt). nginx.dev.conf = DEV (HTTP).
+# Override con build arg NGINX_CONFIG desde docker-compose / .env del servidor.
+ARG NGINX_CONFIG=nginx.conf
+COPY ${NGINX_CONFIG} /etc/nginx/conf.d/default.conf
 
 RUN mkdir -p /var/www/static /var/www/media
 
