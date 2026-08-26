@@ -12,6 +12,10 @@ COPY . .
 ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
+# Origin absoluto SEO (canonical, OG, robots, sitemap). Fallback PROD.
+ARG VITE_SITE_ORIGIN=https://laqq.com.ar
+ENV VITE_SITE_ORIGIN=$VITE_SITE_ORIGIN
+
 RUN npm run build
 
 # Imagen final con nginx

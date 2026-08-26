@@ -54,6 +54,9 @@ services:
       args:
         # Ruta relativa: funciona con HTTP actual y HTTPS en GO LIVE.
         VITE_API_BASE_URL: /api
+        # PROD (.env): VITE_SITE_ORIGIN=https://laqq.com.ar (default)
+        # DEV  (.env): VITE_SITE_ORIGIN=http://laqq.omegon.com.ar
+        VITE_SITE_ORIGIN: ${VITE_SITE_ORIGIN:-https://laqq.com.ar}
         # PROD (.env): NGINX_CONFIG=nginx.conf (default)
         # DEV  (.env): NGINX_CONFIG=nginx.dev.conf
         NGINX_CONFIG: ${NGINX_CONFIG:-nginx.conf}

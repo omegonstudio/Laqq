@@ -1,8 +1,22 @@
 /**
  * Configuración SEO canónica del sitio.
- * Usar siempre HTTPS en metadatos absolutos (listo para GO LIVE con TLS).
+ * Origin absoluto por entorno vía VITE_SITE_ORIGIN (fallback = PROD).
  */
-export const SITE_ORIGIN = "https://laqq.com.ar";
+import {
+  DEFAULT_SITE_ORIGIN,
+  normalizeSiteOrigin,
+} from "./siteOrigin";
+
+export { DEFAULT_SITE_ORIGIN, normalizeSiteOrigin } from "./siteOrigin";
+export {
+  buildRobotsTxt,
+  buildSitemapXml,
+  SITEMAP_ROUTES,
+} from "./siteOrigin";
+
+export const SITE_ORIGIN = normalizeSiteOrigin(
+  import.meta.env.VITE_SITE_ORIGIN as string | undefined
+);
 
 export const SITE_NAME = "La Química Quirúrgica";
 
