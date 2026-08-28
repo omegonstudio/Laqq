@@ -13,8 +13,8 @@ set -u
 #                 del cluster (wog/priv_esc no aparecen).
 #   este script → custom (-Fc) + globals (--roles-only) para
 #                 forense. Sin --no-acl. Usuario detectado en el
-#                 contenedor (laqq_user o postgres). docker exec -T
-#                 para no corromper el custom format.
+#                 contenedor (laqq_user o postgres). docker exec sin -t
+#                 (el -T es de compose exec y docker exec no lo entiende).
 # ============================================================
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -57,7 +57,7 @@ step() {
 }
 
 psql_db() {
-    docker exec -T "$DB_CONTAINER" \
+    docker exec "$DB_CONTAINER" \
         psql -U "$DB_USER" -d "$DB_NAME" "$@"
 }
 
@@ -65,7 +65,7 @@ detect_db_user() {
     local candidate
     for candidate in ${DB_USER:-} laqq_user postgres; do
         [[ -z "$candidate" ]] && continue
-        if docker exec -T "$DB_CONTAINER" \
+        if docker exec "$DB_CONTAINER" \
             psql -U "$candidate" -d "$DB_NAME" -Atqc 'SELECT 1' >/dev/null 2>&1; then
             echo "$candidate"
             return 0
@@ -185,10 +185,10 @@ echo "  $GLOBALS_FILE"
 echo
 echo "db-dump.sh genera SQL plano con --clean/--no-owner/--no-acl y NO"
 echo "guarda roles del cluster. Este dump sí: sirve para forense y para"
-echo "pg_restore. docker exec -T evita corromper el formato custom."
+echo "pg_restore. docker exec sin TTY evita corromper el formato custom."
 echo
 
-docker exec -T "$DB_CONTAINER" \
+docker exec "$DB_CONTAINER" \
     pg_dump -U "$DB_USER" -Fc "$DB_NAME" > "$DUMP_FILE"
 DUMP_RC=$?
 
@@ -199,7 +199,7 @@ if [[ $DUMP_RC -ne 0 ]]; then
     exit 1
 fi
 
-docker exec -T "$DB_CONTAINER" \
+docker exec "$DB_CONTAINER" \
     pg_dumpall -U "$DB_USER" --globals-only > "$GLOBALS_FILE"
 GLOBALS_RC=$?
 
@@ -479,20 +479,20 @@ else
             echo
             echo "-- Rol: $ROLE"
 
-            docker exec -T "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" \
+            docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" \
                 -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = '$ROLE' AND pid <> pg_backend_pid();"
 
             while IFS= read -r DB; do
                 [[ -z "$DB" ]] && continue
                 echo "   $DB: REASSIGN/DROP OWNED"
-                docker exec -T "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB" \
+                docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB" \
                     -v ON_ERROR_STOP=1 \
                     -c "REASSIGN OWNED BY \"$ROLE\" TO \"$DB_USER\";" \
                     -c "DROP OWNED BY \"$ROLE\";" \
                     || echo "   AVISO: REASSIGN/DROP OWNED falló en $DB (puede no tener objetos)."
             done <<< "$DATABASES"
 
-            docker exec -T "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" \
+            docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" \
                 -v ON_ERROR_STOP=1 \
                 -c "DROP ROLE \"$ROLE\";" \
                 && echo "   DROP ROLE $ROLE OK" \
@@ -532,7 +532,7 @@ if [[ "$PW_RESP" =~ ^[sS]$ ]]; then
     else
         PW_ESC="${NEW_PW//\'/\'\'}"
         if printf "ALTER USER \"%s\" WITH PASSWORD '%s';\n" "$DB_USER" "$PW_ESC" \
-            | docker exec -T "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1; then
+            | docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1; then
             echo "ALTER USER OK. Actualizá el .env y: $COMPOSE up -d --force-recreate backend"
         else
             echo "ERROR: ALTER USER falló."
