@@ -231,19 +231,60 @@ fi
 
 step "5. VALIDAR DUMP"
 
-if command -v pg_restore >/dev/null 2>&1; then
-    pg_restore -l "$DUMP_FILE" | head -50
-else
-    echo "pg_restore no está en el host. Validando dentro del contenedor:"
-    docker exec -i "$DB_CONTAINER" pg_restore -l - < "$DUMP_FILE" | head -50
+echo "Archivos:"
+ls -lh "$DUMP_FILE" "$GLOBALS_FILE"
+echo
+
+# El custom format empieza con PGDMP. Si no está, el dump está corrupto.
+DUMP_MAGIC="$(head -c 5 "$DUMP_FILE" 2>/dev/null || true)"
+if [[ "$DUMP_MAGIC" != "PGDMP" ]]; then
+    echo "ERROR: $DUMP_FILE no parece un dump custom de Postgres (magic='$DUMP_MAGIC')."
+    echo "NO se continuará."
+    exit 1
 fi
+echo "Magic PGDMP: OK"
+echo
+
+TMP_RESTORE="/tmp/laqq_validate.dump"
+TOC_FILE="$(mktemp)"
+if command -v pg_restore >/dev/null 2>&1; then
+    if ! pg_restore -l "$DUMP_FILE" > "$TOC_FILE"; then
+        rm -f "$TOC_FILE"
+        echo "ERROR: pg_restore -l falló. El dump no se puede leer."
+        echo "NO se continuará."
+        exit 1
+    fi
+else
+    echo "pg_restore no está en el host. Copio el dump al contenedor y listo el TOC:"
+    docker cp "$DUMP_FILE" "$DB_CONTAINER:$TMP_RESTORE"
+    if ! docker exec "$DB_CONTAINER" pg_restore -l "$TMP_RESTORE" > "$TOC_FILE"; then
+        docker exec "$DB_CONTAINER" rm -f "$TMP_RESTORE"
+        rm -f "$TOC_FILE"
+        echo "ERROR: pg_restore -l falló. El dump no se puede leer."
+        echo "NO se continuará."
+        exit 1
+    fi
+    docker exec "$DB_CONTAINER" rm -f "$TMP_RESTORE"
+fi
+
+head -50 "$TOC_FILE"
+echo "..."
+echo "Objetos en el TOC: $(wc -l < "$TOC_FILE")"
+if ! grep -q 'TABLE DATA' "$TOC_FILE" && ! grep -q 'TABLE ' "$TOC_FILE"; then
+    rm -f "$TOC_FILE"
+    echo "ERROR: el dump no lista tablas. No sirve para un restore."
+    echo "NO se continuará."
+    exit 1
+fi
+rm -f "$TOC_FILE"
 
 echo
 echo "Roles capturados en globals (CREATE ROLE):"
 grep -E '^CREATE ROLE ' "$GLOBALS_FILE" || echo "(no se encontraron CREATE ROLE)"
 
 echo
-echo "El backup debe existir, no estar vacío, y pg_restore -l debe listar objetos."
+echo "Si viste tablas (products, quotes, etc.) el dump está bien."
+echo "priv_esc y wog en globals son evidencia; NO se restauran esos roles."
 
 if ! pause_confirm; then
     echo "Abortado. El backup quedó guardado."
@@ -444,14 +485,19 @@ fi
 
 step "13. ELIMINAR ROLES EXTRA (wog, priv_esc, etc.)"
 
-psql_db -c "SELECT usename, usesuper FROM pg_user;"
+psql_db -c "SELECT oid, rolname, rolsuper, rolcanlogin FROM pg_roles ORDER BY oid;"
+
+echo
+echo "pg_user (solo login) no muestra roles NOLOGIN como postgres."
+echo "OID 10 es el superusuario bootstrap: no se dropea, se renombra si hace falta."
 
 DROP_LIST="$(
-    psql_db -Atqc "SELECT usename FROM pg_user
-        WHERE usename NOT IN (
+    psql_db -Atqc "SELECT rolname FROM pg_roles
+        WHERE rolcanlogin
+          AND rolname NOT IN (
             SELECT unnest(string_to_array('$KEEP_ROLES', ' '))
-        )
-        ORDER BY usename;"
+          )
+        ORDER BY rolname;"
 )"
 
 if [[ -z "${DROP_LIST//[$'\n']/}" ]]; then
@@ -492,16 +538,36 @@ else
                     || echo "   AVISO: REASSIGN/DROP OWNED falló en $DB (puede no tener objetos)."
             done <<< "$DATABASES"
 
+            ROLE_OID="$(
+                docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" \
+                    -Atqc "SELECT oid FROM pg_roles WHERE rolname = '$ROLE';"
+            )"
+            if [[ "$ROLE_OID" == "10" ]]; then
+                echo "   NO se dropea $ROLE: es el bootstrap (oid 10)."
+                echo "   Si el nombre no es postgres: ALTER ROLE \"$ROLE\" RENAME TO postgres;"
+                continue
+            fi
+
             docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" \
                 -v ON_ERROR_STOP=1 \
                 -c "DROP ROLE \"$ROLE\";" \
-                && echo "   DROP ROLE $ROLE OK" \
+                && echo "   DROP ROLE $ROLE ejecutado" \
                 || echo "   ERROR: no se pudo DROP ROLE $ROLE"
+
+            STILL="$(
+                docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" \
+                    -Atqc "SELECT rolname FROM pg_roles WHERE rolname = '$ROLE';"
+            )"
+            if [[ -n "$STILL" ]]; then
+                echo "   ERROR: $ROLE sigue existiendo después del DROP. Puede re-crearse solo."
+            else
+                echo "   DROP ROLE $ROLE OK (ya no está en pg_roles)"
+            fi
         done <<< "$DROP_LIST"
 
         echo
-        echo "Roles actuales:"
-        psql_db -c "SELECT usename, usesuper FROM pg_user;"
+        echo "Roles actuales (pg_roles, no solo pg_user):"
+        psql_db -c "SELECT oid, rolname, rolsuper, rolcanlogin FROM pg_roles ORDER BY oid;"
     else
         echo "No se eliminaron roles. Siguen en el cluster."
     fi
