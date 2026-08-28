@@ -4,14 +4,43 @@ set -u
 
 # ============================================================
 # LAQQ - Recuperación de PostgreSQL comprometido
+# Recrea el contenedor SIN borrar db_data, cierra 5433,
+# inspecciona /tmp y (con confirmación) elimina roles extra.
+#
+# Dump vs scripts/db-dump.sh:
+#   db-dump.sh  → SQL plano (-Fp), --clean/--no-owner/--no-acl
+#                 pensado para restore rutinario. NO incluye roles
+#                 del cluster (wog/priv_esc no aparecen).
+#   este script → custom (-Fc) + globals (--roles-only) para
+#                 forense. Sin --no-acl. Usuario detectado en el
+#                 contenedor (laqq_user o postgres). docker exec -T
+#                 para no corromper el custom format.
 # ============================================================
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT" || exit 1
+
 COMPOSE="docker compose"
+COMPOSE_FILE=""
+if [[ -f "$ROOT/docker-compose.prod.yml" ]]; then
+    COMPOSE_FILE="$ROOT/docker-compose.prod.yml"
+    COMPOSE="docker compose -f $COMPOSE_FILE"
+elif [[ -f "$ROOT/docker-compose.yml" ]]; then
+    COMPOSE_FILE="$ROOT/docker-compose.yml"
+    COMPOSE="docker compose -f $COMPOSE_FILE"
+elif [[ -f "$ROOT/compose.yml" ]]; then
+    COMPOSE_FILE="$ROOT/compose.yml"
+    COMPOSE="docker compose -f $COMPOSE_FILE"
+fi
+
 DB_CONTAINER="laqq-db"
-DB_NAME="laqq_db"
+DB_NAME="${DB_NAME:-laqq_db}"
+DB_USER="${DB_USER:-}"
+KEEP_ROLES="laqq_user postgres"
 BACKUP_DIR="$HOME/laqq-incident-backup"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 DUMP_FILE="$BACKUP_DIR/laqq_db_${TIMESTAMP}.dump"
+GLOBALS_FILE="$BACKUP_DIR/pg_globals_${TIMESTAMP}.sql"
 
 pause_confirm() {
     echo
@@ -27,29 +56,45 @@ step() {
     echo
 }
 
+psql_db() {
+    docker exec -T "$DB_CONTAINER" \
+        psql -U "$DB_USER" -d "$DB_NAME" "$@"
+}
+
+detect_db_user() {
+    local candidate
+    for candidate in ${DB_USER:-} laqq_user postgres; do
+        [[ -z "$candidate" ]] && continue
+        if docker exec -T "$DB_CONTAINER" \
+            psql -U "$candidate" -d "$DB_NAME" -Atqc 'SELECT 1' >/dev/null 2>&1; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
 # ------------------------------------------------------------
 # 0. Comprobaciones iniciales
 # ------------------------------------------------------------
 
 step "0. COMPROBACIONES INICIALES"
 
-echo "Directorio actual:"
-pwd
+echo "Directorio: $ROOT"
+echo "Compose:    ${COMPOSE_FILE:-<no encontrado>}"
 echo
 
-if [[ ! -f docker-compose.yml && ! -f compose.yml ]]; then
-    echo "ERROR: No encuentro docker-compose.yml ni compose.yml."
+if [[ -z "$COMPOSE_FILE" ]]; then
+    echo "ERROR: No encuentro docker-compose.prod.yml ni docker-compose.yml."
     exit 1
 fi
 
 echo "Docker:"
 docker --version
 echo
-
 echo "Docker Compose:"
 $COMPOSE version
 echo
-
 echo "Contenedores actuales:"
 docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}'
 
@@ -74,7 +119,7 @@ docker inspect "$DB_CONTAINER" \
     --format '{{range .Mounts}}{{println "Tipo:" .Type "Nombre:" .Name "Origen:" .Source "Destino:" .Destination}}{{end}}'
 
 echo
-echo "IMPORTANTE: db_data NO debe eliminarse."
+echo "IMPORTANTE: db_data NO se elimina."
 
 if ! pause_confirm; then
     echo "Abortado."
@@ -82,25 +127,30 @@ if ! pause_confirm; then
 fi
 
 # ------------------------------------------------------------
-# 2. Usuarios y roles
+# 2. Detectar usuario y revisar roles
 # ------------------------------------------------------------
 
 step "2. REVISAR USUARIOS Y ROLES DE POSTGRES"
 
+if ! DB_USER="$(detect_db_user)"; then
+    echo "ERROR: No pude conectar con laqq_user ni postgres."
+    echo "Probá a mano: docker exec -it $DB_CONTAINER psql -U laqq_user -d $DB_NAME"
+    exit 1
+fi
+
+echo "Usuario de conexión: $DB_USER"
+echo
+
 echo "Usuarios:"
-docker exec "$DB_CONTAINER" \
-    psql -U postgres -d "$DB_NAME" \
-    -c "SELECT usename, usesuper FROM pg_user;"
+psql_db -c "SELECT usename, usesuper FROM pg_user;"
 
 echo
 echo "Roles:"
-docker exec "$DB_CONTAINER" \
-    psql -U postgres -d "$DB_NAME" \
-    -c "SELECT rolname, rolsuper, rolcreaterole, rolcreatedb, rolcanlogin FROM pg_roles ORDER BY rolname;"
+psql_db -c "SELECT rolname, rolsuper, rolcreaterole, rolcreatedb, rolcanlogin FROM pg_roles ORDER BY rolname;"
 
 echo
-echo "Si aparece un usuario inesperado (por ejemplo 'wog'), NO lo borres todavía."
-echo "Primero queremos dejar constancia de su existencia."
+echo "En este incidente esperamos laqq_user (app) y roles extra (wog, priv_esc)."
+echo "Todavía NO se borran: primero dump + evidencia."
 
 if ! pause_confirm; then
     echo "Abortado."
@@ -113,9 +163,7 @@ fi
 
 step "3. REVISAR ACTIVIDAD DE POSTGRES"
 
-docker exec "$DB_CONTAINER" \
-    psql -U postgres -d "$DB_NAME" \
-    -c "SELECT pid, usename, client_addr, application_name, state, backend_start FROM pg_stat_activity ORDER BY backend_start;"
+psql_db -c "SELECT pid, usename, datname, client_addr, application_name, state, backend_start FROM pg_stat_activity ORDER BY backend_start;"
 
 if ! pause_confirm; then
     echo "Abortado."
@@ -123,40 +171,54 @@ if ! pause_confirm; then
 fi
 
 # ------------------------------------------------------------
-# 4. Crear backup
+# 4. Crear backup (custom + globals)
 # ------------------------------------------------------------
 
-step "4. CREAR DUMP DE LAQQ_DB"
+step "4. CREAR DUMP DE LAQQ_DB Y ROLES DEL CLUSTER"
 
 mkdir -p "$BACKUP_DIR"
 
-echo "Backup:"
-echo "$DUMP_FILE"
+echo "Dump de datos (custom -Fc, sin --no-acl):"
+echo "  $DUMP_FILE"
+echo "Dump de roles/globals (pg_dumpall --globals-only):"
+echo "  $GLOBALS_FILE"
+echo
+echo "db-dump.sh genera SQL plano con --clean/--no-owner/--no-acl y NO"
+echo "guarda roles del cluster. Este dump sí: sirve para forense y para"
+echo "pg_restore. docker exec -T evita corromper el formato custom."
 echo
 
-docker exec "$DB_CONTAINER" \
-    pg_dump -U postgres -Fc "$DB_NAME" > "$DUMP_FILE"
+docker exec -T "$DB_CONTAINER" \
+    pg_dump -U "$DB_USER" -Fc "$DB_NAME" > "$DUMP_FILE"
+DUMP_RC=$?
 
-if [[ $? -ne 0 ]]; then
+if [[ $DUMP_RC -ne 0 ]]; then
     echo
-    echo "ERROR: El pg_dump falló."
+    echo "ERROR: El pg_dump de $DB_NAME falló (exit $DUMP_RC)."
     echo "NO se continuará."
     exit 1
 fi
 
-echo
-echo "Dump creado correctamente:"
-ls -lh "$DUMP_FILE"
+docker exec -T "$DB_CONTAINER" \
+    pg_dumpall -U "$DB_USER" --globals-only > "$GLOBALS_FILE"
+GLOBALS_RC=$?
 
-if [[ ! -s "$DUMP_FILE" ]]; then
+if [[ $GLOBALS_RC -ne 0 ]]; then
     echo
-    echo "ERROR: El dump está vacío."
+    echo "ERROR: pg_dumpall --globals-only falló (exit $GLOBALS_RC)."
+    echo "El dump de $DB_NAME quedó en $DUMP_FILE"
     exit 1
 fi
 
 echo
-echo "Tamaño del backup:"
-du -h "$DUMP_FILE"
+echo "Dumps creados:"
+ls -lh "$DUMP_FILE" "$GLOBALS_FILE"
+
+if [[ ! -s "$DUMP_FILE" ]]; then
+    echo
+    echo "ERROR: El dump de $DB_NAME está vacío."
+    exit 1
+fi
 
 if ! pause_confirm; then
     echo "Abortado. El backup quedó guardado."
@@ -172,13 +234,16 @@ step "5. VALIDAR DUMP"
 if command -v pg_restore >/dev/null 2>&1; then
     pg_restore -l "$DUMP_FILE" | head -50
 else
-    echo "pg_restore no está instalado en el host."
-    echo "Mostrando información básica del archivo:"
-    file "$DUMP_FILE"
+    echo "pg_restore no está en el host. Validando dentro del contenedor:"
+    docker exec -i "$DB_CONTAINER" pg_restore -l - < "$DUMP_FILE" | head -50
 fi
 
 echo
-echo "El backup debe existir y no estar vacío."
+echo "Roles capturados en globals (CREATE ROLE):"
+grep -E '^CREATE ROLE ' "$GLOBALS_FILE" || echo "(no se encontraron CREATE ROLE)"
+
+echo
+echo "El backup debe existir, no estar vacío, y pg_restore -l debe listar objetos."
 
 if ! pause_confirm; then
     echo "Abortado. El backup quedó guardado."
@@ -189,14 +254,14 @@ fi
 # 6. Evidencia del proceso sospechoso
 # ------------------------------------------------------------
 
-step "6. REVISAR /tmp/postgresql"
+step "6. REVISAR /tmp/postgresql (ANTES de recrear)"
 
 echo "Procesos:"
 docker exec "$DB_CONTAINER" ps auxww | grep -E '[p]ostgresql|[/]tmp/postgresql' || true
 
 echo
 echo "Archivo:"
-docker exec "$DB_CONTAINER" ls -lah /tmp/postgresql 2>/dev/null || true
+docker exec "$DB_CONTAINER" ls -lah /tmp/postgresql 2>/dev/null || echo "No existe /tmp/postgresql."
 
 echo
 echo "Tipo:"
@@ -207,7 +272,8 @@ echo "Información del archivo:"
 docker exec "$DB_CONTAINER" stat /tmp/postgresql 2>/dev/null || true
 
 echo
-echo "NO se elimina todavía."
+echo "NO se elimina a mano. Si está en la capa writable del contenedor,"
+echo "desaparece al recrear (paso 8). El volume db_data no se toca."
 
 if ! pause_confirm; then
     echo "Abortado. El backup quedó guardado."
@@ -220,27 +286,27 @@ fi
 
 step "7. COMPROBAR PUERTO 5433"
 
-echo "Puertos Docker:"
+echo "En el YAML ($COMPOSE_FILE):"
+if grep -nE '5433:5432' "$COMPOSE_FILE"; then
+    echo
+    echo "ERROR: El compose TODAVÍA publica 5433:5432."
+    echo "Editá $COMPOSE_FILE, sacá el bloque ports de db, y reejecutá."
+    exit 1
+fi
+echo "OK: el YAML no publica 5433:5432."
+
+echo
+echo "Puertos Docker en ejecución:"
 docker ps --format 'table {{.Names}}\t{{.Ports}}'
 
 echo
 echo "Socket 5433 en el host:"
 sudo ss -lntp | grep ':5433' || echo "No hay proceso escuchando en 5433."
 
-echo
-echo "Si todavía aparece 5433, NO seguimos con la recreación."
-
 if docker ps --format '{{.Names}} {{.Ports}}' | grep -E 'laqq-db.*5433|5433->5432' >/dev/null 2>&1; then
     echo
-    echo "ATENCIÓN: PostgreSQL sigue publicado en 5433."
-    echo
-    echo "Editá manualmente el compose y eliminá:"
-    echo
-    echo '  ports:'
-    echo '    - "5433:5432"'
-    echo
-    echo "Después volvé a ejecutar este script."
-    exit 1
+    echo "El contenedor en ejecución TODAVÍA publica 5433 (compose viejo)."
+    echo "El paso 8 (force-recreate) es el que cierra ese mapeo, usando el YAML actual."
 fi
 
 if ! pause_confirm; then
@@ -256,10 +322,11 @@ step "8. RECREAR CONTENEDOR DE POSTGRES"
 
 echo "Se ejecutará:"
 echo
-echo "  docker compose up -d --force-recreate db"
+echo "  $COMPOSE up -d --force-recreate db"
 echo
 echo "Esto NO utiliza -v."
 echo "El volumen db_data NO será eliminado."
+echo "Si el YAML ya no tiene 5433, el puerto queda cerrado."
 
 if ! pause_confirm; then
     echo "Abortado."
@@ -304,6 +371,12 @@ done
 echo
 docker inspect -f 'Estado: {{.State.Status}} | Health: {{.State.Health.Status}}' "$DB_CONTAINER"
 
+if ! DB_USER="$(detect_db_user)"; then
+    echo "ERROR: Postgres levantó pero no conecto con laqq_user/postgres."
+    exit 1
+fi
+echo "Usuario de conexión: $DB_USER"
+
 if ! pause_confirm; then
     echo "Abortado."
     exit 0
@@ -315,15 +388,11 @@ fi
 
 step "10. VERIFICAR QUE LA BASE SIGUE EXISTIENDO"
 
-docker exec "$DB_CONTAINER" \
-    psql -U postgres -d "$DB_NAME" \
-    -c "SELECT current_database(), current_user, now();"
+psql_db -c "SELECT current_database(), current_user, now();"
 
 echo
 echo "Tablas:"
-docker exec "$DB_CONTAINER" \
-    psql -U postgres -d "$DB_NAME" \
-    -c '\dt' | head -60
+psql_db -c '\dt' | head -60
 
 if ! pause_confirm; then
     echo "Abortado."
@@ -345,9 +414,7 @@ sudo ss -lntp | grep ':5433' || echo "OK: 5433 no está escuchando en el host."
 
 echo
 echo "Laqq DB:"
-docker exec "$DB_CONTAINER" \
-    psql -U postgres -d "$DB_NAME" \
-    -c "SELECT version();"
+psql_db -c "SELECT version();"
 
 # ------------------------------------------------------------
 # 12. Estado del posible miner
@@ -363,17 +430,132 @@ echo "Archivo sospechoso:"
 docker exec "$DB_CONTAINER" ls -lah /tmp/postgresql 2>/dev/null || echo "No existe /tmp/postgresql."
 
 echo
+echo "docker top (no debería aparecer /tmp/postgresql ni systemd):"
+docker top "$DB_CONTAINER" aux | head -30
+
+if ! pause_confirm; then
+    echo "Abortado. El backup quedó guardado. Los roles extra siguen en el cluster."
+    exit 0
+fi
+
+# ------------------------------------------------------------
+# 13. Eliminar roles extra (confirmación)
+# ------------------------------------------------------------
+
+step "13. ELIMINAR ROLES EXTRA (wog, priv_esc, etc.)"
+
+psql_db -c "SELECT usename, usesuper FROM pg_user;"
+
+DROP_LIST="$(
+    psql_db -Atqc "SELECT usename FROM pg_user
+        WHERE usename NOT IN (
+            SELECT unnest(string_to_array('$KEEP_ROLES', ' '))
+        )
+        ORDER BY usename;"
+)"
+
+if [[ -z "${DROP_LIST//[$'\n']/}" ]]; then
+    echo
+    echo "No hay roles extra para borrar (solo quedan: $KEEP_ROLES)."
+else
+    echo
+    echo "Se van a eliminar estos roles de login (y sus objetos):"
+    echo "$DROP_LIST" | sed 's/^/  - /'
+    echo
+    echo "Se conservan: $KEEP_ROLES"
+    echo
+    echo "Por cada uno: pg_terminate_backend → REASSIGN OWNED → DROP OWNED → DROP ROLE"
+    echo "en todas las bases que aceptan conexión."
+
+    echo
+    read -r -p "¿Eliminar esos roles ahora? [s/N]: " DROP_RESP
+    if [[ "$DROP_RESP" =~ ^[sS]$ ]]; then
+        DATABASES="$(
+            psql_db -Atqc "SELECT datname FROM pg_database WHERE datallowconn ORDER BY datname;"
+        )"
+
+        while IFS= read -r ROLE; do
+            [[ -z "$ROLE" ]] && continue
+            echo
+            echo "-- Rol: $ROLE"
+
+            docker exec -T "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" \
+                -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = '$ROLE' AND pid <> pg_backend_pid();"
+
+            while IFS= read -r DB; do
+                [[ -z "$DB" ]] && continue
+                echo "   $DB: REASSIGN/DROP OWNED"
+                docker exec -T "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB" \
+                    -v ON_ERROR_STOP=1 \
+                    -c "REASSIGN OWNED BY \"$ROLE\" TO \"$DB_USER\";" \
+                    -c "DROP OWNED BY \"$ROLE\";" \
+                    || echo "   AVISO: REASSIGN/DROP OWNED falló en $DB (puede no tener objetos)."
+            done <<< "$DATABASES"
+
+            docker exec -T "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" \
+                -v ON_ERROR_STOP=1 \
+                -c "DROP ROLE \"$ROLE\";" \
+                && echo "   DROP ROLE $ROLE OK" \
+                || echo "   ERROR: no se pudo DROP ROLE $ROLE"
+        done <<< "$DROP_LIST"
+
+        echo
+        echo "Roles actuales:"
+        psql_db -c "SELECT usename, usesuper FROM pg_user;"
+    else
+        echo "No se eliminaron roles. Siguen en el cluster."
+    fi
+fi
+
+# ------------------------------------------------------------
+# 14. Rotar password (opcional)
+# ------------------------------------------------------------
+
+step "14. ROTAR PASSWORD DE $DB_USER (opcional)"
+
+echo "Esto ejecuta ALTER USER en Postgres. Después hay que actualizar"
+echo "DB_PASSWORD / POSTGRES_PASSWORD en el .env de prod y recrear"
+echo "backend (y db si el compose usa POSTGRES_PASSWORD al init, el"
+echo "password vigente es el de ALTER USER)."
+echo
+read -r -p "¿Cambiar la password de $DB_USER ahora? [s/N]: " PW_RESP
+if [[ "$PW_RESP" =~ ^[sS]$ ]]; then
+    echo
+    read -r -s -p "Nueva password: " NEW_PW
+    echo
+    read -r -s -p "Repetir password: " NEW_PW2
+    echo
+    if [[ -z "$NEW_PW" ]]; then
+        echo "Vacía: no se cambia."
+    elif [[ "$NEW_PW" != "$NEW_PW2" ]]; then
+        echo "ERROR: no coinciden. No se cambió."
+    else
+        PW_ESC="${NEW_PW//\'/\'\'}"
+        if printf "ALTER USER \"%s\" WITH PASSWORD '%s';\n" "$DB_USER" "$PW_ESC" \
+            | docker exec -T "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1; then
+            echo "ALTER USER OK. Actualizá el .env y: $COMPOSE up -d --force-recreate backend"
+        else
+            echo "ERROR: ALTER USER falló."
+        fi
+        unset PW_ESC
+    fi
+    unset NEW_PW NEW_PW2
+else
+    echo "Password no rotada. Hacelo a mano cuando actualices el .env."
+fi
+
+echo
 echo "============================================================"
 echo " RECUPERACIÓN BÁSICA COMPLETADA"
 echo "============================================================"
 echo
-echo "Backup:"
-echo "  $DUMP_FILE"
+echo "Backup datos:   $DUMP_FILE"
+echo "Backup roles:   $GLOBALS_FILE"
 echo
 echo "IMPORTANTE:"
 echo "  - No se eliminó db_data."
 echo "  - No se ejecutó docker compose down -v."
 echo "  - PostgreSQL ya no debería estar publicado en 5433."
-echo "  - Las credenciales todavía DEBEN rotarse."
+echo "  - Si rotaste la pass, actualizá .env y recreá el backend."
 echo "  - El compromiso debe investigarse aunque el miner haya desaparecido."
 echo
