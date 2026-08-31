@@ -8,6 +8,7 @@ import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
 import placeholderImageDark from "@/assets/laqq_marca_color_pos.svg";
 import { useTheme } from "next-themes";
 import { useNavigate } from "react-router-dom";
+import { ensureHttpsUrl } from "@/utils/secureUrl";
 
 interface ProductCardProps {
   product: Product;
@@ -64,12 +65,12 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const shouldShowDescription = truncatedDescription.length > 0;
   return (
     <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-xl hover:scale-[1.02] hover:border-primary/50 transition-all duration-300 group">
-      <div className="aspect-square bg-muted rounded-xl mb-4 overflow-hidden relative">
+      <div className="aspect-square bg-transparent rounded-xl mb-4 overflow-hidden relative">
         <Link to={`/product/${product.id}`} aria-label={product.name}>
           <img
             src={
               product.image_url
-                ? product.image_url
+                ? ensureHttpsUrl(product.image_url)
                 : resolvedTheme === "dark"
                 ? placeholderImage
                 : placeholderImageDark

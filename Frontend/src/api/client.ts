@@ -5,14 +5,9 @@ import {
   logout,
 } from "../store/authSlice";
 import type { AppDispatch, RootState } from "../store";
+import { getApiBaseUrl } from "@/config/api";
 
-type EnvMeta = ImportMeta & { env: Record<string, string> };
-const env = (import.meta as EnvMeta).env;
-
-const BASE_URL = (env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(
-  /\/+$/,
-  ""
-);
+const BASE_URL = getApiBaseUrl();
 
 /**
  * Determina si un JWT de acceso ya expiró (decodificando la claim `exp`).

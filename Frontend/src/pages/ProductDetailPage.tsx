@@ -15,6 +15,7 @@ import { hasSpecTableContent } from "@/types/types";
 import { buildCatalogCrumbs } from "@/utils/data/categories";
 import CatalogBreadcrumb from "@/components/molecules/CatalogBreadcrumb";
 import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
+import { ensureHttpsUrl } from "@/utils/secureUrl";
 
 const formatDescription = (description: string) => {
   if (!description) return "";
@@ -151,14 +152,20 @@ const ProductDetailPage = () => {
   const buildImageArray = () => {
     const imageArray = [];
     if (product.image_url) {
-      imageArray.push({ url: product.image_url, isMain: true });
+      imageArray.push({
+        url: ensureHttpsUrl(product.image_url) ?? product.image_url,
+        isMain: true,
+      });
     }
     if (imageAttachments.length > 0) {
       imageArray.push(
-        ...imageAttachments.map((att) => ({
-          url: att.url || att.file,
-          isMain: false,
-        }))
+        ...imageAttachments.map((att) => {
+          const rawUrl = att.url || att.file;
+          return {
+            url: ensureHttpsUrl(rawUrl) ?? rawUrl,
+            isMain: false,
+          };
+        })
       );
     }
     if (imageArray.length === 0) {
@@ -228,7 +235,7 @@ const ProductDetailPage = () => {
             <div className="relative h-[500px]">
               {" "}
               {/* Altura fija aquí */}
-              <div className="flex items-center justify-center h-full mb-4">
+              <div className="flex items-center bg-transparent justify-center h-full mb-4">
                 <img
                   src={images[currentImageIndex]?.url || placeholderImage}
                   alt={`${product.name} - Imagen ${currentImageIndex + 1}`}
@@ -240,21 +247,47 @@ const ProductDetailPage = () => {
               {/* Botones de navegación - Solo mostrar si hay más de una imagen */}
               {totalImages > 1 && (
                 <>
-                  <button
-                    onClick={goToPrevious}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 hover:bg-white min-h-11 min-w-11 p-2 rounded-full shadow-lg transition-all z-10 inline-flex items-center justify-center"
-                    aria-label="Imagen anterior"
-                  >
-                    <ChevronLeft className="w-6 h-6 hover:bg-black" />
-                  </button>
+               <button
+  onClick={goToPrevious}
+  className="
+    absolute left-2 top-1/2 -translate-y-1/2
+    min-h-11 min-w-11 p-2
+    rounded-full
+    bg-background
+    text-foreground
+    border border-border
+    shadow-lg
+    transition-colors
+    hover:bg-muted
+    hover:text-foreground
+    z-10
+    inline-flex items-center justify-center
+  "
+  aria-label="Imagen anterior"
+>
+  <ChevronLeft className="w-6 h-6" />
+</button>
 
-                  <button
-                    onClick={goToNext}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 hover:bg-white min-h-11 min-w-11 p-2 rounded-full shadow-lg transition-all z-10 inline-flex items-center justify-center"
-                    aria-label="Imagen siguiente"
-                  >
-                    <ChevronRight className="w-6 h-6 hover:bg-black" />
-                  </button>
+<button
+  onClick={goToNext}
+  className="
+    absolute right-2 top-1/2 -translate-y-1/2
+    min-h-11 min-w-11 p-2
+    rounded-full
+    bg-background
+    text-foreground
+    border border-border
+    shadow-lg
+    transition-colors
+    hover:bg-muted
+    hover:text-foreground
+    z-10
+    inline-flex items-center justify-center
+  "
+  aria-label="Imagen siguiente"
+>
+  <ChevronRight className="w-6 h-6" />
+</button>
                 </>
               )}
             </div>

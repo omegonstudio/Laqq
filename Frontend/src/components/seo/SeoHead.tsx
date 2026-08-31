@@ -41,11 +41,12 @@ export function SeoHead() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    const { title, description, canonical } = seoForPath(pathname);
+    const { title, description, canonical, robots } = seoForPath(pathname);
 
     document.title = title;
 
     upsertMeta('meta[name="description"]', { name: "description" }, description);
+    upsertMeta('meta[name="robots"]', { name: "robots" }, robots);
     upsertLink("canonical", canonical);
 
     upsertMeta('meta[property="og:title"]', { property: "og:title" }, title);

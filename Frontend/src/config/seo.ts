@@ -93,6 +93,7 @@ export function seoForPath(pathname: string): {
   title: string;
   description: string;
   canonical: string;
+  robots: string;
 } {
   const exact = PUBLIC_ROUTES.find((r) => r.path === pathname);
   if (exact) {
@@ -100,6 +101,7 @@ export function seoForPath(pathname: string): {
       title: exact.title,
       description: exact.description,
       canonical: absoluteUrl(exact.path),
+      robots: "index, follow",
     };
   }
 
@@ -108,13 +110,15 @@ export function seoForPath(pathname: string): {
       title: `Producto | ${SITE_NAME}`,
       description: DEFAULT_DESCRIPTION,
       canonical: absoluteUrl(pathname),
+      robots: "index, follow",
     };
   }
 
-  // Rutas privadas / no indexables: canonical al home
+  // Rutas privadas / 404 / no públicas: no indexar
   return {
     title: DEFAULT_TITLE,
     description: DEFAULT_DESCRIPTION,
-    canonical: absoluteUrl("/"),
+    canonical: absoluteUrl(pathname),
+    robots: "noindex, follow",
   };
 }

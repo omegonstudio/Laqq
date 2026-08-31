@@ -37,6 +37,7 @@ import ProductSpecTableEditor from "@/components/molecules/ProductSpecTableEdito
 import type { Variants } from "@/components/molecules/ProductVariantsTable";
 import DescriptionEditor from "@/components/atoms/DescriptionProductEditor";
 import { CascadeCategorySelect } from "@/components/atoms/FlatCategories";
+import { Label } from "@/components/ui/label";
 
 const SEDRONAR_OPTIONS: SedronarOption[] = [
   "-",
