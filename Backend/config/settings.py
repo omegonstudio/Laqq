@@ -236,6 +236,12 @@ REST_FRAMEWORK = {
     ],
     'DATETIME_FORMAT': '%Y-%m-%d %H:%M:%S',
     'DATE_FORMAT': '%Y-%m-%d',
+    # nginx (1 hop). Sin esto un bot rota X-Forwarded-For y esquiva el throttle.
+    'NUM_PROXIES': 1,
+    'DEFAULT_THROTTLE_RATES': {
+        'quote_anon_burst': '3/min',
+        'quote_anon_hour': '8/hour',
+    },
 }
 
 # Simple JWT
@@ -407,6 +413,10 @@ PRODUCT_IMAGE_HOST_ALLOWLIST = [
     h.strip() for h in config('PRODUCT_IMAGE_HOST_ALLOWLIST', default='').split(',') if h.strip()
 ]
 ENABLE_PRODUCT_IMAGE_DOWNLOADS = config('ENABLE_PRODUCT_IMAGE_DOWNLOADS', default=True, cast=bool)
+
+# Cloudflare Turnstile (cotizaciones públicas). Activo si hay secret.
+TURNSTILE_SECRET_KEY = config('TURNSTILE_SECRET_KEY', default='')
+TURNSTILE_ENABLED = bool(TURNSTILE_SECRET_KEY)
 
 # Detrás de nginx con TLS: Django debe generar URLs absolutas con https://
 # (evita mixed content en logo_url y media servidos por la API).

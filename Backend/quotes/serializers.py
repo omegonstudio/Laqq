@@ -291,10 +291,18 @@ class QuotePackageSerializer(serializers.Serializer):
                 )
 
         import re
+        email = value['email'].strip()
         email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_regex, value['email']):
+        if not re.match(email_regex, email):
             raise serializers.ValidationError("Invalid email format")
 
+        blocked_tlds = {'tst', 'test', 'invalid', 'example', 'localhost'}
+        domain = email.rsplit('@', 1)[-1].lower()
+        tld = domain.rsplit('.', 1)[-1] if '.' in domain else domain
+        if tld in blocked_tlds:
+            raise serializers.ValidationError("Invalid email format")
+
+        value['email'] = email
         return value
 
     def validate_quote(self, value):

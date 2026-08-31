@@ -42,6 +42,8 @@ Monorepo listo para desarrollo y despliegue con Docker. Incluye backend Django +
 | `BUSINESS_*` | Datos negocio | `ventas@...` |
 | `FRONTEND_PORT` | Puerto expuesto del frontend | `3000` |
 | `VITE_API_BASE_URL` | Base URL del frontend hacia la API | `http://localhost:8000` (dev host) / `/api` (build prod) |
+| `VITE_TURNSTILE_SITE_KEY` | Site key pública de Cloudflare Turnstile (build del front) | key de prueba `1x00000000000000000000AA` en local |
+| `TURNSTILE_SECRET_KEY` | Secret de Turnstile (solo backend) | key de prueba `1x0000000000000000000000000000000AA` en local |
 
 ## Uso en desarrollo
 ```bash
