@@ -232,21 +232,47 @@ const ProductDetailPage = () => {
               {/* Botones de navegación - Solo mostrar si hay más de una imagen */}
               {totalImages > 1 && (
                 <>
-                  <button
-                    onClick={goToPrevious}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 hover:bg-white min-h-11 min-w-11 p-2 rounded-full shadow-lg transition-all z-10 inline-flex items-center justify-center"
-                    aria-label="Imagen anterior"
-                  >
-                    <ChevronLeft className="w-6 h-6 hover:bg-black" />
-                  </button>
+               <button
+  onClick={goToPrevious}
+  className="
+    absolute left-2 top-1/2 -translate-y-1/2
+    min-h-11 min-w-11 p-2
+    rounded-full
+    bg-background
+    text-foreground
+    border border-border
+    shadow-lg
+    transition-colors
+    hover:bg-muted
+    hover:text-foreground
+    z-10
+    inline-flex items-center justify-center
+  "
+  aria-label="Imagen anterior"
+>
+  <ChevronLeft className="w-6 h-6" />
+</button>
 
-                  <button
-                    onClick={goToNext}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 hover:bg-white min-h-11 min-w-11 p-2 rounded-full shadow-lg transition-all z-10 inline-flex items-center justify-center"
-                    aria-label="Imagen siguiente"
-                  >
-                    <ChevronRight className="w-6 h-6 hover:bg-black" />
-                  </button>
+<button
+  onClick={goToNext}
+  className="
+    absolute right-2 top-1/2 -translate-y-1/2
+    min-h-11 min-w-11 p-2
+    rounded-full
+    bg-background
+    text-foreground
+    border border-border
+    shadow-lg
+    transition-colors
+    hover:bg-muted
+    hover:text-foreground
+    z-10
+    inline-flex items-center justify-center
+  "
+  aria-label="Imagen siguiente"
+>
+  <ChevronRight className="w-6 h-6" />
+</button>
                 </>
               )}
             </div>
