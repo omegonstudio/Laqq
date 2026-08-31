@@ -14,7 +14,7 @@ import { fetchAllCategories } from "@/store/categoriesSlice";
 import { hasSpecTableContent } from "@/types/types";
 import { buildCatalogCrumbs } from "@/utils/data/categories";
 import CatalogBreadcrumb from "@/components/molecules/CatalogBreadcrumb";
-import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
+import ProductImage from "@/components/atoms/ProductImage";
 import { ensureHttpsUrl } from "@/utils/secureUrl";
 
 const formatDescription = (description: string) => {
@@ -169,7 +169,7 @@ const ProductDetailPage = () => {
       );
     }
     if (imageArray.length === 0) {
-      imageArray.push({ url: placeholderImage, isMain: true });
+      imageArray.push({ url: "", isMain: true });
     }
     return imageArray;
   };
@@ -236,8 +236,8 @@ const ProductDetailPage = () => {
               {" "}
               {/* Altura fija aquí */}
               <div className="flex items-center bg-transparent justify-center h-full mb-4">
-                <img
-                  src={images[currentImageIndex]?.url || placeholderImage}
+                <ProductImage
+                  src={images[currentImageIndex]?.url}
                   alt={`${product.name} - Imagen ${currentImageIndex + 1}`}
                   width={800}
                   height={500}
@@ -305,8 +305,8 @@ const ProductDetailPage = () => {
                         : "border-transparent hover:border-gray-300"
                     }`}
                   >
-                    <img
-                      src={image.url || placeholderImage}
+                    <ProductImage
+                      src={image.url}
                       alt={`Miniatura ${index + 1} de ${product.name}`}
                       width={64}
                       height={64}
