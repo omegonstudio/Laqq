@@ -220,7 +220,7 @@ const ProductDetailPage = () => {
             <div className="relative h-[500px]">
               {" "}
               {/* Altura fija aquí */}
-              <div className="flex items-center justify-center h-full mb-4">
+              <div className="flex items-center bg-transparent justify-center h-full mb-4">
                 <img
                   src={images[currentImageIndex]?.url || placeholderImage}
                   alt={`${product.name} - Imagen ${currentImageIndex + 1}`}
