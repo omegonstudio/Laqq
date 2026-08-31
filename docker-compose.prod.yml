@@ -58,6 +58,7 @@ services:
         # PROD (.env): NGINX_CONFIG=nginx.conf (default)
         # DEV  (.env): NGINX_CONFIG=nginx.dev.conf
         NGINX_CONFIG: ${NGINX_CONFIG:-nginx.conf}
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:-}
     container_name: laqq-frontend
     depends_on:
       backend:

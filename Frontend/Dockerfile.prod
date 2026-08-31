@@ -16,6 +16,10 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ARG VITE_SITE_ORIGIN=https://laqq.com.ar
 ENV VITE_SITE_ORIGIN=$VITE_SITE_ORIGIN
 
+# Cloudflare Turnstile (site key pública, horneada en el JS).
+ARG VITE_TURNSTILE_SITE_KEY=
+ENV VITE_TURNSTILE_SITE_KEY=$VITE_TURNSTILE_SITE_KEY
+
 RUN npm run build
 
 # Imagen final con nginx
