@@ -5,6 +5,7 @@ import {
   useEffect,
   ReactNode,
 } from "react";
+import { getApiBaseUrl } from "@/config/api";
 
 interface User {
   username: string;
@@ -26,7 +27,7 @@ interface TokenResponse {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+const BASE_URL = getApiBaseUrl();
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(() => {

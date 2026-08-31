@@ -1,7 +1,8 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import CryptoJS from "crypto-js";
+import { getApiBaseUrl } from "@/config/api";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+const BASE_URL = getApiBaseUrl();
 
 // Clave de encriptación (en producción, usa una variable de entorno)
 const ENCRYPTION_KEY =

@@ -12,6 +12,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearSelected, fetchProduct } from "@/store/productSlice";
 import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
+import { ensureHttpsUrl } from "@/utils/secureUrl";
 
 const formatDescription = (description: string) => {
   if (!description) return "";
@@ -130,14 +131,20 @@ const ProductDetailPage = () => {
   const buildImageArray = () => {
     const imageArray = [];
     if (product.image_url) {
-      imageArray.push({ url: product.image_url, isMain: true });
+      imageArray.push({
+        url: ensureHttpsUrl(product.image_url) ?? product.image_url,
+        isMain: true,
+      });
     }
     if (imageAttachments.length > 0) {
       imageArray.push(
-        ...imageAttachments.map((att) => ({
-          url: att.url || att.file,
-          isMain: false,
-        }))
+        ...imageAttachments.map((att) => {
+          const rawUrl = att.url || att.file;
+          return {
+            url: ensureHttpsUrl(rawUrl) ?? rawUrl,
+            isMain: false,
+          };
+        })
       );
     }
     if (imageArray.length === 0) {

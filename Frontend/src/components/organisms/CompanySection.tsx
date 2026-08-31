@@ -225,7 +225,7 @@ const CompanySection = () => {
         {/* Logos */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8 items-center">
           {[
-            "cannon.svg",
+            "cannon.png",
             "fisher.svg",
             "hirschmann.svg",
             "julabo.svg",

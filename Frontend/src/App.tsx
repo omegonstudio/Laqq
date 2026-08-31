@@ -8,10 +8,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import ScrollToHash from "@/components/common/ScrollToHash";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
-import { useAppDispatch } from "./store/hooks";
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
-import { fetchAllCategories } from "./store/categoriesSlice";
-import { fetchAllBrands } from "./store/brandSlice";
+import { lazy, Suspense, type ReactNode } from "react";
 import SeoHead from "./components/seo/SeoHead";
 import AppShellSkeleton from "./components/layout/AppShellSkeleton";
 import Index from "./pages/Index";
@@ -61,39 +58,6 @@ const PublicLayout = ({ children }: { children: ReactNode }) => (
 );
 
 const App = () => {
-  const dispatch = useAppDispatch();
-
-  useEffect(() => {
-    dispatch(fetchAllCategories({ retries: 2, retryDelayMs: 350 }));
-    dispatch(fetchAllBrands());
-  }, [dispatch]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const hide = () => {
-      if (cancelled) return;
-      const el = document.getElementById("boot-shell");
-      if (!el) return;
-      el.style.opacity = "0";
-      el.style.transition = "opacity 120ms ease";
-      window.setTimeout(() => el.remove(), 160);
-    };
-    const run = () => {
-      window.requestAnimationFrame(() => window.requestAnimationFrame(hide));
-    };
-    const timeout = window.setTimeout(run, 400);
-    if (document.fonts?.ready) {
-      document.fonts.ready.then(() => {
-        window.clearTimeout(timeout);
-        run();
-      });
-    }
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeout);
-    };
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

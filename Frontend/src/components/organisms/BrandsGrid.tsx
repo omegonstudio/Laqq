@@ -1,6 +1,7 @@
 import { useAppSelector } from "@/store/hooks";
 import { Link } from "react-router-dom";
 import { useMemo } from "react";
+import { ensureHttpsUrl } from "@/utils/secureUrl";
 // import { brands } from "@/utils/data/brands";
 
 const BrandsGrid = () => {
@@ -35,7 +36,7 @@ const BrandsGrid = () => {
                 >
                   {brand.logo_url ? (
                     <img
-                      src={brand.logo_url}
+                      src={ensureHttpsUrl(brand.logo_url)}
                       alt={brand.name}
                       width={120}
                       height={48}

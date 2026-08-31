@@ -35,7 +35,7 @@ import ProductVariantsTable from "@/components/molecules/ProductVariantsTable";
 import type { Variants } from "@/components/molecules/ProductVariantsTable";
 import DescriptionEditor from "@/components/atoms/DescriptionProductEditor";
 import { CascadeCategorySelect } from "@/components/atoms/FlatCategories";
-import { Label } from "recharts";
+import { Label } from "@/components/ui/label";
 
 interface ModalProductProps {
   isOpen: boolean;

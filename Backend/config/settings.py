@@ -385,3 +385,9 @@ PRODUCT_IMAGE_HOST_ALLOWLIST = [
     h.strip() for h in config('PRODUCT_IMAGE_HOST_ALLOWLIST', default='').split(',') if h.strip()
 ]
 ENABLE_PRODUCT_IMAGE_DOWNLOADS = config('ENABLE_PRODUCT_IMAGE_DOWNLOADS', default=True, cast=bool)
+
+# Detrás de nginx con TLS: Django debe generar URLs absolutas con https://
+# (evita mixed content en logo_url y media servidos por la API).
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
