@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    sourcemap: true,
+    sourcemap: mode !== "production",
     cssCodeSplit: true,
     assetsInlineLimit: 4096,
     rollupOptions: {
@@ -42,6 +42,33 @@ export default defineConfig(({ mode }) => ({
             id.includes("/node_modules/redux-persist/")
           ) {
             return "redux";
+          }
+          if (id.includes("/node_modules/@radix-ui/")) {
+            return "radix";
+          }
+          if (id.includes("/node_modules/lucide-react/")) {
+            return "icons";
+          }
+          if (id.includes("/node_modules/@tanstack/")) {
+            return "query";
+          }
+          if (
+            id.includes("/node_modules/@tiptap/") ||
+            id.includes("/node_modules/prosemirror")
+          ) {
+            return "editor";
+          }
+          if (
+            id.includes("/node_modules/recharts/") ||
+            id.includes("/node_modules/d3-")
+          ) {
+            return "charts";
+          }
+          if (
+            id.includes("/node_modules/@react-pdf/") ||
+            id.includes("/node_modules/pdfmake/")
+          ) {
+            return "pdf";
           }
         },
       },

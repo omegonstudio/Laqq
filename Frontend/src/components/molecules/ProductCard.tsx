@@ -8,6 +8,7 @@ import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
 import placeholderImageDark from "@/assets/laqq_marca_color_pos.svg";
 import { useTheme } from "next-themes";
 import { useNavigate } from "react-router-dom";
+import { ensureHttpsUrl } from "@/utils/secureUrl";
 
 interface ProductCardProps {
   product: Product;
@@ -69,7 +70,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
           <img
             src={
               product.image_url
-                ? product.image_url
+                ? ensureHttpsUrl(product.image_url)
                 : resolvedTheme === "dark"
                 ? placeholderImage
                 : placeholderImageDark

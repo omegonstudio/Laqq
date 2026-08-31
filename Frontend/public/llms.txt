@@ -1,0 +1,21 @@
+# La Química Quirúrgica
+
+> Proveedor argentino de equipo de laboratorio, consumibles, mobiliario y servicio técnico desde 1952.
+
+LaQQ asiste a laboratorios industriales y de investigación en Argentina con representaciones internacionales, catálogo de productos y soporte posventa.
+
+## Páginas principales
+
+- [Inicio](https://laqq.com.ar/): Equipos y consumibles para laboratorios científicos.
+- [Productos](https://laqq.com.ar/products): Catálogo de equipo, instrumental y material de consumo.
+- [Mobiliario](https://laqq.com.ar/furniture): Mobiliario y cámaras Koettermann para laboratorios.
+- [Empresa](https://laqq.com.ar/company): Historia, representaciones y trayectoria de LaQQ.
+- [Contacto](https://laqq.com.ar/contact): Formulario y datos de contacto.
+- [Cotización](https://laqq.com.ar/quote): Solicitud de cotización de productos y servicios.
+- [Soporte técnico](https://laqq.com.ar/support): Servicio técnico y asistencia posventa.
+- [Certificados](https://laqq.com.ar/certificates): Certificaciones y documentación.
+
+## Optional
+
+- [Sitemap](https://laqq.com.ar/sitemap.xml): Mapa del sitio para rastreadores.
+- [robots.txt](https://laqq.com.ar/robots.txt): Directivas de rastreo.
