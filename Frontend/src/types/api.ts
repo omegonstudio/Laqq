@@ -103,6 +103,7 @@ export interface Note {
 export interface Brand {
   id: string;
   name: string;
+  slug?: string;
   description: string | null;
   logo_attachment: string | null;
   created_at: string;

@@ -41,10 +41,21 @@ class BrandViewSet(viewsets.ModelViewSet):
     permission_classes = [IsReadOnlyOrAdmin]
     authentication_classes = CATALOG_AUTH
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['name']
-    search_fields = ['name', 'description']
+    filterset_fields = ['name', 'slug']
+    search_fields = ['name', 'slug', 'description']
     ordering_fields = ['name', 'created_at']
     ordering = ['-created_at']
+
+    @action(
+        detail=False,
+        methods=['get'],
+        url_path=r'by-slug/(?P<slug>[-\w]+)',
+        permission_classes=[AllowAny],
+    )
+    def by_slug(self, request, slug=None):
+        brand = get_object_or_404(Brand, slug=slug)
+        serializer = self.get_serializer(brand)
+        return Response(serializer.data)
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()

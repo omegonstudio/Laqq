@@ -51,6 +51,7 @@ const BrandsABM = () => {
   const [currentBrand, setCurrentBrand] = useState<Brand>({
     id: "",
     name: "",
+    slug: "",
     description: "",
     logo_attachment: null,
     logo_url: null,
@@ -67,6 +68,7 @@ const BrandsABM = () => {
     setCurrentBrand({
       id: "",
       name: "",
+      slug: "",
       description: "",
       logo_attachment: null,
       logo_url: null,

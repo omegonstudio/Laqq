@@ -19,7 +19,8 @@ export interface PaginationParams {
   page_size?: number;
   search?: string;
   ordering?: string;
-  name?: string; // 👈 agregar esto
+  name?: string;
+  slug?: string;
 }
 
 export interface ProductListParams extends PaginationParams {
@@ -89,6 +90,8 @@ export const productsApi = {
     ),
   getBrand: (id: string) => api.get<Brand>(`${BASE}/brands/${id}/`),
   retrieveBrand: (id: string) => api.get<Brand>(`${BASE}/brands/${id}/`),
+  getBrandBySlug: (slug: string) =>
+    api.get<Brand>(`${BASE}/brands/by-slug/${encodeURIComponent(slug)}/`),
   createBrand: (data: Partial<BrandFormState>) =>
     api.post<Brand>(`${BASE}/brands/`, data),
   updateBrand: (id: string, data: Partial<BrandFormState>) =>

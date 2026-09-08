@@ -31,6 +31,7 @@ const QuotesBackoffice = lazy(
 );
 import MainLayout from "./components/layouts/MainLayout";
 const ProductsPage = lazy(() => import("./pages/ProductsPage"));
+const BrandPage = lazy(() => import("./pages/BrandPage"));
 const ProductDetailPage = lazy(() => import("./pages/ProductDetailPage"));
 const QuotePage = lazy(() => import("./pages/QuotePage"));
 const SupportPage = lazy(() => import("./pages/SupportPage"));
@@ -78,6 +79,14 @@ const App = () => {
                     element={
                       <PublicLayout>
                         <ProductsPage />
+                      </PublicLayout>
+                    }
+                  />
+                  <Route
+                    path="/marcas/:slug"
+                    element={
+                      <PublicLayout>
+                        <BrandPage />
                       </PublicLayout>
                     }
                   />

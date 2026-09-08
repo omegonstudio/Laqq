@@ -33,6 +33,53 @@ function upsertLink(rel: string, href: string) {
   el.setAttribute("href", href);
 }
 
+/** Aplica title/description/canonical/OG (SPA). Usado por SeoHead y páginas dinámicas. */
+export function applyDocumentSeo(opts: {
+  title: string;
+  description: string;
+  canonical: string;
+  robots?: string;
+}) {
+  const { title, description, canonical, robots = "index, follow" } = opts;
+  document.title = title;
+  upsertMeta('meta[name="description"]', { name: "description" }, description);
+  upsertMeta('meta[name="robots"]', { name: "robots" }, robots);
+  upsertLink("canonical", canonical);
+  upsertMeta('meta[property="og:title"]', { property: "og:title" }, title);
+  upsertMeta(
+    'meta[property="og:description"]',
+    { property: "og:description" },
+    description
+  );
+  upsertMeta('meta[property="og:url"]', { property: "og:url" }, canonical);
+  upsertMeta(
+    'meta[property="og:image"]',
+    { property: "og:image" },
+    DEFAULT_OG_IMAGE
+  );
+  upsertMeta(
+    'meta[property="og:site_name"]',
+    { property: "og:site_name" },
+    SITE_NAME
+  );
+  upsertMeta('meta[name="twitter:title"]', { name: "twitter:title" }, title);
+  upsertMeta(
+    'meta[name="twitter:description"]',
+    { name: "twitter:description" },
+    description
+  );
+  upsertMeta(
+    'meta[name="twitter:image"]',
+    { name: "twitter:image" },
+    DEFAULT_OG_IMAGE
+  );
+  upsertMeta(
+    'meta[name="twitter:site"]',
+    { name: "twitter:site" },
+    TWITTER_SITE
+  );
+}
+
 /**
  * Actualiza title, description, canonical y OG/Twitter por ruta (SPA).
  * Los valores por defecto en index.html cubren el primer paint / no-JS.
@@ -42,47 +89,7 @@ export function SeoHead() {
 
   useEffect(() => {
     const { title, description, canonical, robots } = seoForPath(pathname);
-
-    document.title = title;
-
-    upsertMeta('meta[name="description"]', { name: "description" }, description);
-    upsertMeta('meta[name="robots"]', { name: "robots" }, robots);
-    upsertLink("canonical", canonical);
-
-    upsertMeta('meta[property="og:title"]', { property: "og:title" }, title);
-    upsertMeta(
-      'meta[property="og:description"]',
-      { property: "og:description" },
-      description
-    );
-    upsertMeta('meta[property="og:url"]', { property: "og:url" }, canonical);
-    upsertMeta(
-      'meta[property="og:image"]',
-      { property: "og:image" },
-      DEFAULT_OG_IMAGE
-    );
-    upsertMeta(
-      'meta[property="og:site_name"]',
-      { property: "og:site_name" },
-      SITE_NAME
-    );
-
-    upsertMeta('meta[name="twitter:title"]', { name: "twitter:title" }, title);
-    upsertMeta(
-      'meta[name="twitter:description"]',
-      { name: "twitter:description" },
-      description
-    );
-    upsertMeta(
-      'meta[name="twitter:image"]',
-      { name: "twitter:image" },
-      DEFAULT_OG_IMAGE
-    );
-    upsertMeta(
-      'meta[name="twitter:site"]',
-      { name: "twitter:site" },
-      TWITTER_SITE
-    );
+    applyDocumentSeo({ title, description, canonical, robots });
   }, [pathname]);
 
   return null;
