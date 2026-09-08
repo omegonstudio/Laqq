@@ -34,6 +34,7 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
   const [localState, setLocalState] = useState<Brand>({
     id: "",
     name: "",
+    slug: "",
     description: "",
     logo_attachment: null,
     logo_url: null,
@@ -58,6 +59,7 @@ const ModalBrands: React.FC<ModalBrandsProps> = ({
       setLocalState({
         id: "",
         name: "",
+        slug: "",
         description: "",
         logo_attachment: null,
         logo_url: null,
