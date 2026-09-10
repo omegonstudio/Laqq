@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { lazy, Suspense, useState, useEffect } from "react";
 import { Moon, Sun, User, ShoppingCart, X, Menu } from "lucide-react";
 import NavDropdown from "../molecules/NavDropdown";
@@ -20,6 +20,7 @@ const CartModal = lazy(() => import("./CartModal"));
 
 const Header = () => {
   const { searchParams, setFilter } = useProductFilters();
+  const location = useLocation();
 
   const [cartOpen, setCartOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -32,19 +33,38 @@ const Header = () => {
     setFilter("search", query);
   };
 
+  const brandSlugFromPath = location.pathname.match(/^\/marcas\/([^/]+)/)?.[1];
+
   useEffect(() => {
+    if (brandSlugFromPath) {
+      const match = brands.find((b) => b.slug === brandSlugFromPath);
+      setSelectedBrand(match?.id || "all");
+      return;
+    }
     setSelectedBrand(searchParams.get("brand") || "all");
-  }, [searchParams]);
+  }, [searchParams, brandSlugFromPath, brands]);
 
   // Encontrar el nombre de la marca seleccionada
   const getSelectedBrandName = () => {
-    if (!searchParams.get("brand")) return "Todas las marcas";
     if (selectedBrand === "all") return "Todas las marcas";
     const brand = brands.find((b) => b.id === selectedBrand);
     return brand?.name || "Todas las marcas";
   };
 
   const navigate = useNavigate();
+
+  const handleBrandChange = (value: string) => {
+    if (value === "all") {
+      setFilter("brand", "all");
+      return;
+    }
+    const brand = brands.find((b) => b.id === value);
+    if (brand?.slug) {
+      navigate(`/marcas/${brand.slug}`);
+      return;
+    }
+    setFilter("brand", value);
+  };
 
   /**
    * Navega a una ruta y, si contiene un hash (#section),
@@ -117,7 +137,7 @@ const Header = () => {
               </div>
               <Select
                 defaultValue="all"
-                onValueChange={(value) => setFilter("brand", value)}
+                onValueChange={handleBrandChange}
               >
                 <SelectTrigger
                   aria-label="Filtrar por marca"
@@ -328,7 +348,7 @@ const Header = () => {
             {/* Brand selector on mobile */}
             <Select
               defaultValue="all"
-              onValueChange={(value) => setFilter("brand", value)}
+              onValueChange={handleBrandChange}
             >
               <SelectTrigger
                 aria-label="Filtrar por marca"

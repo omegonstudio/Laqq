@@ -6,10 +6,22 @@ from attachments.models import Attachment
 class Brand(models.Model):
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
     name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=120, unique=True, blank=True, db_index=False)
     description = models.TextField(blank=True, null=True)
     logo_attachment = models.ForeignKey(Attachment, on_delete=models.SET_NULL, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.name)[:100] or str(uuid.uuid4())[:12]
+            candidate = base
+            suffix = 2
+            while Brand.objects.filter(slug=candidate).exclude(pk=self.pk).exists():
+                candidate = f"{base}-{suffix}"
+                suffix += 1
+            self.slug = candidate
+        super().save(*args, **kwargs)
 
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)

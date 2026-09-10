@@ -149,8 +149,9 @@ class ProductVariantInline(admin.TabularInline):
 
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
-    list_display = ['name', 'description', 'created_at']
-    search_fields = ['name', 'description']
+    list_display = ['name', 'slug', 'description', 'created_at']
+    search_fields = ['name', 'slug', 'description']
+    prepopulated_fields = {'slug': ('name',)}
     ordering = ['name']
 
 @admin.register(Category)

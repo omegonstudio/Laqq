@@ -278,7 +278,7 @@ const QuotePDF = ({
           </View>
           <View style={s.headerRight}>
             <Text>Saavedra 247 C1083ACE · Buenos Aires, Argentina</Text>
-            <Text>Tel: (5411) 5277-7200 · Interno: 222</Text>
+            <Text>Tel: (5411) 5277-7200</Text>
             <Text>consultasweb@laqq.com.ar · www.laqq.com</Text>
           </View>
         </View>

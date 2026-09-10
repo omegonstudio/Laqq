@@ -30,7 +30,7 @@ const BrandsGrid = () => {
             : sortedBrands.map((brand) => (
                 <Link
                   key={brand.id}
-                  to={`/products?brand=${brand.id}`}
+                  to={brand.slug ? `/marcas/${brand.slug}` : `/products?brand=${brand.id}`}
                   aria-label={`Ver productos de ${brand.name}`}
                   className="flex min-h-11 min-w-[120px] items-center justify-center p-4 grayscale hover:grayscale-0 transition-all duration-300 hover:scale-105"
                 >
