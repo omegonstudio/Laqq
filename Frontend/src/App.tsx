@@ -7,6 +7,7 @@ import { AuthProvider } from "@/components/auth/useAuth";
 import { CartProvider } from "@/contexts/CartContext";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import ScrollToHash from "@/components/common/ScrollToHash";
+import BootShellDismiss from "@/components/common/BootShellDismiss";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { lazy, Suspense, type ReactNode } from "react";
 import SeoHead from "./components/seo/SeoHead";
@@ -68,6 +69,7 @@ const App = () => {
           <CartProvider>
             <BrowserRouter>
               <SeoHead />
+              <BootShellDismiss />
               <ScrollToTop />
               <ScrollToHash />
               <Suspense fallback={<AppShellSkeleton />}>
