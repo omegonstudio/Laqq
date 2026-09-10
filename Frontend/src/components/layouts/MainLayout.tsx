@@ -18,32 +18,6 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     dispatch(fetchAllBrands());
   }, [dispatch]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const hide = () => {
-      if (cancelled) return;
-      const el = document.getElementById("boot-shell");
-      if (!el) return;
-      el.style.opacity = "0";
-      el.style.transition = "opacity 120ms ease";
-      window.setTimeout(() => el.remove(), 160);
-    };
-    const run = () => {
-      window.requestAnimationFrame(() => window.requestAnimationFrame(hide));
-    };
-    const timeout = window.setTimeout(run, 400);
-    if (document.fonts?.ready) {
-      document.fonts.ready.then(() => {
-        window.clearTimeout(timeout);
-        run();
-      });
-    }
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeout);
-    };
-  }, []);
-
   return (
     <>
       <div className="min-h-screen">
