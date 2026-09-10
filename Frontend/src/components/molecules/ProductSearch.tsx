@@ -48,12 +48,24 @@ export function ProductSearchCombobox({
             )
           )
             return true;
-          // Buscar en valores de especificaciones técnicas de variantes (columnas ad-hoc)
+          // Buscar en el cuadro variable de specs (nombre de columna + valor)
           if (
             product.variants?.some((v) =>
-              v.technical_specs?.some((spec) =>
-                spec.value?.toLowerCase().includes(search)
+              v.technical_specs?.some(
+                (spec) =>
+                  spec.key?.toLowerCase().includes(search) ||
+                  spec.value?.toLowerCase().includes(search)
               )
+            )
+          )
+            return true;
+          // Buscar en tabla de especificaciones técnicas (spec_table)
+          if (
+            product.spec_table?.columns?.some((c) =>
+              c.toLowerCase().includes(search)
+            ) ||
+            product.spec_table?.rows?.some((row) =>
+              row.some((cell) => cell?.toLowerCase().includes(search))
             )
           )
             return true;

@@ -147,9 +147,17 @@ export default function SearchBar({
       p.product_code.toLowerCase().includes(searchLower) ||
       p.variants?.some((v) => v.code?.toLowerCase().includes(searchLower)) ||
       p.variants?.some((v) =>
-        v.technical_specs?.some((spec) =>
-          spec.value?.toLowerCase().includes(searchLower)
+        v.technical_specs?.some(
+          (spec) =>
+            spec.key?.toLowerCase().includes(searchLower) ||
+            spec.value?.toLowerCase().includes(searchLower)
         )
+      ) ||
+      p.spec_table?.columns?.some((c) =>
+        c.toLowerCase().includes(searchLower)
+      ) ||
+      p.spec_table?.rows?.some((row) =>
+        row.some((cell) => cell?.toLowerCase().includes(searchLower))
       )
     );
   }).length;

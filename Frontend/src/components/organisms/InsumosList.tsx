@@ -56,8 +56,9 @@ const insumosList = ({
 
             <thead className="bg-primary text-primary-foreground">
               <tr>
-                <th className="px-4 py-4 text-left w-28">Artículo</th>
+                <th className="px-4 py-4 text-left w-28">Código</th>
                 <th className="px-4 py-4 text-left">Detalle</th>
+                <th className="px-4 py-4 text-left w-36">Marca</th>
                 <th className="px-4 py-4 text-center w-40">CAS</th>
                 <th className="px-4 py-4 text-center w-28">Sedronar</th>
                 <th className="px-4 py-4 text-center w-20">ESP</th>
@@ -75,11 +76,15 @@ const insumosList = ({
                     onClick={() => navigate(`/product/${product.id}`)}
                   >
                   <td className="px-4 py-4 font-medium">
-                    {product.articulo}
+                    {product.product_code}
                   </td>
 
                   <td className="px-4 py-4">
                     {product.name}
+                  </td>
+
+                  <td className="px-4 py-4">
+                    {product.brand || "-"}
                   </td>
 
                   <td className="px-4 py-4 text-center">

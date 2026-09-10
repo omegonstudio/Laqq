@@ -6,7 +6,8 @@ import unicodedata
 
 import django_filters
 from django.db import connection
-from django.db.models import F, Func, Q
+from django.db.models import F, Func, Q, TextField, Value
+from django.db.models.functions import Cast, Coalesce
 from rest_framework.filters import SearchFilter
 
 from .models import Product, Category
@@ -32,36 +33,61 @@ class UnaccentSearchFilter(SearchFilter):
     también ignora tildes/acentos, en ambos sentidos: "cafe" encuentra
     "Café" y "café" encuentra "Cafe".
 
+    Incluye:
+    - Variedades: código de modelo + key/value de technical_specs
+    - Especificaciones técnicas (spec_table JSON: columnas y celdas)
+
     Requiere la extensión `unaccent` de Postgres (ver migración
     0012_unaccent_extension). En motores sin esa extensión (ej. SQLite,
-    usado por la suite de tests) cae al comportamiento estándar de DRF.
+    usado por la suite de tests) busca igual sobre los mismos campos
+    sin unaccent en columnas.
     """
 
     def filter_queryset(self, request, queryset, view):
-        if connection.vendor != 'postgresql':
-            return super().filter_queryset(request, queryset, view)
-
         search_fields = self.get_search_fields(view, request)
         search_terms = self.get_search_terms(request)
 
         if not search_fields or not search_terms:
             return queryset
 
-        annotations = {
-            unaccent_alias(field): Unaccent(F(field)) for field in search_fields
-        }
-        queryset = queryset.annotate(**annotations)
+        use_unaccent = connection.vendor == 'postgresql'
+        if use_unaccent:
+            annotations = {
+                unaccent_alias(field): Unaccent(F(field)) for field in search_fields
+            }
+            queryset = queryset.annotate(**annotations)
+
+        # Serializa el JSON de spec_table a texto para icontains (columnas + celdas).
+        queryset = queryset.annotate(
+            spec_table_text=Coalesce(
+                Cast('spec_table', TextField()),
+                Value(''),
+                output_field=TextField(),
+            )
+        )
+        if use_unaccent:
+            queryset = queryset.annotate(
+                spec_table_text_unaccented=Unaccent(F('spec_table_text'))
+            )
 
         conditions = Q()
         for term in search_terms:
-            term_unaccented = strip_accents(term)
+            needle = strip_accents(term) if use_unaccent else term
             term_query = Q()
             for field in search_fields:
-                term_query |= Q(**{f'{unaccent_alias(field)}__icontains': term_unaccented})
-            # También buscar en modelo de variante (relación inversa Product -> ProductVariant)
-            term_query |= Q(**{'variants__code__icontains': term_unaccented})
-            # También buscar en valores de especificaciones técnicas de variantes (columnas ad-hoc)
-            term_query |= Q(**{'variants__technical_specs__value__icontains': term_unaccented})
+                if use_unaccent:
+                    term_query |= Q(**{f'{unaccent_alias(field)}__icontains': needle})
+                else:
+                    term_query |= Q(**{f'{field}__icontains': needle})
+            # Modelo de variante + cuadro variable de specs (key = columna, value = celda)
+            term_query |= Q(variants__code__icontains=needle)
+            term_query |= Q(variants__technical_specs__key__icontains=needle)
+            term_query |= Q(variants__technical_specs__value__icontains=needle)
+            # Tabla "Especificaciones técnicas" (spec_table)
+            if use_unaccent:
+                term_query |= Q(spec_table_text_unaccented__icontains=needle)
+            else:
+                term_query |= Q(spec_table_text__icontains=needle)
             conditions &= term_query
 
         return queryset.filter(conditions).distinct()

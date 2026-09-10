@@ -304,6 +304,66 @@ class ProductAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
+    def test_search_by_variant_technical_specs(self):
+        """Search incluye key y value del cuadro variable de specs de variantes."""
+        other = Product.objects.create(
+            name='Otro producto',
+            brand=self.brand,
+            category=self.category,
+            is_active=True,
+        )
+        variant = ProductVariant.objects.create(
+            product=self.product,
+            code='VAR-VOL-100',
+            name='Presentacion 100',
+        )
+        spec = TechnicalSpec.objects.create(key='Volumen', value='100 ml')
+        VariantTechnicalSpec.objects.create(variant=variant, technical_spec=spec)
+
+        by_value = self.client.get('/products/list/?search=100%20ml')
+        self.assertEqual(by_value.status_code, status.HTTP_200_OK)
+        self.assertEqual(by_value.data['count'], 1)
+        self.assertEqual(by_value.data['results'][0]['id'], str(self.product.id))
+
+        by_key = self.client.get('/products/list/?search=Volumen')
+        self.assertEqual(by_key.status_code, status.HTTP_200_OK)
+        self.assertEqual(by_key.data['count'], 1)
+        self.assertEqual(by_key.data['results'][0]['id'], str(self.product.id))
+
+        # Producto sin esa spec no aparece
+        self.assertNotIn(str(other.id), [p['id'] for p in by_key.data['results']])
+
+    def test_search_by_spec_table(self):
+        """Search incluye columnas y celdas de la tabla Especificaciones técnicas."""
+        other = Product.objects.create(
+            name='Sin tabla de specs',
+            brand=self.brand,
+            category=self.category,
+            is_active=True,
+        )
+        self.product.spec_table = {
+            'columns': ['Parametro', 'Valor'],
+            'rows': [['Voltaje de entrada', '220V AC']],
+        }
+        self.product.save(update_fields=['spec_table'])
+
+        by_cell = self.client.get('/products/list/?search=220V')
+        self.assertEqual(by_cell.status_code, status.HTTP_200_OK)
+        self.assertEqual(by_cell.data['count'], 1)
+        self.assertEqual(by_cell.data['results'][0]['id'], str(self.product.id))
+
+        by_column = self.client.get('/products/list/?search=Parametro')
+        self.assertEqual(by_column.status_code, status.HTTP_200_OK)
+        self.assertEqual(by_column.data['count'], 1)
+        self.assertEqual(by_column.data['results'][0]['id'], str(self.product.id))
+
+        by_row_label = self.client.get('/products/list/?search=Voltaje')
+        self.assertEqual(by_row_label.status_code, status.HTTP_200_OK)
+        self.assertEqual(by_row_label.data['count'], 1)
+        self.assertEqual(by_row_label.data['results'][0]['id'], str(self.product.id))
+
+        self.assertNotIn(str(other.id), [p['id'] for p in by_cell.data['results']])
+
     def test_filter_featured_products(self):
         """Filtrar solo productos destacados"""
         Product.objects.create(

@@ -32,6 +32,49 @@ const formatDate = (dateStr: string): string => {
     year: "numeric",
   });
 };
+
+/**
+ * Convierte la descripción HTML (TipTap) a texto plano usable en react-pdf.
+ * Omite tablas (no se renderizan bien) y preserva párrafos/listas vía \n.
+ * También parte viñetas/títulos escritos en un solo <p> (caso frecuente).
+ */
+export const stripHtmlForPdf = (html: string): string => {
+  if (!html) return "";
+  return (
+    html
+      // Tablas: omitir por completo (mismo criterio que ProductCard en listados)
+      .replace(/<table[\s\S]*?<\/table>/gi, "")
+      // Abrir bloques con salto (TipTap anida <p> dentro de <li>, etc.)
+      .replace(/<li[^>]*>/gi, "\n• ")
+      .replace(/<(p|div|h[1-6]|tr|blockquote)(\s[^>]*)?>/gi, "\n")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|h[1-6]|li|tr|blockquote|ul|ol)>/gi, "\n")
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&bull;/gi, "•")
+      .replace(/&amp;/gi, "&")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/g, "'")
+      // Viñetas pegadas en el mismo párrafo (• / ● / ▪)
+      .replace(/\s*[•●▪‣]\s*/g, "\n• ")
+      // Títulos tipo "Sectores:" / "Principio de Funcionamiento:" tras un punto
+      .replace(
+        /([.!?…])\s+([A-ZÁÉÍÓÚÑÜ][^.\n:]{0,60}:)/g,
+        "$1\n\n$2"
+      )
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n[ \t]+/g, "\n")
+      // Evitar "• • " si ya venía de <li> + carácter bullet
+      .replace(/(•\s*){2,}/g, "• ")
+      // Viñetas consecutivas sin línea en blanco entremedio
+      .replace(/\n{2,}(• )/g, "\n$1")
+      .replace(/\n{3,}/g, "\n\n")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim()
+  );
+};
 const getLogoBase64 = async (): Promise<string> => {
   const response = await fetch("/logo-laqq.png"); // ← png real ahora
   if (!response.ok) {
@@ -132,7 +175,15 @@ const s = StyleSheet.create({
     paddingTop: 6,
     marginTop: 4,
   },
-  itemDesc: { fontSize: 9, color: GRAY_TEXT, lineHeight: 1.6, marginBottom: 6 },
+  itemDesc: {
+    fontSize: 9,
+    color: GRAY_TEXT,
+    lineHeight: 1.45,
+    marginBottom: 2,
+  },
+  itemDescWrap: { marginBottom: 6 },
+  itemDescBullet: { marginLeft: 6, marginBottom: 3 },
+  itemDescSpacer: { fontSize: 4, marginBottom: 4 },
   itemVariant: { fontSize: 8.5, color: "#555", marginBottom: 6 },
   itemImage: { width: 120, height: 90, objectFit: "contain", marginLeft: 12 },
 
@@ -230,11 +281,6 @@ const QuotePDF = ({
 }) => {
   const { contact, specs, items } = quote;
   const hasVariants = items.some((item) => item.variant !== null);
-  const stripHtml = (html: string) =>
-    html
-      .replace(/<[^>]*>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
   const colWidths = hasVariants
     ? {
         name: "26%",
@@ -331,11 +377,38 @@ const QuotePDF = ({
               <View style={s.itemBody}>
                 <View style={{ flexDirection: "row" }}>
                   <View style={{ flex: 1 }}>
-                    {item.product.description && (
-                      <Text style={s.itemDesc}>
-                        {stripHtml(item.product.description)}
-                      </Text>
-                    )}
+                    {item.product.description &&
+                      (() => {
+                        const desc = stripHtmlForPdf(item.product.description);
+                        if (!desc) return null;
+                        return (
+                          <View style={s.itemDescWrap}>
+                            {desc.split("\n").map((line, lineIndex) => {
+                              const trimmed = line.trim();
+                              if (!trimmed) {
+                                return (
+                                  <Text key={lineIndex} style={s.itemDescSpacer}>
+                                    {" "}
+                                  </Text>
+                                );
+                              }
+                              const isBullet = trimmed.startsWith("•");
+                              return (
+                                <Text
+                                  key={lineIndex}
+                                  style={
+                                    isBullet
+                                      ? [s.itemDesc, s.itemDescBullet]
+                                      : s.itemDesc
+                                  }
+                                >
+                                  {trimmed}
+                                </Text>
+                              );
+                            })}
+                          </View>
+                        );
+                      })()}
                     {item.variant && (
                       <View>
                         <Text style={s.itemVariant}>
