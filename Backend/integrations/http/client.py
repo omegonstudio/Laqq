@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Iterable, Optional, Set
+from typing import Any, Iterable, Mapping, Optional, Set, Union
 from urllib.parse import urlparse
 
 import requests
@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 class HttpClient:
     """
     Cliente HTTP pequeño con validación de host, timeout y retries.
-    Pensado para descargas controladas (imágenes, archivos estáticos).
+    Pensado para descargas controladas (imágenes, archivos estáticos)
+    y peticiones JSON a hosts allowlisteados.
     """
 
     def __init__(
@@ -36,7 +37,7 @@ class HttpClient:
             total=retries,
             status_forcelist=[429, 500, 502, 503, 504],
             backoff_factor=backoff_factor,
-            allowed_methods=["GET", "HEAD"],
+            allowed_methods=["GET", "HEAD", "POST"],
             raise_on_status=False,
         )
         adapter = HTTPAdapter(max_retries=retry_cfg)
@@ -51,6 +52,47 @@ class HttpClient:
         hostname = (parsed.hostname or "").lower()
         if self.allowed_hosts is not None and hostname not in self.allowed_hosts:
             raise HttpClientConfigError(f"Host no permitido para descargas: {hostname}")
+
+    def request_json(
+        self,
+        method: str,
+        url: str,
+        *,
+        params: Optional[Mapping[str, Any]] = None,
+        data: Optional[Union[Mapping[str, Any], str]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+    ) -> Any:
+        """GET/POST contra un host permitido; espera respuesta JSON."""
+        self._validate_url(url)
+        method_upper = method.upper()
+        try:
+            response = self.session.request(
+                method_upper,
+                url,
+                params=params,
+                data=data,
+                headers=dict(headers) if headers else None,
+                timeout=self.timeout,
+            )
+        except requests.RequestException as exc:
+            raise HttpClientError(f"Error de red al llamar {url}: {exc}") from exc
+
+        if response.status_code >= 400:
+            raise HttpClientResponseError(
+                status_code=response.status_code,
+                message=f"Respuesta {response.status_code} al llamar {url}",
+            )
+
+        if not response.content:
+            return None
+
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise HttpClientResponseError(
+                status_code=response.status_code,
+                message=f"Respuesta no JSON al llamar {url}",
+            ) from exc
 
     def fetch_binary(self, url: str) -> HttpBinaryResponse:
         self._validate_url(url)
