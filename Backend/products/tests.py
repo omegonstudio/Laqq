@@ -27,6 +27,35 @@ class BrandAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
+    def test_brand_slug_auto_generated(self):
+        """Al crear una marca se genera slug a partir del nombre."""
+        self.assertEqual(self.brand.slug, 'test-brand')
+        response = self.client.get('/products/brands/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['results'][0]['slug'], 'test-brand')
+
+    def test_brand_by_slug(self):
+        """GET público por slug (SEO /marcas/:slug)."""
+        unauth = APIClient()
+        response = unauth.get(f'/products/brands/by-slug/{self.brand.slug}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], str(self.brand.id))
+        self.assertEqual(response.data['slug'], 'test-brand')
+
+    def test_brand_by_slug_not_found(self):
+        unauth = APIClient()
+        response = unauth.get('/products/brands/by-slug/no-existe/')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_sitemap_includes_brand_pages(self):
+        unauth = APIClient()
+        response = unauth.get('/products/sitemap.xml')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('application/xml', response['Content-Type'])
+        body = response.content.decode()
+        self.assertIn('/marcas/test-brand', body)
+        self.assertIn('/products', body)
+
     def test_create_brand(self):
         """Crear una nueva marca con nombre y descripción"""
         data = {'name': 'New Brand', 'description': 'New Description'}

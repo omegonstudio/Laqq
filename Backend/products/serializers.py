@@ -23,8 +23,11 @@ class BrandSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Brand
-        fields = ['id', 'name', 'description', 'logo_attachment', 'logo_url', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'logo_url', 'created_at', 'updated_at']
+        fields = [
+            'id', 'name', 'slug', 'description',
+            'logo_attachment', 'logo_url', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'slug', 'logo_url', 'created_at', 'updated_at']
 
     def get_logo_url(self, obj):
         if obj.logo_attachment:

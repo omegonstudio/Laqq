@@ -114,6 +114,23 @@ export function seoForPath(pathname: string): {
     };
   }
 
+  if (pathname.startsWith("/marcas/")) {
+    const slug = pathname.replace(/^\/marcas\//, "").split("/")[0];
+    const label = slug
+      ? slug
+          .split("-")
+          .filter(Boolean)
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(" ")
+      : "Marca";
+    return {
+      title: `Productos ${label} | ${SITE_NAME}`,
+      description: `Catálogo de productos ${label} representados por ${SITE_NAME}.`,
+      canonical: absoluteUrl(pathname),
+      robots: "index, follow",
+    };
+  }
+
   // Rutas privadas / 404 / no públicas: no indexar
   return {
     title: DEFAULT_TITLE,

@@ -211,9 +211,10 @@ export interface CategoryUI {
 export interface Brand {
   id: string;
   name: string;
-  logo_attachment?: string;
+  slug?: string;
+  logo_attachment?: string | null;
   description?: string;
-  logo_url: string;
+  logo_url: string | null;
 }
 
 export interface BrandFormState {

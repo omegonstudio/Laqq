@@ -7,6 +7,7 @@ import { AuthProvider } from "@/components/auth/useAuth";
 import { CartProvider } from "@/contexts/CartContext";
 import ScrollToTop from "@/components/common/ScrollToTop";
 import ScrollToHash from "@/components/common/ScrollToHash";
+import BootShellDismiss from "@/components/common/BootShellDismiss";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { lazy, Suspense, type ReactNode } from "react";
 import SeoHead from "./components/seo/SeoHead";
@@ -31,6 +32,7 @@ const QuotesBackoffice = lazy(
 );
 import MainLayout from "./components/layouts/MainLayout";
 const ProductsPage = lazy(() => import("./pages/ProductsPage"));
+const BrandPage = lazy(() => import("./pages/BrandPage"));
 const ProductDetailPage = lazy(() => import("./pages/ProductDetailPage"));
 const QuotePage = lazy(() => import("./pages/QuotePage"));
 const SupportPage = lazy(() => import("./pages/SupportPage"));
@@ -67,6 +69,7 @@ const App = () => {
           <CartProvider>
             <BrowserRouter>
               <SeoHead />
+              <BootShellDismiss />
               <ScrollToTop />
               <ScrollToHash />
               <Suspense fallback={<AppShellSkeleton />}>
@@ -78,6 +81,14 @@ const App = () => {
                     element={
                       <PublicLayout>
                         <ProductsPage />
+                      </PublicLayout>
+                    }
+                  />
+                  <Route
+                    path="/marcas/:slug"
+                    element={
+                      <PublicLayout>
+                        <BrandPage />
                       </PublicLayout>
                     }
                   />
