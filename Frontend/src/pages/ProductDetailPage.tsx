@@ -2,6 +2,8 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
+  FileDown,
+  Files,
   ShoppingCart,
 } from "lucide-react";
 import Button from "@/components/atoms/Button";
@@ -84,11 +86,46 @@ const ProductDetailPage = () => {
     : [];
   const imageAttachments =
     product?.attachments?.filter((att) => isImage(att.content_type_str)) ?? [];
-  const fileAttachments =
-    product?.attachments?.filter((att) => !isImage(att.content_type_str)) ?? [];
+  const documentDownloads = useMemo(() => {
+    const fileAttachments =
+      product?.attachments?.filter((att) => !isImage(att.content_type_str)) ??
+      [];
+
+    const docs: {
+      id: string;
+      file_name: string;
+      content_type_str: string;
+      url: string;
+    }[] = fileAttachments.map((file) => ({
+      id: file.id,
+      file_name: file.file_name,
+      content_type_str: file.content_type_str ?? "application/pdf",
+      url: file.url || file.file || "",
+    }));
+
+    if (product?.esp_url) {
+      docs.push({
+        id: "esp",
+        file_name: "Especificación (ESP)",
+        content_type_str: "application/pdf",
+        url: product.esp_url,
+      });
+    }
+
+    if (product?.hds_url) {
+      docs.push({
+        id: "hds",
+        file_name: "Hoja de Seguridad (HDS)",
+        content_type_str: "application/pdf",
+        url: product.hds_url,
+      });
+    }
+
+    return docs;
+  }, [product?.attachments, product?.esp_url, product?.hds_url]);
   const specTable = product?.spec_table;
   const showSpecTable = hasSpecTableContent(specTable);
-  const showDetailsSection = hasVariants || fileAttachments.length > 0;
+  const showDetailsSection = hasVariants || documentDownloads.length > 0;
   const crumbs = useMemo(
     () =>
       buildCatalogCrumbs({
@@ -101,10 +138,10 @@ const ProductDetailPage = () => {
 
   // ─── ZONA 2b: useEffect que depende de las derivaciones ──────────────────
   useEffect(() => {
-    if (!hasVariants && fileAttachments.length > 0) {
+    if (!hasVariants && documentDownloads.length > 0) {
       setActiveTab("files");
     }
-  }, [hasVariants, fileAttachments.length]);
+  }, [hasVariants, documentDownloads.length]);
 
   // ─── ZONA 3: Early returns ────────────────────────────────────────────────
   if (selectedLoading) {
@@ -329,7 +366,42 @@ const ProductDetailPage = () => {
             <Badge variant="primary" className="mb-4">
               {product.brand}
             </Badge>
-            <h1 className="text-4xl font-bold mb-4">{product.name}</h1>
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <h1 className="text-4xl font-bold">{product.name}</h1>
+            
+
+            </div>
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+            
+              {(product.esp_url || product.hds_url) && (
+                <div className="flex items-center gap-1">
+                  <p className="text-sm  font-bold">ESP:</p>
+                  {product.esp_url && (
+                    <a
+                      href={product.esp_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Descargar especificación PDF"
+                      className="inline-flex items-center justify-center p-2 rounded-md hover:bg-muted transition-colors"
+                    >
+                      <FileDown className="w-5 h-5 hover:text-primary transition-colors" />
+                    </a>
+                  )}
+                   <p className="text-sm  font-bold">HDS:</p>
+                  {product.hds_url && (
+                    <a
+                      href={product.hds_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Descargar HDS"
+                      className="inline-flex items-center justify-center p-2 rounded-md hover:bg-muted transition-colors"
+                    >
+                      <Files className="w-5 h-5 hover:text-primary transition-colors" />
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
               <div className="max-h-[500px] overflow-y-auto pr-3">
                 <div
                   className="
@@ -468,7 +540,7 @@ const ProductDetailPage = () => {
                   <p>Variantes del producto</p>
                 </div>
               )}
-              {fileAttachments.length > 0 && (
+              {documentDownloads.length > 0 && (
                 <div
                   onClick={() => setActiveTab("files")}
                   className={`cursor-pointer border-b-2 pb-3 pl-5 ${
@@ -542,15 +614,13 @@ const ProductDetailPage = () => {
                 </table>
               </div>
             )}
-            {fileAttachments.length > 0 && activeTab === "files" && (
+            {documentDownloads.length > 0 && activeTab === "files" && (
               <div className="space-y-4 bg-muted/30 rounded-sm">
                 <div className="grid lg:grid-cols-2 gap-5 mb-12">
-                  {fileAttachments.map((file) => (
+                  {documentDownloads.map((file) => (
                     <div
                       key={file.id}
-                      onClick={() =>
-                        window.open(file.url || file.file, "_blank")
-                      }
+                      onClick={() => window.open(file.url, "_blank")}
                       className="cursor-pointer border rounded-lg p-4 flex items-center gap-3 hover:bg-muted transition-colors w-full overflow-hidden"
                     >
                       <div className="text-2xl shrink-0">📄</div>

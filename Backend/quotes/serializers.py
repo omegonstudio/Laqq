@@ -24,6 +24,56 @@ QUOTE_SPECS_DEFAULTS = {
     'extra_conditions': '',
 }
 
+# Mapeo de product.root_category → posibles ids de QuoteType en BD.
+ROOT_TO_QUOTE_TYPE_IDS = {
+    'consumibles': ['consumibles', 'supplies', 'SUPPLIES'],
+    'equipos': ['equipos', 'equipment', 'EQUIPMENT'],
+    'mobiliario': ['mobiliario', 'furniture', 'FURNITURE'],
+    'procesos': ['procesos', 'processed', 'PROCESSED'],
+}
+
+
+def resolve_quote_type_from_products(product_ids):
+    """
+    Infere QuoteType desde product.root_category de los items.
+    Usa el primer producto con root_category válida.
+    """
+    if not product_ids:
+        return None
+
+    products = Product.objects.filter(id__in=product_ids).only('root_category')
+    roots = [
+        (p.root_category or '').strip().lower()
+        for p in products
+        if (p.root_category or '').strip()
+    ]
+    if not roots:
+        return None
+
+    primary = roots[0]
+    key = primary if primary in ROOT_TO_QUOTE_TYPE_IDS else next(
+        (
+            candidate
+            for candidate in ROOT_TO_QUOTE_TYPE_IDS
+            if primary.startswith(candidate) or candidate.startswith(primary)
+        ),
+        primary,
+    )
+    candidates = ROOT_TO_QUOTE_TYPE_IDS.get(key, [key])
+
+    for candidate in candidates:
+        quote_type = QuoteType.objects.filter(id__iexact=candidate).first()
+        if quote_type:
+            return quote_type
+        quote_type = QuoteType.objects.filter(name__iexact=candidate).first()
+        if quote_type:
+            return quote_type
+
+    return QuoteType.objects.filter(
+        id__icontains=key
+    ).first() or QuoteType.objects.filter(name__icontains=key).first()
+
+
 class QuoteTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuoteType
@@ -414,13 +464,29 @@ class QuotePackageSerializer(serializers.Serializer):
                 )
             quote_create_data['quote_type'] = quote_type
         else:
-            default_quote_type = QuoteType.objects.first()
-            if not default_quote_type:
-                raise serializers.ValidationError(
-                    "No QuoteType available. Please create at least one QuoteType."
+            product_ids = [
+                item.get('product')
+                for item in items_data
+                if item.get('product')
+            ]
+            inferred_quote_type = resolve_quote_type_from_products(product_ids)
+            if inferred_quote_type:
+                quote_create_data['quote_type'] = inferred_quote_type
+                logger.info(
+                    "No quote_type provided, inferred from products: %s",
+                    inferred_quote_type.id,
                 )
-            quote_create_data['quote_type'] = default_quote_type
-            logger.warning("No quote_type provided, using default: %s", default_quote_type.id)
+            else:
+                default_quote_type = QuoteType.objects.first()
+                if not default_quote_type:
+                    raise serializers.ValidationError(
+                        "No QuoteType available. Please create at least one QuoteType."
+                    )
+                quote_create_data['quote_type'] = default_quote_type
+                logger.warning(
+                    "No quote_type provided, using default: %s",
+                    default_quote_type.id,
+                )
 
         if 'state' in quote_data and quote_data['state']:
             quote_state = QuoteState.objects.filter(id=quote_data['state']).first()
