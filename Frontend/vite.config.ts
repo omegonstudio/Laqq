@@ -28,25 +28,29 @@ function seoOriginStaticFiles(siteOrigin: string): Plugin {
 }
 
 /**
- * favicon-dev.ico en desarrollo; favicon.ico en prod.
- * En build de producción elimina favicon-dev.ico de dist/ (no se despliega).
+ * favicon-96-dev.png en desarrollo; favicon-96.png en prod.
+ * En build de producción elimina los assets *-dev* de dist/ (no se despliegan).
  */
 function faviconByMode(mode: string): Plugin {
   const isDev = mode === "development";
-  const faviconHref = isDev ? "/favicon-dev.ico" : "/favicon.ico";
+  const faviconHref = isDev ? "/favicon-96-dev.png" : "/favicon-96.png";
+  const devAssets = ["favicon-96-dev.png", "favicon-dev.ico"];
 
   return {
     name: "favicon-by-mode",
     transformIndexHtml(html) {
       return html.replace(
-        /(<link\s+rel="icon"\s+href=")\/favicon(?:-dev)?\.ico(")/,
+        /(<link\s+rel="icon"[^>]*href=")\/favicon-96(?:-dev)?\.png(")/,
         `$1${faviconHref}$2`
       );
     },
     configureServer(server) {
-      // Browsers that auto-request /favicon.ico also get the dev icon.
       server.middlewares.use((req, _res, next) => {
-        if (req.url === "/favicon.ico" || req.url?.startsWith("/favicon.ico?")) {
+        const url = req.url ?? "";
+        if (url === "/favicon-96.png" || url.startsWith("/favicon-96.png?")) {
+          req.url = "/favicon-96-dev.png";
+        } else if (url === "/favicon.ico" || url.startsWith("/favicon.ico?")) {
+          // Pedido implícito del browser → icono de desarrollo.
           req.url = "/favicon-dev.ico";
         }
         next();
@@ -56,8 +60,10 @@ function faviconByMode(mode: string): Plugin {
       if (isDev) return;
       const outDir = outputOptions.dir;
       if (!outDir) return;
-      const dest = path.join(outDir, "favicon-dev.ico");
-      if (fs.existsSync(dest)) fs.unlinkSync(dest);
+      for (const file of devAssets) {
+        const dest = path.join(outDir, file);
+        if (fs.existsSync(dest)) fs.unlinkSync(dest);
+      }
     },
   };
 }
