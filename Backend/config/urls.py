@@ -83,6 +83,9 @@ def api_root(request):
         'tickets': {
             'list': request.build_absolute_uri('/tickets/'),
         },
+        'certificates': {
+            'search': request.build_absolute_uri('/certificates/search/'),
+        },
         'attachments': {
             'list': request.build_absolute_uri('/attachments/'),
         },
@@ -108,6 +111,7 @@ urlpatterns = [
     path('quotes/', include('quotes.urls')),
     path('notes/', include('notes.urls')),
     path('tickets/', include('tickets.urls')),
+    path('certificates/', include('integrations.certificates.urls')),
 ]
 
 # PRE-LAUNCH
