@@ -27,6 +27,41 @@ function seoOriginStaticFiles(siteOrigin: string): Plugin {
   };
 }
 
+/**
+ * favicon-dev.ico en desarrollo; favicon.ico en prod.
+ * En build de producción elimina favicon-dev.ico de dist/ (no se despliega).
+ */
+function faviconByMode(mode: string): Plugin {
+  const isDev = mode === "development";
+  const faviconHref = isDev ? "/favicon-dev.ico" : "/favicon.ico";
+
+  return {
+    name: "favicon-by-mode",
+    transformIndexHtml(html) {
+      return html.replace(
+        /(<link\s+rel="icon"\s+href=")\/favicon(?:-dev)?\.ico(")/,
+        `$1${faviconHref}$2`
+      );
+    },
+    configureServer(server) {
+      // Browsers that auto-request /favicon.ico also get the dev icon.
+      server.middlewares.use((req, _res, next) => {
+        if (req.url === "/favicon.ico" || req.url?.startsWith("/favicon.ico?")) {
+          req.url = "/favicon-dev.ico";
+        }
+        next();
+      });
+    },
+    writeBundle(outputOptions) {
+      if (isDev) return;
+      const outDir = outputOptions.dir;
+      if (!outDir) return;
+      const dest = path.join(outDir, "favicon-dev.ico");
+      if (fs.existsSync(dest)) fs.unlinkSync(dest);
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -48,6 +83,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       mode === "development" && componentTagger(),
+      faviconByMode(mode),
       seoOriginStaticFiles(siteOrigin),
     ].filter(Boolean),
     resolve: {
