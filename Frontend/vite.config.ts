@@ -27,6 +27,47 @@ function seoOriginStaticFiles(siteOrigin: string): Plugin {
   };
 }
 
+/**
+ * favicon-96-dev.png en desarrollo; favicon-96.png en prod.
+ * En build de producción elimina los assets *-dev* de dist/ (no se despliegan).
+ */
+function faviconByMode(mode: string): Plugin {
+  const isDev = mode === "development";
+  const faviconHref = isDev ? "/favicon-96-dev.png" : "/favicon-96.png";
+  const devAssets = ["favicon-96-dev.png", "favicon-dev.ico"];
+
+  return {
+    name: "favicon-by-mode",
+    transformIndexHtml(html) {
+      return html.replace(
+        /(<link\s+rel="icon"[^>]*href=")\/favicon-96(?:-dev)?\.png(")/,
+        `$1${faviconHref}$2`
+      );
+    },
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        const url = req.url ?? "";
+        if (url === "/favicon-96.png" || url.startsWith("/favicon-96.png?")) {
+          req.url = "/favicon-96-dev.png";
+        } else if (url === "/favicon.ico" || url.startsWith("/favicon.ico?")) {
+          // Pedido implícito del browser → icono de desarrollo.
+          req.url = "/favicon-dev.ico";
+        }
+        next();
+      });
+    },
+    writeBundle(outputOptions) {
+      if (isDev) return;
+      const outDir = outputOptions.dir;
+      if (!outDir) return;
+      for (const file of devAssets) {
+        const dest = path.join(outDir, file);
+        if (fs.existsSync(dest)) fs.unlinkSync(dest);
+      }
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -48,6 +89,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       mode === "development" && componentTagger(),
+      faviconByMode(mode),
       seoOriginStaticFiles(siteOrigin),
     ].filter(Boolean),
     resolve: {
