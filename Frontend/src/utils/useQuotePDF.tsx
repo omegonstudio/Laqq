@@ -599,7 +599,11 @@ export const generateQuotePdf = async (quote: QuoteRender): Promise<void> => {
     <QuotePDF quote={quote} logoBase64={logoBase64} />
   ).toBlob();
   const url = URL.createObjectURL(blob);
-  window.open(url, "_blank");
-  // El navegador abre el PDF en su visor nativo, que incluye el botón de imprimir
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${quote.quote_number}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 };
