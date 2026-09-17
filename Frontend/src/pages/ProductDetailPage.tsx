@@ -14,10 +14,18 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearSelected, fetchProduct } from "@/store/productSlice";
 import { fetchAllCategories } from "@/store/categoriesSlice";
 import { hasSpecTableContent } from "@/types/types";
-import { buildCatalogCrumbs } from "@/utils/data/categories";
+import {
+  buildCatalogCrumbs,
+  isCategoryUnderConsumibles,
+} from "@/utils/data/categories";
 import CatalogBreadcrumb from "@/components/molecules/CatalogBreadcrumb";
 import ProductImage from "@/components/atoms/ProductImage";
 import { ensureHttpsUrl } from "@/utils/secureUrl";
+
+const displayOrDash = (value?: string | null) => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : "-";
+};
 
 const formatDescription = (description: string) => {
   if (!description) return "";
@@ -135,6 +143,21 @@ const ProductDetailPage = () => {
       }),
     [categories, product?.category_id, product?.name]
   );
+  const isConsumible = useMemo(
+    () =>
+      product?.category_id
+        ? isCategoryUnderConsumibles(product.category_id, categories)
+        : false,
+    [product?.category_id, categories]
+  );
+  // No hay campo `presentacion` en el API; las variantes modelan presentaciones.
+  const presentacionValue = useMemo(() => {
+    const codes =
+      product?.variants
+        ?.map((variant) => variant.code?.trim())
+        .filter((code): code is string => Boolean(code)) ?? [];
+    return codes.length > 0 ? codes.join(", ") : "";
+  }, [product?.variants]);
 
   // ─── ZONA 2b: useEffect que depende de las derivaciones ──────────────────
   useEffect(() => {
@@ -366,13 +389,54 @@ const ProductDetailPage = () => {
             <Badge variant="primary" className="mb-4">
               {product.brand}
             </Badge>
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-              <h1 className="text-4xl font-bold">{product.name}</h1>
-            
+            <h1 className="text-4xl font-bold mb-4">{product.name}</h1>
+            {isConsumible && (
+              <div className="mb-4 grid grid-cols-2 sm:grid-cols-3 gap-4 rounded-xl border border-border bg-muted/30 p-4">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Cód. QQ
+                  </p>
+                  <p className="text-sm font-medium">
+                    {displayOrDash(product.product_code)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Cód. Fab.
+                  </p>
+                  <p className="text-sm font-medium">
+                  {displayOrDash(product.articulo)}
+                  </p>
+                </div>
 
-            </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Sedronar
+                  </p>
+                  <p className="text-sm font-medium">
+                    {displayOrDash(product.sedronar)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Presentación
+                  </p>
+                  <p className="text-sm font-medium">
+                    {displayOrDash(presentacionValue)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                    CAS
+                  </p>
+                  <p className="text-sm font-medium">
+                    {displayOrDash(product.cas)}
+                  </p>
+                </div>
+              </div>
+              
+            )}
             <div className="mb-4 flex flex-wrap items-center gap-3">
-            
               {(product.esp_url || product.hds_url) && (
                 <div className="flex items-center gap-1">
                   <p className="text-sm  font-bold">ESP:</p>
@@ -387,7 +451,7 @@ const ProductDetailPage = () => {
                       <FileDown className="w-5 h-5 hover:text-primary transition-colors" />
                     </a>
                   )}
-                   <p className="text-sm  font-bold">HDS:</p>
+                  <p className="text-sm  font-bold">HDS:</p>
                   {product.hds_url && (
                     <a
                       href={product.hds_url}
