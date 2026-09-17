@@ -391,52 +391,87 @@ const ProductDetailPage = () => {
             </Badge>
             <h1 className="text-4xl font-bold mb-4">{product.name}</h1>
             {isConsumible && (
-              <div className="mb-4 grid grid-cols-2 sm:grid-cols-3 gap-4 rounded-xl border border-border bg-muted/30 p-4">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                    Cód. QQ
-                  </p>
-                  <p className="text-sm font-medium">
-                    {displayOrDash(product.product_code)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                    Cód. Fab.
-                  </p>
-                  <p className="text-sm font-medium">
-                  {displayOrDash(product.articulo)}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                    Sedronar
-                  </p>
-                  <p className="text-sm font-medium">
-                    {displayOrDash(product.sedronar)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                    Presentación
-                  </p>
-                  <p className="text-sm font-medium">
-                    {displayOrDash(presentacionValue)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                    CAS
-                  </p>
-                  <p className="text-sm font-medium">
-                    {displayOrDash(product.cas)}
-                  </p>
-                </div>
+            <div className="mb-4 grid grid-cols-2 gap-4 rounded-xl border border-border bg-muted/30 p-4">
+              {/* Código */}
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                  Código
+                </p>
+                <p className="text-sm font-medium">
+                  {displayOrDash(product.product_code)}
+                </p>
               </div>
-              
-            )}
-            <div className="mb-4 flex flex-wrap items-center gap-3">
+
+              {/* Sedronar */}
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                  Sedronar
+                </p>
+                <p className="text-sm font-medium">
+                  {displayOrDash(product.sedronar)}
+                </p>
+              </div>
+
+              {/* Presentación */}
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                  Presentación
+                </p>
+                <p className="text-sm font-medium">
+                  {displayOrDash(presentacionValue)}
+                </p>
+              </div>
+
+              {/* CAS */}
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                  CAS
+                </p>
+                <p className="text-sm font-medium">
+                  {displayOrDash(product.cas)}
+                </p>
+              </div>
+
+              {/* ESP */}
+              {product.esp_url && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                    ESP:
+                  </p>
+
+                  <a
+                    href={product.esp_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Descargar especificación PDF"
+                    className="inline-flex items-center justify-center p-2 rounded-md hover:bg-muted transition-colors"
+                  >
+                    <FileDown className="w-5 h-5 hover:text-primary transition-colors" />
+                  </a>
+                </div>
+              )}
+
+              {/* HDS */}
+              {product.hds_url && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                    HDS:
+                  </p>
+
+                  <a
+                    href={product.hds_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Descargar HDS"
+                    className="inline-flex items-center justify-center p-2 rounded-md hover:bg-muted transition-colors"
+                  >
+                    <Files className="w-5 h-5 hover:text-primary transition-colors" />
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+{/*             <div className="mb-4 flex flex-wrap items-center gap-3">
               {(product.esp_url || product.hds_url) && (
                 <div className="flex items-center gap-1">
                   <p className="text-sm  font-bold">ESP:</p>
@@ -465,7 +500,7 @@ const ProductDetailPage = () => {
                   )}
                 </div>
               )}
-            </div>
+            </div> */}
               <div className="max-h-[500px] overflow-y-auto pr-3">
                 <div
                   className="
