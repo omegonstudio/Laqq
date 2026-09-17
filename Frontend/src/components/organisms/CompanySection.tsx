@@ -247,7 +247,8 @@ const CompanySection = () => {
             "ech.webp",
             "iludest.svg",
             "scavini.jpg",
-            "stakpure.png"
+            "stakpure.png",
+            "kruss.png",
           ].map((logo, index) => (
             <div
             key={index}
