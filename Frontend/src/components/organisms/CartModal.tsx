@@ -1,9 +1,8 @@
 import { X, Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import Button from "@/components/atoms/Button";
+import ProductImage from "@/components/atoms/ProductImage";
 import { Link } from "react-router-dom";
-import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
-import { ensureHttpsUrl } from "@/utils/secureUrl";
 
 interface CartModalProps {
   isOpen: boolean;
@@ -49,8 +48,8 @@ const CartModal = ({ isOpen, onClose }: CartModalProps) => {
                 >
                   <div className="flex gap-4">
                     <div className="w-20 h-20 bg-muted rounded-lg flex-shrink-0">
-                      <img
-                        src={item.image_url ? ensureHttpsUrl(item.image_url) : placeholderImage}
+                      <ProductImage
+                        src={item.image_url}
                         alt={item.name}
                         width={80}
                         height={80}

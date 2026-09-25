@@ -29,7 +29,6 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       LOAD_SEED_DATA: ${LOAD_SEED_DATA:-false}
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
     volumes:
       - backend_static:/app/staticfiles
       - backend_media:/app/mediafiles
@@ -37,7 +36,7 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f -H 'Host: laqq.com.ar' http://localhost:8000/admin/login/ || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/admin/login/ || exit 1"]
       start_period: 90s
       interval: 30s
       timeout: 10s
@@ -53,6 +52,13 @@ services:
       args:
         # Ruta relativa: funciona con HTTP actual y HTTPS en GO LIVE.
         VITE_API_BASE_URL: /api
+        # PROD (.env): VITE_SITE_ORIGIN=https://laqq.com.ar (default)
+        # DEV  (.env): VITE_SITE_ORIGIN=http://laqq.omegon.com.ar
+        VITE_SITE_ORIGIN: ${VITE_SITE_ORIGIN:-https://laqq.com.ar}
+        # PROD (.env): NGINX_CONFIG=nginx.conf (default)
+        # DEV  (.env): NGINX_CONFIG=nginx.dev.conf
+        NGINX_CONFIG: ${NGINX_CONFIG:-nginx.conf}
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:-}
     container_name: laqq-frontend
     depends_on:
       backend:

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import InputField from "../atoms/InputField";
 import Button from "../atoms/Button";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -10,6 +11,10 @@ import { ProductSearchCombobox } from "./ProductSearch";
 import { fetchAllProducts } from "@/store/productSlice";
 import { toast } from "@/hooks/use-toast";
 import { Product, Variants } from "@/types/types";
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as
+  | string
+  | undefined;
 
 const initialState: QuoteFormState = {
   contact: {
@@ -49,6 +54,9 @@ function QuoteForm() {
   const { creating } = useAppSelector((state) => state.quotes);
 
   const [formState, setFormState] = useState<QuoteFormState>(initialState);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<TurnstileInstance>(null);
+  const needsTurnstile = Boolean(TURNSTILE_SITE_KEY);
 
   // Sincronizar items del carrito con el formulario
   // Sincronizar items del carrito con el formulario
@@ -198,10 +206,19 @@ function QuoteForm() {
       return;
     }
 
+    if (needsTurnstile && !turnstileToken) {
+      toast({
+        title: "Completá la verificación anti-spam",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const result = await dispatch(
         createQuoteFromForm({
           ...formState,
+          turnstile_token: turnstileToken || undefined,
           items: formState.items.map(({ variant, ...item }) => ({
             ...item,
             ...(variant ? { variant } : {}), // ⬅️ solo incluir si tiene valor
@@ -213,6 +230,8 @@ function QuoteForm() {
 
       // Limpiar formulario y carrito
       setFormState(initialState);
+      setTurnstileToken("");
+      turnstileRef.current?.reset();
       clearCart();
     } catch (err) {
       console.error("Error al crear cotización:", err);
@@ -404,12 +423,26 @@ function QuoteForm() {
         />
       </div>
 
+      {needsTurnstile ? (
+        <Turnstile
+          ref={turnstileRef}
+        siteKey={TURNSTILE_SITE_KEY as string}
+          onSuccess={setTurnstileToken}
+          onExpire={() => setTurnstileToken("")}
+          onError={() => setTurnstileToken("")}
+        />
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Falta VITE_TURNSTILE_SITE_KEY: el envío público no está protegido.
+        </p>
+      )}
+
       {/* Botón de envío */}
       <Button
         type="submit"
         size="lg"
         className="w-full"
-        disabled={creating || loadingProducts}
+        disabled={creating || loadingProducts || (needsTurnstile && !turnstileToken)}
       >
         {creating ? "Creando cotización..." : "Enviar Solicitud"}
       </Button>

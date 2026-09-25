@@ -305,6 +305,7 @@ export interface QuoteFormState {
     unit_price?: string;
     variant?: string;
   }>;
+  turnstile_token?: string;
 }
 
 // =================== METADATA TYPES ===================

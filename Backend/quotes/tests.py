@@ -1,3 +1,6 @@
+from unittest.mock import patch
+
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
@@ -712,3 +715,93 @@ class QuoteSendUpdatedTestCase(APITestCase):
         response = unauth_client.post(url)
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+@override_settings(TURNSTILE_SECRET_KEY='test-secret', TURNSTILE_ENABLED=True)
+class QuoteFromPackageAntiSpamTestCase(APITestCase):
+    """Turnstile + throttle + TLDs de prueba en POST /quotes/list/from-package/."""
+
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+        ContactState.objects.create(id='new', name='New')
+        QuoteType.objects.create(id='standard', name='Standard')
+        QuoteState.objects.create(id='pending', name='Pendiente')
+        self.url = '/quotes/list/from-package/'
+        self.payload = {
+            'contact': {
+                'email': 'cliente@empresa.com',
+                'first_name': 'Juan',
+                'last_name': 'Perez',
+            },
+            'quote': {},
+        }
+
+    def test_anon_without_token_rejected(self):
+        response = self.client.post(self.url, self.payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('turnstile_token', str(response.data))
+        self.assertEqual(Quote.objects.count(), 0)
+
+    @patch('quotes.views.verify_turnstile_token', return_value=False)
+    def test_anon_invalid_token_rejected(self, _mock):
+        data = {**self.payload, 'turnstile_token': 'bad-token'}
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Quote.objects.count(), 0)
+
+    @patch('quotes.views.verify_turnstile_token', return_value=True)
+    def test_anon_valid_token_creates_quote(self, _mock):
+        data = {**self.payload, 'turnstile_token': 'ok-token'}
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Quote.objects.count(), 1)
+
+    @patch('quotes.views.verify_turnstile_token', return_value=True)
+    def test_anon_burst_throttle(self, _mock):
+        for i in range(3):
+            data = {
+                **self.payload,
+                'turnstile_token': 'ok-token',
+                'contact': {
+                    **self.payload['contact'],
+                    'email': f'c{i}@empresa.com',
+                },
+            }
+            response = self.client.post(self.url, data, format='json')
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        data = {
+            **self.payload,
+            'turnstile_token': 'ok-token',
+            'contact': {**self.payload['contact'], 'email': 'c3@empresa.com'},
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+    def test_staff_without_token_ok(self):
+        user_type = UserType.objects.create(id='admin', name='Admin')
+        user = User.objects.create_user(username='admin', password='pass123', is_staff=True)
+        user.user_type = user_type
+        user.save()
+        self.client.force_authenticate(user=user)
+        response = self.client.post(self.url, self.payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Quote.objects.count(), 1)
+
+    def test_blocked_tld_rejected(self):
+        user_type = UserType.objects.create(id='admin', name='Admin')
+        user = User.objects.create_user(username='admin', password='pass123', is_staff=True)
+        user.user_type = user_type
+        user.save()
+        self.client.force_authenticate(user=user)
+        data = {
+            'contact': {
+                'email': 'sample@email.tst',
+                'first_name': 'e',
+                'last_name': 'e',
+            },
+            'quote': {},
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Quote.objects.count(), 0)

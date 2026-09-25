@@ -73,7 +73,7 @@ export const convertQuotesTypes = (type: QuoteTypeEnum): string => {
     case "processed":
       return "Procesados";
     case "supplies":
-      return "Suministros";
+      return "Consumibles";
     case "standard":
       return "Estándar";
     case "express":

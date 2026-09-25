@@ -94,9 +94,40 @@ class ProductViewSet(viewsets.ModelViewSet):
     authentication_classes = CATALOG_AUTH
     filter_backends = [DjangoFilterBackend, UnaccentSearchFilter, OrderingFilter]
     filterset_class = ProductFilter
-    search_fields = ['name', 'product_code', 'brand__name', 'description']
+    search_fields = ['name', 'product_code', 'brand__name', 'description', 'cas']
     ordering_fields = ['name', 'created_at', 'updated_at']
-    ordering = ['-created_at']
+    # Catálogo general: orden estable por nombre (no por created_at).
+    # Con -created_at, cargas recientes (p.ej. Consumibles) monopolizaban las
+    # primeras páginas y parecía que se priorizaba esa categoría.
+    ordering = ['name', 'id']
+
+    @swagger_auto_schema(
+        operation_description=(
+            "Exporta productos a Excel en el formato de carga masiva. "
+            "Aplica los mismos filtros que el listado (search, brand, etc.). "
+            "Incluye activos e inactivos salvo que se filtre is_active. Solo staff."
+        ),
+        responses={200: "Archivo Excel"},
+    )
+    @action(detail=False, methods=['get'], url_path='export', permission_classes=[IsAdminUserType])
+    def export(self, request):
+        from .exporter import build_products_workbook, export_queryset
+
+        queryset = self.filter_queryset(export_queryset())
+        try:
+            buffer = build_products_workbook(queryset)
+        except ImportError:
+            return Response(
+                {'error': 'openpyxl no está instalado en el servidor.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = 'attachment; filename="productos.xlsx"'
+        return response
 
     @swagger_auto_schema(
         operation_description="Sube un archivo y lo asocia al producto",

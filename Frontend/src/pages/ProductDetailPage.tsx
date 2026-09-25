@@ -1,8 +1,9 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  FileDown,
+  Files,
   ShoppingCart,
 } from "lucide-react";
 import Button from "@/components/atoms/Button";
@@ -11,8 +12,20 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearSelected, fetchProduct } from "@/store/productSlice";
-import placeholderImage from "@/assets/laqq_marca_color_neg.svg";
+import { fetchAllCategories } from "@/store/categoriesSlice";
+import { hasSpecTableContent } from "@/types/types";
+import {
+  buildCatalogCrumbs,
+  isCategoryUnderConsumibles,
+} from "@/utils/data/categories";
+import CatalogBreadcrumb from "@/components/molecules/CatalogBreadcrumb";
+import ProductImage from "@/components/atoms/ProductImage";
 import { ensureHttpsUrl } from "@/utils/secureUrl";
+
+const displayOrDash = (value?: string | null) => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : "-";
+};
 
 const formatDescription = (description: string) => {
   if (!description) return "";
@@ -41,6 +54,7 @@ const ProductDetailPage = () => {
     selectedLoading,
     selectedError,
   } = useAppSelector((state) => state.products);
+  const { list: categories } = useAppSelector((state) => state.categories);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const variantsRef = useRef<HTMLDivElement>(null);
@@ -62,6 +76,12 @@ const ProductDetailPage = () => {
     };
   }, [id, dispatch]);
 
+  useEffect(() => {
+    if (categories.length === 0) {
+      dispatch(fetchAllCategories({}));
+    }
+  }, [categories.length, dispatch]);
+
   // ─── ZONA 2: Derivaciones ─────────────────────────────────────────────────
   const isImage = (contentType?: string) => contentType?.startsWith("image/");
   const variantCount = product?.variants?.length ?? 0;
@@ -74,16 +94,77 @@ const ProductDetailPage = () => {
     : [];
   const imageAttachments =
     product?.attachments?.filter((att) => isImage(att.content_type_str)) ?? [];
-  const fileAttachments =
-    product?.attachments?.filter((att) => !isImage(att.content_type_str)) ?? [];
-  const showDetailsSection = hasVariants || fileAttachments.length > 0;
+  const documentDownloads = useMemo(() => {
+    const fileAttachments =
+      product?.attachments?.filter((att) => !isImage(att.content_type_str)) ??
+      [];
+
+    const docs: {
+      id: string;
+      file_name: string;
+      content_type_str: string;
+      url: string;
+    }[] = fileAttachments.map((file) => ({
+      id: file.id,
+      file_name: file.file_name,
+      content_type_str: file.content_type_str ?? "application/pdf",
+      url: file.url || file.file || "",
+    }));
+
+    if (product?.esp_url) {
+      docs.push({
+        id: "esp",
+        file_name: "Especificación (ESP)",
+        content_type_str: "application/pdf",
+        url: product.esp_url,
+      });
+    }
+
+    if (product?.hds_url) {
+      docs.push({
+        id: "hds",
+        file_name: "Hoja de Seguridad (HDS)",
+        content_type_str: "application/pdf",
+        url: product.hds_url,
+      });
+    }
+
+    return docs;
+  }, [product?.attachments, product?.esp_url, product?.hds_url]);
+  const specTable = product?.spec_table;
+  const showSpecTable = hasSpecTableContent(specTable);
+  const showDetailsSection = hasVariants || documentDownloads.length > 0;
+  const crumbs = useMemo(
+    () =>
+      buildCatalogCrumbs({
+        categories,
+        categoryId: product?.category_id,
+        productName: product?.name,
+      }),
+    [categories, product?.category_id, product?.name]
+  );
+  const isConsumible = useMemo(
+    () =>
+      product?.category_id
+        ? isCategoryUnderConsumibles(product.category_id, categories)
+        : false,
+    [product?.category_id, categories]
+  );
+  // No hay campo `presentacion` en el API; las variantes modelan presentaciones.
+  const presentacionValue = useMemo(() => {
+    const codes =
+      product?.variants
+        ?.map((variant) => variant.code?.trim())
+        .filter((code): code is string => Boolean(code)) ?? [];
+    return codes.length > 0 ? codes.join(", ") : "";
+  }, [product?.variants]);
 
   // ─── ZONA 2b: useEffect que depende de las derivaciones ──────────────────
   useEffect(() => {
-    if (!hasVariants && fileAttachments.length > 0) {
+    if (!hasVariants && documentDownloads.length > 0) {
       setActiveTab("files");
     }
-  }, [hasVariants, fileAttachments.length]);
+  }, [hasVariants, documentDownloads.length]);
 
   // ─── ZONA 3: Early returns ────────────────────────────────────────────────
   if (selectedLoading) {
@@ -148,7 +229,7 @@ const ProductDetailPage = () => {
       );
     }
     if (imageArray.length === 0) {
-      imageArray.push({ url: placeholderImage, isMain: true });
+      imageArray.push({ url: "", isMain: true });
     }
     return imageArray;
   };
@@ -207,13 +288,7 @@ const ProductDetailPage = () => {
   return (
     <div className="py-16">
       <div className="container mx-auto px-4">
-        <Link
-          to="/products"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver al Catálogo
-        </Link>
+        <CatalogBreadcrumb items={crumbs} className="mb-8" />
 
             <div className="grid lg:grid-cols-2 gap-12 items-start mb-12">
             <div className="bg-background rounded-2xl p-8 border border-border">            {/* Contenedor de la imagen con altura fija */}
@@ -221,8 +296,8 @@ const ProductDetailPage = () => {
               {" "}
               {/* Altura fija aquí */}
               <div className="flex items-center bg-transparent justify-center h-full mb-4">
-                <img
-                  src={images[currentImageIndex]?.url || placeholderImage}
+                <ProductImage
+                  src={images[currentImageIndex]?.url}
                   alt={`${product.name} - Imagen ${currentImageIndex + 1}`}
                   width={800}
                   height={500}
@@ -290,8 +365,8 @@ const ProductDetailPage = () => {
                         : "border-transparent hover:border-gray-300"
                     }`}
                   >
-                    <img
-                      src={image.url || placeholderImage}
+                    <ProductImage
+                      src={image.url}
                       alt={`Miniatura ${index + 1} de ${product.name}`}
                       width={64}
                       height={64}
@@ -315,6 +390,117 @@ const ProductDetailPage = () => {
               {product.brand}
             </Badge>
             <h1 className="text-4xl font-bold mb-4">{product.name}</h1>
+            {isConsumible && (
+            <div className="mb-4 grid grid-cols-2 gap-4 rounded-xl border border-border bg-muted/30 p-4">
+              {/* Código */}
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                  Código
+                </p>
+                <p className="text-sm font-medium">
+                  {displayOrDash(product.product_code)}
+                </p>
+              </div>
+
+              {/* Sedronar */}
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                  Sedronar
+                </p>
+                <p className="text-sm font-medium">
+                  {displayOrDash(product.sedronar)}
+                </p>
+              </div>
+
+              {/* Presentación */}
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                  Presentación
+                </p>
+                <p className="text-sm font-medium">
+                  {displayOrDash(presentacionValue)}
+                </p>
+              </div>
+
+              {/* CAS */}
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                  CAS
+                </p>
+                <p className="text-sm font-medium">
+                  {displayOrDash(product.cas)}
+                </p>
+              </div>
+
+              {/* ESP */}
+              {product.esp_url && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                    ESP:
+                  </p>
+
+                  <a
+                    href={product.esp_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Descargar especificación PDF"
+                    className="inline-flex items-center justify-center p-2 rounded-md hover:bg-muted transition-colors"
+                  >
+                    <FileDown className="w-8 h-8 hover:text-primary transition-colors" />
+                  </a>
+                </div>
+              )}
+
+              {/* HDS */}
+              {product.hds_url && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                    HDS:
+                  </p>
+
+                  <a
+                    href={product.hds_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Descargar HDS"
+                    className="inline-flex items-center justify-center p-2 rounded-md hover:bg-muted transition-colors"
+                  >
+                    <Files className="w-8 h-8 hover:text-primary transition-colors" />
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+{/*             <div className="mb-4 flex flex-wrap items-center gap-3">
+              {(product.esp_url || product.hds_url) && (
+                <div className="flex items-center gap-1">
+                  <p className="text-sm  font-bold">ESP:</p>
+                  {product.esp_url && (
+                    <a
+                      href={product.esp_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Descargar especificación PDF"
+                      className="inline-flex items-center justify-center p-2 rounded-md hover:bg-muted transition-colors"
+                    >
+                      <FileDown className="w-5 h-5 hover:text-primary transition-colors" />
+                    </a>
+                  )}
+                  <p className="text-sm  font-bold">HDS:</p>
+                  {product.hds_url && (
+                    <a
+                      href={product.hds_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Descargar HDS"
+                      className="inline-flex items-center justify-center p-2 rounded-md hover:bg-muted transition-colors"
+                    >
+                      <Files className="w-5 h-5 hover:text-primary transition-colors" />
+                    </a>
+                  )}
+                </div>
+              )}
+            </div> */}
               <div className="max-h-[500px] overflow-y-auto pr-3">
                 <div
                   className="
@@ -398,6 +584,42 @@ const ProductDetailPage = () => {
           </div>
         </div>
 
+        {showSpecTable && specTable && (
+          <div className="bg-card border border-border rounded-2xl p-8 mb-8">
+            <p className="font-bold mb-5">Especificaciones técnicas</p>
+            <div className="overflow-x-auto">
+              <table className="w-full border border-border rounded-xl overflow-hidden text-center">
+                <thead className="bg-primary/10">
+                  <tr>
+                    {specTable.columns.map((col, index) => (
+                      <th
+                        key={`${col}-${index}`}
+                        className="px-4 py-3 text-center font-bold"
+                      >
+                        {col || "\u00A0"}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {specTable.rows.map((row, rowIndex) => (
+                    <tr key={rowIndex} className="border-t border-border">
+                      {specTable.columns.map((_, colIndex) => (
+                        <td
+                          key={colIndex}
+                          className="px-4 py-3 text-sm text-center"
+                        >
+                          {row[colIndex]?.trim() ? row[colIndex] : "-"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Solo mostrar esta sección si hay especificaciones o productos relacionados */}
         {showDetailsSection && (
           <div
@@ -417,7 +639,7 @@ const ProductDetailPage = () => {
                   <p>Variantes del producto</p>
                 </div>
               )}
-              {fileAttachments.length > 0 && (
+              {documentDownloads.length > 0 && (
                 <div
                   onClick={() => setActiveTab("files")}
                   className={`cursor-pointer border-b-2 pb-3 pl-5 ${
@@ -491,15 +713,13 @@ const ProductDetailPage = () => {
                 </table>
               </div>
             )}
-            {fileAttachments.length > 0 && activeTab === "files" && (
+            {documentDownloads.length > 0 && activeTab === "files" && (
               <div className="space-y-4 bg-muted/30 rounded-sm">
                 <div className="grid lg:grid-cols-2 gap-5 mb-12">
-                  {fileAttachments.map((file) => (
+                  {documentDownloads.map((file) => (
                     <div
                       key={file.id}
-                      onClick={() =>
-                        window.open(file.url || file.file, "_blank")
-                      }
+                      onClick={() => window.open(file.url, "_blank")}
                       className="cursor-pointer border rounded-lg p-4 flex items-center gap-3 hover:bg-muted transition-colors w-full overflow-hidden"
                     >
                       <div className="text-2xl shrink-0">📄</div>

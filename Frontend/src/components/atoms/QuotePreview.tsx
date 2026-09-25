@@ -97,7 +97,9 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   const [userError, setUserError] = useState(false);
   const [formState, setFormState] = useState<EditableData | null>(null);
   const [quote, setQuote] = useState<QuoteRender | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const isBusy = isSaving || isSending;
   const [total, setTotal] = useState(0);
   const calculateTotal = (): number => {
     return newProducts.reduce((total, item) => {
@@ -286,7 +288,9 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
     );
   };
 
-  const handleSave = async (): Promise<QuoteRender | null> => {
+  const handleSave = async (options?: {
+    manageLoading?: boolean;
+  }): Promise<QuoteRender | null> => {
     if (formState.user === null || formState.user === undefined) {
       toast({
         title: "El usuario es obligatorio",
@@ -298,7 +302,8 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
 
     if (!formState || !contact) return;
 
-    setIsLoading(true);
+    const manageLoading = options?.manageLoading !== false;
+    if (manageLoading) setIsSaving(true);
 
     try {
       await dispatch(
@@ -394,14 +399,14 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       });
       return null;
     } finally {
-      setIsLoading(false);
+      if (manageLoading) setIsSaving(false);
     }
   };
 
   const handleSendClient = async () => {
-    setIsLoading(true);
+    setIsSending(true);
     try {
-      const updatedQuote = await handleSave();
+      const updatedQuote = await handleSave({ manageLoading: false });
 
       if (!updatedQuote) {
         return;
@@ -428,7 +433,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
       toast({ title: "Error al enviar el correo", variant: "destructive" });
       console.error(error);
     } finally {
-      setIsLoading(false);
+      setIsSending(false);
     }
   };
 
@@ -834,7 +839,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
               size="sm"
               className="gap-2"
               onClick={() => (edit ? handleCancel() : setEdit(true))}
-              disabled={isLoading}
+              disabled={isBusy}
             >
               {edit ? "Cancelar" : "Editar"}
               {!edit && <PencilIcon size={15} />}
@@ -844,19 +849,19 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
               variant="outline"
               size="sm"
               onClick={handleSendClient}
-              disabled={isLoading}
+              disabled={isBusy}
             >
-              {isLoading ? "Enviando al cliente..." : "Enviar al cliente"}
+              {isSending ? "Enviando al cliente..." : "Enviar al cliente"}
             </Button>
 
             {edit && (
               <Button
                 variant="primary"
                 size="sm"
-                onClick={handleSave}
-                disabled={isLoading}
+                onClick={() => handleSave()}
+                disabled={isBusy}
               >
-                {isLoading ? "Guardando..." : "Guardar cambios"}
+                {isSaving ? "Guardando..." : "Guardar cambios"}
               </Button>
             )}
           </div>

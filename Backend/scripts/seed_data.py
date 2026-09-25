@@ -171,7 +171,7 @@ def seed_categories():
     categories = []
 
     # Categorías de nivel 0 (raíz) - obligatorias para carga masiva
-    for name in ["Insumos", "Procesos", "Equipos", "Mobiliario"]:
+    for name in ["Consumibles", "Procesos", "Equipos", "Mobiliario"]:
         cat, _ = Category.objects.get_or_create(
             name=name,
             parent=None,

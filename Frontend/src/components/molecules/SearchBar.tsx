@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "@/store/hooks";
 import { useProductFilters } from "@/hooks/useFilters";
 import { productsApi } from "@/lib/api/products";
+import ProductImage from "@/components/atoms/ProductImage";
 
 interface SearchBarWithResultsProps {
   debounceMs?: number;
@@ -144,11 +145,20 @@ export default function SearchBar({
       (p.brand || "").toLowerCase().includes(searchLower) ||
       (p.description || "").toLowerCase().includes(searchLower) ||
       p.product_code.toLowerCase().includes(searchLower) ||
+      (p.cas || "").toLowerCase().includes(searchLower) ||
       p.variants?.some((v) => v.code?.toLowerCase().includes(searchLower)) ||
       p.variants?.some((v) =>
-        v.technical_specs?.some((spec) =>
-          spec.value?.toLowerCase().includes(searchLower)
+        v.technical_specs?.some(
+          (spec) =>
+            spec.key?.toLowerCase().includes(searchLower) ||
+            spec.value?.toLowerCase().includes(searchLower)
         )
+      ) ||
+      p.spec_table?.columns?.some((c) =>
+        c.toLowerCase().includes(searchLower)
+      ) ||
+      p.spec_table?.rows?.some((row) =>
+        row.some((cell) => cell?.toLowerCase().includes(searchLower))
       )
     );
   }).length;
@@ -204,13 +214,13 @@ export default function SearchBar({
                     }`}
                     onMouseEnter={() => setHighlightedIndex(index)}
                   >
-                    {product.image && (
-                      <img
-                        src={product.image || "/placeholder.svg"}
-                        alt={product.name}
-                        className="w-12 h-12 rounded object-cover flex-shrink-0"
-                      />
-                    )}
+                    <ProductImage
+                      src={product.image_url || product.image}
+                      alt={product.name}
+                      width={48}
+                      height={48}
+                      className="w-12 h-12 rounded object-contain flex-shrink-0 bg-muted/40 p-1"
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground text-sm truncate">
                         {highlightText(product.name, debouncedQuery)}

@@ -11,6 +11,8 @@ from products.models import VariantTechnicalSpec
 from .serializers import QuoteTypeSerializer, QuoteStateSerializer, QuoteSerializer, QuoteItemSerializer, BulkQuoteItemSerializer, QuotePackageSerializer
 from .permissions import CanCreateOrAdmin, AllowPublicQuoteItems
 from .emails import send_updated_quote_to_customer
+from .throttles import QuoteAnonBurstThrottle, QuoteAnonHourThrottle, get_client_ip
+from .turnstile import is_turnstile_enabled, verify_turnstile_token
 import logging
 
 logger = logging.getLogger(__name__)
@@ -61,7 +63,12 @@ class QuoteViewSet(viewsets.ModelViewSet):
     ordering_fields = ['quote_number', 'created_at', 'updated_at', 'total_amount']
     ordering = ['-created_at']
 
-    @action(detail=False, methods=['post'], url_path='from-package')
+    @action(
+        detail=False,
+        methods=['post'],
+        url_path='from-package',
+        throttle_classes=[QuoteAnonBurstThrottle, QuoteAnonHourThrottle],
+    )
     def create_from_package(self, request):
         """
         Crea una cotización completa desde un paquete con gestión inteligente de contactos.
@@ -217,8 +224,24 @@ class QuoteViewSet(viewsets.ModelViewSet):
         - Si no se especifica unit_price en un item, se intenta usar el precio del producto
         - El contacto nuevo se crea con estado "new" si existe, o el primer estado disponible
         - Los items son opcionales, se puede crear una cotización sin items
+        - Anónimos: turnstile_token obligatorio si TURNSTILE está activo
         """
-        serializer = QuotePackageSerializer(data=request.data, context={'request': request})
+        payload = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        token = payload.pop('turnstile_token', None)
+
+        if not getattr(request.user, 'is_authenticated', False) and is_turnstile_enabled():
+            if not token:
+                return Response(
+                    {'detail': 'turnstile_token is required'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if not verify_turnstile_token(token, get_client_ip(request)):
+                return Response(
+                    {'detail': 'Turnstile verification failed'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        serializer = QuotePackageSerializer(data=payload, context={'request': request})
         serializer.is_valid(raise_exception=True)
 
         try:

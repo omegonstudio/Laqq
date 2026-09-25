@@ -35,6 +35,8 @@ export function ProductSearchCombobox({
           if (product.name.toLowerCase().includes(search)) return true;
           // Buscar en código del producto
           if (product.product_code.toLowerCase().includes(search)) return true;
+          // Buscar en CAS (consumibles)
+          if (product.cas?.toLowerCase().includes(search)) return true;
           // Buscar en descripción del producto
           if (
             product.description &&
@@ -48,12 +50,24 @@ export function ProductSearchCombobox({
             )
           )
             return true;
-          // Buscar en valores de especificaciones técnicas de variantes (columnas ad-hoc)
+          // Buscar en el cuadro variable de specs (nombre de columna + valor)
           if (
             product.variants?.some((v) =>
-              v.technical_specs?.some((spec) =>
-                spec.value?.toLowerCase().includes(search)
+              v.technical_specs?.some(
+                (spec) =>
+                  spec.key?.toLowerCase().includes(search) ||
+                  spec.value?.toLowerCase().includes(search)
               )
+            )
+          )
+            return true;
+          // Buscar en tabla de especificaciones técnicas (spec_table)
+          if (
+            product.spec_table?.columns?.some((c) =>
+              c.toLowerCase().includes(search)
+            ) ||
+            product.spec_table?.rows?.some((row) =>
+              row.some((cell) => cell?.toLowerCase().includes(search))
             )
           )
             return true;

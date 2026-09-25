@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Favicons -->
-    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <!-- Favicons: prod = favicon-96.png; dev = favicon-96-dev.png (vite plugin) -->
     <link rel="icon" type="image/png" href="/favicon-96.png" sizes="96x96" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#0b1f2a" />
@@ -195,10 +195,10 @@
       content="Proveedor especializado en equipo de laboratorio, material de consumo y servicios técnicos para la industria científica."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://laqq.com.ar/" />
+    <meta property="og:url" content="%VITE_SITE_ORIGIN%/" />
     <meta
       property="og:image"
-      content="https://laqq.com.ar/laqq_marca_color_neg.png"
+      content="%VITE_SITE_ORIGIN%/laqq_marca_color_neg.png"
     />
     <meta property="og:locale" content="es_AR" />
     <meta property="og:site_name" content="La Química Quirúrgica" />
@@ -216,7 +216,7 @@
     />
     <meta
       name="twitter:image"
-      content="https://laqq.com.ar/laqq_marca_color_neg.png"
+      content="%VITE_SITE_ORIGIN%/laqq_marca_color_neg.png"
     />
 
     <!-- Schema.org Organization + WebSite -->
@@ -226,22 +226,22 @@
         "@graph": [
           {
             "@type": "Organization",
-            "@id": "https://laqq.com.ar/#organization",
+            "@id": "%VITE_SITE_ORIGIN%/#organization",
             "name": "La Química Quirúrgica",
-            "url": "https://laqq.com.ar/",
+            "url": "%VITE_SITE_ORIGIN%/",
             "logo": {
               "@type": "ImageObject",
-              "url": "https://laqq.com.ar/logo-laqq.png"
+              "url": "%VITE_SITE_ORIGIN%/logo-laqq.png"
             },
             "sameAs": ["https://twitter.com/laqq_lab"]
           },
           {
             "@type": "WebSite",
-            "@id": "https://laqq.com.ar/#website",
-            "url": "https://laqq.com.ar/",
+            "@id": "%VITE_SITE_ORIGIN%/#website",
+            "url": "%VITE_SITE_ORIGIN%/",
             "name": "La Química Quirúrgica",
             "publisher": {
-              "@id": "https://laqq.com.ar/#organization"
+              "@id": "%VITE_SITE_ORIGIN%/#organization"
             },
             "inLanguage": "es-AR"
           }

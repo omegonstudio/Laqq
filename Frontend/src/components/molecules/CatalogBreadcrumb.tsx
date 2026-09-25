@@ -8,12 +8,8 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import type { CatalogCrumb } from "@/utils/data/categories";
 import { cn } from "@/lib/utils";
-
-export type CatalogCrumb = {
-  label: string;
-  href?: string;
-};
 
 interface CatalogBreadcrumbProps {
   items: CatalogCrumb[];

@@ -40,7 +40,7 @@ const CompanySection = () => {
           <p>
             Somos una empresa especializada en soluciones integrales para
             laboratorios industriales y de investigación. Combinamos
-            asesoramiento técnico, provisión de insumos y equipamiento, y
+            asesoramiento técnico, provisión de consumibles y equipamiento, y
             soporte posventa confiable.
           </p>
 
@@ -247,7 +247,8 @@ const CompanySection = () => {
             "ech.webp",
             "iludest.svg",
             "scavini.jpg",
-            "stakpure.png"
+            "stakpure.png",
+            "kruss.png",
           ].map((logo, index) => (
             <div
             key={index}

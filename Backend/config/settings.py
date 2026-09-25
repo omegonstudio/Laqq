@@ -38,15 +38,26 @@ ALLOWED_HOSTS = [
 
 AUTH_USER_MODEL = 'users.User'
 
+# Origins CSV vía .env (DEV/PROD). Default = lista histórica de PROD (comportamiento idéntico
+# si la variable no está definida).
+# DEV ejemplo: CSRF_TRUSTED_ORIGINS=http://laqq.omegon.com.ar
+_CSRF_TRUSTED_ORIGINS_DEFAULT = (
+    'http://laqq.com.ar,'
+    'http://www.laqq.com.ar,'
+    'http://laqq.com,'
+    'https://laqq.com.ar,'
+    'https://www.laqq.com.ar,'
+    'https://laqq.com,'
+    'http://www.laqq.com,'
+    'https://www.laqq.com'
+)
 CSRF_TRUSTED_ORIGINS = [
-    "http://laqq.com.ar",
-    "http://www.laqq.com.ar",
-    "http://laqq.com",
-    "https://laqq.com.ar",
-    "https://www.laqq.com.ar",
-    "https://laqq.com",
-    "http://www.laqq.com",
-    "https://www.laqq.com"
+    o.strip()
+    for o in config(
+        'CSRF_TRUSTED_ORIGINS',
+        default=_CSRF_TRUSTED_ORIGINS_DEFAULT,
+    ).split(',')
+    if o.strip()
 ]
 
 # PRE-LAUNCH (y recomendado también en producción):
@@ -225,6 +236,12 @@ REST_FRAMEWORK = {
     ],
     'DATETIME_FORMAT': '%Y-%m-%d %H:%M:%S',
     'DATE_FORMAT': '%Y-%m-%d',
+    # nginx (1 hop). Sin esto un bot rota X-Forwarded-For y esquiva el throttle.
+    'NUM_PROXIES': 1,
+    'DEFAULT_THROTTLE_RATES': {
+        'quote_anon_burst': '3/min',
+        'quote_anon_hour': '8/hour',
+    },
 }
 
 # Simple JWT
@@ -245,22 +262,33 @@ SIMPLE_JWT = {
 }
 
 # CORS Settings
+# Same-origin SPA (/api) no requiere CORS; la lista cubre cross-origin legítimo
+# (dev local, tools). Default = lista histórica (localhost + PROD).
+# DEV ejemplo: CORS_ALLOWED_ORIGINS=http://laqq.omegon.com.ar
 FRONTEND_PORT = config('FRONTEND_PORT', default='3000')
+_CORS_ALLOWED_ORIGINS_DEFAULT = (
+    f'http://localhost:{FRONTEND_PORT},'
+    f'http://127.0.0.1:{FRONTEND_PORT},'
+    'http://localhost:8080,'
+    'http://127.0.0.1:8080,'
+    'http://localhost:8081,'
+    'http://127.0.0.1:8081,'
+    'http://laqq.com.ar,'
+    'https://laqq.com.ar,'
+    'http://www.laqq.com.ar,'
+    'https://www.laqq.com.ar,'
+    'http://laqq.com,'
+    'https://laqq.com,'
+    'http://www.laqq.com,'
+    'https://www.laqq.com'
+)
 CORS_ALLOWED_ORIGINS = [
-    f"http://localhost:{FRONTEND_PORT}",
-    f"http://127.0.0.1:{FRONTEND_PORT}",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-    "http://localhost:8081",
-    "http://127.0.0.1:8081",
-    "http://laqq.com.ar",
-    "https://laqq.com.ar",
-    "http://www.laqq.com.ar",
-    "https://www.laqq.com.ar",
-    "http://laqq.com",
-    "https://laqq.com",
-    "http://www.laqq.com",
-    "https://www.laqq.com",
+    o.strip()
+    for o in config(
+        'CORS_ALLOWED_ORIGINS',
+        default=_CORS_ALLOWED_ORIGINS_DEFAULT,
+    ).split(',')
+    if o.strip()
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -385,6 +413,10 @@ PRODUCT_IMAGE_HOST_ALLOWLIST = [
     h.strip() for h in config('PRODUCT_IMAGE_HOST_ALLOWLIST', default='').split(',') if h.strip()
 ]
 ENABLE_PRODUCT_IMAGE_DOWNLOADS = config('ENABLE_PRODUCT_IMAGE_DOWNLOADS', default=True, cast=bool)
+
+# Cloudflare Turnstile (cotizaciones públicas). Activo si hay secret.
+TURNSTILE_SECRET_KEY = config('TURNSTILE_SECRET_KEY', default='')
+TURNSTILE_ENABLED = bool(TURNSTILE_SECRET_KEY)
 
 # Detrás de nginx con TLS: Django debe generar URLs absolutas con https://
 # (evita mixed content en logo_url y media servidos por la API).

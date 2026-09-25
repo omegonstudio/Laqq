@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+# Volume montado pisa el chown de la imagen (queda root). Arreglar y bajar a appuser.
+if [ "$(id -u)" = "0" ]; then
+    mkdir -p /app/mediafiles /app/staticfiles
+    chown -R appuser:appgroup /app/mediafiles /app/staticfiles
+    exec gosu appuser "$0" "$@"
+fi
+
 echo "========================================"
 echo "  LAQQ - Initializing Application"
 echo "========================================"

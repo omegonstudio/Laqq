@@ -12,6 +12,14 @@ COPY . .
 ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
+# Origin absoluto SEO (canonical, OG, robots, sitemap). Fallback PROD.
+ARG VITE_SITE_ORIGIN=https://laqq.com.ar
+ENV VITE_SITE_ORIGIN=$VITE_SITE_ORIGIN
+
+# Cloudflare Turnstile (site key pública, horneada en el JS).
+ARG VITE_TURNSTILE_SITE_KEY=
+ENV VITE_TURNSTILE_SITE_KEY=$VITE_TURNSTILE_SITE_KEY
+
 RUN npm run build
 
 # Imagen final con nginx
@@ -20,7 +28,11 @@ FROM nginx:1.27-alpine
 RUN apk add --no-cache curl
 
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# nginx.conf = PROD (HTTPS/Let's Encrypt). nginx.dev.conf = DEV (HTTP).
+# Override con build arg NGINX_CONFIG desde docker-compose / .env del servidor.
+ARG NGINX_CONFIG=nginx.conf
+COPY ${NGINX_CONFIG} /etc/nginx/conf.d/default.conf
 
 RUN mkdir -p /var/www/static /var/www/media
 

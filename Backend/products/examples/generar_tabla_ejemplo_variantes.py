@@ -192,7 +192,7 @@ instrucciones = [
     "   ❌ Variante sin spec_code",
     "",
     "6. CATEGORÍAS:",
-    "   - category_level_0: Solo puede ser: insumos, procesos, equipos, mobiliario",
+    "   - category_level_0: Solo puede ser: consumibles, procesos, equipos, mobiliario",
     "   - category_level_1 y level_2: Se crean automáticamente si no existen",
     "",
     "7. Ver documentación completa en: Backend/products/README_CARGA_MASIVA_VARIANTES.md",

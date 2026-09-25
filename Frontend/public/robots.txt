@@ -1,3 +1,4 @@
+# Fallback local / sin build. El build (vite) regenera robots.txt con VITE_SITE_ORIGIN.
 User-agent: *
 Allow: /
 Sitemap: https://laqq.com.ar/sitemap.xml
