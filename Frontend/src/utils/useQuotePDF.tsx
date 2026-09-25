@@ -605,5 +605,5 @@ export const generateQuotePdf = async (quote: QuoteRender): Promise<void> => {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  setTimeout(() => URL.revokeObjectURL(url), 120000);
 };
