@@ -333,6 +333,24 @@ class ProductAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
+    def test_search_by_cas(self):
+        """Search incluye el campo CAS de consumibles."""
+        other = Product.objects.create(
+            name='Otro producto',
+            brand=self.brand,
+            category=self.category,
+            is_active=True,
+            cas='111-11-1',
+        )
+        self.product.cas = '7732-18-5'
+        self.product.save(update_fields=['cas'])
+
+        response = self.client.get('/products/list/?search=7732-18-5')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['id'], str(self.product.id))
+        self.assertNotIn(str(other.id), [p['id'] for p in response.data['results']])
+
     def test_search_by_variant_technical_specs(self):
         """Search incluye key y value del cuadro variable de specs de variantes."""
         other = Product.objects.create(

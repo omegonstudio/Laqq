@@ -94,7 +94,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     authentication_classes = CATALOG_AUTH
     filter_backends = [DjangoFilterBackend, UnaccentSearchFilter, OrderingFilter]
     filterset_class = ProductFilter
-    search_fields = ['name', 'product_code', 'brand__name', 'description']
+    search_fields = ['name', 'product_code', 'brand__name', 'description', 'cas']
     ordering_fields = ['name', 'created_at', 'updated_at']
     # Catálogo general: orden estable por nombre (no por created_at).
     # Con -created_at, cargas recientes (p.ej. Consumibles) monopolizaban las
