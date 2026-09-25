@@ -446,7 +446,7 @@ const ProductDetailPage = () => {
                     title="Descargar especificación PDF"
                     className="inline-flex items-center justify-center p-2 rounded-md hover:bg-muted transition-colors"
                   >
-                    <FileDown className="w-5 h-5 hover:text-primary transition-colors" />
+                    <FileDown className="w-8 h-8 hover:text-primary transition-colors" />
                   </a>
                 </div>
               )}
@@ -465,7 +465,7 @@ const ProductDetailPage = () => {
                     title="Descargar HDS"
                     className="inline-flex items-center justify-center p-2 rounded-md hover:bg-muted transition-colors"
                   >
-                    <Files className="w-5 h-5 hover:text-primary transition-colors" />
+                    <Files className="w-8 h-8 hover:text-primary transition-colors" />
                   </a>
                 </div>
               )}
