@@ -96,7 +96,10 @@ class ProductViewSet(viewsets.ModelViewSet):
     filterset_class = ProductFilter
     search_fields = ['name', 'product_code', 'brand__name', 'description']
     ordering_fields = ['name', 'created_at', 'updated_at']
-    ordering = ['-created_at']
+    # Catálogo general: orden estable por nombre (no por created_at).
+    # Con -created_at, cargas recientes (p.ej. Consumibles) monopolizaban las
+    # primeras páginas y parecía que se priorizaba esa categoría.
+    ordering = ['name', 'id']
 
     @swagger_auto_schema(
         operation_description=(
