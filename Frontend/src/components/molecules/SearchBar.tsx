@@ -145,6 +145,7 @@ export default function SearchBar({
       (p.brand || "").toLowerCase().includes(searchLower) ||
       (p.description || "").toLowerCase().includes(searchLower) ||
       p.product_code.toLowerCase().includes(searchLower) ||
+      (p.cas || "").toLowerCase().includes(searchLower) ||
       p.variants?.some((v) => v.code?.toLowerCase().includes(searchLower)) ||
       p.variants?.some((v) =>
         v.technical_specs?.some(
