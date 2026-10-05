@@ -16,7 +16,7 @@ import { fetchAllCategories } from "@/store/categoriesSlice";
 import { hasSpecTableContent } from "@/types/types";
 import {
   buildCatalogCrumbs,
-  isCategoryUnderConsumibles,
+  isCategoryUnderReactivosQuimicos,
 } from "@/utils/data/categories";
 import CatalogBreadcrumb from "@/components/molecules/CatalogBreadcrumb";
 import ProductImage from "@/components/atoms/ProductImage";
@@ -146,7 +146,7 @@ const ProductDetailPage = () => {
   const isConsumible = useMemo(
     () =>
       product?.category_id
-        ? isCategoryUnderConsumibles(product.category_id, categories)
+        ? isCategoryUnderReactivosQuimicos(product.category_id, categories)
         : false,
     [product?.category_id, categories]
   );

@@ -7,7 +7,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { productsApi, ProductListParams } from "@/lib/api/products";
 import { useProductFilters } from "@/hooks/useFilters";
 import { fetchAllCategories } from "@/store/categoriesSlice";
-import { isCategoryUnderConsumibles, buildCatalogCrumbs } from "@/utils/data/categories";
+import { isCategoryUnderReactivosQuimicos, buildCatalogCrumbs } from "@/utils/data/categories";
 import CatalogBreadcrumb from "@/components/molecules/CatalogBreadcrumb";
 
 const INITIAL_PAGINATION: PaginationInfo = {
@@ -145,7 +145,7 @@ const ProductsPage = () => {
 
   const showinsumos = Boolean(
     activeCategoryId &&
-      isCategoryUnderConsumibles(activeCategoryId, categories)
+      isCategoryUnderReactivosQuimicos(activeCategoryId, categories)
   );
 
   const crumbs = buildCatalogCrumbs({
