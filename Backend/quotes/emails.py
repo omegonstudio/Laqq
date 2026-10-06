@@ -150,6 +150,35 @@ def _sender_from_user(user):
     }
 
 
+def _seller_cc_emails(quote, sender=None):
+    """
+    Emails del vendedor para CC en mails al cliente.
+    Prioriza quien envía (request.user) y cae al usuario asignado a la cotización.
+    No duplica ni incluye el email del propio cliente.
+    """
+    candidates = []
+    for user in (sender, getattr(quote, 'user', None)):
+        if not user:
+            continue
+        email = (getattr(user, 'email', None) or '').strip()
+        if email:
+            candidates.append(email)
+
+    customer_email = (
+        getattr(getattr(quote, 'contact', None), 'email', None) or ''
+    ).strip().lower()
+
+    seen = set()
+    result = []
+    for email in candidates:
+        key = email.lower()
+        if not key or key == customer_email or key in seen:
+            continue
+        seen.add(key)
+        result.append(email)
+    return result
+
+
 def send_quote_created_email(quote):
     """
     Send email notifications when a new quote is created.
@@ -308,6 +337,7 @@ def send_quote_to_customer(quote):
             body=text_content,
             from_email=from_email,
             to=to_email,
+            cc=_seller_cc_emails(quote),
         )
         email.attach_alternative(html_content, "text/html")
         attach_logo_inline(email)
@@ -319,6 +349,7 @@ def send_quote_to_customer(quote):
         safe_print(f"Subject: {subject}")
         safe_print(f"From: {from_email}")
         safe_print(f"To: {to_email}")
+        safe_print(f"Cc: {email.cc}")
         safe_print("-"*80)
         safe_print(text_content)
         safe_print("="*80 + "\n")
@@ -488,6 +519,7 @@ def send_quote_updated_to_customer(quote):
             body=text_content,
             from_email=from_email,
             to=to_email,
+            cc=_seller_cc_emails(quote),
         )
 
         # Print email content to console for debugging (BEFORE sending)
@@ -497,6 +529,7 @@ def send_quote_updated_to_customer(quote):
         safe_print(f"Subject: {subject}")
         safe_print(f"From: {from_email}")
         safe_print(f"To: {to_email}")
+        safe_print(f"Cc: {email.cc}")
         safe_print("-"*80)
         safe_print(text_content)
         safe_print("="*80 + "\n")
@@ -579,6 +612,7 @@ def send_updated_quote_to_customer(quote, pdf_file=None, sender=None):
             body=text_content,
             from_email=from_email,
             to=to_email,
+            cc=_seller_cc_emails(quote, sender=sender),
         )
         email.attach_alternative(html_content, "text/html")
         attach_logo_inline(email)
@@ -599,6 +633,7 @@ def send_updated_quote_to_customer(quote, pdf_file=None, sender=None):
         safe_print(f"Subject: {subject}")
         safe_print(f"From: {from_email}")
         safe_print(f"To: {to_email}")
+        safe_print(f"Cc: {email.cc}")
         safe_print("-"*80)
         safe_print(text_content)
         safe_print("="*80 + "\n")

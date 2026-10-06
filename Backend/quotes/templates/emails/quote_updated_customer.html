@@ -117,69 +117,31 @@
             margin-bottom: 16px;
         }
 
-        /* ─── Product Table ─── */
-        .product-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-        .product-table th {
-            background-color: #FF6C08;
-            color: #ffffff;
-            padding: 10px 12px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-        .product-table th:first-child {
-            border-radius: 6px 0 0 0;
-        }
-        .product-table th:last-child {
-            border-radius: 0 6px 0 0;
-            text-align: right;
-        }
-        .product-table td {
-            padding: 12px;
+        /* ─── Product List (mismo criterio que mail de recepción: sin precios) ─── */
+        .product-item {
+            padding: 12px 0;
             border-bottom: 1px solid #e0e0e0;
-            color: #222222;
         }
-        .product-table td:last-child {
-            text-align: right;
+        .product-item:last-child {
+            border-bottom: none;
+        }
+        .product-name {
             font-weight: 600;
-        }
-        .product-table .product-name {
-            font-weight: 600;
-            color: #222222;
-        }
-        .product-table .product-code {
-            font-size: 12px;
-            color: #888888;
-        }
-        .product-table .product-variant {
-            font-size: 12px;
-            color: #FF6C08;
-            font-weight: 500;
-        }
-        .product-table .price {
-            text-align: right;
-            font-weight: 600;
-        }
-        .product-table .total-label {
-            font-weight: 700;
             font-size: 14px;
-            text-align: right;
-            padding: 14px 12px;
-            border-top: 2px solid #FF6C08;
+            color: #222222;
         }
-        .product-table .total-value {
-            font-weight: 700;
-            font-size: 16px;
+        .product-detail {
+            font-size: 13px;
+            color: #555555;
+            margin-top: 4px;
+        }
+        .product-detail span {
+            margin-right: 16px;
+        }
+        .product-variant {
             color: #FF6C08;
-            text-align: right;
-            padding: 14px 12px;
-            border-top: 2px solid #FF6C08;
+            font-size: 13px;
+            font-weight: 500;
         }
 
         /* ─── Message Box ─── */
@@ -283,38 +245,21 @@
                     Visualizá el archivo adjunto para mayor información sobre tu presupuesto.
                 </p>
 
-                <!-- ═══ Products Table ═══ -->
+                <!-- ═══ Products Summary (sin precios; van en el PDF adjunto) ═══ -->
                 <div class="section-card">
-                    <div class="section-title">Detalle de Productos y Precios</div>
-                    <table class="product-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 50%;">Producto</th>
-                                <th style="width: 15%; text-align: center;">Cant.</th>
-                                <th style="width: 17%; text-align: right;">Precio Unit.</th>
-                                <th style="width: 18%; text-align: right;">Subtotal</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in items %}
-                            <tr>
-                                <td>
-                                    <div class="product-name">{{ item.product.name }}</div>
-                                    {% if item.fixed_spec %}
-                                    <div class="product-variant">Variante: {{ item.fixed_spec.key }}: {{ item.fixed_spec.value }}{% if item.fixed_spec.unit %} {{ item.fixed_spec.unit }}{% endif %}</div>
-                                    {% endif %}
-                                    {% if item.product.product_code %}
-                                    <div class="product-code">Código: {{ item.product.product_code }}</div>
-                                    {% endif %}
-                                </td>
-                                <td style="text-align: center;">{{ item.quantity }}</td>
-                                <td class="price">{{ quote.currency_symbol }}{{ item.unit_price|floatformat:2 }}</td>
-                                <td class="price">{{ quote.currency_symbol }}{{ item.subtotal|floatformat:2 }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                        
-                    </table>
+                    <div class="section-title">Resumen de Productos Solicitados ({{ total_items }} item{{ total_items|pluralize }})</div>
+                    {% for item in items %}
+                    <div class="product-item">
+                        <div class="product-name">{{ item.product.name }}</div>
+                        {% if item.fixed_spec %}
+                        <div class="product-variant">Variante: {{ item.fixed_spec.key }}: {{ item.fixed_spec.value }}{% if item.fixed_spec.unit %} {{ item.fixed_spec.unit }}{% endif %}</div>
+                        {% endif %}
+                        <div class="product-detail">
+                            <span>Cantidad: {{ item.quantity }} unidad{{ item.quantity|pluralize:"es" }}</span>
+                            {% if item.product.product_code %}<span>Código: {{ item.product.product_code }}</span>{% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
 
                 <!-- ═══ Message ═══ -->
