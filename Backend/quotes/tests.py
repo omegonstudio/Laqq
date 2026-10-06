@@ -650,6 +650,7 @@ class QuoteSendUpdatedTestCase(APITestCase):
         self.assertEqual(len(mail.outbox), 1)
         sent_email = mail.outbox[0]
         self.assertIn('customer@test.com', sent_email.to)
+        self.assertIn('adrian@laqq.com', sent_email.cc)
         self.assertIn('Q-2026-00001', sent_email.subject)
         body = sent_email.body
         html = sent_email.alternatives[0][0] if sent_email.alternatives else ''

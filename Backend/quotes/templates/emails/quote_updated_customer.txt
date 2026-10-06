@@ -23,12 +23,11 @@ Fecha de actualización: {{ updated_at|date:"d/m/Y H:i" }}
 
 ────────────────────────────────────────────────────────────
 
-PRODUCTOS SOLICITADOS ({{ total_items }} item{{ total_items|pluralize }})
+RESUMEN DE PRODUCTOS SOLICITADOS ({{ total_items }} item{{ total_items|pluralize }})
 {% for item in items %}
 {{ forloop.counter }}. {{ item.product.name }}
    Cantidad: {{ item.quantity }} unidad{{ item.quantity|pluralize:"es" }}{% if item.product.product_code %}
-   Código: {{ item.product.product_code }}{% endif %}{% if item.unit_price %}
-   Precio: {{ quote.currency_symbol }}{{ item.unit_price|floatformat:2 }}{% endif %}
+   Código: {{ item.product.product_code }}{% endif %}
 {% endfor %}
 ────────────────────────────────────────────────────────────
 {% if message %}
