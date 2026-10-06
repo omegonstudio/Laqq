@@ -170,10 +170,12 @@ const s = StyleSheet.create({
   itemRow: {
     flexDirection: "row",
     gap: 20,
-    borderTopWidth: 0.5,
-    borderTopColor: "#eee",
-    paddingTop: 6,
-    marginTop: 4,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 4,
+    padding: "8 10",
+    marginTop: 8,
+    backgroundColor: "#fafafa",
   },
   itemDesc: {
     fontSize: 9,
@@ -184,25 +186,7 @@ const s = StyleSheet.create({
   itemDescWrap: { marginBottom: 6 },
   itemDescBullet: { marginLeft: 6, marginBottom: 3 },
   itemDescSpacer: { fontSize: 4, marginBottom: 4 },
-  itemVariant: { fontSize: 8.5, color: "#555", marginBottom: 6 },
   itemImage: { width: 120, height: 90, objectFit: "contain", marginLeft: 12 },
-
-  // Tabla resumen — el ancho va en el View, no en el Text, para que wrapee
-  tableHeader: { flexDirection: "row", backgroundColor: ORANGE, alignItems: "stretch" },
-  tableRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#e8e8e8",
-  },
-  tableCol: { padding: "5 6", overflow: "hidden" },
-  tableHeaderText: {
-    color: "white",
-    fontFamily: "Helvetica-Bold",
-    fontSize: 8,
-  },
-  tableCellText: { fontSize: 8 },
-  tableCellTextRight: { fontSize: 8, textAlign: "right" },
 
   // Total
   totalRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 10 },
@@ -244,32 +228,6 @@ const s = StyleSheet.create({
   },
 });
 
-const PdfTableCell = ({
-  width,
-  children,
-  header = false,
-  right = false,
-}: {
-  width: string;
-  children: string | number;
-  header?: boolean;
-  right?: boolean;
-}) => (
-  <View style={[s.tableCol, { width }]}>
-    <Text
-      style={
-        header
-          ? [s.tableHeaderText, right ? { textAlign: "right" } : {}]
-          : right
-            ? s.tableCellTextRight
-            : s.tableCellText
-      }
-    >
-      {children}
-    </Text>
-  </View>
-);
-
 // ─── Componente PDF ───────────────────────────────────────────────────────────
 
 const QuotePDF = ({
@@ -280,24 +238,6 @@ const QuotePDF = ({
   logoBase64: string;
 }) => {
   const { contact, specs, items } = quote;
-  const hasVariants = items.some((item) => item.variant !== null);
-  const colWidths = hasVariants
-    ? {
-        name: "26%",
-        code: "14%",
-        model: "14%",
-        qty: "10%",
-        price: "18%",
-        sub: "18%",
-      }
-    : {
-        name: "34%",
-        code: "16%",
-        model: "0%",
-        qty: "12%",
-        price: "19%",
-        sub: "19%",
-      };
 
   return (
     <Document>
@@ -362,15 +302,21 @@ const QuotePDF = ({
 
         {items.map((item, index) => {
           const subtotal = Number(item.quantity) * Number(item.unit_price);
+          // Con variante: modelo (variant.code). Sin variante: código de producto.
+          const itemCode = item.variant?.code?.trim()
+            ? item.variant.code.trim()
+            : item.product.product_code?.trim() || "";
           return (
             <View key={item.id ?? index} style={s.itemWrap} wrap={false}>
               <View style={s.itemHeader}>
                 <Text style={s.itemTitle}>
                   Ítem {index + 1} · {item.product.name}
                 </Text>
-                {item.product.product_code && (
+                {(itemCode || item.product.brand) && (
                   <Text style={s.itemCode}>
-                    Cód: {item.product.product_code} Marca: {item.product.brand}
+                    {itemCode ? `Cód: ${itemCode}` : ""}
+                    {itemCode && item.product.brand ? " " : ""}
+                    {item.product.brand ? `Marca: ${item.product.brand}` : ""}
                   </Text>
                 )}
               </View>
@@ -409,41 +355,28 @@ const QuotePDF = ({
                           </View>
                         );
                       })()}
-                    {item.variant && (
-                      <View>
-                        <Text style={s.itemVariant}>
-                          <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                            Variedad:{" "}
-                          </Text>
-
-                          {item.variant.code ? ` · ${item.variant.code}` : ""}
-                        </Text>
-                        {item.variant.technical_specs &&
-                          item.variant.technical_specs.length > 0 && (
-                            <View style={{ marginTop: 4 }}>
-                              {item.variant.technical_specs.map(
-                                (spec: { key: string; value: string }, i: number) => (
-                                  <Text
-                                    key={i}
-                                    style={{
-                                      fontSize: 8.5,
-                                      color: "#555",
-                                      lineHeight: 1.5,
-                                    }}
-                                  >
-                                    <Text
-                                      style={{ fontFamily: "Helvetica-Bold" }}
-                                    >
-                                      {spec.key}:{" "}
-                                    </Text>
-                                    {spec.value}
-                                  </Text>
-                                )
-                              )}
-                            </View>
+                    {item.variant?.technical_specs &&
+                      item.variant.technical_specs.length > 0 && (
+                        <View style={{ marginTop: 4 }}>
+                          {item.variant.technical_specs.map(
+                            (spec: { key: string; value: string }, i: number) => (
+                              <Text
+                                key={i}
+                                style={{
+                                  fontSize: 8.5,
+                                  color: "#555",
+                                  lineHeight: 1.5,
+                                }}
+                              >
+                                <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                                  {spec.key}:{" "}
+                                </Text>
+                                {spec.value}
+                              </Text>
+                            )
                           )}
-                      </View>
-                    )}
+                        </View>
+                      )}
                   </View>
                   {item.product.image_url && (
                     <Image src={item.product.image_url} style={s.itemImage} />
@@ -470,58 +403,6 @@ const QuotePDF = ({
                   </Text>
                 </View>
               </View>
-            </View>
-          );
-        })}
-
-        {/* TABLA RESUMEN */}
-        <View style={s.tableHeader}>
-          <PdfTableCell width={colWidths.name} header>
-            Producto
-          </PdfTableCell>
-          <PdfTableCell width={colWidths.code} header>
-            Código
-          </PdfTableCell>
-          {hasVariants && (
-            <PdfTableCell width={colWidths.model} header>
-              Modelo
-            </PdfTableCell>
-          )}
-          <PdfTableCell width={colWidths.qty} header right>
-            Cantidad
-          </PdfTableCell>
-          <PdfTableCell width={colWidths.price} header right>
-            Precio unit.
-          </PdfTableCell>
-          <PdfTableCell width={colWidths.sub} header right>
-            Subtotal
-          </PdfTableCell>
-        </View>
-
-        {items.map((item, index) => {
-          const subtotal = Number(item.quantity) * Number(item.unit_price);
-          return (
-            <View key={index} style={s.tableRow} wrap={false}>
-              <PdfTableCell width={colWidths.name}>
-                {item.product.name ?? "—"}
-              </PdfTableCell>
-              <PdfTableCell width={colWidths.code}>
-                {item.product.product_code ?? "—"}
-              </PdfTableCell>
-              {hasVariants && (
-                <PdfTableCell width={colWidths.model}>
-                  {item.variant?.code ?? "—"}
-                </PdfTableCell>
-              )}
-              <PdfTableCell width={colWidths.qty} right>
-                {item.quantity}
-              </PdfTableCell>
-              <PdfTableCell width={colWidths.price} right>
-                {formatQuoteAmount(item.unit_price, quote.currency)}
-              </PdfTableCell>
-              <PdfTableCell width={colWidths.sub} right>
-                {formatQuoteAmount(subtotal, quote.currency)}
-              </PdfTableCell>
             </View>
           );
         })}
