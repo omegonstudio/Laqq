@@ -128,6 +128,10 @@ def send_via_resend(email: EmailMultiAlternatives, timeout: int = 15) -> bool:
         "to": list(email.to) if isinstance(email.to, (list, tuple)) else [email.to],
         "subject": email.subject,
     }
+    if getattr(email, "cc", None):
+        payload["cc"] = list(email.cc) if isinstance(email.cc, (list, tuple)) else [email.cc]
+    if getattr(email, "bcc", None):
+        payload["bcc"] = list(email.bcc) if isinstance(email.bcc, (list, tuple)) else [email.bcc]
     if html:
         payload["html"] = html
     if text:

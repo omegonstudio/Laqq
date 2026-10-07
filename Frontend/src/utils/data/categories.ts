@@ -1,12 +1,16 @@
 import { Category, CategoryUI } from "@/types/types";
 
 const CONSUMIBLES_ROOT_NAME = "Consumibles";
+const REACTIVOS_QUIMICOS_NAME = "Reactivos Químicos";
 
 type CategoryParentRef = {
   id: string;
   name: string;
   parent?: string | null;
 };
+
+const namesMatch = (a: string, b: string) =>
+  a.trim().toLowerCase() === b.trim().toLowerCase();
 
 /** True si la categoría es Consumibles o cuelga de ella (cualquier nivel). */
 export function isCategoryUnderConsumibles(
@@ -16,10 +20,27 @@ export function isCategoryUnderConsumibles(
   const byId = new Map(categories.map((c) => [c.id, c]));
   let current = byId.get(categoryId);
   while (current) {
-    if (current.name === CONSUMIBLES_ROOT_NAME) return true;
+    if (namesMatch(current.name, CONSUMIBLES_ROOT_NAME)) return true;
     current = current.parent ? byId.get(current.parent) : undefined;
   }
   return false;
+}
+
+/**
+ * True si la categoría es "Reactivos Químicos" (o cuelga de ella) y a su vez
+ * está bajo la raíz Consumibles. Es el criterio del listado/ABM de insumos.
+ */
+export function isCategoryUnderReactivosQuimicos(
+  categoryId: string,
+  categories: CategoryParentRef[]
+): boolean {
+  const ancestry = getCategoryAncestry(categoryId, categories);
+  if (!ancestry.length) return false;
+  const underConsumibles = namesMatch(ancestry[0].name, CONSUMIBLES_ROOT_NAME);
+  const underReactivos = ancestry.some((c) =>
+    namesMatch(c.name, REACTIVOS_QUIMICOS_NAME)
+  );
+  return underConsumibles && underReactivos;
 }
 
 export type CatalogCrumb = {

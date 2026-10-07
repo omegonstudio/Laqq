@@ -18,7 +18,7 @@ import {
   formStateToUpdateRequest,
   hasProductChanges,
 } from "@/utils/productConverters";
-import { isCategoryUnderConsumibles } from "@/utils/data/categories";
+import { isCategoryUnderReactivosQuimicos } from "@/utils/data/categories";
 import {
   validateProductForm,
   CreateProduct,
@@ -246,7 +246,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   const isConsumiblesCategory = useMemo(
     () =>
       localState.category
-        ? isCategoryUnderConsumibles(localState.category, categories)
+        ? isCategoryUnderReactivosQuimicos(localState.category, categories)
         : false,
     [localState.category, categories]
   );
