@@ -3,7 +3,11 @@
 Guía de uso alineada al producto actual.  
 **No implementado:** pedidos ni facturación. El flujo comercial de solicitud es **cotizaciones**.
 
-Capturas en `docs/screenshots/`. Checklist en `docs/screenshots/README.md`. Regenerar: `cd Frontend && npm run screenshots:manual`.
+Capturas: carpeta `screenshots/` (misma ubicación que este archivo → `docs/screenshots/`).  
+PDF generado: `docs/MANUAL_USUARIO.pdf`.  
+Checklist / regenerar capturas: `docs/screenshots/README.md` · `cd Frontend && npm run screenshots:manual`.
+
+> **Preview en Cursor/VS Code:** si ves el enlace a la imagen pero no la imagen, el preview está bloqueando archivos locales. Con el workspace abierto, usá *Markdown: Open Preview* (no el preview del chat) y asegurate de que la seguridad del preview esté en **Allow** (ya configurado en `.vscode/settings.json`). Las rutas son relativas a este `.md` (`screenshots/01-login.png`).
 
 ---
 
@@ -31,7 +35,7 @@ El menú `/backoffice` exige login. La UI oculta acciones según rol; el servido
 3. Pulsar **Ingresar**.
 4. Si las credenciales son válidas, se redirige al backoffice.
 
-![Pantalla Acceso BackOffice](./screenshots/01-login.png)
+![Pantalla Acceso BackOffice](screenshots/01-login.png)
 
 **Notas:** El título de la pantalla es **Acceso BackOffice**. Sin token no se puede abrir `/backoffice/*` (redirección a login).
 
@@ -45,7 +49,7 @@ El menú `/backoffice` exige login. La UI oculta acciones según rol; el servido
 2. Usar filtros por categoría o marca si están activos (chips *Filtrando por…*).
 3. Abrir un producto para ver el detalle.
 
-![Catálogo de Productos](./screenshots/02-catalogo.png)
+![Catálogo de Productos](screenshots/02-catalogo.png)
 
 ---
 
@@ -58,7 +62,7 @@ El menú `/backoffice` exige login. La UI oculta acciones según rol; el servido
 3. Si hay variantes, usar **Elegir variante**.
 4. **Agregar al carrito** y/o **Solicitar Cotización**.
 
-![Detalle de producto](./screenshots/03-detalle-producto.png)
+![Detalle de producto](screenshots/03-detalle-producto.png)
 
 **Errores comunes:** *Producto no encontrado* → volver con **Volver al Catálogo**.
 
@@ -71,7 +75,7 @@ El menú `/backoffice` exige login. La UI oculta acciones según rol; el servido
 1. Acceder desde navegación o URL de marca.
 2. Explorar productos de esa marca.
 
-![Página de marca](./screenshots/04-marca.png)
+![Página de marca](screenshots/04-marca.png)
 
 ---
 
@@ -85,7 +89,7 @@ El menú `/backoffice` exige login. La UI oculta acciones según rol; el servido
 4. Completar el desafío **Turnstile** (antispam) si aparece.
 5. Pulsar **Enviar Solicitud**.
 
-![Solicitar Cotización](./screenshots/05-cotizacion.png)
+![Solicitar Cotización](screenshots/05-cotizacion.png)
 
 **Notas:** La creación es pública vía API. El equipo la gestiona después en **Cotizaciones** del backoffice. No hay facturación en la app.
 
@@ -100,9 +104,9 @@ El menú `/backoffice` exige login. La UI oculta acciones según rol; el servido
 3. Seguir la **Guía Rápida** si hace falta.
 4. Portal cliente: `/tickets` para listar tickets asociados al contacto/email.
 
-![Servicio Técnico](./screenshots/06-soporte.png)
+![Servicio Técnico](screenshots/06-soporte.png)
 
-![Portal de tickets cliente](./screenshots/07-tickets-cliente.png)
+![Portal de tickets cliente](screenshots/07-tickets-cliente.png)
 
 **Permisos:** cualquiera puede crear ticket desde la web; un usuario `client` solo ve los suyos.
 
@@ -117,7 +121,7 @@ El menú `/backoffice` exige login. La UI oculta acciones según rol; el servido
 3. Completar **Número de Artículo** y/o **Número de Lote** según marca.
 4. Pulsar **Buscar Certificado**.
 
-![Búsqueda de Certificados](./screenshots/08-certificados.png)
+![Búsqueda de Certificados](screenshots/08-certificados.png)
 
 ---
 
@@ -129,7 +133,7 @@ El menú `/backoffice` exige login. La UI oculta acciones según rol; el servido
 2. Completar **Nombre**, **Apellido**, **Empresa**, **País**, **Email**, **Teléfono** y mensaje.
 3. Pulsar **Enviar Mensaje**.
 
-![Formulario de Contacto](./screenshots/09-contacto.png)
+![Formulario de Contacto](screenshots/09-contacto.png)
 
 Los mensajes aparecen en backoffice → **Mensajes**.
 
@@ -142,9 +146,9 @@ Los mensajes aparecen en backoffice → **Mensajes**.
 - `/company` — historia y líneas de solución (Equipos, Consumibles, etc.).
 - `/furniture` — **Mobiliario para laboratorios** (gabinetes, ductos, campanas).
 
-![Página Empresa](./screenshots/10-empresa.png)
+![Página Empresa](screenshots/10-empresa.png)
 
-![Página Mobiliario](./screenshots/11-mobiliario.png)
+![Página Mobiliario](screenshots/11-mobiliario.png)
 
 ---
 
@@ -159,7 +163,7 @@ Acceso: login → `/backoffice`. Menú lateral (labels reales del Sidebar).
 1. Entrar a `/backoffice`.
 2. Revisar estadísticas (Usuarios activos, Productos, Cotizaciones, Mensajes nuevos) y **Accesos Rápidos**.
 
-![Dashboard backoffice](./screenshots/12-dashboard.png)
+![Dashboard backoffice](screenshots/12-dashboard.png)
 
 ---
 
@@ -171,7 +175,7 @@ Acceso: login → `/backoffice`. Menú lateral (labels reales del Sidebar).
 2. **Nuevo Usuario** → completar datos → **Crear**.
 3. **Editar** / **Guardar** o **Eliminar** según necesidad.
 
-![Gestión de Usuarios](./screenshots/13-usuarios.png)
+![Gestión de Usuarios](screenshots/13-usuarios.png)
 
 **Permisos:** crear/editar/eliminar solo **admin** (`useCanManageUsers`).
 
@@ -185,7 +189,7 @@ Acceso: login → `/backoffice`. Menú lateral (labels reales del Sidebar).
 2. **Nuevo Producto** o **Editar** / **Eliminar**.
 3. Exportación Excel disponible para **admin** y **back** si el botón está visible.
 
-![Gestión de Productos](./screenshots/14-productos.png)
+![Gestión de Productos](screenshots/14-productos.png)
 
 **Permisos:** escritura solo **admin**; **back** puede ver/exportar según hooks.
 
@@ -199,7 +203,7 @@ Acceso: login → `/backoffice`. Menú lateral (labels reales del Sidebar).
 2. **Ver** / **Editar** una cotización; **Eliminar** si corresponde.
 3. Acciones de envío/actualización según botones de la pantalla (p. ej. reenvío al cliente).
 
-![Gestión de Cotizaciones](./screenshots/15-cotizaciones.png)
+![Gestión de Cotizaciones](screenshots/15-cotizaciones.png)
 
 **Permisos:** **admin** y **back** pueden gestionar.
 
@@ -213,7 +217,7 @@ Acceso: login → `/backoffice`. Menú lateral (labels reales del Sidebar).
 2. Filtrar **Nuevos** si hace falta.
 3. **Eliminar** (solo admin).
 
-![Administrador de Mensajes](./screenshots/16-mensajes.png)
+![Administrador de Mensajes](screenshots/16-mensajes.png)
 
 ---
 
@@ -224,7 +228,7 @@ Acceso: login → `/backoffice`. Menú lateral (labels reales del Sidebar).
 1. Menú **Marcas** → **Gestión de Marcas**.
 2. **Nueva marca** / **Editar** / **Eliminar**.
 
-![Gestión de Marcas](./screenshots/17-marcas.png)
+![Gestión de Marcas](screenshots/17-marcas.png)
 
 **Permisos:** manage solo **admin**.
 
@@ -237,7 +241,7 @@ Acceso: login → `/backoffice`. Menú lateral (labels reales del Sidebar).
 1. Menú **Categorías** → **Gestión de Categorías**.
 2. **Nueva Categoría** / **Editar** / **Eliminar**.
 
-![Gestión de Categorías](./screenshots/18-categorias.png)
+![Gestión de Categorías](screenshots/18-categorias.png)
 
 **Permisos:** manage solo **admin**.
 
@@ -251,7 +255,7 @@ Acceso: login → `/backoffice`. Menú lateral (labels reales del Sidebar).
 2. **Crear contacto** (**admin** y **back**).
 3. **Editar** / **Eliminar** (solo **admin**).
 
-![Gestión de Contactos](./screenshots/19-contactos.png)
+![Gestión de Contactos](screenshots/19-contactos.png)
 
 ---
 
@@ -264,7 +268,7 @@ Acceso: login → `/backoffice`. Menú lateral (labels reales del Sidebar).
 3. Acciones de workflow (asignar, iniciar, resolver, cerrar): solo **admin**.
 4. **back** puede ver y adjuntar archivos, no ejecutar el workflow de cierre/asignación.
 
-![Gestión de tickets](./screenshots/20-tickets-bo.png)
+![Gestión de tickets](screenshots/20-tickets-bo.png)
 
 ---
 
@@ -276,7 +280,7 @@ Acceso: login → `/backoffice`. Menú lateral (labels reales del Sidebar).
 2. Usar **Buscar archivos...** para filtrar.
 3. **Cargar archivos** (estado *Subiendo...* mientras procesa).
 
-![Librería de archivos](./screenshots/21-libreria.png)
+![Librería de archivos](screenshots/21-libreria.png)
 
 **Permisos:** alta/baja de adjuntos de galería solo **admin**.
 
