@@ -150,13 +150,24 @@ const ProductDetailPage = () => {
         : false,
     [product?.category_id, categories]
   );
-  // No hay campo `presentacion` en el API; las variantes modelan presentaciones.
+  // Presentación: prioriza technical_spec con key "Presentación"; si no, la primera spec.
   const presentacionValue = useMemo(() => {
-    const codes =
-      product?.variants
-        ?.map((variant) => variant.code?.trim())
-        .filter((code): code is string => Boolean(code)) ?? [];
-    return codes.length > 0 ? codes.join(", ") : "";
+    const normalizeKey = (key?: string) =>
+      (key ?? "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{M}/gu, "");
+    const variants = product?.variants ?? [];
+    const allSpecs = variants.flatMap((v) => v.technical_specs ?? []);
+    const byKey = allSpecs.find(
+      (s) => normalizeKey(s.key) === "presentacion"
+    );
+    if (byKey?.value?.trim()) {
+      return byKey.value.trim();
+    }
+    const first = allSpecs.find((s) => s.value?.trim());
+    return first?.value?.trim() ?? "";
   }, [product?.variants]);
 
   // ─── ZONA 2b: useEffect que depende de las derivaciones ──────────────────
