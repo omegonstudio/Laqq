@@ -15,6 +15,24 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   useEffect(() => {
     dispatch(fetchAllCategories({ retries: 2, retryDelayMs: 350 }));
+    // #region agent log
+    fetch("http://127.0.0.1:7282/ingest/ab0e328b-2eba-4587-bb8f-7d705e5fa936", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "5407fd",
+      },
+      body: JSON.stringify({
+        sessionId: "5407fd",
+        runId: "pre-fix",
+        hypothesisId: "D",
+        location: "MainLayout.tsx:fetchAllBrands",
+        message: "Dispatching fetchAllBrands",
+        data: { pathname: window.location.pathname },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     dispatch(fetchAllBrands());
   }, [dispatch]);
 

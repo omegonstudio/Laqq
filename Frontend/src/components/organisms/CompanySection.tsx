@@ -1,6 +1,80 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
+import { useAppSelector } from "@/store/hooks";
+import { ensureHttpsUrl } from "@/utils/secureUrl";
 
 const CompanySection = () => {
+  const { list, loading, error } = useAppSelector((state) => state.brands);
+  const sortedBrands = useMemo(
+    () =>
+      [...list].sort((a, b) =>
+        a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+      ),
+    [list]
+  );
+
+  // #region agent log
+  useEffect(() => {
+    const withLogo = sortedBrands.filter((b) => !!b.logo_url).length;
+    const names = sortedBrands.map((b) => b.name);
+    const hasOmegon = names.some((n) => /omegon/i.test(n));
+    const branch =
+      loading && list.length === 0 ? "skeleton" : "brands-map";
+    fetch("http://127.0.0.1:7282/ingest/ab0e328b-2eba-4587-bb8f-7d705e5fa936", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "5407fd",
+      },
+      body: JSON.stringify({
+        sessionId: "5407fd",
+        runId: "pre-fix",
+        hypothesisId: "A",
+        location: "CompanySection.tsx:render-state",
+        message: "Company representaciones brands state",
+        data: {
+          listLen: list.length,
+          sortedLen: sortedBrands.length,
+          loading,
+          error,
+          withLogo,
+          hasOmegon,
+          branch,
+          namesSample: names.slice(0, 8),
+          pathname: window.location.pathname,
+          hash: window.location.hash,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }, [list, loading, error, sortedBrands]);
+  // #endregion
+
+  // #region agent log
+  useEffect(() => {
+    const grid = document.querySelector("#representaciones .grid");
+    const links = grid?.querySelectorAll("a")?.length ?? -1;
+    const imgs = grid?.querySelectorAll("img")?.length ?? -1;
+    const skeleton = grid?.querySelectorAll(".animate-pulse")?.length ?? -1;
+    fetch("http://127.0.0.1:7282/ingest/ab0e328b-2eba-4587-bb8f-7d705e5fa936", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "5407fd",
+      },
+      body: JSON.stringify({
+        sessionId: "5407fd",
+        runId: "pre-fix",
+        hypothesisId: "C",
+        location: "CompanySection.tsx:dom",
+        message: "Company representaciones DOM counts",
+        data: { links, imgs, skeleton, gridExists: !!grid },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }, [sortedBrands, loading, list.length]);
+  // #endregion
+
   useEffect(() => {
     const hash = window.location.hash;
     if (hash) {
@@ -224,49 +298,43 @@ const CompanySection = () => {
 
         {/* Logos */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8 items-center">
-          {[
-            "cannon.png",
-            "fisher.svg",
-            "hirschmann.svg",
-            "julabo.svg",
-            "kottermann.svg",
-            "labconco.svg",
-            "memmert.svg",
-            "microtrac.svg",
-            "retsch.svg",
-            "solstice.svg",
-            "syrris.svg",
-            "tanaka.svg",
-            "thalesnano.svg",
-            "thermo.svg",
-            "velp.svg",
-            "wiggens.svg",
-            "2mag.webp",
-            "bel.png",
-            "boeco.jpg",
-            "ech.webp",
-            "iludest.svg",
-            "scavini.jpg",
-            "stakpure.png",
-            "kruss.png",
-          ].map((logo, index) => (
-            <div
-            key={index}
-            className="h-16 flex items-center justify-center 
-                       p-3 rounded-lg 
-                       dark:bg-white/90"
-          >
-            <img
-              src={`/${logo}`}
-              alt={logo.replace(/\.(svg|png|jpe?g|webp)$/i, "")}
-              width={160}
-              height={40}
-              loading="lazy"
-              decoding="async"
-              className="max-h-10 object-contain transition duration-300"
-            />
-          </div>
-          ))}
+          {loading && list.length === 0
+            ? Array.from({ length: 12 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-16 flex items-center justify-center p-3 rounded-lg"
+                >
+                  <div className="h-10 w-[120px] animate-pulse rounded-md bg-muted" />
+                </div>
+              ))
+            : sortedBrands.map((brand) => (
+                <Link
+                  key={brand.id}
+                  to={
+                    brand.slug
+                      ? `/marcas/${brand.slug}`
+                      : `/products?brand=${brand.id}`
+                  }
+                  aria-label={`Ver productos de ${brand.name}`}
+                  className="h-16 flex items-center justify-center p-3 rounded-lg dark:bg-white/90"
+                >
+                  {brand.logo_url ? (
+                    <img
+                      src={ensureHttpsUrl(brand.logo_url)}
+                      alt={brand.name}
+                      width={160}
+                      height={40}
+                      loading="lazy"
+                      decoding="async"
+                      className="max-h-10 object-contain transition duration-300"
+                    />
+                  ) : (
+                    <span className="text-sm font-medium text-muted-foreground text-center">
+                      {brand.name}
+                    </span>
+                  )}
+                </Link>
+              ))}
         </div>
       </div>
     </section>
