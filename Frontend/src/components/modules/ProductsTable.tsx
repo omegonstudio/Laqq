@@ -6,7 +6,7 @@ import Select from "@/components/atoms/Select";
 import Button from "@/components/atoms/Button";
 import { Product } from "@/types/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { deleteProduct, fetchProducts } from "@/store/productSlice";
+import { deleteProduct, fetchProduct, fetchProducts } from "@/store/productSlice";
 import { useCanExportProducts, useCanManageProducts } from "@/hooks/usePermissions";
 import ModalProduct from "../molecules/Modals/EditProduct";
 import ModalDelete from "../molecules/Modals/ModalDelete";
@@ -14,6 +14,8 @@ import CargaMasivaProducts from "../molecules/CargaMasiva";
 import { toast } from "@/hooks/use-toast";
 import { productsApi } from "@/lib/api/products";
 import { extractErrorMessage } from "@/lib/api/client";
+import { fetchAllBrands } from "@/store/brandSlice";
+import { fetchAllCategories } from "@/store/categoriesSlice";
 
 const currentInitialData: Product = {
   id: "",
@@ -56,13 +58,33 @@ const ProductsTable: React.FC = () => {
   }, [searchTerm]);
 
   useEffect(() => {
+    dispatch(fetchAllBrands());
+    dispatch(fetchAllCategories({}));
+  }, [dispatch]);
+
+  useEffect(() => {
     const params: any = { page: currentPageState, page_size: 10 };
     if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
     if (brandFilter !== "all") params.brand = brandFilter;
     dispatch(fetchProducts(params));
   }, [debouncedSearch, brandFilter, currentPageState, dispatch]);
 
-  const handleEdit = (product: Product) => { setCurrentProduct(product); setIsModalEditOpen(true); setIsNew(false); };
+  const handleEdit = async (product: Product) => {
+    setIsNew(false);
+    setIsModalEditOpen(true);
+    // Abrir con el de la lista; refrescar detalle para asegurar brand_id/category_id.
+    setCurrentProduct(product);
+    try {
+      const full = await dispatch(fetchProduct(product.id)).unwrap();
+      setCurrentProduct(full);
+    } catch (error: unknown) {
+      console.error("Error cargando detalle del producto:", error);
+      toast({
+        title: "No se pudo refrescar el producto; se muestra la fila del listado",
+        variant: "destructive",
+      });
+    }
+  };
   const handleOpenDeleteModal = (product: Product) => { setCurrentProduct(product); setIsModalDeleteOpen(true); };
 
   const handleConfirmDelete = async () => {
@@ -130,7 +152,7 @@ const ProductsTable: React.FC = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex gap-4 flex-1">
-          <InputField placeholder="Buscar por nombre o marca..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-md" />
+          <InputField placeholder="Buscar por nombre, código o marca..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-md" />
           <Select value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)} options={brandOptions} className="max-w-xs" />
         </div>
         {canManageProducts && (
