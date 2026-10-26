@@ -51,9 +51,18 @@ class UnaccentSearchFilter(SearchFilter):
             return queryset
 
         use_unaccent = connection.vendor == 'postgresql'
+
+        # Coalesce en FKs nullable (brand__name) evita joins/annotates frágiles
+        # y permite matchear también por código/nombre aunque la marca sea null.
+        def field_expr(field):
+            if '__' in field:
+                return Coalesce(F(field), Value(''), output_field=TextField())
+            return Coalesce(F(field), Value(''), output_field=TextField())
+
         if use_unaccent:
             annotations = {
-                unaccent_alias(field): Unaccent(F(field)) for field in search_fields
+                unaccent_alias(field): Unaccent(field_expr(field))
+                for field in search_fields
             }
             queryset = queryset.annotate(**annotations)
 
@@ -81,6 +90,7 @@ class UnaccentSearchFilter(SearchFilter):
                     term_query |= Q(**{f'{field}__icontains': needle})
             # Modelo de variante + cuadro variable de specs (key = columna, value = celda)
             term_query |= Q(variants__code__icontains=needle)
+            term_query |= Q(variants__name__icontains=needle)
             term_query |= Q(variants__technical_specs__key__icontains=needle)
             term_query |= Q(variants__technical_specs__value__icontains=needle)
             # Tabla "Especificaciones técnicas" (spec_table)

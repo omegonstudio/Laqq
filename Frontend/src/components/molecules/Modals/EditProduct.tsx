@@ -17,6 +17,8 @@ import {
   getEmptyProductFormState,
   formStateToUpdateRequest,
   hasProductChanges,
+  resolveBrandSelectId,
+  resolveCategorySelectId,
 } from "@/utils/productConverters";
 import { isCategoryUnderReactivosQuimicos } from "@/utils/data/categories";
 import {
@@ -176,7 +178,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
   // ============================================
   useEffect(() => {
     if (!isNew && initialData) {
-      const formState = productToFormState(initialData);
+      const formState = productToFormState(initialData, { brands, categories });
 
       setLocalState({
         ...formState,
@@ -207,7 +209,26 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       setEspPreview(null);
       setHdsPreview(null);
     }
+    // brands/categories: solo para resolver nombre→UUID al hidratar;
+    // el effect de abajo completa si el catálogo llega después.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- no resetear el form al cargar catálogos
   }, [initialData, isNew]);
+
+  // Si al abrir aún no había marcas/categorías, completar brand/category sin pisar el resto.
+  useEffect(() => {
+    if (!isOpen || isNew || !initialData) return;
+    setLocalState((prev) => {
+      const brand =
+        prev.brand ||
+        resolveBrandSelectId(initialData, brands);
+      const category =
+        prev.category ||
+        resolveCategorySelectId(initialData, categories);
+      if (brand === prev.brand && category === prev.category) return prev;
+      return { ...prev, brand, category };
+    });
+  }, [isOpen, isNew, initialData, brands, categories]);
+
   useEffect(() => {
     if (!isOpen) {
       setImagePreview(null);
@@ -218,7 +239,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       setActiveTab("general");
 
       if (initialData) {
-        const formState = productToFormState(initialData);
+        const formState = productToFormState(initialData, { brands, categories });
         setLocalState(formState);
       } else {
         setLocalState({
@@ -226,6 +247,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialData]);
 
   // ============================================
