@@ -763,8 +763,8 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     );
   };
 
-  const handleCategoryChange = (e: string) => {
-    setLocalState({ ...localState, category: e });
+  const handleCategoryChange = (e: string | undefined) => {
+    setLocalState((prev) => ({ ...prev, category: e ?? "" }));
   };
 
   const handleRelatedChange = (selectedId: string) => {
@@ -890,10 +890,10 @@ const ModalProduct: React.FC<ModalProductProps> = ({
                   )}
                 </label>
                 <CascadeCategorySelect
-                  // flatCategories={flatCategories}
                   value={localState.category}
                   onChange={handleCategoryChange}
-                  maxLevel={3} // <-- agregás esta prop
+                  maxLevel={3}
+                  valueLabel={initialData?.category}
                 />
                 {/* <SelectCategories
                   editProductModal
