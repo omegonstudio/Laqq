@@ -59,7 +59,7 @@ const ProductsTable: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchAllBrands());
-    dispatch(fetchAllCategories({}));
+    dispatch(fetchAllCategories({ force: true }));
   }, [dispatch]);
 
   useEffect(() => {
@@ -72,8 +72,9 @@ const ProductsTable: React.FC = () => {
   const handleEdit = async (product: Product) => {
     setIsNew(false);
     setIsModalEditOpen(true);
-    // Abrir con el de la lista; refrescar detalle para asegurar brand_id/category_id.
+    // Abrir con el de la lista; refrescar detalle + catálogo para los selects.
     setCurrentProduct(product);
+    dispatch(fetchAllCategories({ force: true }));
     try {
       const full = await dispatch(fetchProduct(product.id)).unwrap();
       setCurrentProduct(full);
