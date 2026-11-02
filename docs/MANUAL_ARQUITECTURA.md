@@ -3,6 +3,9 @@
 **Fuente de verdad:** código del monorepo (Django + SPA React).  
 **Supersede parcial:** este documento prevalece sobre `Backend/docs/ARCHITECTURE.md` y `Backend/docs/API.md` cuando hay contradicción (ver [§7](#7-docs-legadas-desactualizadas)).
 
+Diagramas: `assets/manual-arquitectura/*.png`.  
+PDF generado: `docs/MANUAL_ARQUITECTURA.pdf`.
+
 ---
 
 ## 1. Visión general
@@ -27,45 +30,17 @@ No hay aplicación separada de “pedidos” ni “facturación”. El flujo com
 
 ## 2. Diagramas
 
+Los diagramas están PNG en `assets/manual-arquitectura/` (renderizados desde Mermaid) para que se vean en preview Markdown y en el PDF.
+
 ### 2.1 Arquitectura de alto nivel (producción)
 
-```mermaid
-flowchart LR
-  Browser[Navegador]
-  Nginx[Nginx frontend]
-  Django[Django / Gunicorn]
-  PG[(PostgreSQL)]
-  Ext[Servicios externos]
-
-  Browser -->|HTTPS :443| Nginx
-  Nginx -->|/api/* → strip /api| Django
-  Nginx -->|/ static SPA| Nginx
-  Nginx -->|/static /media| Volúmenes
-  Django --> PG
-  Django --> Ext
-```
+![Arquitectura de alto nivel en producción](assets/manual-arquitectura/01-alto-nivel.png)
 
 En desarrollo, el frontend (Vite `:3000`) y el backend (`:8000`) se exponen por separado; Postgres en host `localhost:5433`.
 
 ### 2.2 Flujo de autenticación JWT
 
-```mermaid
-sequenceDiagram
-  participant U as Usuario
-  participant FE as SPA React
-  participant API as Django DRF
-
-  U->>FE: /login (usuario + contraseña)
-  FE->>API: POST /users/token/
-  API-->>FE: access + refresh
-  FE->>FE: Persiste tokens (Redux + persist)
-  U->>FE: Navega a /backoffice/*
-  FE->>FE: ProtectedRoute exige access token
-  FE->>API: Requests con Authorization Bearer
-  API-->>FE: 401 si token inválido
-  FE->>API: POST /users/token/refresh/
-  API-->>FE: nuevo access
-```
+![Flujo de autenticación JWT](assets/manual-arquitectura/02-auth-jwt.png)
 
 - Login real: `POST /users/token/` (credenciales `username` / `password`).
 - En producción detrás de Nginx: el cliente llama `/api/users/token/` (el prefijo `/api/` se elimina al proxy).
@@ -73,21 +48,7 @@ sequenceDiagram
 
 ### 2.3 Integraciones externas reales
 
-```mermaid
-flowchart TB
-  API[Backend Django]
-  FE[SPA]
-
-  API -->|CoA search| Fisher[Fisher Scientific Certificates API]
-  API -->|CoA search| Solstice[Solstice COA search]
-  API -->|HTTP client allowlist| CDN[Hosts de imágenes producto]
-  API -->|SMTP o Resend| Mail[Email transaccional]
-  FE -->|Widget Turnstile| CF[Cloudflare Turnstile]
-  API -->|Verifica token Turnstile| CF
-
-  FE -->|POST /certificates/search/| API
-  FE -->|Cotización pública + Turnstile| API
-```
+![Integraciones externas](assets/manual-arquitectura/03-integraciones.png)
 
 | Integración | Código | Endpoint / uso |
 |-------------|--------|----------------|
@@ -120,32 +81,7 @@ Montaje de URLs en `Backend/config/urls.py`:
 
 ### Dependencias entre dominios
 
-```mermaid
-flowchart TD
-  users[users]
-  contacts[contacts]
-  products[products]
-  quotes[quotes]
-  tickets[tickets]
-  attachments[attachments]
-  accessories[accessories]
-  notes[notes]
-  integrations[integrations]
-
-  quotes --> contacts
-  quotes --> products
-  quotes --> users
-  tickets --> contacts
-  tickets --> products
-  tickets --> attachments
-  tickets --> users
-  products --> attachments
-  accessories --> products
-  contacts --> users
-  notes --> users
-  attachments --> users
-  integrations -.->|sin FK; HTTP outbound| products
-```
+![Dependencias entre dominios backend](assets/manual-arquitectura/04-dependencias.png)
 
 - `config`: settings, JWT, CORS/CSRF, dashboard, mail helpers.
 - `integrations` no es app de modelos de negocio; encapsula HTTP outbound y certificados.
@@ -248,25 +184,7 @@ Detalle fino: ver clases en `products/permissions.py`, `quotes/permissions.py`, 
 
 ## 6. Modelo de datos (alto nivel)
 
-```mermaid
-erDiagram
-  UserType ||--o{ User : typifies
-  UserState ||--o{ User : state
-  Brand ||--o{ Product : brands
-  Category ||--o{ Product : categorizes
-  Category ||--o{ Category : parent
-  Product ||--o{ ProductVariant : variants
-  Product ||--o{ QuoteItem : quoted
-  ProductVariant ||--o{ QuoteItem : variant
-  Contact ||--o{ Quote : requests
-  Quote ||--o{ QuoteItem : items
-  Contact ||--o{ ServiceTicket : opens
-  Product ||--o{ ServiceTicket : about
-  Contact ||--o{ Message : optional
-  Attachment ||--o{ Product : media
-  Product ||--o{ ProductAccessory : links
-  Accessory ||--o{ ProductAccessory : accessory
-```
+![Modelo de datos (ER)](assets/manual-arquitectura/05-modelo-datos.png)
 
 Entidades clave:
 

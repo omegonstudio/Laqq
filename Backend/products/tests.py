@@ -267,6 +267,11 @@ class ProductAPITestCase(APITestCase):
         self.assertEqual(response.data['current_page'], 1)
         self.assertEqual(response.data['total_pages'], 1)
         self.assertEqual(response.data['page_size'], 25)
+        row = response.data['results'][0]
+        self.assertEqual(row['brand_id'], str(self.brand.id))
+        self.assertEqual(row['category_id'], str(self.category.id))
+        self.assertEqual(row['brand'], self.brand.name)
+        self.assertEqual(row['category'], self.category.name)
 
     def test_create_product(self):
         """Crear un nuevo producto asociado a marca y categoría"""
@@ -281,6 +286,8 @@ class ProductAPITestCase(APITestCase):
         self.assertEqual(Product.objects.count(), 2)
         self.assertEqual(response.data['brand'], self.brand.name)
         self.assertEqual(response.data['category'], self.category.name)
+        self.assertEqual(response.data['brand_id'], str(self.brand.id))
+        self.assertEqual(response.data['category_id'], str(self.category.id))
 
     def test_update_spec_table(self):
         """Se puede guardar una tabla de especificaciones con filas y columnas."""

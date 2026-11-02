@@ -7,110 +7,87 @@ import {
 } from "@/components/ui/select";
 import { RootState } from "@/store";
 import { useAppSelector } from "@/store/hooks";
-import { CategoryUI } from "@/types/types";
-import { buildCategories } from "@/utils/data/categories";
-
-type FlatCategory = {
-  id: string;
-  name: string;
-  level: number;
-  parent?: string;
-};
+import { getCategoryAncestry } from "@/utils/data/categories";
 
 type CascadeSelectProps = {
-  // flatCategories: FlatCategory[];
   value?: string;
   onChange: (value: string | undefined) => void;
   error?: string;
   maxLevel?: number; // default 3
+  /** Nombre de la categoría (p.ej. del producto) si el id aún no está en el catálogo. */
+  valueLabel?: string | null;
 };
 
-const flattenCategories = (
-  categories: CategoryUI[],
-  level = 0,
-  acc: FlatCategory[] = [],
-  parentId?: string
-): FlatCategory[] => {
-  for (const cat of categories) {
-    acc.push({
-      id: cat.id,
-      name: cat.name,
-      level,
-      parent: parentId,
-    });
+const norm = (id?: string | null) => (id ?? "").trim().toLowerCase();
 
-    if (cat.subcategories?.length) {
-      flattenCategories(cat.subcategories, level + 1, acc, cat.id);
-    }
-  }
-
-  return acc;
+const parentKeyOf = (parent?: string | null) => {
+  const p = norm(parent);
+  if (!p || p === "null" || p === "undefined") return null;
+  return p;
 };
 
 export function CascadeCategorySelect({
-  // flatCategories,
-
   value,
   onChange,
   error,
-  maxLevel,
+  maxLevel = 3,
+  valueLabel,
 }: CascadeSelectProps) {
   const { list: categories } = useAppSelector(
     (state: RootState) => state.categories
   );
-  const menuItems = buildCategories(categories);
-  const flatCategories = flattenCategories(menuItems);
 
-  // Orden alfabético para todos los niveles en los dropdowns
-  const sortByName = (a: FlatCategory, b: FlatCategory) =>
+  // Cadena raíz → hoja desde el listado plano (campo parent del API).
+  // Más fiable que reconstruir desde el árbol de menú / flatten.
+  const ancestry = getCategoryAncestry(value, categories);
+  const [sel0, sel1, sel2, sel3] = [
+    ancestry[0]?.id,
+    ancestry[1]?.id,
+    ancestry[2]?.id,
+    ancestry[3]?.id,
+  ];
+
+  const sortByName = (a: { name: string }, b: { name: string }) =>
     a.name.localeCompare(b.name, "es", { sensitivity: "base" });
 
-  const level0 = flatCategories.filter((c) => c.level === 0).sort(sortByName);
-  // Reconstruir selecciones actuales a partir del value
-  const buildSelections = (selectedId?: string): (string | undefined)[] => {
-    if (!selectedId) return [undefined, undefined, undefined, undefined];
+  const level0 = categories
+    .filter((c) => parentKeyOf(c.parent) === null)
+    .sort(sortByName);
 
-    const chain: string[] = [];
-    let current: FlatCategory | undefined = flatCategories.find(
-      (c) => c.id === selectedId
-    );
-
-    while (current) {
-      chain.unshift(current.id);
-      current = current.parent
-        ? flatCategories.find((c) => c.id === current!.parent)
-        : undefined;
-    }
-
-    // Rellenar hasta 4 niveles
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    while (chain.length < 4) chain.push(undefined as any);
-    return chain;
+  const childrenOf = (parentId?: string) => {
+    if (!parentId) return [];
+    const pid = norm(parentId);
+    return categories
+      .filter((c) => parentKeyOf(c.parent) === pid)
+      .sort(sortByName);
   };
 
-  const [sel0, sel1, sel2, sel3] = buildSelections(value);
-
-  const level1 = sel0
-    ? flatCategories.filter((c) => c.level === 1 && c.parent === sel0).sort(sortByName)
-    : [];
-  const level2 = sel1
-    ? flatCategories.filter((c) => c.level === 2 && c.parent === sel1).sort(sortByName)
-    : [];
-  const level3 = sel2
-    ? flatCategories.filter((c) => c.level === 3 && c.parent === sel2).sort(sortByName)
-    : [];
-
-  const handleChange = (level: number, selectedValue: string) => {
-    const val = selectedValue === "none" ? undefined : selectedValue;
-    // El valor real es el último seleccionado
-    onChange(val);
-  };
+  const level1 = childrenOf(sel0);
+  const level2 = childrenOf(sel1);
+  const level3 = childrenOf(sel2);
 
   const triggerClass = error ? "border-red-500 focus:ring-red-500" : "";
 
+  const valueInCatalog = Boolean(
+    value && getCategoryAncestry(value, categories).length > 0
+  );
+  const unresolvedLabel =
+    !valueInCatalog && (valueLabel?.trim() || value)
+      ? valueLabel?.trim() || String(value)
+      : null;
+
   return (
     <div className="flex flex-col gap-2">
-      {/* Nivel 0 - siempre visible */}
+      {unresolvedLabel && (
+        <p className="text-xs text-muted-foreground">
+          Categoría actual:{" "}
+          <span className="font-medium text-foreground">{unresolvedLabel}</span>
+          {categories.length === 0
+            ? " (cargando catálogo…)"
+            : " (no está en el catálogo cargado; elegí la ruta abajo para corregirla)"}
+        </p>
+      )}
+
       <Select
         value={sel0 || "none"}
         onValueChange={(v) => {
@@ -130,7 +107,6 @@ export function CascadeCategorySelect({
         </SelectContent>
       </Select>
       <div className="flex gap-5">
-        {/* Nivel 1 - visible si hay sel0 y hay hijos */}
         {sel0 && level1.length > 0 && (
           <Select
             value={sel1 || "none"}
@@ -152,7 +128,6 @@ export function CascadeCategorySelect({
           </Select>
         )}
 
-        {/* Nivel 2 */}
         {sel1 && level2.length > 0 && (
           <Select
             value={sel2 || "none"}
@@ -174,7 +149,6 @@ export function CascadeCategorySelect({
           </Select>
         )}
 
-        {/* Nivel 3 */}
         {sel2 && level3.length > 0 && maxLevel >= 3 && (
           <Select
             value={sel3 || "none"}
@@ -195,7 +169,7 @@ export function CascadeCategorySelect({
             </SelectContent>
           </Select>
         )}
-      </div>{" "}
+      </div>
     </div>
   );
 }
