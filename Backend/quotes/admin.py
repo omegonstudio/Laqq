@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import QuoteType, QuoteState, Quote, QuoteItem
+from .models import QuoteType, QuoteState, Quote, QuoteItem, QuoteTrace
 
 @admin.register(QuoteType)
 class QuoteTypeAdmin(admin.ModelAdmin):
@@ -13,12 +13,22 @@ class QuoteStateAdmin(admin.ModelAdmin):
     search_fields = ['name', 'description']
     ordering = ['name']
 
+class QuoteTraceInline(admin.TabularInline):
+    model = QuoteTrace
+    extra = 0
+    readonly_fields = ['reason', 'actor', 'snapshot', 'created_at']
+    can_delete = False
+
 @admin.register(Quote)
 class QuoteAdmin(admin.ModelAdmin):
-    list_display = ['quote_number', 'contact', 'user', 'quote_type', 'state', 'currency', 'total_amount', 'created_at']
+    list_display = [
+        'quote_number', 'contact', 'user', 'quote_type', 'state',
+        'currency', 'total_amount', 'managed_at', 'created_at',
+    ]
     search_fields = ['quote_number', 'message']
     list_filter = ['quote_type', 'state', 'currency', 'user']
     ordering = ['-created_at']
+    inlines = [QuoteTraceInline]
 
 @admin.register(QuoteItem)
 class QuoteItemAdmin(admin.ModelAdmin):
@@ -26,3 +36,11 @@ class QuoteItemAdmin(admin.ModelAdmin):
     search_fields = ['product_name', 'product_code']
     list_filter = ['quote']
     ordering = ['-created_at']
+
+@admin.register(QuoteTrace)
+class QuoteTraceAdmin(admin.ModelAdmin):
+    list_display = ['quote', 'reason', 'actor', 'created_at']
+    list_filter = ['reason', 'created_at']
+    search_fields = ['quote__quote_number']
+    ordering = ['-created_at']
+    readonly_fields = ['quote', 'reason', 'actor', 'snapshot', 'created_at']
