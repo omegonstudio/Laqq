@@ -341,11 +341,14 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='matias.desimone00@gma
 DEFAULT_FROM_NAME = config('DEFAULT_FROM_NAME', default='LAQQ System')
 
 # Business Email Settings
-# BUSINESS_EMAIL: destinatario de consultas/contactos y tickets (por defecto)
+# BUSINESS_EMAIL: destinatario de consultas/contactos (no tickets).
 BUSINESS_EMAIL = config('BUSINESS_EMAIL', default='matias.desimone00@gmail.com')
 # QUOTES_EMAIL: destinatario de las cotizaciones (aviso al negocio).
 # Por defecto usa BUSINESS_EMAIL si no se define una dirección específica.
 QUOTES_EMAIL = config('QUOTES_EMAIL', default=BUSINESS_EMAIL)
+# TICKETS_EMAIL: destinatario de notificaciones de Servicio Técnico (solo tickets).
+# No usar BUSINESS_EMAIL como fallback.
+TICKETS_EMAIL = config('TICKETS_EMAIL', default='soporte@laqq.com.ar')
 RESEND_API_KEY = config('RESEND_API_KEY', default='')
 BUSINESS_NAME = config('BUSINESS_NAME', default='La Química Quirúrgica') 
 BUSINESS_PHONE = config('BUSINESS_PHONE', default='')

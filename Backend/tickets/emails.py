@@ -98,7 +98,7 @@ def send_ticket_to_business(ticket):
         customer_display_name = ticket.contact.company_name or f"{ticket.contact.first_name} {ticket.contact.last_name}".strip() or "Cliente"
         subject = f'Nuevo Ticket de Servicio #{ticket.ticket_number} de {customer_display_name}'
         from_email = f'{settings.DEFAULT_FROM_NAME} <{settings.DEFAULT_FROM_EMAIL}>'
-        to_email = [settings.BUSINESS_EMAIL]
+        to_email = [settings.TICKETS_EMAIL]
 
         email = EmailMultiAlternatives(
             subject=subject,
@@ -110,7 +110,7 @@ def send_ticket_to_business(ticket):
 
         # Print email content to console for debugging
         safe_print("\n" + "="*80)
-        safe_print(f"EMAIL TO BUSINESS: {settings.BUSINESS_EMAIL}")
+        safe_print(f"EMAIL TO BUSINESS: {settings.TICKETS_EMAIL}")
         safe_print("="*80)
         safe_print(f"Subject: {subject}")
         safe_print(f"From: {from_email}")
@@ -121,7 +121,7 @@ def send_ticket_to_business(ticket):
 
         # Send email
         send_email_message(email)
-        logger.info(f"Ticket #{ticket.ticket_number} email sent to business: {settings.BUSINESS_EMAIL}")
+        logger.info(f"Ticket #{ticket.ticket_number} email sent to business: {settings.TICKETS_EMAIL}")
 
         return True
 
