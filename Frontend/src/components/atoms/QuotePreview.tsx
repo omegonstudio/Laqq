@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  allowedNextQuoteStates,
   convertQuoteCurrency,
   convertQuotesState,
   convertQuotesTypes,
@@ -165,6 +166,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   }, [quote]);
 
   const quotesTypes = useAppSelector((state) => state.quotes.types);
+  const quotesStates = useAppSelector((state) => state.quotes.states);
 
   useEffect(() => {
     if (quote) {
@@ -316,6 +318,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
             user: formState.user.id,
             quote_type: formState.quote_type,
             currency: formState.currency,
+            state_id: formState.state,
             observaciones: formState.observaciones,
             specs: specs,
           },
@@ -492,9 +495,35 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <label>Estado</label>
-            <p className="text-muted-foreground">
-              {convertQuotesState(formState.state as QuoteStateType)}
-            </p>
+            {edit && canManageQuotes ? (
+              <Select
+                value={formState.state}
+                onValueChange={(value: QuoteStateType) => {
+                  setFormState((prev) =>
+                    prev ? { ...prev, state: value } : null
+                  );
+                  setEdit(true);
+                }}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {allowedNextQuoteStates(formState.state).map((stateId) => {
+                    const fromApi = quotesStates.find((s) => s.id === stateId);
+                    return (
+                      <SelectItem key={stateId} value={stateId}>
+                        {fromApi?.name ?? convertQuotesState(stateId as QuoteStateType)}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-muted-foreground">
+                {convertQuotesState(formState.state as QuoteStateType)}
+              </p>
+            )}
           </div>
 
           <div>

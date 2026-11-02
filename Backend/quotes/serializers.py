@@ -1,6 +1,12 @@
 from rest_framework import serializers
-from .models import QuoteType, QuoteState, Quote, QuoteItem
+from .models import QuoteType, QuoteState, Quote, QuoteItem, QuoteTrace
 from .emails import send_quote_assigned_email
+from .tracing import (
+    build_light_snapshot,
+    can_transition_state,
+    mark_quote_managed,
+    record_quote_trace,
+)
 from contacts.models import Contact, ContactState
 from products.models import Product, ProductVariant
 from products.serializers import ProductSerializer, ProductVariantSerializer
@@ -130,6 +136,23 @@ class QuoteItemDetailSerializer(serializers.ModelSerializer):
         model = QuoteItem
         fields = '__all__'
 
+class QuoteTraceSerializer(serializers.ModelSerializer):
+    actor_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = QuoteTrace
+        fields = [
+            'id', 'reason', 'actor', 'actor_name', 'snapshot', 'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_actor_name(self, obj):
+        if not obj.actor:
+            return None
+        full = f'{obj.actor.first_name} {obj.actor.last_name}'.strip()
+        return full or obj.actor.username or obj.actor.email
+
+
 class QuoteSerializer(serializers.ModelSerializer):
     """
     Serializer estándar para Quote con detalles completos de contact y products.
@@ -142,16 +165,34 @@ class QuoteSerializer(serializers.ModelSerializer):
         write_only=True,
         required=True
     )
+    # Escritura explícita de estado (transiciones validadas).
+    state_id = serializers.PrimaryKeyRelatedField(
+        queryset=QuoteState.objects.all(),
+        source='state',
+        required=False,
+    )
 
     items = QuoteItemDetailSerializer(many=True, read_only=True, source='quoteitem_set')
+    traces_count = serializers.SerializerMethodField()
+    lifecycle = serializers.SerializerMethodField()
 
     class Meta:
         model = Quote
         fields = '__all__'
-        read_only_fields = ['quote_number', 'contact', 'items', 'state']
+        read_only_fields = ['quote_number', 'contact', 'items', 'managed_at']
         extra_kwargs = {
-            'quote_number': {'required': False, 'allow_blank': True}
+            'quote_number': {'required': False, 'allow_blank': True},
+            # `state` nested FK se puede seguir leyendo; escritura vía state_id.
+            'state': {'read_only': True},
         }
+
+    def get_traces_count(self, obj):
+        if hasattr(obj, '_traces_count'):
+            return obj._traces_count
+        return obj.traces.count()
+
+    def get_lifecycle(self, obj):
+        return 'managed' if obj.managed_at else 'received'
 
     def validate_total_amount(self, value):
         if value is not None and value < 0:
@@ -170,6 +211,19 @@ class QuoteSerializer(serializers.ModelSerializer):
         merged.update(value)
         return merged
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if self.instance and 'state' in attrs:
+            new_state = attrs['state']
+            new_id = new_state.id if hasattr(new_state, 'id') else new_state
+            if not can_transition_state(self.instance.state_id, new_id):
+                raise serializers.ValidationError({
+                    'state_id': (
+                        f"No se puede pasar de '{self.instance.state_id}' a '{new_id}'."
+                    )
+                })
+        return attrs
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
         merged = dict(QUOTE_SPECS_DEFAULTS)
@@ -177,23 +231,86 @@ class QuoteSerializer(serializers.ModelSerializer):
         data['specs'] = merged
         return data
 
+    def _request_user(self):
+        request = self.context.get('request')
+        if request and getattr(request, 'user', None):
+            return request.user
+        return None
+
     def update(self, instance, validated_data):
         old_user = instance.user
+        old_state_id = instance.state_id
+        old_total = instance.total_amount
+        old_currency = instance.currency
+        old_message = instance.message
+        old_observaciones = instance.observaciones
+        old_specs = dict(instance.specs or {})
+        old_quote_type_id = instance.quote_type_id
+
         new_user = validated_data.get('user', old_user)
+        explicit_state = 'state' in validated_data
+
         instance = super().update(instance, validated_data)
+        actor = self._request_user()
 
         user_changed = bool(new_user) and (old_user is None or old_user.pk != new_user.pk)
-        if not user_changed:
-            return instance
+        state_changed = instance.state_id != old_state_id
 
-        terminal_states = {'sent', 'confirmed', 'rejected', 'expired'}
-        if instance.state_id not in terminal_states:
-            assigned_state = QuoteState.objects.filter(id='assigned').first()
-            if assigned_state and instance.state_id != assigned_state.id:
-                instance.state = assigned_state
-                instance.save(update_fields=['state', 'updated_at'])
+        # Assign automático si cambió responsable y no pidieron otro estado a mano
+        if user_changed and not explicit_state:
+            terminal_states = {'sent', 'confirmed', 'rejected', 'expired'}
+            if instance.state_id not in terminal_states:
+                assigned_state = QuoteState.objects.filter(id='assigned').first()
+                if assigned_state and instance.state_id != assigned_state.id:
+                    instance.state = assigned_state
+                    instance.save(update_fields=['state', 'updated_at'])
+                    state_changed = True
 
-        send_quote_assigned_email(instance, new_user)
+        if user_changed:
+            record_quote_trace(
+                instance,
+                QuoteTrace.REASON_ASSIGNEE_CHANGED,
+                actor=actor,
+                snapshot=build_light_snapshot(
+                    instance,
+                    changes={
+                        'from_user': str(old_user.pk) if old_user else None,
+                        'to_user': str(new_user.pk) if new_user else None,
+                    },
+                ),
+            )
+            send_quote_assigned_email(instance, new_user)
+
+        # Re-evaluar por si el assign automático movió el estado
+        state_changed = instance.state_id != old_state_id
+        if state_changed:
+            record_quote_trace(
+                instance,
+                QuoteTrace.REASON_STATE_CHANGED,
+                actor=actor,
+                snapshot=build_light_snapshot(
+                    instance,
+                    changes={
+                        'from_state': old_state_id,
+                        'to_state': instance.state_id,
+                    },
+                ),
+            )
+
+        # Edición de cabecera/ítems: pasa a "En gestión" pero NO genera
+        # líneas "Edición" en el historial (ruido sin valor para el usuario).
+        other_changed = any([
+            old_total != instance.total_amount,
+            old_currency != instance.currency,
+            old_message != instance.message,
+            old_observaciones != instance.observaciones,
+            old_specs != dict(instance.specs or {}),
+            old_quote_type_id != instance.quote_type_id,
+            ('contact' in validated_data),
+        ])
+        if other_changed or user_changed or state_changed:
+            mark_quote_managed(instance)
+
         return instance
 
 class BulkQuoteItemSerializer(serializers.Serializer):
@@ -556,6 +673,14 @@ class QuotePackageSerializer(serializers.Serializer):
             quote.total_amount = total_amount
             quote.save()
             logger.info(f"Quote total_amount updated: {total_amount}")
+
+            # Alta web: evento created (NO marca "en gestión")
+            record_quote_trace(
+                quote,
+                QuoteTrace.REASON_CREATED,
+                actor=None,
+                mark_managed=False,
+            )
         finally:
             post_save.connect(send_quote_notification, sender=Quote)
 
