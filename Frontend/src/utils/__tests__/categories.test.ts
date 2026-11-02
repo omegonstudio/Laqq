@@ -35,6 +35,27 @@ describe("getCategoryAncestry", () => {
     expect(getCategoryAncestry(null, categories)).toEqual([]);
   });
 
+  test("matchea UUID sin importar mayúsculas", () => {
+    const withUuid = [
+      { id: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA", name: "Equipos", parent: null },
+      {
+        id: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+        name: "Pesaje",
+        parent: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      },
+      {
+        id: "CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+        name: "Bombas",
+        parent: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      },
+    ];
+    expect(
+      getCategoryAncestry("cccccccc-cccc-cccc-cccc-cccccccccccc", withUuid).map(
+        (c) => c.name
+      )
+    ).toEqual(["Equipos", "Pesaje", "Bombas"]);
+  });
+
   test("corta ciclos", () => {
     const cyclic = [
       { id: "a", name: "A", parent: "b" },

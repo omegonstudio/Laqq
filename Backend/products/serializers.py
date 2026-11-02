@@ -352,6 +352,13 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+        # Forzar UUIDs explícitos: los Select del BO matchean por id, no por
+        # nombre. PrimaryKeyRelatedField(source='brand') a veces no llega bien
+        # al front junto al CharField(source='brand.name').
+        data['brand_id'] = str(instance.brand_id) if instance.brand_id else None
+        data['category_id'] = (
+            str(instance.category_id) if instance.category_id else None
+        )
         table = data.get('spec_table')
         if not isinstance(table, dict):
             data['spec_table'] = {'columns': [], 'rows': []}

@@ -5,12 +5,22 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from django.db.models import Prefetch
-from .models import QuoteType, QuoteState, Quote, QuoteItem
+from django.db.models import Count, Prefetch
+from .models import QuoteType, QuoteState, Quote, QuoteItem, QuoteTrace
 from products.models import VariantTechnicalSpec
-from .serializers import QuoteTypeSerializer, QuoteStateSerializer, QuoteSerializer, QuoteItemSerializer, BulkQuoteItemSerializer, QuotePackageSerializer
+from .serializers import (
+    QuoteTypeSerializer,
+    QuoteStateSerializer,
+    QuoteSerializer,
+    QuoteItemSerializer,
+    BulkQuoteItemSerializer,
+    QuotePackageSerializer,
+    QuoteTraceSerializer,
+)
+from .filters import QuoteFilter
 from .permissions import CanCreateOrAdmin, AllowPublicQuoteItems
 from .emails import send_updated_quote_to_customer
+from .tracing import build_full_snapshot, mark_quote_managed, record_quote_trace
 from .throttles import QuoteAnonBurstThrottle, QuoteAnonHourThrottle, get_client_ip
 from .turnstile import is_turnstile_enabled, verify_turnstile_token
 import logging
@@ -47,11 +57,11 @@ class QuoteViewSet(viewsets.ModelViewSet):
             'quoteitem_set__variant__variant_technical_specs',
             queryset=VariantTechnicalSpec.objects.select_related('technical_spec'),
         ),
-    )
+    ).annotate(_traces_count=Count('traces'))
     serializer_class = QuoteSerializer
     permission_classes = [CanCreateOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['contact', 'user', 'quote_type', 'state', 'currency']
+    filterset_class = QuoteFilter
     search_fields = [
         'quote_number',
         'message',
@@ -60,8 +70,20 @@ class QuoteViewSet(viewsets.ModelViewSet):
         'contact__last_name',
         'contact__company_name'
     ]
-    ordering_fields = ['quote_number', 'created_at', 'updated_at', 'total_amount']
+    ordering_fields = ['quote_number', 'created_at', 'updated_at', 'total_amount', 'managed_at']
     ordering = ['-created_at']
+
+    @action(detail=True, methods=['get'], url_path='traces')
+    def traces(self, request, pk=None):
+        """Historial de trazabilidad de la cotización (más reciente primero)."""
+        quote = self.get_object()
+        qs = quote.traces.select_related('actor').all()
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = QuoteTraceSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = QuoteTraceSerializer(qs, many=True)
+        return Response(serializer.data)
 
     @action(
         detail=False,
@@ -352,15 +374,29 @@ class QuoteViewSet(viewsets.ModelViewSet):
             )
 
             if success:
+                old_state_id = quote.state_id
                 sent_state = QuoteState.objects.filter(id='sent').first()
                 if sent_state and quote.state_id != sent_state.id:
                     quote.state = sent_state
                     quote.save(update_fields=['state', 'updated_at'])
+
+                # Snapshot completo del envío (sin guardar el PDF)
+                record_quote_trace(
+                    quote,
+                    QuoteTrace.REASON_SENT,
+                    actor=request.user,
+                    snapshot=build_full_snapshot(quote),
+                )
+                if sent_state and old_state_id != sent_state.id:
+                    # El envío ya queda como motivo principal; no duplicamos state_changed.
+                    pass
+
                 logger.info(f"Updated quote #{quote.quote_number} sent manually to {quote.contact.email}")
                 response_data = {
                     'message': f'Updated quote sent successfully to {quote.contact.email}',
                     'quote_number': quote.quote_number,
-                    'sent_to': quote.contact.email
+                    'sent_to': quote.contact.email,
+                    'lifecycle': 'managed',
                 }
                 if pdf_file is not None:
                     response_data['attachment'] = pdf_file.name
@@ -390,6 +426,24 @@ class QuoteItemViewSet(viewsets.ModelViewSet):
     search_fields = ['product_name', 'product_code']
     ordering_fields = ['product_name', 'quantity', 'created_at']
     ordering = ['created_at']
+
+    def _mark_managed_from_item(self, quote):
+        # Edición de ítems: pasa a gestión sin evento "Edición" ruidoso.
+        if self.request.user.is_authenticated:
+            mark_quote_managed(quote)
+
+    def perform_create(self, serializer):
+        item = serializer.save()
+        self._mark_managed_from_item(item.quote)
+
+    def perform_update(self, serializer):
+        item = serializer.save()
+        self._mark_managed_from_item(item.quote)
+
+    def perform_destroy(self, instance):
+        quote = instance.quote
+        super().perform_destroy(instance)
+        self._mark_managed_from_item(quote)
 
     @action(detail=False, methods=['post'], url_path='bulk')
     def bulk_create(self, request):
@@ -456,6 +510,8 @@ class QuoteItemViewSet(viewsets.ModelViewSet):
 
         # Serializar todos los items
         all_items = result.get('created', []) + result.get('updated', [])
+        if all_items and request.user.is_authenticated:
+            self._mark_managed_from_item(all_items[0].quote)
 
         return Response(
             {

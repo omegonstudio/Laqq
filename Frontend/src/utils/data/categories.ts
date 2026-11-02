@@ -17,11 +17,15 @@ export function isCategoryUnderConsumibles(
   categoryId: string,
   categories: CategoryParentRef[]
 ): boolean {
-  const byId = new Map(categories.map((c) => [c.id, c]));
-  let current = byId.get(categoryId);
+  const byId = new Map(categories.map((c) => [normId(c.id), c]));
+  let current = byId.get(normId(categoryId));
   while (current) {
     if (namesMatch(current.name, CONSUMIBLES_ROOT_NAME)) return true;
-    current = current.parent ? byId.get(current.parent) : undefined;
+    const parentKey = normId(current.parent);
+    current =
+      parentKey && parentKey !== "null" && parentKey !== "undefined"
+        ? byId.get(parentKey)
+        : undefined;
   }
   return false;
 }
@@ -58,20 +62,27 @@ export function categoryListingHref(category: {
   return `/products?category=${category.id}`;
 }
 
+const normId = (id?: string | null) => (id ?? "").trim().toLowerCase();
+
 /** Cadena raíz → hoja. Vacía si el id no está en la lista. */
 export function getCategoryAncestry(
   categoryId: string | null | undefined,
   categories: CategoryParentRef[]
 ): CategoryParentRef[] {
   if (!categoryId) return [];
-  const byId = new Map(categories.map((c) => [c.id, c]));
+  // Match case-insensitive: Radix/API a veces difieren en mayúsculas del UUID.
+  const byId = new Map(categories.map((c) => [normId(c.id), c]));
   const chain: CategoryParentRef[] = [];
   const seen = new Set<string>();
-  let current = byId.get(categoryId);
-  while (current && !seen.has(current.id)) {
-    seen.add(current.id);
+  let current = byId.get(normId(categoryId));
+  while (current && !seen.has(normId(current.id))) {
+    seen.add(normId(current.id));
     chain.push(current);
-    current = current.parent ? byId.get(current.parent) : undefined;
+    const parentKey = normId(current.parent);
+    current =
+      parentKey && parentKey !== "null" && parentKey !== "undefined"
+        ? byId.get(parentKey)
+        : undefined;
   }
   return chain.reverse();
 }
@@ -117,9 +128,9 @@ export function buildCategories(categories: readonly Category[]): CategoryUI[] {
   const rootIds = new Set<string>();
   const warned = new Set<string>();
 
-  const safeParentId = (value?: string) => {
+  const safeParentId = (value?: string | null) => {
     if (!value) return null;
-    const normalized = String(value).trim();
+    const normalized = normId(value);
     if (!normalized || normalized === "null" || normalized === "undefined") {
       return null;
     }
@@ -127,26 +138,27 @@ export function buildCategories(categories: readonly Category[]): CategoryUI[] {
   };
 
   categories.forEach((cat, sourceIndex) => {
+    const idKey = normId(cat.id);
     const parentId = safeParentId(cat.parent);
     const displayOrder = Number.isFinite(cat.display_order) ? cat.display_order : 0;
 
-    if (nodeById.has(cat.id) && !warned.has(`dup-${cat.id}`)) {
+    if (nodeById.has(idKey) && !warned.has(`dup-${idKey}`)) {
       console.warn(
         `[categories] id duplicado detectado: ${cat.id}. Se conserva la primera ocurrencia.`
       );
-      warned.add(`dup-${cat.id}`);
+      warned.add(`dup-${idKey}`);
       return;
     }
 
-    nodeById.set(cat.id, {
+    nodeById.set(idKey, {
       id: cat.id,
       name: cat.name,
       description: cat.description ?? "",
       href: `/products?category=${cat.id}`,
       subcategories: [],
     });
-    metaById.set(cat.id, { displayOrder, sourceIndex, parentId });
-    rootIds.add(cat.id);
+    metaById.set(idKey, { displayOrder, sourceIndex, parentId });
+    rootIds.add(idKey);
   });
 
   const hasCycle = (nodeId: string, parentId: string) => {
@@ -194,8 +206,8 @@ export function buildCategories(categories: readonly Category[]): CategoryUI[] {
 
   // Orden para raíces (nivel 0): por display_order, luego por sourceIndex
   const sortByOrder = (a: CategoryUI, b: CategoryUI) => {
-    const aMeta = metaById.get(a.id);
-    const bMeta = metaById.get(b.id);
+    const aMeta = metaById.get(normId(a.id));
+    const bMeta = metaById.get(normId(b.id));
     const orderDiff = (aMeta?.displayOrder ?? 0) - (bMeta?.displayOrder ?? 0);
     if (orderDiff !== 0) return orderDiff;
     return (aMeta?.sourceIndex ?? 0) - (bMeta?.sourceIndex ?? 0);
@@ -207,10 +219,11 @@ export function buildCategories(categories: readonly Category[]): CategoryUI[] {
 
   const visited = new Set<string>();
   const toSortedTree = (id: string): CategoryUI | null => {
-    if (visited.has(id)) return null;
-    visited.add(id);
+    const idKey = normId(id);
+    if (visited.has(idKey)) return null;
+    visited.add(idKey);
 
-    const node = nodeById.get(id);
+    const node = nodeById.get(idKey);
     if (!node) return null;
 
     const sortedChildren = [...node.subcategories]

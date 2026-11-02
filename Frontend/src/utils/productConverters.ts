@@ -4,25 +4,80 @@ import type {
   ProductFormState,
   ProductCreateRequest,
   ProductUpdateRequest,
-  TecnicalSpecs,
-  Variants,
+  Brand,
+  Category,
 } from "@/types/types";
 import { EMPTY_SPEC_TABLE } from "@/types/types";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Prefiere UUID; si el API mandó solo el nombre, no lo uses como value del Select. */
+export const asSelectId = (idOrName?: string | null) => {
+  const value = (idOrName ?? "").trim();
+  if (!value) return "";
+  return UUID_RE.test(value) ? value : "";
+};
+
+const namesMatch = (a: string, b: string) =>
+  a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** Resuelve marca a UUID: brand_id, o nombre contra el catálogo. */
+export const resolveBrandSelectId = (
+  product: Pick<Product, "brand" | "brand_id">,
+  brands: readonly Pick<Brand, "id" | "name">[] = []
+): string => {
+  const fromId = asSelectId(product.brand_id);
+  if (fromId) return fromId;
+  const fromBrandField = asSelectId(product.brand);
+  if (fromBrandField) return fromBrandField;
+  const name = (product.brand ?? "").trim();
+  if (!name || !brands.length) return "";
+  return brands.find((b) => namesMatch(b.name, name))?.id ?? "";
+};
+
+/** Resuelve categoría a UUID: category_id, o nombre contra el catálogo. */
+export const resolveCategorySelectId = (
+  product: Pick<Product, "category" | "category_id">,
+  categories: readonly Pick<Category, "id" | "name">[] = []
+): string => {
+  const fromId = asSelectId(product.category_id);
+  if (fromId) return fromId;
+  const fromCategoryField = asSelectId(product.category);
+  if (fromCategoryField) return fromCategoryField;
+  const name = (product.category ?? "").trim();
+  if (!name || !categories.length) return "";
+  // Si hay homónimos, preferir la hoja más específica (mayor level si existe).
+  const matches = categories.filter((c) => namesMatch(c.name, name));
+  if (!matches.length) return "";
+  if (matches.length === 1) return matches[0].id;
+  const withLevel = matches as Array<Pick<Category, "id" | "name"> & { level?: number }>;
+  return [...withLevel].sort((a, b) => (b.level ?? 0) - (a.level ?? 0))[0].id;
+};
+
+export type ProductFormLookups = {
+  brands?: readonly Pick<Brand, "id" | "name">[];
+  categories?: readonly Pick<Category, "id" | "name" | "level">[];
+};
 
 /**
  * Convierte un Product (del backend) a ProductFormState (para el formulario)
  */
-export const productToFormState = (product: Product): ProductFormState => {
+export const productToFormState = (
+  product: Product,
+  lookups: ProductFormLookups = {}
+): ProductFormState => {
   return {
-    attachments: product.attachments.map((att) => {
+    attachments: (product.attachments ?? []).map((att) => {
       return att.id;
     }),
     attachments_files: null,
     attachments_existing: null,
     id: product.id,
     name: product.name,
-    brand: product.brand_id || product.brand || "",
-    category: product.category_id || product.category || "",
+    // Los Select del BO usan UUID. Resolver nombre→id si el API solo mandó el label.
+    brand: resolveBrandSelectId(product, lookups.brands),
+    category: resolveCategorySelectId(product, lookups.categories),
     description: product.description || "",
     product_code: product.product_code || "",
     image_file: null,
@@ -89,8 +144,9 @@ export const formStateToUpdateRequest = (
   const activationChange = !initialData.is_active && formState.is_active;
   const productIsOrWillBeActive = formState.is_active;
 
-  const initialBrand = initialData.brand_id || initialData.brand;
-  const initialCategory = initialData.category_id || initialData.category;
+  const initialBrand = asSelectId(initialData.brand_id) || initialData.brand_id || "";
+  const initialCategory =
+    asSelectId(initialData.category_id) || initialData.category_id || "";
 
   if (formState.brand !== initialBrand || activationChange) {
     hasRealChanges = true;
