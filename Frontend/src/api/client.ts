@@ -286,7 +286,7 @@ class ApiClient {
     const token = await this.resolveUsableToken();
     const headers: HeadersInit = {
       Accept:
-        "application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/octet-stream, application/json",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/octet-stream, application/json",
     };
     if (token) {
       (headers as Record<string, string>).Authorization = `Bearer ${token}`;

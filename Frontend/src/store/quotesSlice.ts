@@ -18,33 +18,8 @@ import { PaginationInfo } from "@/types/types";
 // QUOTES
 export const fetchQuotes = createAsyncThunk(
   "quotes/fetchAll",
-  async (params?: {
-    page?: number;
-    page_size?: number;
-    search?: string;
-    state?: string;
-    quote_type?: string;
-    lifecycle?: string;
-  }) => {
+  async (params?: { page?: number; page_size?: number }) => {
     return quotesApi.list(params);
-  }
-);
-
-export const fetchQuoteTraces = createAsyncThunk(
-  "quotes/fetchTraces",
-  async (id: string) => {
-    const data = await quotesApi.listTraces(id);
-    if (Array.isArray(data)) return data;
-    return data.results ?? [];
-  }
-);
-
-export const fetchQuoteVersions = createAsyncThunk(
-  "quotes/fetchVersions",
-  async (id: string) => {
-    const data = await quotesApi.listVersions(id);
-    if (Array.isArray(data)) return data;
-    return data.results ?? [];
   }
 );
 
