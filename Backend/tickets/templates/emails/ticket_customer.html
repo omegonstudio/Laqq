@@ -256,10 +256,30 @@
                     <div class="info-label">Producto</div>
                     <div class="info-value">{{ product_name }}</div>
                 </div>
+                {% if numero_de_serie %}
                 <div class="info-item">
-                    <div class="info-label">Prioridad</div>
-                    <div class="info-value" style="color: {{ priority.color }};">{{ priority.name }}</div>
+                    <div class="info-label">N.º de serie</div>
+                    <div class="info-value">{{ numero_de_serie }}</div>
                 </div>
+                {% endif %}
+                {% if marca %}
+                <div class="info-item">
+                    <div class="info-label">Marca</div>
+                    <div class="info-value">{{ marca }}</div>
+                </div>
+                {% endif %}
+                {% if modelo %}
+                <div class="info-item">
+                    <div class="info-label">Modelo</div>
+                    <div class="info-value">{{ modelo }}</div>
+                </div>
+                {% endif %}
+                {% if company_name %}
+                <div class="info-item">
+                    <div class="info-label">Empresa</div>
+                    <div class="info-value">{{ company_name }}</div>
+                </div>
+                {% endif %}
                 <div class="info-item">
                     <div class="info-label">Estado</div>
                     <div class="info-value" style="color: {{ state.color }};">{{ state.name }}</div>
@@ -279,10 +299,10 @@
 
         <!-- Contact Information -->
         <div class="contact-section">
-            <h3>📞 ¿Necesitas ayuda urgente?</h3>
-            <p>Si tienes alguna consulta urgente, puedes contactarnos:</p>
+            <h3>¿Necesitás ayuda?</h3>
+            <p>También podés comunicarte con nosotros:</p>
             <div class="contact-info">
-                <strong>Email:</strong> <a href="mailto:{{ business_email }}">{{ business_email }}</a>
+                <strong>Email:</strong> <a href="mailto:{{ tickets_email }}">{{ tickets_email }}</a>
             </div>
             {% if business_phone %}
             <div class="contact-info">
@@ -313,7 +333,7 @@
                 </svg>
             </div>
             <p>Este es un mensaje automático, por favor no respondas a este correo.</p>
-            <p>Para comunicarte con nosotros, ingresa al portal de cliente o escribe a {{ business_email }}</p>
+            <p>Para comunicarte con nosotros, escribí a {{ tickets_email }}</p>
             <p style="font-size: 12px; color: #999;">
                 Ticket #{{ ticket_number }} | {{ created_at|date:"d/m/Y H:i" }}
             </p>

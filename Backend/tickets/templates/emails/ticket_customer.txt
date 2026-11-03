@@ -7,12 +7,15 @@ Hemos recibido tu solicitud de servicio técnico y creado un ticket de seguimien
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📋 INFORMACIÓN DEL TICKET
+INFORMACIÓN DEL TICKET
 
 Número de Ticket: {{ ticket_number }}
 Producto: {{ product_name }}
-Prioridad: {{ priority.name }}
-Estado: {{ state.name }}
+{% if numero_de_serie %}N.º de serie: {{ numero_de_serie }}
+{% endif %}{% if marca %}Marca: {{ marca }}
+{% endif %}{% if modelo %}Modelo: {{ modelo }}
+{% endif %}{% if company_name %}Empresa: {{ company_name }}
+{% endif %}Estado: {{ state.name }}
 Fecha de creación: {{ created_at|date:"d/m/Y H:i" }}
 
 Descripción del problema:
@@ -20,14 +23,14 @@ Descripción del problema:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📞 CONTACTO
+CONTACTO
 
-Si tienes alguna consulta urgente, puedes contactarnos:
+Si tenés alguna consulta, podés comunicarte con nosotros:
 
-Email: {{ business_email }}
-{% if business_phone %}Teléfono: {{ business_phone }}{% endif %}
-{% if business_address %}Dirección: {{ business_address }}{% endif %}
-
+Email: {{ tickets_email }}
+{% if business_phone %}Teléfono: {{ business_phone }}
+{% endif %}{% if business_address %}Dirección: {{ business_address }}
+{% endif %}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Gracias por confiar en {{ business_name }}.
@@ -35,6 +38,6 @@ Nuestro equipo técnico trabajará en resolver tu solicitud lo antes posible.
 
 ---
 Este es un mensaje automático. Por favor no respondas a este correo.
-Para comunicarte con nosotros, ingresa al portal de cliente o escribe a {{ business_email }}
+Para comunicarte con nosotros, escribí a {{ tickets_email }}
 
 Ticket #{{ ticket_number }} | {{ created_at|date:"d/m/Y H:i" }}

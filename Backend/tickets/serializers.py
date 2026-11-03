@@ -189,14 +189,13 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
             logger.error(f"Error creating client user for ticket {ticket.ticket_number}: {str(e)}")
             # No fallar la creación del ticket si falla la creación del usuario
 
-        # Enviar email con credenciales (solo si se creó un nuevo usuario)
-        if username and password:
-            try:
-                send_ticket_created_email(ticket, username, password)
-                logger.info(f"Ticket creation email sent for {ticket.ticket_number}")
-            except Exception as e:
-                logger.error(f"Error sending ticket email for {ticket.ticket_number}: {str(e)}")
-                # No fallar la creación del ticket si falla el envío de email
+        # Notificación de creación: exactamente 1 mail a soporte + 1 al cliente
+        try:
+            send_ticket_created_email(ticket)
+            logger.info(f"Ticket creation email sent for {ticket.ticket_number}")
+        except Exception as e:
+            logger.error(f"Error sending ticket email for {ticket.ticket_number}: {str(e)}")
+            # No fallar la creación del ticket si falla el envío de email
 
         return ticket
 
@@ -451,13 +450,12 @@ class TicketPackageSerializer(serializers.Serializer):
         except Exception as e:
             logger.error(f"Error creating client user for ticket {ticket.ticket_number}: {str(e)}")
 
-        # 5. Enviar email con credenciales
-        if username and password:
-            try:
-                send_ticket_created_email(ticket, username, password)
-                logger.info(f"Ticket creation email sent for {ticket.ticket_number}")
-            except Exception as e:
-                logger.error(f"Error sending ticket email for {ticket.ticket_number}: {str(e)}")
+        # 5. Notificación de creación: exactamente 1 mail a soporte + 1 al cliente
+        try:
+            send_ticket_created_email(ticket)
+            logger.info(f"Ticket creation email sent for {ticket.ticket_number}")
+        except Exception as e:
+            logger.error(f"Error sending ticket email for {ticket.ticket_number}: {str(e)}")
 
         return {
             'contact': contact,
