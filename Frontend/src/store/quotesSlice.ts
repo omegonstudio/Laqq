@@ -39,6 +39,15 @@ export const fetchQuoteTraces = createAsyncThunk(
   }
 );
 
+export const fetchQuoteVersions = createAsyncThunk(
+  "quotes/fetchVersions",
+  async (id: string) => {
+    const data = await quotesApi.listVersions(id);
+    if (Array.isArray(data)) return data;
+    return data.results ?? [];
+  }
+);
+
 export const fetchQuote = createAsyncThunk(
   "quotes/fetchOne",
   async (id: string) => {

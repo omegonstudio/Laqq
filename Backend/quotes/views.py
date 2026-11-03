@@ -3,10 +3,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.http import FileResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Count, Prefetch
-from .models import QuoteType, QuoteState, Quote, QuoteItem, QuoteTrace
+from .models import QuoteType, QuoteState, Quote, QuoteItem, QuoteTrace, QuoteVersion
 from products.models import VariantTechnicalSpec
 from .serializers import (
     QuoteTypeSerializer,
@@ -16,11 +17,18 @@ from .serializers import (
     BulkQuoteItemSerializer,
     QuotePackageSerializer,
     QuoteTraceSerializer,
+    QuoteVersionSerializer,
 )
 from .filters import QuoteFilter
 from .permissions import CanCreateOrAdmin, AllowPublicQuoteItems
 from .emails import send_updated_quote_to_customer
-from .tracing import build_full_snapshot, mark_quote_managed, record_quote_trace
+from .tracing import (
+    build_full_snapshot,
+    create_quote_version,
+    mark_quote_managed,
+    next_version_meta,
+    record_quote_trace,
+)
 from .throttles import QuoteAnonBurstThrottle, QuoteAnonHourThrottle, get_client_ip
 from .turnstile import is_turnstile_enabled, verify_turnstile_token
 import logging
@@ -57,7 +65,10 @@ class QuoteViewSet(viewsets.ModelViewSet):
             'quoteitem_set__variant__variant_technical_specs',
             queryset=VariantTechnicalSpec.objects.select_related('technical_spec'),
         ),
-    ).annotate(_traces_count=Count('traces'))
+    ).annotate(
+        _traces_count=Count('traces', distinct=True),
+        _versions_count=Count('versions', distinct=True),
+    )
     serializer_class = QuoteSerializer
     permission_classes = [CanCreateOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -84,6 +95,94 @@ class QuoteViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = QuoteTraceSerializer(qs, many=True)
         return Response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=['get', 'post'],
+        url_path='versions',
+        parser_classes=[MultiPartParser, FormParser, JSONParser],
+    )
+    def versions(self, request, pk=None):
+        """
+        GET  → lista de versiones (más reciente primero).
+        POST → crea la siguiente versión con snapshot + PDF del navegador.
+               Campo multipart: pdf_file (opcional pero recomendado).
+               Campo reason: saved | sent | state_changed | assignee_changed.
+        """
+        quote = self.get_object()
+
+        if request.method == 'GET':
+            qs = quote.versions.select_related('actor').all()
+            page = self.paginate_queryset(qs)
+            if page is not None:
+                serializer = QuoteVersionSerializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            serializer = QuoteVersionSerializer(qs, many=True)
+            return Response(serializer.data)
+
+        pdf_file = request.FILES.get('pdf_file')
+        if pdf_file is not None:
+            is_pdf = (
+                getattr(pdf_file, 'content_type', '') == 'application/pdf'
+                or str(getattr(pdf_file, 'name', '')).lower().endswith('.pdf')
+            )
+            if not is_pdf:
+                return Response(
+                    {'error': 'El archivo adjunto debe ser un PDF'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        reason = request.data.get('reason') or QuoteVersion.REASON_SAVED
+        valid_reasons = {c[0] for c in QuoteVersion.REASON_CHOICES}
+        if reason not in valid_reasons:
+            return Response(
+                {'error': f'reason inválido. Valores: {sorted(valid_reasons)}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        version = create_quote_version(
+            quote,
+            pdf_file=pdf_file,
+            reason=reason,
+            actor=request.user,
+        )
+        return Response(
+            QuoteVersionSerializer(version).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=['get'], url_path='versions/next')
+    def next_version(self, request, pk=None):
+        """Próximo version_number / version_label sin persistir."""
+        quote = self.get_object()
+        return Response(next_version_meta(quote))
+
+    @action(
+        detail=True,
+        methods=['get'],
+        url_path=r'versions/(?P<version_id>[0-9a-f-]+)/pdf',
+    )
+    def version_pdf(self, request, pk=None, version_id=None):
+        """Descarga el PDF guardado de una versión."""
+        quote = self.get_object()
+        try:
+            version = quote.versions.get(pk=version_id)
+        except QuoteVersion.DoesNotExist:
+            return Response(
+                {'error': 'Versión no encontrada'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if not version.pdf:
+            return Response(
+                {'error': 'Esta versión no tiene PDF'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return FileResponse(
+            version.pdf.open('rb'),
+            as_attachment=True,
+            filename=f'{version.version_label}.pdf',
+            content_type='application/pdf',
+        )
 
     @action(
         detail=False,

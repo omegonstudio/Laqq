@@ -216,6 +216,28 @@ export interface QuoteTrace {
   created_at: string;
 }
 
+export type QuoteVersionReason =
+  | "saved"
+  | "sent"
+  | "state_changed"
+  | "assignee_changed";
+
+export interface QuoteVersion {
+  id: string;
+  version_number: number;
+  version_label: string;
+  reason: QuoteVersionReason;
+  actor: string | null;
+  actor_name: string | null;
+  has_pdf: boolean;
+  created_at: string;
+}
+
+export interface QuoteVersionNext {
+  version_number: number;
+  version_label: string;
+}
+
 // Para LEER (GET) - Lo que recibes de la API
 export interface QuoteRender {
   id: string;
@@ -233,6 +255,7 @@ export interface QuoteRender {
   managed_at?: string | null;
   lifecycle?: QuoteLifecycle;
   traces_count?: number;
+  versions_count?: number;
   items: QuoteItemRender[]; // Items con productos completos
   observaciones: string;
   specs: SpecificationsForm;

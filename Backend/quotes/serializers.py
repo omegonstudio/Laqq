@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import QuoteType, QuoteState, Quote, QuoteItem, QuoteTrace
+from .models import QuoteType, QuoteState, Quote, QuoteItem, QuoteTrace, QuoteVersion
 from .emails import send_quote_assigned_email
 from .tracing import (
     build_light_snapshot,
@@ -153,6 +153,34 @@ class QuoteTraceSerializer(serializers.ModelSerializer):
         return full or obj.actor.username or obj.actor.email
 
 
+class QuoteVersionSerializer(serializers.ModelSerializer):
+    actor_name = serializers.SerializerMethodField()
+    has_pdf = serializers.SerializerMethodField()
+
+    class Meta:
+        model = QuoteVersion
+        fields = [
+            'id',
+            'version_number',
+            'version_label',
+            'reason',
+            'actor',
+            'actor_name',
+            'has_pdf',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_actor_name(self, obj):
+        if not obj.actor:
+            return None
+        full = f'{obj.actor.first_name} {obj.actor.last_name}'.strip()
+        return full or obj.actor.username or obj.actor.email
+
+    def get_has_pdf(self, obj):
+        return bool(obj.pdf)
+
+
 class QuoteSerializer(serializers.ModelSerializer):
     """
     Serializer estándar para Quote con detalles completos de contact y products.
@@ -174,6 +202,7 @@ class QuoteSerializer(serializers.ModelSerializer):
 
     items = QuoteItemDetailSerializer(many=True, read_only=True, source='quoteitem_set')
     traces_count = serializers.SerializerMethodField()
+    versions_count = serializers.SerializerMethodField()
     lifecycle = serializers.SerializerMethodField()
 
     class Meta:
@@ -190,6 +219,11 @@ class QuoteSerializer(serializers.ModelSerializer):
         if hasattr(obj, '_traces_count'):
             return obj._traces_count
         return obj.traces.count()
+
+    def get_versions_count(self, obj):
+        if hasattr(obj, '_versions_count'):
+            return obj._versions_count
+        return obj.versions.count()
 
     def get_lifecycle(self, obj):
         return 'managed' if obj.managed_at else 'received'
