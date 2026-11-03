@@ -197,47 +197,6 @@ export interface SpecificationsForm {
   orden_compra: string;
   observaciones: string;
 }
-export type QuoteLifecycle = "received" | "managed";
-
-export type QuoteTraceReason =
-  | "created"
-  | "updated"
-  | "assignee_changed"
-  | "state_changed"
-  | "sent"
-  | "backfill";
-
-export interface QuoteTrace {
-  id: string;
-  reason: QuoteTraceReason;
-  actor: string | null;
-  actor_name: string | null;
-  snapshot: Record<string, unknown>;
-  created_at: string;
-}
-
-export type QuoteVersionReason =
-  | "saved"
-  | "sent"
-  | "state_changed"
-  | "assignee_changed";
-
-export interface QuoteVersion {
-  id: string;
-  version_number: number;
-  version_label: string;
-  reason: QuoteVersionReason;
-  actor: string | null;
-  actor_name: string | null;
-  has_pdf: boolean;
-  created_at: string;
-}
-
-export interface QuoteVersionNext {
-  version_number: number;
-  version_label: string;
-}
-
 // Para LEER (GET) - Lo que recibes de la API
 export interface QuoteRender {
   id: string;
@@ -252,10 +211,6 @@ export interface QuoteRender {
   currency: QuoteCurrency;
   created_at: string;
   updated_at: string;
-  managed_at?: string | null;
-  lifecycle?: QuoteLifecycle;
-  traces_count?: number;
-  versions_count?: number;
   items: QuoteItemRender[]; // Items con productos completos
   observaciones: string;
   specs: SpecificationsForm;
@@ -323,8 +278,6 @@ export interface QuoteUpdatePayload {
   currency?: QuoteCurrency;
   user?: string | null;
   quote_type?: QuoteTypeEnum;
-  /** Transición de estado (validated en backend). */
-  state_id?: QuoteStateType;
   state?: QuoteStateType;
   observaciones: string;
   specs: SpecificationsForm;

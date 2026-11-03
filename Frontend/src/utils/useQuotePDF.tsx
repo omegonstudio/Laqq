@@ -233,14 +233,11 @@ const s = StyleSheet.create({
 const QuotePDF = ({
   quote,
   logoBase64,
-  displayNumber,
 }: {
   quote: QuoteRender;
   logoBase64: string;
-  displayNumber?: string;
 }) => {
   const { contact, specs, items } = quote;
-  const numberLabel = displayNumber || quote.quote_number;
 
   return (
     <Document>
@@ -287,7 +284,7 @@ const QuotePDF = ({
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={s.quoteLabel}>Cotización</Text>
-            <Text style={s.quoteNumber}>#{numberLabel}</Text>
+            <Text style={s.quoteNumber}>#{quote.quote_number}</Text>
           </View>
         </View>
 
@@ -457,7 +454,7 @@ const QuotePDF = ({
               : ""}
           </Text>
           <Text>
-            Cotización #{numberLabel} · Última modificación:{" "}
+            Cotización #{quote.quote_number} · Última modificación:{" "}
             {formatDate(quote.updated_at)}
           </Text>
         </View>
@@ -469,36 +466,23 @@ const QuotePDF = ({
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
 export const generateQuotePdfBlob = async (
-  quote: QuoteRender,
-  displayNumber?: string
+  quote: QuoteRender
 ): Promise<Blob> => {
   const logoBase64 = await getLogoBase64();
   const blob = await pdf(
-    <QuotePDF
-      quote={quote}
-      logoBase64={logoBase64}
-      displayNumber={displayNumber}
-    />
+    <QuotePDF quote={quote} logoBase64={logoBase64} />
   ).toBlob();
   return blob;
 };
-export const generateQuotePdf = async (
-  quote: QuoteRender,
-  displayNumber?: string
-): Promise<void> => {
+export const generateQuotePdf = async (quote: QuoteRender): Promise<void> => {
   const logoBase64 = await getLogoBase64();
-  const numberLabel = displayNumber || quote.quote_number;
   const blob = await pdf(
-    <QuotePDF
-      quote={quote}
-      logoBase64={logoBase64}
-      displayNumber={displayNumber}
-    />
+    <QuotePDF quote={quote} logoBase64={logoBase64} />
   ).toBlob();
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${numberLabel}.pdf`;
+  link.download = `${quote.quote_number}.pdf`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
