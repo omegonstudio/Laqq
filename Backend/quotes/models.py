@@ -151,3 +151,58 @@ class QuoteTrace(models.Model):
 
     def __str__(self):
         return f'{self.quote_id} · {self.reason} · {self.created_at}'
+
+
+def quote_version_pdf_upload_to(instance, filename):
+    import os
+    from django.utils.text import get_valid_filename
+    safe = get_valid_filename(os.path.basename(filename))
+    return f'quotes/versions/{instance.quote_id}/{uuid.uuid4().hex}_{safe}'
+
+
+class QuoteVersion(models.Model):
+    """
+    Versión inmutable de una cotización (snapshot + PDF).
+
+    Numeración: {quote.quote_number}-{version_number}  →  Q-2026-00002-1
+    La primera versión se crea en el primer save del BO (no en el alta web).
+    """
+
+    REASON_SAVED = 'saved'
+    REASON_SENT = 'sent'
+    REASON_STATE_CHANGED = 'state_changed'
+    REASON_ASSIGNEE_CHANGED = 'assignee_changed'
+
+    REASON_CHOICES = [
+        (REASON_SAVED, 'Guardada'),
+        (REASON_SENT, 'Enviada'),
+        (REASON_STATE_CHANGED, 'Cambio de estado'),
+        (REASON_ASSIGNEE_CHANGED, 'Cambio de responsable'),
+    ]
+
+    id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
+    quote = models.ForeignKey(Quote, on_delete=models.CASCADE, related_name='versions')
+    version_number = models.PositiveIntegerField()
+    # Número mostrado: Q-2026-00002-1
+    version_label = models.CharField(max_length=120)
+    reason = models.CharField(max_length=32, choices=REASON_CHOICES, default=REASON_SAVED)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='quote_versions',
+    )
+    snapshot = models.JSONField(default=dict, blank=True)
+    pdf = models.FileField(upload_to=quote_version_pdf_upload_to, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-version_number']
+        unique_together = [('quote', 'version_number')]
+        indexes = [
+            models.Index(fields=['quote', '-version_number'], name='quotes_quot_quote_i_vnum_idx'),
+        ]
+
+    def __str__(self):
+        return self.version_label

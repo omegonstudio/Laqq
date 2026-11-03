@@ -1,12 +1,19 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Edit2, FileText, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Download,
+  Edit2,
+  FileText,
+  Trash2,
+} from "lucide-react";
 import Table from "@/components/common/Table";
 import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   deleteQuote,
-  fetchQuoteTraces,
+  fetchQuoteVersions,
   fetchQuotes,
   fetchQuoteStates,
   fetchQuoteTypes,
@@ -15,20 +22,20 @@ import {
   QuoteLifecycle,
   QuoteRender,
   QuoteStateType,
-  QuoteTrace,
   QuoteTypeEnum,
+  QuoteVersion,
 } from "@/types/api";
 import QuotePreviewDialog from "../atoms/QuotePreview";
 import {
-  convertQuoteTraceReason,
+  convertQuoteVersionReason,
   convertQuotesState,
   convertQuotesTypes,
-  QUOTE_TRACE_VISIBLE_REASONS,
 } from "@/utils/quotesConvert";
 import ModalDelete from "../molecules/Modals/ModalDelete";
 import { toast } from "@/hooks/use-toast";
 import { useCanManageQuotes } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
+import { quotesApi } from "@/lib/api/quotes";
 
 const formatDateTime = (value?: string | null) =>
   value
@@ -55,10 +62,11 @@ const QuotesTable = () => {
 
   const [previewQuote, setPreviewQuote] = useState<QuoteRender | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [tracesByQuote, setTracesByQuote] = useState<Record<string, QuoteTrace[]>>(
-    {}
-  );
-  const [loadingTraces, setLoadingTraces] = useState<string | null>(null);
+  const [versionsByQuote, setVersionsByQuote] = useState<
+    Record<string, QuoteVersion[]>
+  >({});
+  const [loadingVersions, setLoadingVersions] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const reload = () => {
     const params: {
@@ -89,6 +97,7 @@ const QuotesTable = () => {
   useEffect(() => {
     reload();
     setExpandedId(null);
+    setVersionsByQuote({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, statusFilter, searchTerm, typesFilters, lifecycle]);
 
@@ -107,18 +116,50 @@ const QuotesTable = () => {
       return;
     }
     setExpandedId(quote.id);
-    if (tracesByQuote[quote.id]) return;
-    setLoadingTraces(quote.id);
+    if (versionsByQuote[quote.id]) return;
+    setLoadingVersions(quote.id);
     try {
-      const traces = await dispatch(fetchQuoteTraces(quote.id)).unwrap();
-      setTracesByQuote((prev) => ({ ...prev, [quote.id]: traces }));
+      const versions = await dispatch(fetchQuoteVersions(quote.id)).unwrap();
+      setVersionsByQuote((prev) => ({ ...prev, [quote.id]: versions }));
     } catch {
       toast({
-        title: "No se pudo cargar el historial",
+        title: "No se pudo cargar el historial de versiones",
         variant: "destructive",
       });
     } finally {
-      setLoadingTraces(null);
+      setLoadingVersions(null);
+    }
+  };
+
+  const handleDownloadPdf = async (quoteId: string, version: QuoteVersion) => {
+    if (!version.has_pdf) {
+      toast({
+        title: "Esta versión no tiene PDF",
+        variant: "destructive",
+      });
+      return;
+    }
+    setDownloadingId(version.id);
+    try {
+      const { blob, filename } = await quotesApi.downloadVersionPdf(
+        quoteId,
+        version.id
+      );
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || `${version.version_label}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch {
+      toast({
+        title: "No se pudo descargar el PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -137,7 +178,7 @@ const QuotesTable = () => {
                   e.stopPropagation();
                   toggleExpand(row);
                 }}
-                aria-label="Ver historial"
+                aria-label="Ver versiones"
               >
                 {expandedId === row.id ? (
                   <ChevronDown size={16} />
@@ -178,8 +219,8 @@ const QuotesTable = () => {
     },
   ];
 
-  const handleOpenDeleteModal = (product: QuoteRender) => {
-    setPreviewQuote(product);
+  const handleOpenDeleteModal = (row: QuoteRender) => {
+    setPreviewQuote(row);
     setIsModalDeleteOpen(true);
   };
   const handleEdit = (quote: QuoteRender) => {
@@ -247,65 +288,64 @@ const QuotesTable = () => {
     }
   };
 
-  const renderTraceList = (quoteId: string) => {
-    if (loadingTraces === quoteId) {
-      return <p className="text-sm text-muted-foreground pl-2">Cargando historial…</p>;
-    }
-    const traces = (tracesByQuote[quoteId] || []).filter((t) =>
-      QUOTE_TRACE_VISIBLE_REASONS.has(t.reason)
-    );
-    if (!tracesByQuote[quoteId]) return null;
-    if (traces.length === 0) {
+  const renderVersionList = (quoteId: string) => {
+    if (loadingVersions === quoteId) {
       return (
-        <p className="text-sm text-muted-foreground pl-2">Sin eventos registrados.</p>
+        <p className="text-sm text-muted-foreground pl-2">
+          Cargando versiones…
+        </p>
+      );
+    }
+    const versions = versionsByQuote[quoteId] || [];
+    if (!versionsByQuote[quoteId]) return null;
+    if (versions.length === 0) {
+      return (
+        <p className="text-sm text-muted-foreground pl-2">
+          Sin versiones. Se generan al guardar desde el backoffice.
+        </p>
       );
     }
     return (
       <div className="pl-2">
         <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
-          Historial de gestión
+          Versiones
         </p>
         <ul className="space-y-2 border-l-2 border-primary/30 pl-3">
-          {traces.map((trace) => {
-            const changes = (trace.snapshot?.changes || {}) as Record<
-              string,
-              unknown
-            >;
-            return (
-              <li
-                key={trace.id}
-                className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm"
-              >
-                <span className="font-medium">
-                  {convertQuoteTraceReason(trace.reason)}
-                </span>
+          {versions.map((version) => (
+            <li
+              key={version.id}
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
+            >
+              <span className="font-medium font-mono">
+                {version.version_label}
+              </span>
+              <span className="text-muted-foreground">
+                {convertQuoteVersionReason(version.reason)}
+              </span>
+              <span className="text-muted-foreground">
+                {formatDateTime(version.created_at)}
+              </span>
+              {version.actor_name && (
                 <span className="text-muted-foreground">
-                  {formatDateTime(trace.created_at)}
+                  por {version.actor_name}
                 </span>
-                {trace.actor_name && (
-                  <span className="text-muted-foreground">
-                    por {trace.actor_name}
-                  </span>
-                )}
-                {trace.reason === "state_changed" && changes.from_state && (
-                  <span className="text-xs text-muted-foreground">
-                    {String(changes.from_state)} → {String(changes.to_state)}
-                  </span>
-                )}
-                {trace.reason === "sent" && trace.snapshot?.kind === "full" && (
-                  <span className="text-xs text-muted-foreground">
-                    Total: {String(trace.snapshot.total_amount ?? "-")}{" "}
-                    {String(trace.snapshot.currency ?? "")}
-                  </span>
-                )}
-                {trace.reason === "backfill" && (
-                  <span className="text-xs text-muted-foreground">
-                    Sin detalle previo al deploy de trazabilidad
-                  </span>
-                )}
-              </li>
-            );
-          })}
+              )}
+              {version.has_pdf && (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
+                  disabled={downloadingId === version.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownloadPdf(quoteId, version);
+                  }}
+                >
+                  <Download size={12} />
+                  {downloadingId === version.id ? "Descargando…" : "PDF"}
+                </button>
+              )}
+            </li>
+          ))}
         </ul>
       </div>
     );
@@ -373,6 +413,7 @@ const QuotesTable = () => {
             setIsModalEditOpen(open);
             if (!open) {
               setPreviewQuote(null);
+              setVersionsByQuote({});
               reload();
             }
           }}
@@ -387,7 +428,7 @@ const QuotesTable = () => {
         renderExpandedRow={
           lifecycle === "managed"
             ? (row: QuoteRender) =>
-                expandedId === row.id ? renderTraceList(row.id) : null
+                expandedId === row.id ? renderVersionList(row.id) : null
             : undefined
         }
       />

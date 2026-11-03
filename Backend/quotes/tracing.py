@@ -157,3 +157,47 @@ def can_transition_state(from_id: str, to_id: str) -> bool:
         # Estado desconocido: permitir para no bloquear datos legacy
         return True
     return to_id in allowed
+
+
+def next_version_meta(quote: Quote) -> dict:
+    """Calcula el próximo version_number / version_label sin persistir."""
+    from django.db.models import Max
+    from .models import QuoteVersion
+
+    current_max = (
+        QuoteVersion.objects.filter(quote=quote).aggregate(m=Max('version_number')).get('m')
+        or 0
+    )
+    number = current_max + 1
+    label = f'{quote.quote_number}-{number}'
+    return {'version_number': number, 'version_label': label}
+
+
+def create_quote_version(
+    quote: Quote,
+    *,
+    pdf_file=None,
+    reason: str = 'saved',
+    actor=None,
+) -> 'QuoteVersion':
+    """
+    Crea la siguiente versión con snapshot completo y PDF opcional.
+    Marca la cotización como gestionada.
+    """
+    from .models import QuoteVersion
+
+    meta = next_version_meta(quote)
+    version = QuoteVersion.objects.create(
+        quote=quote,
+        version_number=meta['version_number'],
+        version_label=meta['version_label'],
+        reason=reason,
+        actor=actor if getattr(actor, 'is_authenticated', False) else None,
+        snapshot=build_full_snapshot(quote),
+    )
+    if pdf_file is not None:
+        filename = getattr(pdf_file, 'name', None) or f'{version.version_label}.pdf'
+        version.pdf.save(filename, pdf_file, save=True)
+
+    mark_quote_managed(quote)
+    return version

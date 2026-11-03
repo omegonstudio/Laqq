@@ -13,6 +13,8 @@ import {
   QuoteTrace,
   QuoteType,
   QuoteUpdatePayload,
+  QuoteVersion,
+  QuoteVersionNext,
 } from "@/types/api";
 
 const BASE = "/quotes";
@@ -64,6 +66,20 @@ export const quotesApi = {
     api.get<PaginatedResponse<QuoteTrace> | QuoteTrace[]>(
       `${BASE}/list/${id}/traces/`
     ),
+
+  listVersions: (id: string) =>
+    api.get<PaginatedResponse<QuoteVersion> | QuoteVersion[]>(
+      `${BASE}/list/${id}/versions/`
+    ),
+
+  nextVersion: (id: string) =>
+    api.get<QuoteVersionNext>(`${BASE}/list/${id}/versions/next/`),
+
+  createVersion: (id: string, formData: FormData) =>
+    api.post<QuoteVersion>(`${BASE}/list/${id}/versions/`, formData),
+
+  downloadVersionPdf: (quoteId: string, versionId: string) =>
+    api.getBlob(`${BASE}/list/${quoteId}/versions/${versionId}/pdf/`),
 
   // =================== ITEMS ===================
   listItems: (params?: QuoteItemListParams) =>

@@ -99,6 +99,21 @@ export const convertQuoteTraceReason = (reason: string): string => {
   }
 };
 
+export const convertQuoteVersionReason = (reason: string): string => {
+  switch (reason) {
+    case "saved":
+      return "Guardada";
+    case "sent":
+      return "Enviada al cliente";
+    case "state_changed":
+      return "Cambio de estado";
+    case "assignee_changed":
+      return "Cambio de responsable";
+    default:
+      return reason;
+  }
+};
+
 /** Eventos que aportan info al usuario (ocultamos "updated"/ediciones genéricas). */
 export const QUOTE_TRACE_VISIBLE_REASONS = new Set([
   "created",
