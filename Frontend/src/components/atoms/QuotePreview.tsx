@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  allowedNextQuoteStates,
   convertQuoteCurrency,
   convertQuotesState,
   convertQuotesTypes,
@@ -165,6 +166,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   }, [quote]);
 
   const quotesTypes = useAppSelector((state) => state.quotes.types);
+  const quotesStates = useAppSelector((state) => state.quotes.states);
 
   useEffect(() => {
     if (quote) {
@@ -290,6 +292,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
 
   const handleSave = async (options?: {
     manageLoading?: boolean;
+    versionReason?: "saved" | "sent";
   }): Promise<QuoteRender | null> => {
     if (formState.user === null || formState.user === undefined) {
       toast({
@@ -316,6 +319,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
             user: formState.user.id,
             quote_type: formState.quote_type,
             currency: formState.currency,
+            state_id: formState.state,
             observaciones: formState.observaciones,
             specs: specs,
           },
@@ -386,6 +390,30 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         observaciones: updatedQuote.observaciones,
       });
 
+      // Versión inmutable + PDF del navegador (primera versión = primer save BO)
+      try {
+        const next = await quotesApi.nextVersion(updatedQuote.id);
+        const { generateQuotePdfBlob } = await import("@/utils/useQuotePDF");
+        const pdfBlob = await generateQuotePdfBlob(
+          updatedQuote,
+          next.version_label
+        );
+        const formData = new FormData();
+        formData.append(
+          "pdf_file",
+          pdfBlob,
+          `${next.version_label}.pdf`
+        );
+        formData.append("reason", options?.versionReason || "saved");
+        await quotesApi.createVersion(updatedQuote.id, formData);
+      } catch (versionError) {
+        console.error(versionError);
+        toast({
+          title: "Cotización guardada, pero no se pudo crear la versión PDF",
+          variant: "destructive",
+        });
+      }
+
       toast({ title: "Cotización actualizada correctamente" });
       setEdit(false);
 
@@ -406,21 +434,32 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   const handleSendClient = async () => {
     setIsSending(true);
     try {
-      const updatedQuote = await handleSave({ manageLoading: false });
+      const updatedQuote = await handleSave({
+        manageLoading: false,
+        versionReason: "sent",
+      });
 
       if (!updatedQuote) {
         return;
       }
 
+      // Usar el número de la última versión creada en el save
+      const versions = await quotesApi.listVersions(updatedQuote.id);
+      const versionList = Array.isArray(versions)
+        ? versions
+        : versions.results ?? [];
+      const latestLabel =
+        versionList[0]?.version_label ?? updatedQuote.quote_number;
+
       const { generateQuotePdfBlob } = await import("@/utils/useQuotePDF");
-      const pdfBlob = await generateQuotePdfBlob(updatedQuote);
+      const pdfBlob = await generateQuotePdfBlob(updatedQuote, latestLabel);
 
       const formData = new FormData();
 
       formData.append(
         "pdf_file",
         pdfBlob,
-        `cotizacion-${updatedQuote.quote_number}.pdf`
+        `${latestLabel}.pdf`
       );
 
       await quotesApi.sendClient(updatedQuote.id, formData);
@@ -492,9 +531,35 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <label>Estado</label>
-            <p className="text-muted-foreground">
-              {convertQuotesState(formState.state as QuoteStateType)}
-            </p>
+            {edit && canManageQuotes ? (
+              <Select
+                value={formState.state}
+                onValueChange={(value: QuoteStateType) => {
+                  setFormState((prev) =>
+                    prev ? { ...prev, state: value } : null
+                  );
+                  setEdit(true);
+                }}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {allowedNextQuoteStates(formState.state).map((stateId) => {
+                    const fromApi = quotesStates.find((s) => s.id === stateId);
+                    return (
+                      <SelectItem key={stateId} value={stateId}>
+                        {fromApi?.name ?? convertQuotesState(stateId as QuoteStateType)}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-muted-foreground">
+                {convertQuotesState(formState.state as QuoteStateType)}
+              </p>
+            )}
           </div>
 
           <div>

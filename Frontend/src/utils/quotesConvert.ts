@@ -64,6 +64,65 @@ export const convertQuotesState = (state: QuoteStateType): string => {
   }
 };
 
+/** Transiciones de estado permitidas (alineado con Backend/quotes/tracing.py). */
+export const QUOTE_STATE_TRANSITIONS: Record<string, string[]> = {
+  pending: ["assigned", "sent", "rejected", "expired"],
+  assigned: ["sent", "rejected", "expired", "pending"],
+  sent: ["confirmed", "rejected", "expired", "assigned"],
+  confirmed: ["rejected", "expired"],
+  rejected: [],
+  expired: [],
+};
+
+export const allowedNextQuoteStates = (current: string): string[] => {
+  const key = (current || "").toLowerCase();
+  const next = QUOTE_STATE_TRANSITIONS[key] ?? [];
+  return [key, ...next.filter((s) => s !== key)];
+};
+
+export const convertQuoteTraceReason = (reason: string): string => {
+  switch (reason) {
+    case "created":
+      return "Alta (pedido web)";
+    case "updated":
+      return "Edición";
+    case "assignee_changed":
+      return "Cambio de responsable";
+    case "state_changed":
+      return "Cambio de estado";
+    case "sent":
+      return "Enviada al cliente";
+    case "backfill":
+      return "Histórico (sin detalle)";
+    default:
+      return reason;
+  }
+};
+
+export const convertQuoteVersionReason = (reason: string): string => {
+  switch (reason) {
+    case "saved":
+      return "Guardada";
+    case "sent":
+      return "Enviada al cliente";
+    case "state_changed":
+      return "Cambio de estado";
+    case "assignee_changed":
+      return "Cambio de responsable";
+    default:
+      return reason;
+  }
+};
+
+/** Eventos que aportan info al usuario (ocultamos "updated"/ediciones genéricas). */
+export const QUOTE_TRACE_VISIBLE_REASONS = new Set([
+  "created",
+  "assignee_changed",
+  "state_changed",
+  "sent",
+  "backfill",
+]);
+
 export const convertQuotesTypes = (type: QuoteTypeEnum): string => {
   switch (type.toLowerCase()) {
     case "equipment":

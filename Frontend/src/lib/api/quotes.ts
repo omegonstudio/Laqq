@@ -10,8 +10,11 @@ import {
   QuoteItemRender,
   QuoteRender,
   QuoteState,
+  QuoteTrace,
   QuoteType,
   QuoteUpdatePayload,
+  QuoteVersion,
+  QuoteVersionNext,
 } from "@/types/api";
 
 const BASE = "/quotes";
@@ -22,6 +25,8 @@ export interface QuoteListParams {
   search?: string;
   state?: string;
   quote_type?: string;
+  /** received | managed */
+  lifecycle?: string;
 }
 
 export interface QuoteItemListParams {
@@ -56,6 +61,25 @@ export const quotesApi = {
   // Crear cotización desde formulario (incluye contacto + items)
   createFromForm: (payload: QuoteFormState) =>
     api.post<QuoteRender>(`${BASE}/list/from-package/`, payload),
+
+  listTraces: (id: string) =>
+    api.get<PaginatedResponse<QuoteTrace> | QuoteTrace[]>(
+      `${BASE}/list/${id}/traces/`
+    ),
+
+  listVersions: (id: string) =>
+    api.get<PaginatedResponse<QuoteVersion> | QuoteVersion[]>(
+      `${BASE}/list/${id}/versions/`
+    ),
+
+  nextVersion: (id: string) =>
+    api.get<QuoteVersionNext>(`${BASE}/list/${id}/versions/next/`),
+
+  createVersion: (id: string, formData: FormData) =>
+    api.post<QuoteVersion>(`${BASE}/list/${id}/versions/`, formData),
+
+  downloadVersionPdf: (quoteId: string, versionId: string) =>
+    api.getBlob(`${BASE}/list/${quoteId}/versions/${versionId}/pdf/`),
 
   // =================== ITEMS ===================
   listItems: (params?: QuoteItemListParams) =>

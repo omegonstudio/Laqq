@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -41,6 +41,9 @@ interface TableProps {
   itemsPerPage?: number;
   // Nueva prop para paginación del servidor
   serverPagination?: ServerPagination;
+  /** Contenido extra debajo de la fila (p. ej. historial expandido). */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  renderExpandedRow?: (row: any) => React.ReactNode | null;
 }
 
 const Table = ({
@@ -49,6 +52,7 @@ const Table = ({
   actions,
   itemsPerPage = 10,
   serverPagination,
+  renderExpandedRow,
 }: TableProps) => {
   // Estado local solo para paginación del cliente
   const [currentPage, setCurrentPage] = useState(1);
@@ -151,59 +155,77 @@ const Table = ({
           </thead>
           <tbody>
             {paginatedData.length > 0 ? (
-              paginatedData.map((row, idx) => (
-                <tr
-                  key={`${row.id}-${idx}`}
-                  className={cn(
-                    "border-b border-border transition-colors hover:bg-muted/50",
-                    idx % 2 === 0 ? "bg-background" : "bg-muted/20"
-                  )}
-                >
-                  {columns.map((column) => (
-                    <td
-                      className="px-4 py-3 text-sm text-foreground"
-                      key={column.key}
+              paginatedData.map((row, idx) => {
+                const expanded = renderExpandedRow?.(row) ?? null;
+                const colSpan = columns.length + (actions && actions.length > 0 ? 1 : 0);
+                return (
+                  <Fragment key={`${row.id}-${idx}`}>
+                    <tr
+                      className={cn(
+                        "border-b border-border transition-colors hover:bg-muted/50",
+                        idx % 2 === 0 ? "bg-background" : "bg-muted/20",
+                        expanded && "border-b-0"
+                      )}
                     >
-                      {column.render
-                        ? column.render(row[column.key], row)
-                        : row[column.key]}
-                    </td>
-                  ))}
+                      {columns.map((column) => (
+                        <td
+                          className="px-4 py-3 text-sm text-foreground"
+                          key={column.key}
+                        >
+                          {column.render
+                            ? column.render(row[column.key], row)
+                            : row[column.key]}
+                        </td>
+                      ))}
 
-                  {actions && actions.length > 0 && (
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        {actions.map((action, actionIdx) => {
-                          const isDisabled = action.disabled;
+                      {actions && actions.length > 0 && (
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {actions.map((action, actionIdx) => {
+                              const isDisabled = action.disabled;
 
-                          return (
-                            <button
-                              key={actionIdx}
-                              disabled={isDisabled}
-                              onClick={() => action.onClick(row)}
-                              className={cn(
-                                "p-2 rounded-lg transition-colors",
-                                isDisabled
-                                  ? "opacity-40"
-                                  : action.color === "red"
-                                  ? "text-destructive hover:bg-destructive/10"
-                                  : "text-primary hover:bg-primary/10"
-                              )}
-                              title={
-                                isDisabled
-                                  ? "Acción no disponible"
-                                  : action.label
-                              }
-                            >
-                              {action.icon}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))
+                              return (
+                                <button
+                                  key={actionIdx}
+                                  disabled={isDisabled}
+                                  onClick={() => action.onClick(row)}
+                                  className={cn(
+                                    "p-2 rounded-lg transition-colors",
+                                    isDisabled
+                                      ? "opacity-40"
+                                      : action.color === "red"
+                                      ? "text-destructive hover:bg-destructive/10"
+                                      : "text-primary hover:bg-primary/10"
+                                  )}
+                                  title={
+                                    isDisabled
+                                      ? "Acción no disponible"
+                                      : action.label
+                                  }
+                                >
+                                  {action.icon}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                    {expanded && (
+                      <tr
+                        className={cn(
+                          "border-b border-border",
+                          idx % 2 === 0 ? "bg-muted/30" : "bg-muted/40"
+                        )}
+                      >
+                        <td colSpan={colSpan} className="px-4 py-3">
+                          {expanded}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })
             ) : (
               <tr>
                 <td
