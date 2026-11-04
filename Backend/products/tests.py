@@ -245,7 +245,10 @@ class ProductAPITestCase(APITestCase):
         self.user.save()
         self.client.force_authenticate(user=self.user)
         self.brand = Brand.objects.create(name='Test Brand')
-        self.category = Category.objects.create(name='Test Category')
+        self.root_category = Category.objects.create(name='Test Root')
+        self.category = Category.objects.create(
+            name='Test Category', parent=self.root_category
+        )
         self.product = Product.objects.create(
             name='Test Product',
             brand=self.brand,
@@ -288,6 +291,34 @@ class ProductAPITestCase(APITestCase):
         self.assertEqual(response.data['category'], self.category.name)
         self.assertEqual(response.data['brand_id'], str(self.brand.id))
         self.assertEqual(response.data['category_id'], str(self.category.id))
+
+    def test_create_product_rejects_root_level_category(self):
+        """No se puede asignar un producto a una categoría de nivel 0 (aunque no tenga hijos)."""
+        root = Category.objects.create(name='Mobiliario Root')
+        self.assertEqual(root.level, 0)
+        data = {
+            'name': 'Producto en raíz',
+            'brand_id': self.brand.id,
+            'category_id': root.id,
+            'is_active': True,
+        }
+        response = self.client.post('/products/list/', data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('category_id', response.data)
+
+    def test_create_product_allows_level_one_even_with_children(self):
+        """Level >= 1 es válido aunque la categoría tenga subcategorías."""
+        root = Category.objects.create(name='Equipos Root')
+        level1 = Category.objects.create(name='Analítica', parent=root)
+        Category.objects.create(name='Sub', parent=level1)
+        data = {
+            'name': 'Producto en nivel 1',
+            'brand_id': self.brand.id,
+            'category_id': level1.id,
+            'is_active': True,
+        }
+        response = self.client.post('/products/list/', data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_update_spec_table(self):
         """Se puede guardar una tabla de especificaciones con filas y columnas."""

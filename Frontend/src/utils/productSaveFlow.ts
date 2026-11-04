@@ -9,6 +9,7 @@ import {
   Variants,
 } from "@/types/types";
 import { productsApi } from "@/lib/api/products";
+import { categoryAllowsProducts } from "@/utils/data/categories";
 
 export const variantsInitialData: Variants = {
   id: undefined,
@@ -170,7 +171,11 @@ export const normalizeVariants = (vars: Variants[]) =>
     .sort((a, b) => (a.id || "").localeCompare(b.id || ""));
 export const validateProductForm = (
   formState: ProductFormState,
-  options?: { skipBrandAndCategory?: boolean }
+  options?: {
+    skipBrandAndCategory?: boolean;
+    /** Catálogo plano para exigir level >= 1. */
+    categories?: { id: string; parent?: string | null; level?: number }[];
+  }
 ): {
   isValid: boolean;
   errorMessage?: string;
@@ -186,6 +191,17 @@ export const validateProductForm = (
       return {
         isValid: false,
         errorMessage: "Debes seleccionar una categoría",
+      };
+    }
+    if (
+      options?.categories &&
+      options.categories.length > 0 &&
+      !categoryAllowsProducts(formState.category, options.categories)
+    ) {
+      return {
+        isValid: false,
+        errorMessage:
+          "No se pueden asignar productos a una categoría raíz. Elegí al menos una subcategoría",
       };
     }
     if (formState.variants) {

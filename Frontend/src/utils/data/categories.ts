@@ -64,6 +64,27 @@ export function categoryListingHref(category: {
 
 const normId = (id?: string | null) => (id ?? "").trim().toLowerCase();
 
+type CategoryWithLevel = CategoryParentRef & { level?: number };
+
+/**
+ * True si la categoría puede usarse en un producto.
+ * Criterio: level >= 1 (nunca una raíz de nivel 0). No usa el nombre.
+ */
+export function categoryAllowsProducts(
+  categoryId: string | null | undefined,
+  categories: CategoryWithLevel[]
+): boolean {
+  if (!categoryId) return false;
+  const cat = categories.find((c) => normId(c.id) === normId(categoryId));
+  if (!cat) return false;
+  if (typeof cat.level === "number") {
+    return cat.level >= 1;
+  }
+  // Fallback si el catálogo no trae level: raíz = sin parent.
+  const parentKey = normId(cat.parent);
+  return Boolean(parentKey && parentKey !== "null" && parentKey !== "undefined");
+}
+
 /** Cadena raíz → hoja. Vacía si el id no está en la lista. */
 export function getCategoryAncestry(
   categoryId: string | null | undefined,

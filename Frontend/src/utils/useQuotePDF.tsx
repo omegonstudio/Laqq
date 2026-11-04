@@ -186,7 +186,19 @@ const s = StyleSheet.create({
   itemDescWrap: { marginBottom: 6 },
   itemDescBullet: { marginLeft: 6, marginBottom: 3 },
   itemDescSpacer: { fontSize: 4, marginBottom: 4 },
-  itemImage: { width: 120, height: 90, objectFit: "contain", marginLeft: 12 },
+  // Falso float: imagen arriba a la derecha + texto al lado; el resto baja a ancho completo
+  itemFloatRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 4,
+  },
+  itemFloatText: { flex: 1, paddingRight: 8 },
+  itemImage: {
+    width: 120,
+    height: 90,
+    objectFit: "contain",
+    marginLeft: 8,
+  },
 
   // Total
   totalRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 10 },
@@ -227,6 +239,31 @@ const s = StyleSheet.create({
     color: "#666",
   },
 });
+
+/** Líneas que caben aprox. junto a la imagen (90px alto × lineHeight ~1.45 × 9pt). */
+const DESC_LINES_BESIDE_IMAGE = 7;
+
+const renderDescriptionLines = (lines: string[], keyPrefix: string) =>
+  lines.map((line, lineIndex) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      return (
+        <Text key={`${keyPrefix}-${lineIndex}`} style={s.itemDescSpacer}>
+          {" "}
+        </Text>
+      );
+    }
+    const isBullet = trimmed.startsWith("•");
+    return (
+      <Text
+        key={`${keyPrefix}-${lineIndex}`}
+        style={isBullet ? [s.itemDesc, s.itemDescBullet] : s.itemDesc}
+        wrap
+      >
+        {trimmed}
+      </Text>
+    );
+  });
 
 // ─── Componente PDF ───────────────────────────────────────────────────────────
 
@@ -310,8 +347,9 @@ const QuotePDF = ({
             ? item.variant.code.trim()
             : item.product.product_code?.trim() || "";
           return (
-            <View key={item.id ?? index} style={s.itemWrap} wrap={false}>
-              <View style={s.itemHeader}>
+            <View key={item.id ?? index} style={s.itemWrap} wrap>
+              {/* Header corto junto; descripción/cuerpo pueden partir entre páginas */}
+              <View style={s.itemHeader} wrap={false} minPresenceAhead={48}>
                 <Text style={s.itemTitle}>
                   Ítem {index + 1} · {item.product.name}
                 </Text>
@@ -324,68 +362,68 @@ const QuotePDF = ({
                 )}
               </View>
               <View style={s.itemBody}>
-                <View style={{ flexDirection: "row" }}>
-                  <View style={{ flex: 1 }}>
-                    {item.product.description &&
-                      (() => {
-                        const desc = stripHtmlForPdf(item.product.description);
-                        if (!desc) return null;
-                        return (
-                          <View style={s.itemDescWrap}>
-                            {desc.split("\n").map((line, lineIndex) => {
-                              const trimmed = line.trim();
-                              if (!trimmed) {
-                                return (
-                                  <Text key={lineIndex} style={s.itemDescSpacer}>
-                                    {" "}
-                                  </Text>
-                                );
-                              }
-                              const isBullet = trimmed.startsWith("•");
-                              return (
-                                <Text
-                                  key={lineIndex}
-                                  style={
-                                    isBullet
-                                      ? [s.itemDesc, s.itemDescBullet]
-                                      : s.itemDesc
-                                  }
-                                >
-                                  {trimmed}
-                                </Text>
-                              );
-                            })}
-                          </View>
-                        );
-                      })()}
-                    {item.variant?.technical_specs &&
-                      item.variant.technical_specs.length > 0 && (
-                        <View style={{ marginTop: 4 }}>
-                          {item.variant.technical_specs.map(
-                            (spec: { key: string; value: string }, i: number) => (
-                              <Text
-                                key={i}
-                                style={{
-                                  fontSize: 8.5,
-                                  color: "#555",
-                                  lineHeight: 1.5,
-                                }}
-                              >
-                                <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                                  {spec.key}:{" "}
-                                </Text>
-                                {spec.value}
-                              </Text>
-                            )
-                          )}
+                {(() => {
+                  const desc = item.product.description
+                    ? stripHtmlForPdf(item.product.description)
+                    : "";
+                  const lines = desc ? desc.split("\n") : [];
+                  const hasImage = Boolean(item.product.image_url);
+
+                  if (!hasImage) {
+                    return lines.length > 0 ? (
+                      <View style={s.itemDescWrap}>
+                        {renderDescriptionLines(lines, `d-${index}`)}
+                      </View>
+                    ) : null;
+                  }
+
+                  const lead = lines.slice(0, DESC_LINES_BESIDE_IMAGE);
+                  const rest = lines.slice(DESC_LINES_BESIDE_IMAGE);
+
+                  return (
+                    <>
+                      <View style={s.itemFloatRow} wrap={false}>
+                        <View style={s.itemFloatText}>
+                          {lead.length > 0
+                            ? renderDescriptionLines(lead, `lead-${index}`)
+                            : null}
                         </View>
+                        <Image
+                          src={item.product.image_url as string}
+                          style={s.itemImage}
+                        />
+                      </View>
+                      {rest.length > 0 ? (
+                        <View style={s.itemDescWrap}>
+                          {renderDescriptionLines(rest, `rest-${index}`)}
+                        </View>
+                      ) : null}
+                    </>
+                  );
+                })()}
+                {item.variant?.technical_specs &&
+                  item.variant.technical_specs.length > 0 && (
+                    <View style={{ marginTop: 4 }}>
+                      {item.variant.technical_specs.map(
+                        (spec: { key: string; value: string }, i: number) => (
+                          <Text
+                            key={i}
+                            style={{
+                              fontSize: 8.5,
+                              color: "#555",
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                              {spec.key}:{" "}
+                            </Text>
+                            {spec.value}
+                          </Text>
+                        )
                       )}
-                  </View>
-                  {item.product.image_url && (
-                    <Image src={item.product.image_url} style={s.itemImage} />
+                    </View>
                   )}
-                </View>
-                <View style={s.itemRow}>
+                <View style={s.itemRow} wrap={false}>
                   <Text>
                     <Text style={{ fontFamily: "Helvetica-Bold" }}>
                       Cantidad:{" "}
