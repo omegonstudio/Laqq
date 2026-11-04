@@ -58,7 +58,7 @@ class QuoteAPITestCase(APITestCase):
             state=self.contact_state
         )
         self.quote_type = QuoteType.objects.create(id='standard', name='Standard')
-        self.quote_state = QuoteState.objects.create(id='pending', name='Pendiente')
+        self.quote_state, _ = QuoteState.objects.get_or_create(id='abierto', defaults={'name': 'Abierto'})
 
         self.quote = Quote.objects.create(
             quote_number='Q-2025-00001',
@@ -87,7 +87,7 @@ class QuoteAPITestCase(APITestCase):
         self.assertIn('quote_number', response.data)
         self.assertTrue(response.data['quote_number'].startswith('Q-'))
         self.assertEqual(response.data['currency'], 'ARS')
-        self.assertEqual(response.data['state'], 'pending')
+        self.assertEqual(response.data['state'], 'abierto')
 
     def test_quote_defaults_to_ars(self):
         """Las cotizaciones existentes quedan en pesos."""
@@ -142,11 +142,11 @@ class QuoteAPITestCase(APITestCase):
         response = self.client.post('/quotes/list/', data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_assign_user_sets_assigned_state_and_emails(self):
-        """Al asignar un usuario, el estado pasa a Asignada y se envía un mail."""
-        assigned = QuoteState.objects.create(id='assigned', name='Asignada')
+    def test_assign_user_keeps_state_and_emails(self):
+        """Al asignar un usuario se envía mail y el estado no cambia solo."""
         self.quote.state = self.quote_state
         self.quote.save(update_fields=['state'])
+        previous_state = self.quote.state_id
 
         assignee = User.objects.create_user(
             username='vendedor',
@@ -165,15 +165,14 @@ class QuoteAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.quote.refresh_from_db()
         self.assertEqual(self.quote.user_id, assignee.id)
-        self.assertEqual(self.quote.state_id, assigned.id)
+        self.assertEqual(self.quote.state_id, previous_state)
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn('vendedor@laqq.com', mail.outbox[0].to)
         self.assertIn(self.quote.quote_number, mail.outbox[0].subject)
 
-    def test_assign_user_does_not_revert_sent_state(self):
-        """Si la cotización ya fue enviada, reasignar no vuelve el estado atrás."""
-        sent = QuoteState.objects.create(id='sent', name='Enviada')
-        QuoteState.objects.create(id='assigned', name='Asignada')
+    def test_assign_user_does_not_revert_enviado_state(self):
+        """Si la cotización ya fue enviada, reasignar no cambia el estado."""
+        sent, _ = QuoteState.objects.get_or_create(id='enviado', defaults={'name': 'Enviado'})
         self.quote.state = sent
         self.quote.save(update_fields=['state'])
         assignee = User.objects.create_user(
@@ -188,7 +187,7 @@ class QuoteAPITestCase(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.quote.refresh_from_db()
-        self.assertEqual(self.quote.state_id, 'sent')
+        self.assertEqual(self.quote.state_id, 'enviado')
 
 
 class QuoteItemAPITestCase(APITestCase):
@@ -482,7 +481,7 @@ class QuoteEmailNotificationTestCase(APITestCase):
             state=self.contact_state
         )
         self.quote_type = QuoteType.objects.create(id='standard', name='Standard')
-        self.quote_state = QuoteState.objects.create(id='pending', name='Pendiente')
+        self.quote_state, _ = QuoteState.objects.get_or_create(id='abierto', defaults={'name': 'Abierto'})
 
         # Create products
         self.brand = Brand.objects.create(name='Test Brand')
@@ -597,8 +596,8 @@ class QuoteSendUpdatedTestCase(APITestCase):
             state=self.contact_state
         )
         self.quote_type = QuoteType.objects.create(id='standard', name='Standard')
-        self.quote_state = QuoteState.objects.create(id='pending', name='Pending')
-        self.sent_state = QuoteState.objects.create(id='sent', name='Enviada')
+        self.quote_state, _ = QuoteState.objects.get_or_create(id='abierto', defaults={'name': 'Abierto'})
+        self.sent_state, _ = QuoteState.objects.get_or_create(id='enviado', defaults={'name': 'Enviado'})
 
         # Create product for quote items
         self.brand = Brand.objects.create(name='Test Brand')
@@ -660,7 +659,7 @@ class QuoteSendUpdatedTestCase(APITestCase):
         self.assertIn('adrian@laqq.com', html)
 
         self.quote.refresh_from_db()
-        self.assertEqual(self.quote.state_id, 'sent')
+        self.assertEqual(self.quote.state_id, 'enviado')
 
     def test_send_updated_quote_no_email(self):
         """Verificar error cuando el contacto no tiene email"""
@@ -727,7 +726,7 @@ class QuoteFromPackageAntiSpamTestCase(APITestCase):
         self.client = APIClient()
         ContactState.objects.create(id='new', name='New')
         QuoteType.objects.create(id='standard', name='Standard')
-        QuoteState.objects.create(id='pending', name='Pendiente')
+        QuoteState.objects.get_or_create(id='abierto', defaults={'name': 'Abierto'})
         self.url = '/quotes/list/from-package/'
         self.payload = {
             'contact': {

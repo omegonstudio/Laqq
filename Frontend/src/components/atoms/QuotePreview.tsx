@@ -545,11 +545,15 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {allowedNextQuoteStates(formState.state).map((stateId) => {
+                  {(quotesStates.length
+                    ? quotesStates.map((s) => s.id)
+                    : allowedNextQuoteStates(formState.state)
+                  ).map((stateId) => {
                     const fromApi = quotesStates.find((s) => s.id === stateId);
                     return (
                       <SelectItem key={stateId} value={stateId}>
-                        {fromApi?.name ?? convertQuotesState(stateId as QuoteStateType)}
+                        {fromApi?.name ??
+                          convertQuotesState(stateId as QuoteStateType)}
                       </SelectItem>
                     );
                   })}

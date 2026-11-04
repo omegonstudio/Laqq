@@ -14,7 +14,7 @@ Datos de referencia que el sistema necesita para funcionar. Sus IDs están hardc
 | `ticket_priorities` | 4 | `low`, `medium`, `high`, `urgent` |
 | `contacts_contactstate` | 4 | `new`, `in_progress`, `responded`, `closed` |
 | `quotes_quotetype` | 2 | `standard`, `express` |
-| `quotes_quotestate` | 5 | `pending`, `sent`, `confirmed`, `rejected`, `expired` |
+| `quotes_quotestate` | 6 | `abierto`, `enviado`, `enviado_fuera`, `aceptado`, `rechazado`, `cerrado` |
 | `users_userstate` | 3 | `active`, `inactive`, `suspended` |
 | `notes_notetype` | 5 | `product`, `company`, `event`, `promotion`, `training` |
 | `notes_notestate` | 3 | `draft`, `published`, `archived` |
@@ -72,11 +72,12 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO quotes_quotestate (id, name, color, description, created_at)
 VALUES
-    ('pending',   'Pendiente',  '#f39c12', 'Cotización recibida, pendiente de revisión', NOW()),
-    ('sent',      'Enviada',    '#3498db', 'Cotización enviada al cliente',              NOW()),
-    ('confirmed', 'Confirmada', '#27ae60', 'Cotización aceptada por el cliente',         NOW()),
-    ('rejected',  'Rechazada',  '#e74c3c', 'Cotización rechazada por el cliente',        NOW()),
-    ('expired',   'Vencida',    '#95a5a6', 'Cotización vencida por tiempo',              NOW())
+    ('abierto',       'Abierto',                          '#f39c12', 'Cotización abierta / en curso',                    NOW()),
+    ('enviado',       'Enviado',                          '#3498db', 'Cotización enviada al cliente desde el sistema',  NOW()),
+    ('enviado_fuera', 'Enviado por fuera del sistema',    '#2980b9', 'Cotización enviada por un canal externo',         NOW()),
+    ('aceptado',      'Aceptado',                         '#27ae60', 'Cotización aceptada por el cliente',              NOW()),
+    ('rechazado',     'Rechazado',                        '#e74c3c', 'Cotización rechazada por el cliente',             NOW()),
+    ('cerrado',       'Cerrado',                          '#95a5a6', 'Cotización cerrada',                              NOW())
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO users_userstate (id, name, description, created_at)

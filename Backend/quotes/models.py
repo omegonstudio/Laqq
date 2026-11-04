@@ -40,7 +40,7 @@ class Quote(models.Model):
     contact = models.ForeignKey(Contact, on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=models.SET_NULL)
     quote_type = models.ForeignKey(QuoteType, on_delete=models.PROTECT, default='standard')
-    state = models.ForeignKey(QuoteState, on_delete=models.PROTECT, default='pending')
+    state = models.ForeignKey(QuoteState, on_delete=models.PROTECT, default='abierto')
     message = models.TextField(blank=True, null=True)
     observaciones = models.TextField(blank=True, null=True)
     total_amount = models.DecimalField(max_digits=14, decimal_places=2, blank=True, null=True)

@@ -156,12 +156,12 @@ export interface RelatedProduct {
 // =================== QUOTE ENUMS ===================
 
 export type QuoteStateType =
-  | "confirmed"
-  | "expired"
-  | "pending"
-  | "assigned"
-  | "rejected"
-  | "sent";
+  | "abierto"
+  | "enviado"
+  | "enviado_fuera"
+  | "aceptado"
+  | "rechazado"
+  | "cerrado";
 export type QuoteTypeEnum =
   | "equipment"
   | "furniture"
