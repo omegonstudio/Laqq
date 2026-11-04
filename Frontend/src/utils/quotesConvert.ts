@@ -45,37 +45,59 @@ export const formatQuoteAmount = (
   })}`;
 };
 
-export const convertQuotesState = (state: QuoteStateType): string => {
-  switch (state.toLowerCase()) {
-    case "confirmed":
-      return "Confirmada";
-    case "expired":
-      return "Expirada";
+export const QUOTE_STATE_IDS: QuoteStateType[] = [
+  "abierto",
+  "enviado",
+  "enviado_fuera",
+  "aceptado",
+  "rechazado",
+  "cerrado",
+];
+
+export const convertQuotesState = (state: QuoteStateType | string): string => {
+  switch ((state || "").toLowerCase()) {
+    case "abierto":
+      return "Abierto";
+    case "enviado":
+      return "Enviado";
+    case "enviado_fuera":
+      return "Enviado por fuera del sistema";
+    case "aceptado":
+      return "Aceptado";
+    case "rechazado":
+      return "Rechazado";
+    case "cerrado":
+      return "Cerrado";
+    // Compat labels por si quedan datos viejos en cache
     case "pending":
-      return "Pendiente";
     case "assigned":
-      return "Asignada";
-    case "rejected":
-      return "Rechazada";
+      return "Abierto";
     case "sent":
-      return "Enviada";
+      return "Enviado";
+    case "confirmed":
+      return "Aceptado";
+    case "rejected":
+      return "Rechazado";
+    case "expired":
+      return "Cerrado";
     default:
-      return "Desconocido";
+      return state || "Desconocido";
   }
 };
 
-/** Transiciones de estado permitidas (alineado con Backend/quotes/tracing.py). */
-export const QUOTE_STATE_TRANSITIONS: Record<string, string[]> = {
-  pending: ["assigned", "sent", "rejected", "expired"],
-  assigned: ["sent", "rejected", "expired", "pending"],
-  sent: ["confirmed", "rejected", "expired", "assigned"],
-  confirmed: ["rejected", "expired"],
-  rejected: [],
-  expired: [],
-};
+/** Transiciones permitidas (alineado con Backend/quotes/tracing.py): todos modificables. */
+export const QUOTE_STATE_TRANSITIONS: Record<string, string[]> = Object.fromEntries(
+  QUOTE_STATE_IDS.map((id) => [
+    id,
+    QUOTE_STATE_IDS.filter((other) => other !== id),
+  ])
+);
 
 export const allowedNextQuoteStates = (current: string): string[] => {
   const key = (current || "").toLowerCase();
+  if (!QUOTE_STATE_IDS.includes(key as QuoteStateType)) {
+    return [...QUOTE_STATE_IDS];
+  }
   const next = QUOTE_STATE_TRANSITIONS[key] ?? [];
   return [key, ...next.filter((s) => s !== key)];
 };
@@ -144,20 +166,27 @@ export const convertQuotesTypes = (type: QuoteTypeEnum): string => {
 // Primero, agrega estas funciones inversas (puedes ponerlas en el mismo archivo de utilidades)
 export const revertQuotesState = (state: string): QuoteStateType => {
   switch (state) {
-    case "Confirmada":
-      return "confirmed";
-    case "Expirada":
-      return "expired";
+    case "Abierto":
     case "Pendiente":
-      return "pending";
     case "Asignada":
-      return "assigned";
-    case "Rechazada":
-      return "rejected";
+      return "abierto";
+    case "Enviado":
     case "Enviada":
-      return "sent";
+      return "enviado";
+    case "Enviado por fuera del sistema":
+      return "enviado_fuera";
+    case "Aceptado":
+    case "Confirmada":
+      return "aceptado";
+    case "Rechazado":
+    case "Rechazada":
+      return "rechazado";
+    case "Cerrado":
+    case "Expirada":
+    case "Vencida":
+      return "cerrado";
     default:
-      return "pending";
+      return "abierto";
   }
 };
 

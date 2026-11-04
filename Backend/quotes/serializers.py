@@ -290,15 +290,8 @@ class QuoteSerializer(serializers.ModelSerializer):
         user_changed = bool(new_user) and (old_user is None or old_user.pk != new_user.pk)
         state_changed = instance.state_id != old_state_id
 
-        # Assign automático si cambió responsable y no pidieron otro estado a mano
-        if user_changed and not explicit_state:
-            terminal_states = {'sent', 'confirmed', 'rejected', 'expired'}
-            if instance.state_id not in terminal_states:
-                assigned_state = QuoteState.objects.filter(id='assigned').first()
-                if assigned_state and instance.state_id != assigned_state.id:
-                    instance.state = assigned_state
-                    instance.save(update_fields=['state', 'updated_at'])
-                    state_changed = True
+        # Asignar responsable ya no fuerza un estado distinto (no existe "Asignada").
+        # El estado se cambia solo si viene explícito en el payload (state_id).
 
         if user_changed:
             record_quote_trace(
@@ -472,7 +465,7 @@ class QuotePackageSerializer(serializers.Serializer):
     - contact.country: País del contacto
     - contact.message: Mensaje del contacto
     - quote.quote_type: ID del tipo de cotización (default: "standard")
-    - quote.state: ID del estado de la cotización (default: "pending")
+    - quote.state: ID del estado de la cotización (default: "abierto")
     - quote.user: UUID del usuario asignado
     - quote.message: Mensaje de la cotización
     - items[].unit_price: Precio unitario
@@ -647,7 +640,7 @@ class QuotePackageSerializer(serializers.Serializer):
                 )
             quote_create_data['state'] = quote_state
         else:
-            default_quote_state = QuoteState.objects.filter(id='pending').first()
+            default_quote_state = QuoteState.objects.filter(id='abierto').first()
             if not default_quote_state:
                 raise serializers.ValidationError(
                     "No QuoteState available. Please create at least one QuoteState."

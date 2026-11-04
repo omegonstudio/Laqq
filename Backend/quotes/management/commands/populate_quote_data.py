@@ -43,47 +43,51 @@ class Command(BaseCommand):
 
         quote_states = [
             {
-                'id': 'pending',
-                'name': 'Pendiente',
+                'id': 'abierto',
+                'name': 'Abierto',
                 'color': '#f39c12',
-                'description': 'Cotización recibida, pendiente de revisión',
+                'description': 'Cotización abierta / en curso',
             },
             {
-                'id': 'assigned',
-                'name': 'Asignada',
-                'color': '#8e44ad',
-                'description': 'Cotización asignada a un usuario del backoffice',
-            },
-            {
-                'id': 'sent',
-                'name': 'Enviada',
+                'id': 'enviado',
+                'name': 'Enviado',
                 'color': '#3498db',
-                'description': 'Cotización enviada al cliente',
+                'description': 'Cotización enviada al cliente desde el sistema',
             },
             {
-                'id': 'confirmed',
-                'name': 'Confirmada',
+                'id': 'enviado_fuera',
+                'name': 'Enviado por fuera del sistema',
+                'color': '#2980b9',
+                'description': 'Cotización enviada por un canal externo',
+            },
+            {
+                'id': 'aceptado',
+                'name': 'Aceptado',
                 'color': '#27ae60',
                 'description': 'Cotización aceptada por el cliente',
             },
             {
-                'id': 'rejected',
-                'name': 'Rechazada',
+                'id': 'rechazado',
+                'name': 'Rechazado',
                 'color': '#e74c3c',
                 'description': 'Cotización rechazada por el cliente',
             },
             {
-                'id': 'expired',
-                'name': 'Vencida',
+                'id': 'cerrado',
+                'name': 'Cerrado',
                 'color': '#95a5a6',
-                'description': 'Cotización vencida por tiempo',
+                'description': 'Cotización cerrada',
             },
         ]
 
         for state_data in quote_states:
-            qs, created = QuoteState.objects.get_or_create(
+            qs, created = QuoteState.objects.update_or_create(
                 id=state_data['id'],
-                defaults=state_data
+                defaults={
+                    'name': state_data['name'],
+                    'color': state_data['color'],
+                    'description': state_data['description'],
+                },
             )
             if created:
                 self.stdout.write(
@@ -91,7 +95,7 @@ class Command(BaseCommand):
                 )
             else:
                 self.stdout.write(
-                    self.style.WARNING(f'- Estado ya existe: {qs.name}')
+                    self.style.WARNING(f'- Estado actualizado: {qs.name}')
                 )
 
         self.stdout.write(

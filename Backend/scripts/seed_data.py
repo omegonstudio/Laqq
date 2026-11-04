@@ -284,14 +284,21 @@ def seed_quote_types():
 def seed_quote_states():
     print("Seeding QuoteState...")
 
-    states = ["PENDING", "REJECTED", "SENT", "CONFIRMED", "EXPIRED" ]
+    states = [
+        {"id": "abierto", "name": "Abierto", "color": "#f39c12"},
+        {"id": "enviado", "name": "Enviado", "color": "#3498db"},
+        {"id": "enviado_fuera", "name": "Enviado por fuera del sistema", "color": "#2980b9"},
+        {"id": "aceptado", "name": "Aceptado", "color": "#27ae60"},
+        {"id": "rechazado", "name": "Rechazado", "color": "#e74c3c"},
+        {"id": "cerrado", "name": "Cerrado", "color": "#95a5a6"},
+    ]
 
     objs = []
     for s in states:
         obj, _ = create_if_not_exists(
             QuoteState,
-            {"id": s},
-            {"name": s, "color": "#123456"}
+            {"id": s["id"]},
+            {"name": s["name"], "color": s["color"]},
         )
         objs.append(obj)
 

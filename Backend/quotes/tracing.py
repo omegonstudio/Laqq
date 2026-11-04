@@ -11,14 +11,20 @@ from django.utils import timezone
 
 from .models import Quote, QuoteTrace
 
-# Transiciones permitidas para cambio manual de estado desde el BO.
+# Catálogo vigente de estados de cotización.
+QUOTE_STATE_IDS = {
+    'abierto',
+    'enviado',
+    'enviado_fuera',
+    'aceptado',
+    'rechazado',
+    'cerrado',
+}
+
+# Transiciones permitidas desde el BO: todos los estados son modificables.
 ALLOWED_STATE_TRANSITIONS = {
-    'pending': {'assigned', 'sent', 'rejected', 'expired'},
-    'assigned': {'sent', 'rejected', 'expired', 'pending'},
-    'sent': {'confirmed', 'rejected', 'expired', 'assigned'},
-    'confirmed': {'rejected', 'expired'},
-    'rejected': set(),
-    'expired': set(),
+    state_id: set(QUOTE_STATE_IDS) - {state_id}
+    for state_id in QUOTE_STATE_IDS
 }
 
 
