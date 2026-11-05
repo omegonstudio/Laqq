@@ -20,6 +20,7 @@ from .serializers import (
 )
 from .permissions import (
     IsAdminOrBackOffice,
+    CanRunTicketWorkflow,
     IsAdminOnly,
     CanAttachFiles,
     CanCreateTicketOrStaff
@@ -149,7 +150,9 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
         # Usuario autenticado
         if user.is_authenticated:
             # Admin/backoffice → todos los tickets
-            if user.is_superuser or (user.user_type_id and user.user_type_id in ['admin', 'back']):
+            if user.is_superuser or (
+                user.user_type_id and user.user_type_id in ['admin', 'back', 'back_full', 'servicio_tecnico']
+            ):
                 return queryset
 
             # Usuario normal → solo sus propios tickets
@@ -258,7 +261,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
     # Assign / state changes
     # -------------------------
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOnly])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanRunTicketWorkflow])
     def assign(self, request, pk=None):
         ticket = self.get_object()
 
@@ -280,7 +283,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOnly])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanRunTicketWorkflow])
     def start(self, request, pk=None):
         ticket = self.get_object()
         state = TicketState.objects.get(id='in_progress')
@@ -296,7 +299,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOnly])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanRunTicketWorkflow])
     def resolve(self, request, pk=None):
         ticket = self.get_object()
         state = TicketState.objects.get(id='resolved')
@@ -319,7 +322,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdminOnly])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanRunTicketWorkflow])
     def close(self, request, pk=None):
         ticket = self.get_object()
         state = TicketState.objects.get(id='closed')

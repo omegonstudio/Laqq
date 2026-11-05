@@ -1,6 +1,6 @@
 import { useAppSelector } from "@/store/hooks";
 
-type UserRole = "admin" | "back" | "client" | null;
+type UserRole = "admin" | "back" | "back_full" | "client" | "servicio_tecnico" | null;
 
 const useUserRole = (): UserRole => {
   const { user } = useAppSelector((state) => state.auth);
@@ -9,37 +9,38 @@ const useUserRole = (): UserRole => {
   return user.user_type_id ?? null;
 };
 
-/** Productos: ¿puede exportar el Excel? Admin y back (mismo criterio que el endpoint). */
-export const useCanExportProducts = () => {
-  const role = useUserRole();
-  return role === "admin" || role === "back";
-};
+const isBackOffice = (role: UserRole) =>
+  role === "admin" || role === "back" || role === "back_full";
 
-/** Productos: ¿puede crear/editar/eliminar? Solo admin. */
+/** Productos: ¿puede exportar el Excel? Admin, back y back office full. */
+export const useCanExportProducts = () => isBackOffice(useUserRole());
+
+/** Productos: ¿puede crear/editar/eliminar? Admin y back office full. */
 export const useCanManageProducts = () => {
   const role = useUserRole();
-  return role === "admin";
+  return role === "admin" || role === "back_full";
 };
 
-/** Cotizaciones: ¿puede editar/eliminar/enviar? Admin y back.
- *  (era la función principal del backoffice, no se bloquea). */
-export const useCanManageQuotes = () => {
+/** Cotizaciones: ¿puede editar/eliminar/enviar? Admin, back y back office full. */
+export const useCanManageQuotes = () => isBackOffice(useUserRole());
+
+/** Cotizaciones: ¿puede crear? Admin, back y back office full. */
+export const useCanCreateQuotes = () => isBackOffice(useUserRole());
+
+/** Tickets: ¿puede editar/cerrar/asignar? Admin y servicio técnico. */
+export const useCanManageTickets = () => {
   const role = useUserRole();
-  return role === "admin" || role === "back";
+  return role === "admin" || role === "servicio_tecnico";
 };
 
-/** Cotizaciones: ¿puede crear? Admin y back. */
-export const useCanCreateQuotes = () => {
+/** Tickets: workflow (assign/start/resolve/close). Admin y servicio técnico. */
+export const useCanRunTicketActions = () => {
   const role = useUserRole();
-  return role === "admin" || role === "back";
+  return role === "admin" || role === "servicio_tecnico";
 };
 
-/** Tickets: ¿puede editar/cerrar/asignar? Solo admin.
- *  (backoffice puede VER y adjuntar archivos pero no editar) */
-export const useCanManageTickets = () => useUserRole() === "admin";
-
-/** Tickets: ¿puede ejecutar acciones de workflow (assign/start/resolve/close)? Solo admin. */
-export const useCanRunTicketActions = () => useUserRole() === "admin";
+/** Backoffice reducido: solo dashboard y tickets. */
+export const useIsServicioTecnico = () => useUserRole() === "servicio_tecnico";
 
 /** Usuarios: ¿puede crear/editar/eliminar? Solo admin. */
 export const useCanManageUsers = () => {
@@ -47,11 +48,8 @@ export const useCanManageUsers = () => {
   return role === "admin";
 };
 
-/** Contactos: ¿puede crear? Admin y back. */
-export const useCanCreateContacts = () => {
-  const role = useUserRole();
-  return role === "admin" || role === "back";
-};
+/** Contactos: ¿puede crear? Admin, back y back office full. */
+export const useCanCreateContacts = () => isBackOffice(useUserRole());
 
 /** Contactos: ¿puede editar/eliminar? Solo admin. */
 export const useCanManageContacts = () => useUserRole() === "admin";
@@ -59,11 +57,17 @@ export const useCanManageContacts = () => useUserRole() === "admin";
 /** Mensajes: ¿puede eliminar? Solo admin. */
 export const useCanManageMessages = () => useUserRole() === "admin";
 
-/** Categorías: ¿puede crear/editar/eliminar? Solo admin. */
-export const useCanManageCategories = () => useUserRole() === "admin";
+/** Categorías: ¿puede crear/editar/eliminar? Admin y back office full. */
+export const useCanManageCategories = () => {
+  const role = useUserRole();
+  return role === "admin" || role === "back_full";
+};
 
-/** Marcas: ¿puede crear/editar/eliminar? Solo admin. */
-export const useCanManageBrands = () => useUserRole() === "admin";
+/** Marcas: ¿puede crear/editar/eliminar? Admin y back office full. */
+export const useCanManageBrands = () => {
+  const role = useUserRole();
+  return role === "admin" || role === "back_full";
+};
 
 /** Adjuntos (galería general): ¿puede crear/editar/eliminar? Solo admin. */
 export const useCanManageAttachments = () => useUserRole() === "admin";

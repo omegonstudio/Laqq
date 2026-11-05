@@ -1,5 +1,18 @@
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
+# Ven todos los tickets del backoffice.
+TICKET_VIEW_ALL = {'admin', 'back', 'back_full', 'servicio_tecnico'}
+# Crean, editan y corren el workflow (assign/start/resolve/close).
+TICKET_MANAGE = {'admin', 'servicio_tecnico'}
+
+
+def _is_ticket_staff(user, allowed):
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    return user.user_type_id in allowed
+
 
 class CanCreateTicketOrStaff(BasePermission):
     """
@@ -25,18 +38,17 @@ class CanCreateTicketOrStaff(BasePermission):
         if user.is_superuser:
             return True
 
-        # GET: admin, backoffice o cliente
+        # GET: admin, backoffice, servicio técnico o cliente
         if request.method in SAFE_METHODS:
-            return user.user_type_id in ['admin', 'back', 'client']
+            return user.user_type_id in ['admin', 'back', 'back_full', 'client', 'servicio_tecnico']
 
-        # PUT/PATCH/DELETE: solo admin (backoffice ya no)
-        return user.user_type_id == 'admin'
+        # PUT/PATCH/DELETE: admin o servicio técnico
+        return user.user_type_id in TICKET_MANAGE
 
 
 class IsAdminOnly(BasePermission):
     """
-    Solo admin (y superuser). Aplicable a acciones assign/start/resolve/close
-    del ServiceTicketViewSet y al CRUD de TicketState / TicketPriority.
+    Solo admin (y superuser). CRUD de TicketState / TicketPriority.
     """
     def has_permission(self, request, view):
         user = request.user
@@ -45,6 +57,12 @@ class IsAdminOnly(BasePermission):
         if user.is_superuser:
             return True
         return user.user_type_id == 'admin'
+
+
+class CanRunTicketWorkflow(BasePermission):
+    """assign/start/resolve/close: admin y servicio técnico."""
+    def has_permission(self, request, view):
+        return _is_ticket_staff(request.user, TICKET_MANAGE)
 
 
 class IsAdminOrBackOffice(BasePermission):
@@ -57,7 +75,7 @@ class IsAdminOrBackOffice(BasePermission):
             return False
         if user.is_superuser:
             return True
-        return user.user_type_id in ['admin', 'back']
+        return user.user_type_id in ['admin', 'back', 'back_full']
 
 
 class IsClientOwnerOrStaff(BasePermission):
@@ -71,7 +89,7 @@ class IsClientOwnerOrStaff(BasePermission):
             return False
 
         # Admin y backoffice tienen acceso completo
-        if user.is_superuser or user.user_type_id in ['admin', 'back']:
+        if user.is_superuser or user.user_type_id in TICKET_VIEW_ALL:
             return True
 
         # Clientes solo pueden leer (GET, HEAD, OPTIONS)
@@ -88,7 +106,7 @@ class IsClientOwnerOrStaff(BasePermission):
         user = request.user
 
         # Admin y backoffice tienen acceso completo
-        if user.is_superuser or user.user_type_id in ['admin', 'back']:
+        if user.is_superuser or user.user_type_id in TICKET_VIEW_ALL:
             return True
 
         # Cliente solo puede ver tickets de su contacto (email matching)
@@ -110,7 +128,7 @@ class CanAttachFiles(BasePermission):
             return False
 
         # Admin, backoffice y clientes pueden adjuntar archivos
-        if user.is_superuser or user.user_type_id in ['admin', 'back', 'client']:
+        if user.is_superuser or user.user_type_id in ['admin', 'back', 'back_full', 'client', 'servicio_tecnico']:
             return True
 
         return False
@@ -122,7 +140,7 @@ class CanAttachFiles(BasePermission):
         user = request.user
 
         # Admin y backoffice tienen acceso completo
-        if user.is_superuser or user.user_type_id in ['admin', 'back']:
+        if user.is_superuser or user.user_type_id in TICKET_VIEW_ALL:
             return True
 
         # Cliente solo puede adjuntar a tickets de su contacto
