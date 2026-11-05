@@ -199,6 +199,23 @@ const s = StyleSheet.create({
     objectFit: "contain",
     marginLeft: 8,
   },
+  variantBlock: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+  },
+  variantTitle: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 9.5,
+    color: "#333",
+    marginBottom: 4,
+  },
+  variantMeta: {
+    fontSize: 8.5,
+    color: "#666",
+    marginBottom: 4,
+  },
 
   // Total
   totalRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 10 },
@@ -264,6 +281,133 @@ const renderDescriptionLines = (lines: string[], keyPrefix: string) =>
       </Text>
     );
   });
+
+type QuotePdfItemGroup = {
+  productId: string;
+  items: QuoteItemRender[];
+};
+
+/**
+ * Agrupa líneas de cotización por producto (orden de primera aparición).
+ * Varias variantes del mismo producto → un solo bloque en el PDF.
+ */
+const groupQuoteItemsForPdf = (
+  items: QuoteItemRender[]
+): QuotePdfItemGroup[] => {
+  const groups: QuotePdfItemGroup[] = [];
+  const indexByProduct = new Map<string, number>();
+
+  for (const item of items) {
+    const productId = item.product?.id || item.id;
+    const existing = indexByProduct.get(productId);
+    if (existing === undefined) {
+      indexByProduct.set(productId, groups.length);
+      groups.push({ productId, items: [item] });
+    } else {
+      groups[existing].items.push(item);
+    }
+  }
+  return groups;
+};
+
+const renderProductDescriptionBlock = (
+  product: QuoteItemRender["product"],
+  keyPrefix: string
+) => {
+  const desc = product.description
+    ? stripHtmlForPdf(product.description)
+    : "";
+  const lines = desc ? desc.split("\n") : [];
+  const hasImage = Boolean(product.image_url);
+
+  if (!hasImage) {
+    return lines.length > 0 ? (
+      <View style={s.itemDescWrap}>
+        {renderDescriptionLines(lines, `d-${keyPrefix}`)}
+      </View>
+    ) : null;
+  }
+
+  const lead = lines.slice(0, DESC_LINES_BESIDE_IMAGE);
+  const rest = lines.slice(DESC_LINES_BESIDE_IMAGE);
+
+  return (
+    <>
+      <View style={s.itemFloatRow} wrap={false}>
+        <View style={s.itemFloatText}>
+          {lead.length > 0
+            ? renderDescriptionLines(lead, `lead-${keyPrefix}`)
+            : null}
+        </View>
+        <Image src={product.image_url as string} style={s.itemImage} />
+      </View>
+      {rest.length > 0 ? (
+        <View style={s.itemDescWrap}>
+          {renderDescriptionLines(rest, `rest-${keyPrefix}`)}
+        </View>
+      ) : null}
+    </>
+  );
+};
+
+const renderVariantLineDetails = (
+  item: QuoteItemRender,
+  currency: QuoteRender["currency"],
+  opts?: { showVariantHeading?: boolean; isGrouped?: boolean }
+) => {
+  const subtotal = Number(item.quantity) * Number(item.unit_price);
+  const variantCode = item.variant?.code?.trim() || "";
+  const showHeading = Boolean(opts?.showVariantHeading && variantCode);
+
+  return (
+    <View
+      style={opts?.isGrouped ? s.variantBlock : undefined}
+      wrap={false}
+    >
+      {showHeading && (
+        <Text style={s.variantTitle}>Modelo: {variantCode}</Text>
+      )}
+      {item.variant?.technical_specs &&
+        item.variant.technical_specs.length > 0 && (
+          <View style={{ marginTop: showHeading ? 2 : 4, marginBottom: 4 }}>
+            {item.variant.technical_specs.map(
+              (spec: { key: string; value: string }, i: number) => (
+                <Text
+                  key={i}
+                  style={{
+                    fontSize: 8.5,
+                    color: "#555",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                    {spec.key}:{" "}
+                  </Text>
+                  {spec.value}
+                </Text>
+              )
+            )}
+          </View>
+        )}
+      <View style={s.itemRow} wrap={false}>
+        <Text>
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Cantidad: </Text>
+          {item.quantity}
+        </Text>
+        <Text>
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>
+            Precio unitario:{" "}
+          </Text>
+          {formatQuoteAmount(item.unit_price, currency)}
+        </Text>
+        <Text>
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Subtotal: </Text>
+          {formatQuoteAmount(subtotal, currency)}
+        </Text>
+      </View>
+    </View>
+  );
+};
 
 // ─── Componente PDF ───────────────────────────────────────────────────────────
 
@@ -337,112 +481,49 @@ const QuotePDF = ({
           </Text>
         </View>
 
-        {/* ÍTEMS */}
+        {/* ÍTEMS (variantes del mismo producto → un bloque) */}
         <Text style={s.sectionTitle}>Ítems</Text>
 
-        {items.map((item, index) => {
-          const subtotal = Number(item.quantity) * Number(item.unit_price);
-          // Con variante: modelo (variant.code). Sin variante: código de producto.
-          const itemCode = item.variant?.code?.trim()
-            ? item.variant.code.trim()
-            : item.product.product_code?.trim() || "";
+        {groupQuoteItemsForPdf(items).map((group, index) => {
+          const product = group.items[0].product;
+          const isGrouped = group.items.length > 1;
+          const productCode = product.product_code?.trim() || "";
+          // Ítem suelto: mostrar código de variante si hay; grupo: código de producto
+          const singleVariantCode = !isGrouped
+            ? group.items[0].variant?.code?.trim() || ""
+            : "";
+          const headerCode = isGrouped
+            ? productCode
+            : singleVariantCode || productCode;
+
           return (
-            <View key={item.id ?? index} style={s.itemWrap} wrap>
-              {/* Header corto junto; descripción/cuerpo pueden partir entre páginas */}
+            <View
+              key={group.productId || group.items[0].id || index}
+              style={s.itemWrap}
+              wrap
+            >
               <View style={s.itemHeader} wrap={false} minPresenceAhead={48}>
                 <Text style={s.itemTitle}>
-                  Ítem {index + 1} · {item.product.name}
+                  Ítem {index + 1} · {product.name}
                 </Text>
-                {(itemCode || item.product.brand) && (
+                {(headerCode || product.brand) && (
                   <Text style={s.itemCode}>
-                    {itemCode ? `Cód: ${itemCode}` : ""}
-                    {itemCode && item.product.brand ? " " : ""}
-                    {item.product.brand ? `Marca: ${item.product.brand}` : ""}
+                    {headerCode ? `Cód: ${headerCode}` : ""}
+                    {headerCode && product.brand ? " " : ""}
+                    {product.brand ? `Marca: ${product.brand}` : ""}
                   </Text>
                 )}
               </View>
               <View style={s.itemBody}>
-                {(() => {
-                  const desc = item.product.description
-                    ? stripHtmlForPdf(item.product.description)
-                    : "";
-                  const lines = desc ? desc.split("\n") : [];
-                  const hasImage = Boolean(item.product.image_url);
-
-                  if (!hasImage) {
-                    return lines.length > 0 ? (
-                      <View style={s.itemDescWrap}>
-                        {renderDescriptionLines(lines, `d-${index}`)}
-                      </View>
-                    ) : null;
-                  }
-
-                  const lead = lines.slice(0, DESC_LINES_BESIDE_IMAGE);
-                  const rest = lines.slice(DESC_LINES_BESIDE_IMAGE);
-
-                  return (
-                    <>
-                      <View style={s.itemFloatRow} wrap={false}>
-                        <View style={s.itemFloatText}>
-                          {lead.length > 0
-                            ? renderDescriptionLines(lead, `lead-${index}`)
-                            : null}
-                        </View>
-                        <Image
-                          src={item.product.image_url as string}
-                          style={s.itemImage}
-                        />
-                      </View>
-                      {rest.length > 0 ? (
-                        <View style={s.itemDescWrap}>
-                          {renderDescriptionLines(rest, `rest-${index}`)}
-                        </View>
-                      ) : null}
-                    </>
-                  );
-                })()}
-                {item.variant?.technical_specs &&
-                  item.variant.technical_specs.length > 0 && (
-                    <View style={{ marginTop: 4 }}>
-                      {item.variant.technical_specs.map(
-                        (spec: { key: string; value: string }, i: number) => (
-                          <Text
-                            key={i}
-                            style={{
-                              fontSize: 8.5,
-                              color: "#555",
-                              lineHeight: 1.5,
-                            }}
-                          >
-                            <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                              {spec.key}:{" "}
-                            </Text>
-                            {spec.value}
-                          </Text>
-                        )
-                      )}
-                    </View>
-                  )}
-                <View style={s.itemRow} wrap={false}>
-                  <Text>
-                    <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                      Cantidad:{" "}
-                    </Text>
-                    {item.quantity}
-                  </Text>
-                  <Text>
-                    <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                      Precio unitario:{" "}
-                    </Text>
-                    {formatQuoteAmount(item.unit_price, quote.currency)}
-                  </Text>
-                  <Text>
-                    <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                      Subtotal:{" "}
-                    </Text>
-                    {formatQuoteAmount(subtotal, quote.currency)}
-                  </Text>
-                </View>
+                {renderProductDescriptionBlock(product, String(index))}
+                {group.items.map((item, variantIndex) => (
+                  <View key={item.id ?? `${index}-${variantIndex}`}>
+                    {renderVariantLineDetails(item, quote.currency, {
+                      isGrouped,
+                      showVariantHeading: isGrouped,
+                    })}
+                  </View>
+                ))}
               </View>
             </View>
           );
