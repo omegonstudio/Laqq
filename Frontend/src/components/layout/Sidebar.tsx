@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import Logo from "../atoms/Logo";
+import { useIsServicioTecnico } from "@/hooks/usePermissions";
 
 const menuItems = [
   {
@@ -92,6 +93,12 @@ const Sidebar = () => {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [complementaryOpen, setComplementaryOpen] = useState(false);
+  const isServicioTecnico = useIsServicioTecnico();
+  const visibleItems = isServicioTecnico
+    ? menuItems.filter(
+        (item) => item.id === "dashboard" || item.id === "ticketsService"
+      )
+    : menuItems;
 
   return (
     <aside
@@ -111,7 +118,7 @@ const Sidebar = () => {
       </div>
 
       <nav className="flex-1 p-4 space-y-2">
-        {menuItems.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
 
