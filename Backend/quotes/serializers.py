@@ -569,6 +569,7 @@ class QuotePackageSerializer(serializers.Serializer):
         if not contact and phone:
             contact = Contact.objects.filter(phone=phone).first()
 
+        contact_created = False
         if contact:
             logger.info(f"Contact found with email/phone {email}/{phone}: {contact.id}")
         else:
@@ -581,16 +582,25 @@ class QuotePackageSerializer(serializers.Serializer):
                     "No ContactState available. Please create at least one ContactState."
                 )
 
-            contact = Contact.objects.create(
-                email=email,
-                first_name=contact_data['first_name'],
-                last_name=contact_data['last_name'],
-                company_name=contact_data.get('company_name', ''),
-                phone=contact_data.get('phone', ''),
-                country=contact_data.get('country', ''),
-                message=contact_data.get('message', ''),
-                state=default_state
-            )
+            from django.db.models.signals import post_save
+            from contacts.signals import send_contact_notification
+
+            # El aviso genérico de contacto no aplica: este alta viene de una cotización.
+            post_save.disconnect(send_contact_notification, sender=Contact)
+            try:
+                contact = Contact.objects.create(
+                    email=email,
+                    first_name=contact_data['first_name'],
+                    last_name=contact_data['last_name'],
+                    company_name=contact_data.get('company_name', ''),
+                    phone=contact_data.get('phone', ''),
+                    country=contact_data.get('country', ''),
+                    message=contact_data.get('message', ''),
+                    state=default_state
+                )
+                contact_created = True
+            finally:
+                post_save.connect(send_contact_notification, sender=Contact)
             logger.info(f"New contact created with email {email}: {contact.id}")
 
         # 2. Crear la cotización
@@ -710,6 +720,19 @@ class QuotePackageSerializer(serializers.Serializer):
             )
         finally:
             post_save.connect(send_quote_notification, sender=Quote)
+
+        if contact_created:
+            try:
+                from .emails import send_new_contact_quote_email
+                from contacts.emails import send_welcome_to_contact
+                send_new_contact_quote_email(contact, quote)
+                send_welcome_to_contact(contact)
+            except Exception as e:
+                logger.exception(
+                    "Error al enviar el aviso de contacto nuevo para cotizacion #%s: %s",
+                    quote.quote_number,
+                    e,
+                )
 
         try:
             results = _send_quote_created_email(quote)

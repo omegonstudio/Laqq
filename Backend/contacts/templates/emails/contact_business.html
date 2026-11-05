@@ -116,13 +116,17 @@
 <body>
     <div class="email-container">
         <div class="header">
-            <h1>Nuevo Contacto Registrado</h1>
+            <h1>{{ heading|default:"Nuevo Contacto Registrado" }}</h1>
             <p>{{ business_name }}</p>
         </div>
 
         <div class="content">
             <div class="alert-badge">
+                {% if from_quote %}
+                Se recibió una solicitud de cotización de este contacto nuevo.
+                {% else %}
                 Un nuevo contacto se ha registrado en el sistema
+                {% endif %}
             </div>
 
             <!-- Contact Information -->
@@ -165,6 +169,23 @@
                 <div class="message-box">{{ message }}</div>
                 {% endif %}
             </div>
+
+            {% if from_quote %}
+            <div class="section">
+                <div class="section-title">Solicitud</div>
+                {% for item in requested_products %}
+                <div class="info-item" style="padding-top: 8px;">
+                    <div class="info-value">{{ item.name }}</div>
+                    <div class="info-label" style="margin-top: 6px;">Tipo de producto</div>
+                    <div class="info-value">{{ item.category|default:"No indicado" }}</div>
+                    <div class="info-label" style="margin-top: 6px;">Marca</div>
+                    <div class="info-value">{{ item.brand|default:"No indicada" }}</div>
+                </div>
+                {% empty %}
+                <div class="info-value">La solicitud no incluye productos.</div>
+                {% endfor %}
+            </div>
+            {% endif %}
 
             <p style="text-align: center; margin-top: 24px; color: #6b7280; font-size: 14px;">
                 Este contacto ha sido registrado automáticamente en el sistema.

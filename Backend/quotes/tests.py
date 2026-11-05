@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from django.conf import settings
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 from rest_framework.test import APITestCase, APIClient
@@ -565,6 +566,54 @@ class QuoteEmailNotificationTestCase(APITestCase):
             self.assertIn('Cantidad', content)
             self.assertIn('3', content)
             self.assertIn('Urgente para laboratorio', content)
+
+    def test_new_contact_from_quote_email_mentions_product_and_brand(self):
+        """Contacto nuevo por cotización: aviso propio, con tipo y marca."""
+        mail.outbox = []
+        payload = {
+            'contact': {
+                'email': 'nuevo@empresa.com',
+                'first_name': 'Ana',
+                'last_name': 'Lopez',
+                'company_name': 'Lab Sur',
+            },
+            'quote': {'quote_type': self.quote_type.id},
+            'items': [{'product': str(self.product1.id), 'quantity': 2}],
+        }
+        response = self.client.post('/quotes/list/from-package/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+
+        subjects = [message.subject for message in mail.outbox]
+        self.assertFalse(any(subject.startswith('Nuevo Contacto:') for subject in subjects))
+        quote_notices = [
+            message for message in mail.outbox
+            if message.subject.startswith('Solicitud de cotización de un Nuevo Contacto:')
+        ]
+        self.assertEqual(len(quote_notices), 1)
+        notice = quote_notices[0]
+        self.assertIn('Ana Lopez - Lab Sur', notice.subject)
+        self.assertEqual(notice.to, [settings.BUSINESS_EMAIL])
+        body = notice.body
+        html = notice.alternatives[0][0]
+        for content in (body, html):
+            self.assertIn('Product 1', content)
+            self.assertIn('Test Category', content)
+            self.assertIn('Test Brand', content)
+            self.assertIn('Se recibió una solicitud de cotización', content)
+
+    def test_plain_contact_email_stays_unchanged(self):
+        """Un alta de contacto que no viene de una cotización conserva el aviso genérico."""
+        from contacts.emails import send_contact_to_business
+
+        mail.outbox = []
+        send_contact_to_business(self.contact)
+
+        self.assertEqual(len(mail.outbox), 1)
+        sent = mail.outbox[0]
+        self.assertTrue(sent.subject.startswith('Nuevo Contacto:'))
+        self.assertNotIn('Solicitud de cotización', sent.subject)
+        self.assertIn('Un nuevo contacto se ha registrado en el sistema', sent.body)
+        self.assertNotIn('Tipo de producto', sent.body)
 
 
 @override_settings(TESTING=False)

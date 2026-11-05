@@ -179,6 +179,75 @@ def _seller_cc_emails(quote, sender=None):
     return result
 
 
+def _requested_products(quote):
+    """Un renglón por producto: nombre, tipo (categoría) y marca."""
+    items = (
+        quote.quoteitem_set
+        .select_related('product', 'product__brand', 'product__category')
+        .all()
+    )
+    rows = []
+    seen = set()
+    for item in items:
+        product = item.product
+        if not product or product.id in seen:
+            continue
+        seen.add(product.id)
+        rows.append({
+            'name': product.name,
+            'category': product.category.name if product.category_id else '',
+            'brand': product.brand.name if product.brand_id else '',
+        })
+    return rows
+
+
+def send_new_contact_quote_email(contact, quote):
+    """
+    Aviso a consultas (BUSINESS_EMAIL) cuando el contacto es nuevo
+    y nace de una solicitud de cotización.
+    """
+    company = (contact.company_name or '').strip()
+    who = f'{contact.first_name} {contact.last_name}'.strip()
+    subject = f'Solicitud de cotización de un Nuevo Contacto: {who}'
+    if company:
+        subject = f'{subject} - {company}'
+
+    context = {
+        'contact': contact,
+        'company_name': contact.company_name,
+        'first_name': contact.first_name,
+        'last_name': contact.last_name,
+        'email': contact.email,
+        'phone': contact.phone,
+        'country': contact.country,
+        'message': contact.message,
+        'state': contact.state,
+        'business_name': settings.BUSINESS_NAME,
+        'created_at': contact.created_at,
+        'from_quote': True,
+        'heading': subject,
+        'requested_products': _requested_products(quote),
+    }
+
+    html_content = render_to_string('emails/contact_business.html', context)
+    text_content = strip_tags(html_content)
+    from_email = f'{settings.DEFAULT_FROM_NAME} <{settings.DEFAULT_FROM_EMAIL}>'
+    email = EmailMultiAlternatives(
+        subject=subject,
+        body=text_content,
+        from_email=from_email,
+        to=[settings.BUSINESS_EMAIL],
+    )
+    email.attach_alternative(html_content, 'text/html')
+    send_email_message(email)
+    logger.info(
+        'Quote contact email sent to %s for %s',
+        settings.BUSINESS_EMAIL,
+        contact.email,
+    )
+    return True
+
+
 def send_quote_created_email(quote):
     """
     Send email notifications when a new quote is created.
