@@ -8,7 +8,6 @@ import os
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
-from django.utils.html import strip_tags
 from config.resend_mail import send_email_message
 
 logger = logging.getLogger(__name__)
@@ -29,18 +28,39 @@ def safe_print(text):
         sys.stdout.buffer.write((text + '\n').encode('utf-8', errors='replace'))
 
 
-def send_ticket_created_email(ticket, username, password):
+def _ticket_create_context(ticket):
+    """Build template context from existing ticket/contact fields only."""
+    contact = ticket.contact
+    return {
+        'ticket': ticket,
+        'ticket_number': ticket.ticket_number,
+        'contact': contact,
+        'customer_name': f"{contact.first_name} {contact.last_name}".strip() or "Cliente",
+        'company_name': contact.company_name or '',
+        'product_name': ticket.product_name or '',
+        'numero_de_serie': ticket.numero_de_serie or '',
+        'marca': ticket.marca or '',
+        'modelo': ticket.modelo or '',
+        'description': ticket.description,
+        'state': ticket.state,
+        'business_name': settings.BUSINESS_NAME,
+        'tickets_email': settings.TICKETS_EMAIL,
+        'business_phone': getattr(settings, 'BUSINESS_PHONE', None) or '',
+        'business_address': getattr(settings, 'BUSINESS_ADDRESS', None) or '',
+        'created_at': ticket.created_at,
+    }
+
+
+def send_ticket_created_email(ticket, username=None, password=None):
     """
     Send email notifications when a new ticket is created.
-    Sends to both business and customer (with credentials).
+    Sends exactly once to TICKETS_EMAIL and once to the customer.
 
-    Args:
-        ticket: ServiceTicket instance that was just created
-        username: Generated username for the client
-        password: Generated password for the client
+    username/password are accepted for backward compatibility with callers/tests
+    but are not used in templates (no credentials / portal access in create emails).
 
     Returns:
-        dict: Status of email sending {'business': bool, 'customer': bool}
+        dict: Status of email sending {'business': bool, 'customer': bool, 'errors': list}
     """
     results = {
         'business': False,
@@ -49,7 +69,6 @@ def send_ticket_created_email(ticket, username, password):
     }
 
     try:
-        # Send to business
         results['business'] = send_ticket_to_business(ticket)
     except Exception as e:
         error_msg = f"Error sending email to business: {str(e)}"
@@ -57,8 +76,7 @@ def send_ticket_created_email(ticket, username, password):
         results['errors'].append(error_msg)
 
     try:
-        # Send to customer with credentials
-        results['customer'] = send_ticket_to_customer(ticket, username, password)
+        results['customer'] = send_ticket_to_customer(ticket)
     except Exception as e:
         error_msg = f"Error sending email to customer: {str(e)}"
         logger.error(error_msg)
@@ -69,36 +87,25 @@ def send_ticket_created_email(ticket, username, password):
 
 def send_ticket_to_business(ticket):
     """
-    Send ticket information to business email.
-
-    Args:
-        ticket: ServiceTicket instance
+    Send ticket information to TICKETS_EMAIL (Servicio Técnico support).
 
     Returns:
         bool: True if email sent successfully, False otherwise
     """
     try:
-        context = {
-            'ticket': ticket,
-            'ticket_number': ticket.ticket_number,
-            'contact': ticket.contact,
-            'product_name': ticket.product_name,
-            'description': ticket.description,
-            'priority': ticket.priority,
-            'state': ticket.state,
-            'business_name': settings.BUSINESS_NAME,
-            'created_at': ticket.created_at,
-        }
+        context = _ticket_create_context(ticket)
 
-        # Render HTML and text versions
         html_content = render_to_string('emails/ticket_business.html', context)
         text_content = render_to_string('emails/ticket_business.txt', context)
 
-        # Create email
-        customer_display_name = ticket.contact.company_name or f"{ticket.contact.first_name} {ticket.contact.last_name}".strip() or "Cliente"
+        customer_display_name = (
+            ticket.contact.company_name
+            or f"{ticket.contact.first_name} {ticket.contact.last_name}".strip()
+            or "Cliente"
+        )
         subject = f'Nuevo Ticket de Servicio #{ticket.ticket_number} de {customer_display_name}'
         from_email = f'{settings.DEFAULT_FROM_NAME} <{settings.DEFAULT_FROM_EMAIL}>'
-        to_email = [settings.BUSINESS_EMAIL]
+        to_email = [settings.TICKETS_EMAIL]
 
         email = EmailMultiAlternatives(
             subject=subject,
@@ -108,9 +115,8 @@ def send_ticket_to_business(ticket):
         )
         email.attach_alternative(html_content, "text/html")
 
-        # Print email content to console for debugging
         safe_print("\n" + "="*80)
-        safe_print(f"EMAIL TO BUSINESS: {settings.BUSINESS_EMAIL}")
+        safe_print(f"EMAIL TO BUSINESS: {settings.TICKETS_EMAIL}")
         safe_print("="*80)
         safe_print(f"Subject: {subject}")
         safe_print(f"From: {from_email}")
@@ -119,9 +125,10 @@ def send_ticket_to_business(ticket):
         safe_print(text_content)
         safe_print("="*80 + "\n")
 
-        # Send email
         send_email_message(email)
-        logger.info(f"Ticket #{ticket.ticket_number} email sent to business: {settings.BUSINESS_EMAIL}")
+        logger.info(
+            f"Ticket #{ticket.ticket_number} email sent to business: {settings.TICKETS_EMAIL}"
+        )
 
         return True
 
@@ -130,55 +137,30 @@ def send_ticket_to_business(ticket):
         raise
 
 
-def send_ticket_to_customer(ticket, username, password):
+def send_ticket_to_customer(ticket, username=None, password=None):
     """
-    Send ticket confirmation email to customer with access credentials.
+    Send ticket reception confirmation to the customer.
 
-    Args:
-        ticket: ServiceTicket instance
-        username: Username for the client portal
-        password: Password for the client portal
+    username/password kept for backward compatibility; not used in content.
 
     Returns:
         bool: True if email sent successfully, False otherwise
     """
     try:
-        # Check if contact has email
         if not ticket.contact.email:
-            logger.warning(f"Ticket #{ticket.ticket_number}: Contact has no email address")
+            logger.warning(
+                f"Ticket #{ticket.ticket_number}: Contact has no email address"
+            )
             return False
 
-        # Build customer full name
-        customer_name = f"{ticket.contact.first_name} {ticket.contact.last_name}".strip() or "Cliente"
+        context = _ticket_create_context(ticket)
 
-        # Build portal URL (adjust as needed)
-        portal_url = getattr(settings, 'CLIENT_PORTAL_URL', 'http://localhost:8000/client-portal')
-
-        context = {
-            'ticket': ticket,
-            'ticket_number': ticket.ticket_number,
-            'contact': ticket.contact,
-            'customer_name': customer_name,
-            'product_name': ticket.product_name,
-            'description': ticket.description,
-            'priority': ticket.priority,
-            'state': ticket.state,
-            'business_name': settings.BUSINESS_NAME,
-            'business_email': settings.BUSINESS_EMAIL,
-            'business_phone': settings.BUSINESS_PHONE,
-            'business_address': settings.BUSINESS_ADDRESS,
-            'created_at': ticket.created_at,
-            'username': username,
-            'password': password,
-            'portal_url': portal_url,
-        }
-
-        # Render HTML and text versions
         html_content = render_to_string('emails/ticket_customer.html', context)
         text_content = render_to_string('emails/ticket_customer.txt', context)
 
-        # Create email
-        subject = f'Ticket de Servicio #{ticket.ticket_number} - Acceso al Portal'
+        subject = (
+            f'Recibimos tu solicitud de Servicio Técnico #{ticket.ticket_number}'
+        )
         from_email = f'{settings.DEFAULT_FROM_NAME} <{settings.DEFAULT_FROM_EMAIL}>'
         to_email = [ticket.contact.email]
 
@@ -190,7 +172,6 @@ def send_ticket_to_customer(ticket, username, password):
         )
         email.attach_alternative(html_content, "text/html")
 
-        # Print email content to console for debugging
         safe_print("\n" + "="*80)
         safe_print(f"EMAIL TO CUSTOMER: {ticket.contact.email}")
         safe_print("="*80)
@@ -201,9 +182,11 @@ def send_ticket_to_customer(ticket, username, password):
         safe_print(text_content)
         safe_print("="*80 + "\n")
 
-        # Send email
         send_email_message(email)
-        logger.info(f"Ticket #{ticket.ticket_number} confirmation with credentials sent to customer: {ticket.contact.email}")
+        logger.info(
+            f"Ticket #{ticket.ticket_number} confirmation sent to customer: "
+            f"{ticket.contact.email}"
+        )
 
         return True
 
@@ -224,13 +207,16 @@ def send_ticket_status_change_email(ticket):
         bool: True if email sent successfully, False otherwise
     """
     try:
-        # Check if contact has email
         if not ticket.contact.email:
-            logger.warning(f"Ticket #{ticket.ticket_number}: Contact has no email address")
+            logger.warning(
+                f"Ticket #{ticket.ticket_number}: Contact has no email address"
+            )
             return False
 
-        # Build customer full name
-        customer_name = f"{ticket.contact.first_name} {ticket.contact.last_name}".strip() or "Cliente"
+        customer_name = (
+            f"{ticket.contact.first_name} {ticket.contact.last_name}".strip()
+            or "Cliente"
+        )
 
         context = {
             'ticket': ticket,
@@ -248,11 +234,9 @@ def send_ticket_status_change_email(ticket):
             'updated_at': ticket.updated_at,
         }
 
-        # Render HTML and text versions
         html_content = render_to_string('emails/ticket_status_change.html', context)
         text_content = render_to_string('emails/ticket_status_change.txt', context)
 
-        # Create email
         subject = f'Actualización de Ticket #{ticket.ticket_number} - {ticket.state.name}'
         from_email = f'{settings.DEFAULT_FROM_NAME} <{settings.DEFAULT_FROM_EMAIL}>'
         to_email = [ticket.contact.email]
@@ -265,7 +249,6 @@ def send_ticket_status_change_email(ticket):
         )
         email.attach_alternative(html_content, "text/html")
 
-        # Print email content to console for debugging
         safe_print("\n" + "="*80)
         safe_print(f"EMAIL - TICKET STATUS CHANGE: {ticket.contact.email}")
         safe_print("="*80)
@@ -274,15 +257,20 @@ def send_ticket_status_change_email(ticket):
         safe_print(f"To: {to_email}")
         safe_print(f"New State: {ticket.state.name}")
         safe_print("-"*80)
-        safe_print(text_content[:500])  # First 500 chars
+        safe_print(text_content[:500])
         safe_print("="*80 + "\n")
 
-        # Send email
         send_email_message(email)
-        logger.info(f"Ticket #{ticket.ticket_number} status change email sent to customer: {ticket.contact.email} (new state: {ticket.state.name})")
+        logger.info(
+            f"Ticket #{ticket.ticket_number} status change email sent to customer: "
+            f"{ticket.contact.email} (new state: {ticket.state.name})"
+        )
 
         return True
 
     except Exception as e:
-        logger.error(f"Failed to send status change email for ticket #{ticket.ticket_number}: {str(e)}")
+        logger.error(
+            f"Failed to send status change email for ticket "
+            f"#{ticket.ticket_number}: {str(e)}"
+        )
         return False

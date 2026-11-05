@@ -352,8 +352,8 @@ class ClientPortalAPITestCase(APITestCase):
         self.assertEqual(client_user.first_name, 'Jane')
         self.assertEqual(client_user.last_name, 'Smith')
 
-        # Verificar que se llamó a send_email
-        self.assertTrue(mock_send_email.called)
+        # Exactamente una notificación de creación (Ticket 8)
+        self.assertEqual(mock_send_email.call_count, 1)
 
     def test_client_can_only_view_own_tickets(self):
         """Cliente solo puede ver sus propios tickets"""
@@ -405,4 +405,254 @@ class ClientPortalAPITestCase(APITestCase):
         # Cliente solo debe ver su propio ticket
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['ticket_number'], 'T-2025-00001')
+
+
+@override_settings(
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    TICKETS_EMAIL='soporte@laqq.com.ar',
+    BUSINESS_EMAIL='negocio@example.com',
+    TESTING=True,
+)
+class TicketCreateNotificationTestCase(APITestCase):
+    """Ticket 8: un correo a soporte + uno al cliente por creación."""
+
+    def setUp(self):
+        from django.core import mail
+
+        mail.outbox.clear()
+        self.client = APIClient()
+
+        self.client_type, _ = UserType.objects.get_or_create(
+            id='client',
+            defaults={'name': 'Cliente', 'description': 'Usuario cliente'},
+        )
+        self.admin_type, _ = UserType.objects.get_or_create(
+            id='admin',
+            defaults={'name': 'Administrador', 'description': 'Admin'},
+        )
+        self.active_state, _ = UserState.objects.get_or_create(
+            id='active',
+            defaults={'name': 'Activo'},
+        )
+        TicketState.objects.get_or_create(
+            id='open',
+            defaults={'name': 'Abierto', 'color': '#f39c12', 'is_final': False},
+        )
+        TicketState.objects.get_or_create(
+            id='closed',
+            defaults={'name': 'Cerrado', 'color': '#27ae60', 'is_final': True},
+        )
+        TicketPriority.objects.get_or_create(
+            id='medium',
+            defaults={'name': 'Media', 'level': 2, 'color': '#3498db'},
+        )
+        self.contact_state_new, _ = ContactState.objects.get_or_create(
+            id='new',
+            defaults={'name': 'New'},
+        )
+        self.contact_state_active, _ = ContactState.objects.get_or_create(
+            id='active',
+            defaults={'name': 'Active'},
+        )
+        self.admin_user = User.objects.create_user(
+            username='t8admin',
+            password='admin123',
+            email='t8admin@example.com',
+            user_type=self.admin_type,
+            state=self.active_state,
+        )
+
+    def _package_payload(self, email, company_name='', marca='', modelo='', serie='SN-001'):
+        ticket = {
+            'description': 'Equipo con falla de calibracion reportada por el cliente.',
+            'producto_laqq': False,
+            'marca': marca or 'MarcaX',
+            'modelo': modelo or 'ModeloY',
+            'numero_de_serie': serie,
+        }
+        return {
+            'contact': {
+                'email': email,
+                'first_name': 'Ana',
+                'last_name': 'Pérez',
+                'company_name': company_name,
+                'phone': '111',
+            },
+            'ticket': ticket,
+        }
+
+    def test_from_package_new_contact_sends_exactly_two_emails(self):
+        from django.core import mail
+
+        response = self.client.post(
+            '/tickets/from-package/',
+            self._package_payload('nuevo@cliente.com', company_name='Empresa Nueva'),
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(mail.outbox), 2)
+        recipients = {tuple(m.to) for m in mail.outbox}
+        self.assertEqual(
+            recipients,
+            {('soporte@laqq.com.ar',), ('nuevo@cliente.com',)},
+        )
+        customer_mail = next(m for m in mail.outbox if m.to == ['nuevo@cliente.com'])
+        self.assertIn('Recibimos tu solicitud', customer_mail.subject)
+        self.assertIn('SN-001', customer_mail.body)
+        self.assertIn('MarcaX', customer_mail.body)
+        self.assertIn('ModeloY', customer_mail.body)
+        self.assertIn('soporte@laqq.com.ar', customer_mail.body)
+        self.assertNotIn('Prioridad', customer_mail.body)
+        self.assertNotIn('portal de cliente', customer_mail.body.lower())
+        business_mail = next(m for m in mail.outbox if m.to == ['soporte@laqq.com.ar'])
+        self.assertIn('SN-001', business_mail.body)
+        self.assertNotIn('Prioridad', business_mail.body)
+        self.assertNotIn('credenciales', business_mail.body.lower())
+
+    def test_from_package_existing_contact_sends_exactly_two_emails(self):
+        from django.core import mail
+
+        Contact.objects.create(
+            email='existente@cliente.com',
+            first_name='Ana',
+            last_name='Pérez',
+            company_name='Empresa Vieja',
+            state=self.contact_state_active,
+        )
+        User.objects.create_user(
+            username='existente',
+            email='existente@cliente.com',
+            password='pass12345',
+            user_type=self.client_type,
+            state=self.active_state,
+        )
+        response = self.client.post(
+            '/tickets/from-package/',
+            self._package_payload('existente@cliente.com'),
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(mail.outbox), 2)
+        recipients = {tuple(m.to) for m in mail.outbox}
+        self.assertEqual(
+            recipients,
+            {('soporte@laqq.com.ar',), ('existente@cliente.com',)},
+        )
+
+    @patch('tickets.serializers.send_ticket_created_email')
+    def test_post_tickets_calls_send_once(self, mock_send):
+        mock_send.return_value = {'business': True, 'customer': True, 'errors': []}
+        contact = Contact.objects.create(
+            email='api@cliente.com',
+            first_name='Api',
+            last_name='User',
+            state=self.contact_state_active,
+        )
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.post(
+            '/tickets/',
+            {
+                'contact_id': contact.id,
+                'product_name': 'Producto API',
+                'description': 'Descripcion suficiente para crear el ticket via API.',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(mock_send.call_count, 1)
+
+    def test_business_failure_still_sends_customer_and_keeps_ticket(self):
+        from django.core import mail
+        from tickets.emails import send_ticket_created_email
+
+        contact = Contact.objects.create(
+            email='failbiz@cliente.com',
+            first_name='Fail',
+            last_name='Biz',
+            state=self.contact_state_active,
+        )
+        ticket = ServiceTicket.objects.create(
+            contact=contact,
+            product_name='Prod',
+            description='Ticket para probar fallo de envio a soporte.',
+            state=TicketState.objects.get(id='open'),
+            priority=TicketPriority.objects.get(id='medium'),
+            numero_de_serie='SER-99',
+        )
+        mail.outbox.clear()
+        with patch(
+            'tickets.emails.send_ticket_to_business',
+            side_effect=Exception('smtp down'),
+        ):
+            results = send_ticket_created_email(ticket)
+        self.assertFalse(results['business'])
+        self.assertTrue(results['customer'])
+        self.assertTrue(results['errors'])
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['failbiz@cliente.com'])
+        self.assertTrue(ServiceTicket.objects.filter(pk=ticket.pk).exists())
+
+    def test_customer_failure_keeps_ticket_and_support_email(self):
+        from django.core import mail
+        from tickets.emails import send_ticket_created_email
+
+        contact = Contact.objects.create(
+            email='failcust@cliente.com',
+            first_name='Fail',
+            last_name='Cust',
+            state=self.contact_state_active,
+        )
+        ticket = ServiceTicket.objects.create(
+            contact=contact,
+            product_name='Prod',
+            description='Ticket para probar fallo de envio al cliente.',
+            state=TicketState.objects.get(id='open'),
+            priority=TicketPriority.objects.get(id='medium'),
+        )
+        mail.outbox.clear()
+        with patch(
+            'tickets.emails.send_ticket_to_customer',
+            side_effect=Exception('smtp down'),
+        ):
+            results = send_ticket_created_email(ticket)
+        self.assertTrue(results['business'])
+        self.assertFalse(results['customer'])
+        self.assertTrue(results['errors'])
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['soporte@laqq.com.ar'])
+        self.assertTrue(ServiceTicket.objects.filter(pk=ticket.pk).exists())
+
+    def test_status_change_email_still_works(self):
+        from django.core import mail
+        from tickets.emails import send_ticket_status_change_email
+
+        contact = Contact.objects.create(
+            email='status@cliente.com',
+            first_name='Status',
+            last_name='User',
+            state=self.contact_state_active,
+        )
+        ticket = ServiceTicket.objects.create(
+            contact=contact,
+            product_name='Prod',
+            description='Ticket para cambio de estado.',
+            state=TicketState.objects.get(id='closed'),
+            priority=TicketPriority.objects.get(id='medium'),
+        )
+        mail.outbox.clear()
+        ok = send_ticket_status_change_email(ticket)
+        self.assertTrue(ok)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['status@cliente.com'])
+        self.assertIn('Actualización', mail.outbox[0].subject)
+
+    def test_contacts_and_quotes_still_use_business_email_settings(self):
+        import inspect
+        import contacts.emails as contacts_emails
+        import quotes.emails as quotes_emails
+
+        self.assertIn('settings.BUSINESS_EMAIL', inspect.getsource(contacts_emails))
+        self.assertNotIn('TICKETS_EMAIL', inspect.getsource(contacts_emails))
+        self.assertIn('settings.QUOTES_EMAIL', inspect.getsource(quotes_emails))
+        self.assertNotIn('TICKETS_EMAIL', inspect.getsource(quotes_emails))
 

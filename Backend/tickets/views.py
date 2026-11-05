@@ -28,10 +28,8 @@ from .permissions import (
 from .filters import ServiceTicketFilter
 
 from attachments.models import Attachment
-from .emails import send_ticket_created_email, send_ticket_status_change_email
+from .emails import send_ticket_status_change_email
 
-import secrets
-import string
 import logging
 
 logger = logging.getLogger(__name__)
@@ -163,21 +161,6 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
     # -------------------------
     # Create
     # -------------------------
-
-    def perform_create(self, serializer):
-        ticket = serializer.save()
-
-        contact = ticket.contact
-        username = contact.email
-        password = ''.join(
-            secrets.choice(string.ascii_letters + string.digits)
-            for _ in range(12)
-        )
-
-        try:
-            send_ticket_created_email(ticket, username, password)
-        except Exception as e:
-            logger.error("Error enviando email para ticket %s: %s", ticket.ticket_number, e)
 
     # -------------------------
     # Attach single file

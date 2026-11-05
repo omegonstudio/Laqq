@@ -3,20 +3,23 @@ Nuevo Ticket de Servicio Técnico
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🔧 NUEVO TICKET RECIBIDO
+NUEVO TICKET RECIBIDO
 
 Número de Ticket: {{ ticket_number }}
-Cliente: {{ contact.company_name|default:""}}{% if contact.company_name and contact.first_name %} - {% endif %}{{ contact.first_name }} {{ contact.last_name }}
+{% if company_name %}Empresa: {{ company_name }}
+{% endif %}Cliente: {{ contact.first_name }} {{ contact.last_name }}
 Email: {{ contact.email }}
-{% if contact.phone %}Teléfono: {{ contact.phone }}{% endif %}
-
+{% if contact.phone %}Teléfono: {{ contact.phone }}
+{% endif %}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📋 DETALLES DEL SERVICIO
+DETALLES DEL SERVICIO
 
 Producto: {{ product_name }}
-Prioridad: {{ priority.name }} (Nivel {{ priority.level }})
-Estado: {{ state.name }}
+{% if numero_de_serie %}N.º de serie: {{ numero_de_serie }}
+{% endif %}{% if marca %}Marca: {{ marca }}
+{% endif %}{% if modelo %}Modelo: {{ modelo }}
+{% endif %}Estado: {{ state.name }}
 Fecha de creación: {{ created_at|date:"d/m/Y H:i" }}
 
 Descripción del problema:
@@ -24,19 +27,11 @@ Descripción del problema:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-👤 ACCESO DE CLIENTE
-
-Se ha creado automáticamente una cuenta de cliente para seguimiento del ticket.
-El cliente ha recibido sus credenciales de acceso por email separado.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-⚡ PRÓXIMAS ACCIONES
+PRÓXIMAS ACCIONES
 
 1. Revisar y asignar el ticket a un técnico
-2. Evaluar la prioridad y ajustar si es necesario
-3. Contactar al cliente si se requiere más información
-4. Actualizar el estado conforme avance el trabajo
+2. Contactar al cliente si se requiere más información
+3. Actualizar el estado conforme avance el trabajo
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
