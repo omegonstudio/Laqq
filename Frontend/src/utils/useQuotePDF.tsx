@@ -4,6 +4,7 @@ import {
   convertQuotesTypes,
   formatQuoteAmount,
 } from "./quotesConvert";
+import { getMaxEstimatedDeliveryLabel } from "./estimatedDelivery";
 import {
   Document,
   Page,
@@ -422,6 +423,9 @@ const QuotePDF = ({
 }) => {
   const { contact, specs, items } = quote;
   const numberLabel = displayNumber || quote.quote_number;
+  const maxDeliveryLabel = getMaxEstimatedDeliveryLabel(
+    items.map((item) => item.estimated_delivery)
+  );
 
   return (
     <Document>
@@ -528,6 +532,14 @@ const QuotePDF = ({
             </View>
           );
         })}
+
+        {maxDeliveryLabel ? (
+          <View style={s.totalRow}>
+            <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold" }}>
+              Plazo de entrega: {maxDeliveryLabel}
+            </Text>
+          </View>
+        ) : null}
 
         {/* CONDICIONES GENERALES */}
         <View

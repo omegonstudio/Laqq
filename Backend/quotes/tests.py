@@ -261,6 +261,73 @@ class QuoteItemAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(float(response.data['subtotal']), 150.00)
 
+    def test_create_quote_item_with_estimated_delivery(self):
+        """T14: crear ítem con plazo de entrega opcional"""
+        product = Product.objects.create(
+            name='Product With Delivery',
+            brand=self.brand,
+            category=self.category
+        )
+        data = {
+            'quote': self.quote.id,
+            'product': product.id,
+            'quantity': 1,
+            'unit_price': 10.00,
+            'estimated_delivery': '15-20 días hábiles',
+        }
+        response = self.client.post('/quotes/items/', data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['estimated_delivery'], '15-20 días hábiles')
+        item = QuoteItem.objects.get(id=response.data['id'])
+        self.assertEqual(item.estimated_delivery, '15-20 días hábiles')
+
+    def test_create_quote_item_without_estimated_delivery(self):
+        """T14: crear ítem sin plazo (histórico / opcional)"""
+        product = Product.objects.create(
+            name='Product Without Delivery',
+            brand=self.brand,
+            category=self.category
+        )
+        data = {
+            'quote': self.quote.id,
+            'product': product.id,
+            'quantity': 2,
+            'unit_price': 25.00,
+        }
+        response = self.client.post('/quotes/items/', data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data.get('estimated_delivery', ''), '')
+        item = QuoteItem.objects.get(id=response.data['id'])
+        self.assertEqual(item.estimated_delivery, '')
+
+    def test_update_quote_item_estimated_delivery(self):
+        """T14: actualizar plazo de entrega de un ítem existente"""
+        self.assertEqual(self.quote_item.estimated_delivery, '')
+        response = self.client.patch(
+            f'/quotes/items/{self.quote_item.id}/',
+            {'estimated_delivery': '30 días'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['estimated_delivery'], '30 días')
+        self.quote_item.refresh_from_db()
+        self.assertEqual(self.quote_item.estimated_delivery, '30 días')
+
+    def test_historical_quote_item_without_delivery_still_works(self):
+        """T14: ítems históricos sin plazo siguen listables y editables"""
+        response = self.client.get(f'/quotes/items/{self.quote_item.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data.get('estimated_delivery', ''), '')
+        response = self.client.patch(
+            f'/quotes/items/{self.quote_item.id}/',
+            {'quantity': 4, 'unit_price': 100.00},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.quote_item.refresh_from_db()
+        self.assertEqual(self.quote_item.quantity, 4)
+        self.assertEqual(self.quote_item.estimated_delivery, '')
+
     def test_validate_zero_quantity(self):
         """Validar que la cantidad sea mayor a cero"""
         data = {
