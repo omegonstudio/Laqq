@@ -14,6 +14,17 @@ def _is_ticket_staff(user, allowed):
     return user.user_type_id in allowed
 
 
+def user_can_view_ticket_priority(user):
+    """
+    Prioridad es dato interno: solo admin, back y superuser la ven en respuestas API.
+    """
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    if getattr(user, 'is_superuser', False):
+        return True
+    return getattr(user, 'user_type_id', None) in ('admin', 'back')
+
+
 class CanCreateTicketOrStaff(BasePermission):
     """
     POST: Público (permite crear tickets sin autenticación desde la web)

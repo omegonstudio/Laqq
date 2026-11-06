@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { updateTicket } from "@/store/ticketsSlice";
+import { closeTicket, updateTicket } from "@/store/ticketsSlice";
 import { formatDate, formatDateForInput } from "@/utils/formatDate";
 import { CopyButton } from "@/components/atoms/CopyButton";
 import { ticketsApi } from "@/lib/api/tickets";
@@ -216,7 +216,7 @@ export function EditTicketsService({
     try {
       const newAssignedUserId = formData.assigned_user ?? null;
       const originalAssignedUserId = ticket.assigned_user?.id ?? null;
-      // 2. Asignar siempre que cambie
+      // Asignar siempre que cambie
       if (newAssignedUserId && newAssignedUserId !== originalAssignedUserId) {
         await ticketsApi.assign(ticket.id, {
           assigned_user: newAssignedUserId,
@@ -229,7 +229,7 @@ export function EditTicketsService({
       const newResolutionNotes = formData.resolution_notes ?? null;
       const originalResolutionNotes = ticket.resolution_notes ?? null;
 
-      // 2. Cambió y ahora hay contenido → resolver
+      // Cambió y ahora hay contenido → resolver
       if (
         newResolutionNotes &&
         newResolutionNotes.trim() !== "" &&
@@ -238,18 +238,27 @@ export function EditTicketsService({
         await ticketsApi.resolve(ticket.id, {
           resolution_notes: newResolutionNotes,
         });
-
-        setFormData({ ...formData, state: "in_progress" });
       }
+
+      // Payload del PUT: no reenviar un state obsoleto tras close()
+      let dataToUpdate: Partial<UpdateTicketPayload> = { ...formData };
+
       if (closed) {
-        await ticketsApi.close(ticket.id);
-        setFormData({ ...formData, state: "closed" });
+        const closedTicket = await dispatch(closeTicket(ticket.id)).unwrap();
+        const closedState =
+          typeof closedTicket.state === "string"
+            ? closedTicket.state
+            : "closed";
+        dataToUpdate = {
+          ...formData,
+          state: closedState,
+        };
       }
 
       await dispatch(
         updateTicket({
           id: ticket.id,
-          data: formData,
+          data: dataToUpdate,
         })
       ).unwrap();
 

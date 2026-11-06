@@ -135,6 +135,7 @@ const TicketForm = ({
       ...formData,
       ticket: {
         ...formData.ticket,
+        numero_de_serie: formData.ticket.numero_de_serie.trim(),
       },
     };
 
@@ -376,6 +377,20 @@ const TicketForm = ({
               }
               placeholder="Teléfono asociado al ticket"
             />
+            <InputField
+              label="EMPRESA"
+              value={formData.contact.company_name || ""}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  contact: {
+                    ...formData.contact,
+                    company_name: e.target.value,
+                  },
+                })
+              }
+              placeholder="Empresa (opcional)"
+            />
           </div>
 
           <div className="min-w-0 flex justify-between items-end">
@@ -443,6 +458,7 @@ const TicketForm = ({
                 })
               }
               placeholder="Número de serie"
+              required
             />
             {!formData.ticket.producto_laqq && (
               <>

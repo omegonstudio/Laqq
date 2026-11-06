@@ -18,26 +18,22 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { ServiceTicket, TicketPriority, TicketState } from "@/types/api";
+import { ServiceTicket, TicketState } from "@/types/api";
 import { formatDate } from "@/utils/formatDate";
 import { convertStateTicket } from "@/utils/quotesConvert";
-import { useEffect } from "react";
 
 export function TicketDetailModal({
   ticket,
   open,
   onOpenChange,
-  priorities,
   states,
 }: {
   ticket: ServiceTicket | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  priorities: TicketPriority[];
   states: TicketState[];
 }) {
   if (!ticket) return null;
-  const ticketPriority = priorities.find((p) => p.id === ticket.priority);
 
   const timelineItems = [
     { label: "Creado", date: formatDate(ticket.created_at) },
@@ -67,20 +63,6 @@ export function TicketDetailModal({
               <Badge variant="outline" className="font-mono text-xs">
                 <AlertCircle className="size-3 mr-3" />
                 {convertStateTicket(ticket.state)}
-              </Badge>
-              <Badge
-                variant="outline"
-                style={
-                  ticketPriority.color !== null
-                    ? {
-                        backgroundColor: `${ticketPriority.color}15`,
-                        color: ticketPriority.color,
-                        borderColor: ticketPriority.color,
-                      }
-                    : undefined
-                }
-              >
-                {ticketPriority.name}
               </Badge>
             </div>
           </div>
