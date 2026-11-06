@@ -287,6 +287,7 @@ export interface QuoteItem {
   unit_price: string; // Decimal como string
   subtotal: string; // Decimal como string
   variant?: string;
+  estimated_delivery?: string;
 }
 
 // Para LEER (GET)
@@ -298,6 +299,7 @@ export interface QuoteItemRender {
   unit_price: string;
   subtotal: string;
   variant: Variants;
+  estimated_delivery?: string;
 }
 
 // =================== PAYLOAD TYPES ===================
