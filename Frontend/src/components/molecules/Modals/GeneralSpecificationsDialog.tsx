@@ -19,19 +19,16 @@ import {
 import Button from "@/components/atoms/Button";
 import { useEffect, useState } from "react";
 import { SpecificationsForm } from "@/types/api";
+import {
+  CLAUSULA_PAGO_OPTIONS,
+  FORMA_PAGO_OPTIONS,
+  GARANTIA_OPTIONS,
+  ORDEN_COMPRA_OPTIONS,
+  PRECIOS_OPTIONS,
+  VALIDEZ_OFERTA_OPTIONS,
+} from "@/utils/quoteConditionsDefaults";
 
 const CUSTOM_VALUE = "__custom__";
-
-const PRECIOS_OPTIONS = [
-  { value: "lista", label: "Lista" },
-  { value: "especial", label: "Especial" },
-];
-
-const FORMA_PAGO_OPTIONS = [
-  { value: "transferencia", label: "Transferencia" },
-  { value: "cheque", label: "Cheque" },
-  { value: "contado", label: "Contado" },
-];
 
 interface Props {
   open: boolean;
@@ -49,16 +46,19 @@ const SelectOrCustom = ({
   value,
   options,
   onChange,
+  multiline = false,
 }: {
   label: string;
   value: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
+  multiline?: boolean;
 }) => {
   const [forceCustom, setForceCustom] = useState(
     Boolean(value) && !isPreset(value, options)
   );
-  const usingCustom = forceCustom || (Boolean(value) && !isPreset(value, options));
+  const usingCustom =
+    forceCustom || (Boolean(value) && !isPreset(value, options));
   const selectValue = usingCustom ? CUSTOM_VALUE : value;
 
   return (
@@ -82,20 +82,30 @@ const SelectOrCustom = ({
         <SelectContent>
           {options.map((option) => (
             <SelectItem key={option.value} value={option.value}>
-              {option.label}
+              <span className="whitespace-pre-wrap text-left">
+                {option.label}
+              </span>
             </SelectItem>
           ))}
           <SelectItem value={CUSTOM_VALUE}>Otro</SelectItem>
         </SelectContent>
       </Select>
-      {usingCustom && (
-        <Input
-          className="mt-2"
-          value={isPreset(value, options) ? "" : value}
-          placeholder="Escribir valor personalizado"
-          onChange={(e) => onChange(e.target.value)}
-        />
-      )}
+      {usingCustom &&
+        (multiline ? (
+          <Textarea
+            className="mt-2 min-h-[120px]"
+            value={isPreset(value, options) ? "" : value}
+            placeholder="Escribir valor personalizado"
+            onChange={(e) => onChange(e.target.value)}
+          />
+        ) : (
+          <Input
+            className="mt-2"
+            value={isPreset(value, options) ? "" : value}
+            placeholder="Escribir valor personalizado"
+            onChange={(e) => onChange(e.target.value)}
+          />
+        ))}
     </div>
   );
 };
@@ -127,14 +137,14 @@ const GeneralSpecificationsDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle>Condiciones Generales</DialogTitle>
-      </DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Condiciones Generales</DialogTitle>
+        </DialogHeader>
 
-      <div className="flex-1 overflow-y-auto pr-2 space-y-4 text-sm">
+        <div className="flex-1 overflow-y-auto pr-2 space-y-4 text-sm">
           <SelectOrCustom
             key={`precios-${open}`}
-            label="Precios"
+            label="Precio"
             value={form.precios}
             options={PRECIOS_OPTIONS}
             onChange={(v) => handleChange("precios", v)}
@@ -148,43 +158,47 @@ const GeneralSpecificationsDialog = ({
             onChange={(v) => handleChange("forma_pago", v)}
           />
 
-          <div>
-            <label>Cláusula de pago</label>
-            <Textarea
-              value={form.clausula_pago}
-              onChange={(e) => handleChange("clausula_pago", e.target.value)}
-            />
-          </div>
+          <SelectOrCustom
+            key={`clausula-pago-${open}`}
+            label="Cláusula de pago"
+            value={form.clausula_pago}
+            options={CLAUSULA_PAGO_OPTIONS}
+            multiline
+            onChange={(v) => handleChange("clausula_pago", v)}
+          />
 
-          <div>
-            <label>Validez oferta</label>
-            <Input
-              value={form.validez_oferta}
-              onChange={(e) => handleChange("validez_oferta", e.target.value)}
-            />
-          </div>
+          <SelectOrCustom
+            key={`validez-oferta-${open}`}
+            label="Validez de oferta"
+            value={form.validez_oferta}
+            options={VALIDEZ_OFERTA_OPTIONS}
+            onChange={(v) => handleChange("validez_oferta", v)}
+          />
 
-          <div>
-            <label>Garantía</label>
-            <Input
-              value={form.garantia}
-              onChange={(e) => handleChange("garantia", e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label>Orden de compra</label>
-            <Input
-              value={form.orden_compra}
-              onChange={(e) => handleChange("orden_compra", e.target.value)}
-            />
-          </div>
+          <SelectOrCustom
+            key={`orden-compra-${open}`}
+            label="Orden de compra"
+            value={form.orden_compra}
+            options={ORDEN_COMPRA_OPTIONS}
+            onChange={(v) => handleChange("orden_compra", v)}
+          />
 
           <div>
             <label>Observaciones</label>
             <Textarea
               value={form.observaciones}
               onChange={(e) => handleChange("observaciones", e.target.value)}
+            />
+          </div>
+
+          <div className="border-t pt-4 mt-2 space-y-2">
+            <SelectOrCustom
+              key={`garantia-${open}`}
+              label="Garantía"
+              value={form.garantia}
+              options={GARANTIA_OPTIONS}
+              multiline
+              onChange={(v) => handleChange("garantia", v)}
             />
           </div>
 

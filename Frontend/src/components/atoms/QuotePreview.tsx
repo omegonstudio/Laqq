@@ -44,6 +44,7 @@ import {
   QUOTE_CURRENCIES,
 } from "@/utils/quotesConvert";
 import { getMaxEstimatedDeliveryLabel } from "@/utils/estimatedDelivery";
+import { resolveQuoteSpecsForPreview } from "@/utils/quoteConditionsDefaults";
 import { fetchUsers } from "@/store/usersSlice";
 import { toast } from "@/hooks/use-toast";
 import { ProductSearchCombobox } from "../molecules/ProductSearch";
@@ -109,10 +110,15 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
     }, 0);
   };
   useEffect(() => {
-    if (quote?.specs) {
-      setSpecs(quote.specs);
-      setOriginalSpecs(quote.specs);
-    }
+    if (!quote) return;
+    // Defaults Tito solo en recibidas; misma ref lógica en specs/originalSpecs → sin dirty ni auto-save.
+    const resolved = resolveQuoteSpecsForPreview(
+      quote.specs,
+      quote.lifecycle,
+      quote.managed_at
+    );
+    setSpecs(resolved);
+    setOriginalSpecs(resolved);
   }, [quote]);
 
   useEffect(() => {
@@ -936,7 +942,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
           className="mt-2"
           onClick={() => setOpenSpecs(true)}
         >
-          Especificaciones generales
+          CONDICIONES GENERALES
         </Button>
 
         <GeneralSpecificationsDialog
