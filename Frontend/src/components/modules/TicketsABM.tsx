@@ -139,6 +139,9 @@ const TicketsABM = () => {
     last_name: ticket.contact?.last_name || "-",
     email: ticket.contact?.email || "-",
     phone: ticket.contact?.phone || "-",
+    assigned_display: ticket.assigned_user
+      ? `${ticket.assigned_user.first_name} ${ticket.assigned_user.last_name}`.trim()
+      : "Sin asignar",
   }));
   const columns = [
     { key: "ticket_number", label: "N° Ticket", sortable: true },
@@ -151,6 +154,11 @@ const TicketsABM = () => {
     { key: "last_name", label: "Apellido", sortable: true },
     { key: "email", label: "Email", sortable: true },
     { key: "phone", label: "Teléfono", sortable: false },
+    {
+      key: "assigned_display",
+      label: "Asignado",
+      sortable: false,
+    },
     // { key: "country", label: "País", sortable: true },
     {
       key: "created_at",

@@ -17,17 +17,21 @@ from .serializers import (
     TicketStateSerializer,
     TicketPrioritySerializer,
     TicketPackageSerializer,
+    get_service_ticket_serializer_class,
 )
 from .permissions import (
     IsAdminOrBackOffice,
     IsAdminOnly,
     CanAttachFiles,
-    CanCreateTicketOrStaff
+    CanCreateTicketOrStaff,
 )
 from .filters import ServiceTicketFilter
 
 from attachments.models import Attachment
-from .emails import send_ticket_status_change_email
+from .emails import (
+    send_ticket_status_change_email,
+    send_ticket_assigned_email,
+)
 
 import logging
 
@@ -69,8 +73,9 @@ class TicketPriorityViewSet(viewsets.ModelViewSet):
     ordering = ['-level']
 
     def get_permissions(self):
+        # Prioridad es catálogo interno: solo admin/back pueden leerlo
         if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
-            return [AllowAny()]
+            return [IsAuthenticated(), IsAdminOrBackOffice()]
         return [IsAuthenticated(), IsAdminOnly()]
 
 
@@ -107,7 +112,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     # -------------------------
-    # Permissions dinámicos
+    # Permissions / serializer dinámicos
     # -------------------------
 
     def get_permissions(self):
@@ -116,6 +121,9 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
             return [AllowAny()]
 
         return super().get_permissions()
+
+    def get_serializer_class(self):
+        return get_service_ticket_serializer_class(self.request)
 
     # -------------------------
     # Queryset filtering (por email)
@@ -245,6 +253,10 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
     def assign(self, request, pk=None):
         ticket = self.get_object()
 
+        # Comparar por IDs (no por objetos): evita falsos positivos por identidad
+        # de instancia en memoria y detecta cambio real de responsable (Ticket 9C).
+        previous_assigned_user_id = ticket.assigned_user_id
+
         # If ticket is in 'new' state, change to 'open'
         data = {'assigned_user_id': request.data.get('assigned_user')}
         if ticket.state_id == 'new':
@@ -253,9 +265,29 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(ticket, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
+        # Persistencia primero: el envío de correos no debe poder revertir la asignación.
         serializer.save()
+        ticket.refresh_from_db()
 
-        # Send status change email to customer
+        new_assigned_user_id = ticket.assigned_user_id
+        assignee_changed = previous_assigned_user_id != new_assigned_user_id
+
+        # Mail al técnico solo si hay un responsable nuevo distinto del anterior.
+        # - Primera asignación / reasignación a otro: sí, solo al nuevo (no al anterior).
+        # - Mismo técnico de nuevo: no (evita notificaciones inútiles).
+        # - Quitar asignación (null): no hay destinatario técnico.
+        if assignee_changed and new_assigned_user_id is not None:
+            try:
+                send_ticket_assigned_email(ticket)
+            except Exception as e:
+                # Fallo de Resend/proveedor: loguear y continuar; ticket ya asignado.
+                logger.error(
+                    f"Error sending assignment email for ticket {ticket.ticket_number}: {e}"
+                )
+
+        # Se conserva el mail de status al cliente independientemente del cambio
+        # de responsable (incluso si se reasigna el mismo técnico). Sin deduplicación
+        # en 9C: comportamiento previo intacto.
         try:
             send_ticket_status_change_email(ticket)
         except Exception as e:

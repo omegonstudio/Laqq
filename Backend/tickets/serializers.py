@@ -4,6 +4,7 @@ from datetime import datetime
 from django.utils import timezone
 from .utils import generate_secure_password, generate_username_from_contact
 from .emails import send_ticket_created_email
+from .permissions import user_can_view_ticket_priority
 from users.models import User, UserType, UserState
 from attachments.models import Attachment
 from attachments.serializers import AttachmentSerializer
@@ -13,6 +14,26 @@ from products.models import Product
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_required_serial(value):
+    """
+    Ticket 9E: número de serie obligatorio en creación.
+    Rechaza omitido/null/vacío/solo espacios; normaliza con strip.
+    """
+    if value is None:
+        raise serializers.ValidationError(
+            'numero_de_serie is required and cannot be blank'
+        )
+    if not isinstance(value, str):
+        value = str(value)
+    normalized = value.strip()
+    if not normalized:
+        raise serializers.ValidationError(
+            'numero_de_serie is required and cannot be blank'
+        )
+    return normalized
+
 
 class AssignedUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -98,6 +119,16 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
             if producto_laqq is None:
                 producto_laqq = True
 
+            # Ticket 9E: serie obligatoria solo en creación (no invalidar históricos).
+            # Usar initial_data para detectar omitido/null aunque el modelo tenga default ''.
+            if 'numero_de_serie' not in self.initial_data:
+                raise serializers.ValidationError({
+                    'numero_de_serie': 'numero_de_serie is required and cannot be blank'
+                })
+            data['numero_de_serie'] = _normalize_required_serial(
+                self.initial_data.get('numero_de_serie')
+            )
+
         # Validación condicional según producto_laqq
         if producto_laqq is False:  # Explicitly check for False
             # Producto externo: marca y modelo son obligatorios
@@ -142,7 +173,12 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
             except TicketState.DoesNotExist:
                 pass
 
-        # Si no se especifica prioridad, usar 'medium'
+        # Prioridad: solo internos pueden fijarla en creación; resto siempre medium
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+        if not user_can_view_ticket_priority(user):
+            validated_data.pop('priority', None)
+
         if 'priority' not in validated_data:
             try:
                 validated_data['priority'] = TicketPriority.objects.get(id='medium')
@@ -245,6 +281,26 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
+class ServiceTicketClientSerializer(ServiceTicketSerializer):
+    """
+    Lectura para clientes/anónimos: misma forma que ServiceTicketSerializer
+    pero sin el campo interno `priority`.
+    """
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data.pop('priority', None)
+        return data
+
+
+def get_service_ticket_serializer_class(request):
+    """Elegir serializer de ticket según si el usuario puede ver prioridad."""
+    user = getattr(request, 'user', None) if request else None
+    if user_can_view_ticket_priority(user):
+        return ServiceTicketSerializer
+    return ServiceTicketClientSerializer
+
+
 class TicketPackageSerializer(serializers.Serializer):
     """
     Serializer para crear un ticket de servicio completo con datos de contacto inline.
@@ -257,6 +313,7 @@ class TicketPackageSerializer(serializers.Serializer):
     - contact.first_name: Nombre del contacto
     - contact.last_name: Apellido del contacto
     - ticket.description: Descripción del problema (mínimo 20 caracteres)
+    - ticket.numero_de_serie: Número de serie del producto
 
     CAMPOS OPCIONALES:
     - contact.company_name: Nombre de la empresa
@@ -264,7 +321,6 @@ class TicketPackageSerializer(serializers.Serializer):
     - contact.country: País del contacto
     - ticket.producto_laqq: Boolean (default: true) - True si es producto Laqq, False si es externo
     - ticket.product: UUID del producto (si producto_laqq=true)
-    - ticket.numero_de_serie: Número de serie del producto
     - ticket.marca: Marca del producto (OBLIGATORIO si producto_laqq=false)
     - ticket.modelo: Modelo del producto (OBLIGATORIO si producto_laqq=false)
     - ticket.priority: ID de la prioridad (default: "medium")
@@ -325,6 +381,13 @@ class TicketPackageSerializer(serializers.Serializer):
                 "Field 'description' is required in ticket data"
             )
 
+        # Ticket 9E: número de serie obligatorio en creación pública/package
+        if 'numero_de_serie' not in value:
+            raise serializers.ValidationError(
+                "Field 'numero_de_serie' is required in ticket data"
+            )
+        value['numero_de_serie'] = _normalize_required_serial(value.get('numero_de_serie'))
+
         # Obtener producto_laqq (default: True)
         producto_laqq = value.get('producto_laqq', True)
 
@@ -343,12 +406,15 @@ class TicketPackageSerializer(serializers.Serializer):
                         f"Product with id '{value['product']}' does not exist"
                     )
 
-        # Validar priority si está presente
-        if 'priority' in value and value['priority']:
-            if not TicketPriority.objects.filter(id=value['priority']).exists():
-                raise serializers.ValidationError(
-                    f"TicketPriority with id '{value['priority']}' does not exist"
-                )
+        # Validar priority solo si el usuario interno puede fijarla
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+        if user_can_view_ticket_priority(user):
+            if 'priority' in value and value['priority']:
+                if not TicketPriority.objects.filter(id=value['priority']).exists():
+                    raise serializers.ValidationError(
+                        f"TicketPriority with id '{value['priority']}' does not exist"
+                    )
 
         return value
 
@@ -384,13 +450,15 @@ class TicketPackageSerializer(serializers.Serializer):
             )
             logger.info(f"New contact created with email {email}: {contact.id}")
         else:
+            # Ticket 9D: contacto existente se reutiliza sin mutar company_name
+            # ni otros campos (evita sobrescribir datos de BackOffice/otros módulos).
             logger.info(f"Contact found with email {email}: {contact.id}")
 
         # 2. Preparar datos del ticket
         ticket_create_data = {
             'contact': contact,
             'description': ticket_data['description'],
-            'numero_de_serie': ticket_data.get('numero_de_serie', ''),
+            'numero_de_serie': ticket_data['numero_de_serie'],  # ya normalizado en validate_ticket
             'producto_laqq': ticket_data.get('producto_laqq', True),
             'marca': ticket_data.get('marca', ''),
             'modelo': ticket_data.get('modelo', ''),
@@ -408,8 +476,13 @@ class TicketPackageSerializer(serializers.Serializer):
             # Producto externo: usar marca y modelo
             ticket_create_data['product_name'] = f"{ticket_data.get('marca', '')} {ticket_data.get('modelo', '')}".strip()
 
-        # Prioridad (opcional, default 'medium')
-        priority_id = ticket_data.get('priority', 'medium')
+        # Prioridad: solo internos pueden fijarla; cliente/anónimo → medium
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+        if user_can_view_ticket_priority(user):
+            priority_id = ticket_data.get('priority', 'medium')
+        else:
+            priority_id = 'medium'
         try:
             ticket_create_data['priority'] = TicketPriority.objects.get(id=priority_id)
         except TicketPriority.DoesNotExist:
@@ -464,7 +537,10 @@ class TicketPackageSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         context = {'request': self.context.get('request')}
+        ticket_serializer_class = get_service_ticket_serializer_class(
+            self.context.get('request')
+        )
         return {
             'contact': ContactSerializer(instance['contact'], context=context).data,
-            'ticket': ServiceTicketSerializer(instance['ticket'], context=context).data,
+            'ticket': ticket_serializer_class(instance['ticket'], context=context).data,
         }

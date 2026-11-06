@@ -1,6 +1,17 @@
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 
+def user_can_view_ticket_priority(user):
+    """
+    Prioridad es dato interno: solo admin, back y superuser la ven en respuestas API.
+    """
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    if getattr(user, 'is_superuser', False):
+        return True
+    return getattr(user, 'user_type_id', None) in ('admin', 'back')
+
+
 class CanCreateTicketOrStaff(BasePermission):
     """
     POST: Público (permite crear tickets sin autenticación desde la web)

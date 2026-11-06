@@ -274,3 +274,86 @@ def send_ticket_status_change_email(ticket):
             f"#{ticket.ticket_number}: {str(e)}"
         )
         return False
+
+
+def send_ticket_assigned_email(ticket):
+    """
+    Notifica al técnico cuando se le asigna un ticket (Ticket 9C).
+
+    Destinatario: ticket.assigned_user.email.
+    No incluye prioridad (decisión 9B: dato exclusivamente interno).
+    """
+    try:
+        assignee = ticket.assigned_user
+        # Sin responsable no hay destinatario técnico (p.ej. tras unassign).
+        if not assignee:
+            return False
+
+        if not assignee.email:
+            # Asignación ya persistida: no fallar la operación por falta de email.
+            logger.warning(
+                f"Ticket #{ticket.ticket_number}: assigned user "
+                f"{assignee.id} has no email address; skipping technician notification"
+            )
+            return False
+
+        technician_name = (
+            f"{assignee.first_name} {assignee.last_name}".strip()
+            or assignee.username
+            or "Técnico"
+        )
+        tickets_email = settings.TICKETS_EMAIL
+
+        context = {
+            'ticket': ticket,
+            'ticket_number': ticket.ticket_number,
+            'technician_name': technician_name,
+            'product_name': ticket.product_name,
+            'description': ticket.description,
+            'state': ticket.state,
+            # 9B: no pasar priority al template del técnico.
+            'business_name': settings.BUSINESS_NAME,
+            'tickets_email': tickets_email,
+            'business_phone': getattr(settings, 'BUSINESS_PHONE', None),
+            'updated_at': ticket.updated_at,
+        }
+
+        html_content = render_to_string('emails/ticket_assigned.html', context)
+        text_content = render_to_string('emails/ticket_assigned.txt', context)
+
+        subject = f'Ticket asignado #{ticket.ticket_number} - {ticket.state.name}'
+        from_email = f'{settings.DEFAULT_FROM_NAME} <{settings.DEFAULT_FROM_EMAIL}>'
+        to_email = [assignee.email]
+
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=from_email,
+            to=to_email,
+        )
+        email.attach_alternative(html_content, "text/html")
+
+        safe_print("\n" + "="*80)
+        safe_print(f"EMAIL - TICKET ASSIGNED: {assignee.email}")
+        safe_print("="*80)
+        safe_print(f"Subject: {subject}")
+        safe_print(f"From: {from_email}")
+        safe_print(f"To: {to_email}")
+        safe_print("-"*80)
+        safe_print(text_content[:500])
+        safe_print("="*80 + "\n")
+
+        send_email_message(email)
+        logger.info(
+            f"Ticket #{ticket.ticket_number} assignment email sent to technician: "
+            f"{assignee.email}"
+        )
+        return True
+
+    except Exception as e:
+        # El caller debe aislar este fallo: nunca revertir la asignación guardada.
+        logger.error(
+            f"Failed to send assignment email for ticket "
+            f"#{ticket.ticket_number}: {str(e)}"
+        )
+        raise
