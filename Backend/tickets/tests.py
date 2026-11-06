@@ -656,3 +656,202 @@ class TicketCreateNotificationTestCase(APITestCase):
         self.assertIn('settings.QUOTES_EMAIL', inspect.getsource(quotes_emails))
         self.assertNotIn('TICKETS_EMAIL', inspect.getsource(quotes_emails))
 
+
+@override_settings(
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    TICKETS_EMAIL='soporte@laqq.com.ar',
+    BUSINESS_EMAIL='negocio@example.com',
+    # Signal must run so ContextVar suppression is what blocks Contact emails.
+    TESTING=False,
+)
+class TicketContactEmailSuppressTestCase(APITestCase):
+    """
+    T10/T12: ticket create sends only ticket emails; Contact notifications
+    suppressed via ContextVar when Contact is created from from-package.
+
+    ServiceTicket row duplication on a single submit is not demonstrated;
+    no idempotency is implemented here.
+    """
+
+    def setUp(self):
+        from django.core import mail
+
+        mail.outbox.clear()
+        self.client = APIClient()
+
+        self.client_type, _ = UserType.objects.get_or_create(
+            id='client',
+            defaults={'name': 'Cliente', 'description': 'Usuario cliente'},
+        )
+        self.active_state, _ = UserState.objects.get_or_create(
+            id='active',
+            defaults={'name': 'Activo'},
+        )
+        TicketState.objects.get_or_create(
+            id='open',
+            defaults={'name': 'Abierto', 'color': '#f39c12', 'is_final': False},
+        )
+        TicketState.objects.get_or_create(
+            id='closed',
+            defaults={'name': 'Cerrado', 'color': '#27ae60', 'is_final': True},
+        )
+        TicketPriority.objects.get_or_create(
+            id='medium',
+            defaults={'name': 'Media', 'level': 2, 'color': '#3498db'},
+        )
+        self.contact_state_new, _ = ContactState.objects.get_or_create(
+            id='new',
+            defaults={'name': 'New'},
+        )
+        self.contact_state_active, _ = ContactState.objects.get_or_create(
+            id='active',
+            defaults={'name': 'Active'},
+        )
+
+    def _package_payload(self, email):
+        return {
+            'contact': {
+                'email': email,
+                'first_name': 'Ana',
+                'last_name': 'Pérez',
+                'company_name': 'Empresa',
+                'phone': '111',
+            },
+            'ticket': {
+                'description': 'Equipo con falla de calibracion reportada por el cliente.',
+                'producto_laqq': False,
+                'marca': 'MarcaX',
+                'modelo': 'ModeloY',
+                'numero_de_serie': 'SN-T10',
+            },
+        }
+
+    def test_from_package_new_contact_sends_exactly_two_ticket_emails(self):
+        from django.core import mail
+        from contacts.signals import suppress_contact_created_emails
+
+        response = self.client.post(
+            '/tickets/from-package/',
+            self._package_payload('nuevo-t10@cliente.com'),
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(mail.outbox), 2)
+        recipients = {tuple(m.to) for m in mail.outbox}
+        self.assertEqual(
+            recipients,
+            {('soporte@laqq.com.ar',), ('nuevo-t10@cliente.com',)},
+        )
+        self.assertFalse(
+            any(m.to == ['negocio@example.com'] for m in mail.outbox),
+            'Contact BUSINESS_EMAIL notice must not be sent',
+        )
+        subjects = [m.subject for m in mail.outbox]
+        self.assertFalse(any(s.startswith('Nuevo Contacto:') for s in subjects))
+        self.assertFalse(
+            any(s.startswith('Gracias por contactarnos') for s in subjects)
+        )
+        self.assertTrue(
+            any('Recibimos tu solicitud' in s for s in subjects)
+        )
+        self.assertFalse(suppress_contact_created_emails.get())
+
+    def test_from_package_existing_contact_sends_exactly_two_ticket_emails(self):
+        from django.core import mail
+
+        Contact.objects.create(
+            email='existente-t10@cliente.com',
+            first_name='Ana',
+            last_name='Pérez',
+            company_name='Empresa Vieja',
+            state=self.contact_state_active,
+        )
+        mail.outbox.clear()
+        response = self.client.post(
+            '/tickets/from-package/',
+            self._package_payload('existente-t10@cliente.com'),
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(mail.outbox), 2)
+        recipients = {tuple(m.to) for m in mail.outbox}
+        self.assertEqual(
+            recipients,
+            {('soporte@laqq.com.ar',), ('existente-t10@cliente.com',)},
+        )
+
+    def test_contact_create_without_suppress_sends_business_and_welcome(self):
+        """
+        Alta de Contact fuera del flujo ticket (mismo post_save que Contactos).
+        POST /contacts/list/ devolvió 401 en este entorno de test; se valida el
+        signal vía ORM, que es lo que dispara las notificaciones del módulo.
+        """
+        from django.core import mail
+
+        mail.outbox.clear()
+        Contact.objects.create(
+            email='contacto-modulo@cliente.com',
+            first_name='Luis',
+            last_name='Gómez',
+            company_name='Lab',
+            state=self.contact_state_new,
+        )
+        self.assertEqual(len(mail.outbox), 2)
+        recipients = {tuple(m.to) for m in mail.outbox}
+        self.assertEqual(
+            recipients,
+            {('negocio@example.com',), ('contacto-modulo@cliente.com',)},
+        )
+        subjects = [m.subject for m in mail.outbox]
+        self.assertTrue(any(s.startswith('Nuevo Contacto:') for s in subjects))
+        self.assertTrue(
+            any(s.startswith('Gracias por contactarnos') for s in subjects)
+        )
+
+    def test_suppress_flag_restored_after_ticket_create(self):
+        from django.core import mail
+        from contacts.signals import suppress_contact_created_emails
+
+        self.client.post(
+            '/tickets/from-package/',
+            self._package_payload('restore-flag@cliente.com'),
+            format='json',
+        )
+        self.assertFalse(suppress_contact_created_emails.get())
+
+        mail.outbox.clear()
+        Contact.objects.create(
+            email='after-ticket@cliente.com',
+            first_name='Post',
+            last_name='Ticket',
+            state=self.contact_state_new,
+        )
+        self.assertEqual(len(mail.outbox), 2)
+        recipients = {tuple(m.to) for m in mail.outbox}
+        self.assertIn(('negocio@example.com',), recipients)
+        self.assertIn(('after-ticket@cliente.com',), recipients)
+
+    def test_status_change_email_unaffected(self):
+        from django.core import mail
+        from tickets.emails import send_ticket_status_change_email
+
+        contact = Contact.objects.create(
+            email='status-t10@cliente.com',
+            first_name='Status',
+            last_name='User',
+            state=self.contact_state_active,
+        )
+        ticket = ServiceTicket.objects.create(
+            contact=contact,
+            product_name='Prod',
+            description='Ticket para cambio de estado T10.',
+            state=TicketState.objects.get(id='closed'),
+            priority=TicketPriority.objects.get(id='medium'),
+        )
+        mail.outbox.clear()
+        ok = send_ticket_status_change_email(ticket)
+        self.assertTrue(ok)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['status-t10@cliente.com'])
+        self.assertIn('Actualización', mail.outbox[0].subject)
+

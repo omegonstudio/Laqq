@@ -9,6 +9,7 @@ from attachments.models import Attachment
 from attachments.serializers import AttachmentSerializer
 from contacts.models import Contact, ContactState
 from contacts.serializers import ContactSerializer
+from contacts.signals import suppress_contact_created_emails
 from products.models import Product
 import logging
 
@@ -373,15 +374,21 @@ class TicketPackageSerializer(serializers.Serializer):
                     "No ContactState available. Please create at least one ContactState."
                 )
 
-            contact = Contact.objects.create(
-                email=email,
-                first_name=contact_data['first_name'],
-                last_name=contact_data['last_name'],
-                company_name=contact_data.get('company_name', ''),
-                phone=contact_data.get('phone', ''),
-                country=contact_data.get('country', ''),
-                state=default_state,
-            )
+            # Suppress Contact module emails (BUSINESS_EMAIL + welcome) for this
+            # create only; ticket emails are sent later via send_ticket_created_email.
+            token = suppress_contact_created_emails.set(True)
+            try:
+                contact = Contact.objects.create(
+                    email=email,
+                    first_name=contact_data['first_name'],
+                    last_name=contact_data['last_name'],
+                    company_name=contact_data.get('company_name', ''),
+                    phone=contact_data.get('phone', ''),
+                    country=contact_data.get('country', ''),
+                    state=default_state,
+                )
+            finally:
+                suppress_contact_created_emails.reset(token)
             logger.info(f"New contact created with email {email}: {contact.id}")
         else:
             logger.info(f"Contact found with email {email}: {contact.id}")
