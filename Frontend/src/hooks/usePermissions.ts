@@ -39,6 +39,15 @@ export const useCanRunTicketActions = () => {
   return role === "admin" || role === "servicio_tecnico";
 };
 
+/** Tickets: export Excel. Admin y servicio técnico. */
+export const useCanExportTickets = () => {
+  const role = useUserRole();
+  return role === "admin" || role === "servicio_tecnico";
+};
+
+/** ¿Es admin (o superuser mapeado a admin)? */
+export const useIsAdmin = () => useUserRole() === "admin";
+
 /** Backoffice reducido: solo dashboard y tickets. */
 export const useIsServicioTecnico = () => useUserRole() === "servicio_tecnico";
 

@@ -221,20 +221,19 @@ export const convertStateContact = (state: stateEnum): string => {
   }
 };
 
-export const convertStateTicket = (
-  state:
-    | "open"
-    | "closed"
-    | "in_progress"
-    | "resolved"
-    | "waiting_parts"
-    | "new"
-): string => {
+export const convertStateTicket = (state: string | null | undefined): string => {
   switch (state) {
-    case "open":
-      return "Abierto";
+    case "received":
+      return "Recibido";
+    case "diagnosed":
+      return "Diagnosticado";
+    case "quoted":
+      return "Presupuestado";
     case "closed":
       return "Cerrado";
+    // Legacy (tickets históricos)
+    case "open":
+      return "Abierto";
     case "in_progress":
       return "En progreso";
     case "resolved":

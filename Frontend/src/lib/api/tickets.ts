@@ -34,11 +34,15 @@ export interface TicketStatistics {
 }
 
 export interface AssignTicketPayload {
-  assigned_user: string;
+  assigned_user: string | null;
 }
 
 export interface ResolveTicketPayload {
   resolution_notes?: string;
+}
+
+export interface ClassifyTicketPayload {
+  state: "received" | "diagnosed" | "quoted" | "closed";
 }
 export interface AttachTicketFileMultipart {
   file: File;
@@ -115,9 +119,23 @@ export const ticketsApi = {
   assign: (id: string, payload: AssignTicketPayload) =>
     api.post<ServiceTicket>(`${BASE}/${id}/assign/`, payload),
   start: (id: string) => api.post<ServiceTicket>(`${BASE}/${id}/start/`),
+  diagnose: (id: string) => api.post<ServiceTicket>(`${BASE}/${id}/diagnose/`),
   resolve: (id: string, payload?: ResolveTicketPayload) =>
     api.post<ServiceTicket>(`${BASE}/${id}/resolve/`, payload || {}),
+  quote: (id: string, payload?: ResolveTicketPayload) =>
+    api.post<ServiceTicket>(`${BASE}/${id}/quote/`, payload || {}),
   close: (id: string) => api.post<ServiceTicket>(`${BASE}/${id}/close/`),
+  reopen: (id: string) => api.post<ServiceTicket>(`${BASE}/${id}/reopen/`),
+  classify: (id: string, payload: ClassifyTicketPayload) =>
+    api.post<ServiceTicket>(`${BASE}/${id}/classify/`, payload),
+
+  exportExcel: async (params?: TicketListParams) => {
+    const result = await api.getBlob(
+      `${BASE}/export/`,
+      cleanParams(params as QueryParams)
+    );
+    return result;
+  },
 
   statistics: () => api.get<TicketStatistics>(`${BASE}/statistics/`),
 };

@@ -38,36 +38,71 @@ class ServiceTicketAPITestCase(APITestCase):
         )
         self.client.force_authenticate(user=self.user)
 
-        # Crear estados y prioridades de tickets
-        self.ticket_state_new = TicketState.objects.create(
+        # Estados: get_or_create — la migración C1 puede haber creado operativos
+        # (p.ej. closed) antes del setUp.
+        self.ticket_state_new, _ = TicketState.objects.get_or_create(
             id='new',
-            name='Nuevo',
-            color='#3498db',
-            is_final=False
+            defaults={
+                'name': 'Nuevo',
+                'color': '#3498db',
+                'is_final': False,
+            },
         )
-        self.ticket_state_open = TicketState.objects.create(
+        self.ticket_state_open, _ = TicketState.objects.get_or_create(
             id='open',
-            name='Abierto',
-            color='#f39c12',
-            is_final=False
+            defaults={
+                'name': 'Abierto',
+                'color': '#f39c12',
+                'is_final': False,
+            },
         )
-        self.ticket_state_in_progress = TicketState.objects.create(
+        self.ticket_state_in_progress, _ = TicketState.objects.get_or_create(
             id='in_progress',
-            name='En progreso',
-            color='#9b59b6',
-            is_final=False
+            defaults={
+                'name': 'En progreso',
+                'color': '#9b59b6',
+                'is_final': False,
+            },
         )
-        self.ticket_state_resolved = TicketState.objects.create(
+        self.ticket_state_resolved, _ = TicketState.objects.get_or_create(
             id='resolved',
-            name='Resuelto',
-            color='#1abc9c',
-            is_final=False
+            defaults={
+                'name': 'Resuelto',
+                'color': '#1abc9c',
+                'is_final': False,
+            },
         )
-        self.ticket_state_closed = TicketState.objects.create(
+        self.ticket_state_closed, _ = TicketState.objects.get_or_create(
             id='closed',
-            name='Cerrado',
-            color='#27ae60',
-            is_final=True
+            defaults={
+                'name': 'Cerrado',
+                'color': '#27ae60',
+                'is_final': True,
+            },
+        )
+        self.ticket_state_received, _ = TicketState.objects.get_or_create(
+            id='received',
+            defaults={
+                'name': 'Recibido',
+                'color': '#3498db',
+                'is_final': False,
+            },
+        )
+        self.ticket_state_diagnosed, _ = TicketState.objects.get_or_create(
+            id='diagnosed',
+            defaults={
+                'name': 'Diagnosticado',
+                'color': '#9b59b6',
+                'is_final': False,
+            },
+        )
+        self.ticket_state_quoted, _ = TicketState.objects.get_or_create(
+            id='quoted',
+            defaults={
+                'name': 'Presupuestado',
+                'color': '#f39c12',
+                'is_final': False,
+            },
         )
 
         self.priority_low = TicketPriority.objects.create(
@@ -115,14 +150,15 @@ class ServiceTicketAPITestCase(APITestCase):
             is_active=True
         )
 
-        # Crear ticket de prueba
+        # Crear ticket de prueba (estado operativo inicial)
         self.ticket = ServiceTicket.objects.create(
             ticket_number='T-2025-00001',
             contact=self.contact,
             product_name='Test Product',
             description='This is a test description with enough characters to pass validation requirements.',
-            state=self.ticket_state_new,
-            priority=self.priority_medium
+            state=self.ticket_state_received,
+            priority=self.priority_medium,
+            numero_de_serie='SN-TEST-001',
         )
 
     def test_list_tickets(self):
@@ -143,9 +179,11 @@ class ServiceTicketAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('ticket_number', response.data)
         self.assertTrue(response.data['ticket_number'].startswith('T-'))
-        # Verificar defaults automáticos
-        self.assertEqual(response.data['state'], 'open')
-        self.assertEqual(response.data['priority'], 'medium')
+        # Verificar defaults automáticos (T9: received; priority no se expone)
+        self.assertEqual(response.data['state'], 'received')
+        self.assertNotIn('priority', response.data)
+        created = ServiceTicket.objects.get(id=response.data['id'])
+        self.assertEqual(created.priority_id, 'medium')
 
     def test_validate_empty_description(self):
         """Validar que la descripción no esté vacía"""
@@ -188,7 +226,7 @@ class ServiceTicketAPITestCase(APITestCase):
     # ========== NUEVOS TESTS: Transiciones de Estado y Fechas ==========
 
     def test_assign_ticket_to_user(self):
-        """Asignar ticket a técnico usando endpoint personalizado"""
+        """Asignar ticket a técnico: no cambia el estado (T9)."""
         response = self.client.post(
             f'/tickets/{self.ticket.id}/assign/',
             {'assigned_user': self.user.id}
@@ -197,19 +235,19 @@ class ServiceTicketAPITestCase(APITestCase):
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.assigned_user.id, self.user.id)
         self.assertIsNotNone(self.ticket.assigned_at)
-        # Verificar transición automática de estado new -> open
-        self.assertEqual(self.ticket.state.id, 'open')
+        self.assertEqual(self.ticket.state.id, 'received')
 
     def test_start_ticket(self):
-        """Marcar ticket como en progreso"""
+        """Alias diagnose: received → diagnosed"""
         response = self.client.post(f'/tickets/{self.ticket.id}/start/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.ticket.refresh_from_db()
-        self.assertEqual(self.ticket.state.id, 'in_progress')
-        self.assertIsNotNone(self.ticket.started_at)
+        self.assertEqual(self.ticket.state.id, 'diagnosed')
+        self.assertIsNotNone(self.ticket.diagnosed_at)
 
     def test_resolve_ticket(self):
-        """Marcar ticket como resuelto con notas"""
+        """Alias quote: diagnosed → quoted con notas"""
+        self.client.post(f'/tickets/{self.ticket.id}/diagnose/')
         resolution_notes = 'Se reemplazó el pistón defectuoso. Equipo calibrado y probado.'
         response = self.client.post(
             f'/tickets/{self.ticket.id}/resolve/',
@@ -217,24 +255,21 @@ class ServiceTicketAPITestCase(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.ticket.refresh_from_db()
-        self.assertEqual(self.ticket.state.id, 'resolved')
+        self.assertEqual(self.ticket.state.id, 'quoted')
         self.assertEqual(self.ticket.resolution_notes, resolution_notes)
-        self.assertIsNotNone(self.ticket.resolved_at)
+        self.assertIsNotNone(self.ticket.quoted_at)
 
     def test_close_ticket(self):
-        """Cerrar ticket"""
+        """Cerrar ticket desde received"""
         response = self.client.post(f'/tickets/{self.ticket.id}/close/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.state.id, 'closed')
         self.assertIsNotNone(self.ticket.closed_at)
-        # Si no tenía resolved_at, también se setea
-        self.assertIsNotNone(self.ticket.resolved_at)
 
     def test_close_then_put_with_closed_state_persists_on_reload(self):
         """
-        Simula el flujo FE corregido (Ticket 9A): close() + PUT con state
-        tomado de la respuesta de close, y verifica persistencia al recargar.
+        close() + PUT sin poder cambiar state: el cierre persiste al recargar.
         """
         close_response = self.client.post(f'/tickets/{self.ticket.id}/close/')
         self.assertEqual(close_response.status_code, status.HTTP_200_OK)
@@ -248,6 +283,7 @@ class ServiceTicketAPITestCase(APITestCase):
                 'description': self.ticket.description,
                 'state': close_response.data['state'],
                 'priority': 'medium',
+                'numero_de_serie': self.ticket.numero_de_serie,
             },
         )
         self.assertEqual(put_response.status_code, status.HTTP_200_OK)
@@ -261,7 +297,7 @@ class ServiceTicketAPITestCase(APITestCase):
         self.assertEqual(reload_response.data['state'], 'closed')
 
     def test_put_with_stale_open_state_after_close_would_reopen(self):
-        """Documenta el bug previo: PUT con state viejo tras close revierte el cierre."""
+        """T9: PUT con state stale ya NO reabre el ticket cerrado."""
         close_response = self.client.post(f'/tickets/{self.ticket.id}/close/')
         self.assertEqual(close_response.status_code, status.HTTP_200_OK)
         self.ticket.refresh_from_db()
@@ -275,11 +311,12 @@ class ServiceTicketAPITestCase(APITestCase):
                 'description': self.ticket.description,
                 'state': 'open',
                 'priority': 'medium',
+                'numero_de_serie': self.ticket.numero_de_serie,
             },
         )
         self.assertEqual(put_response.status_code, status.HTTP_200_OK)
         self.ticket.refresh_from_db()
-        self.assertEqual(self.ticket.state_id, 'open')
+        self.assertEqual(self.ticket.state_id, 'closed')
 
     # ========== NUEVOS TESTS: Estadísticas ==========
 
@@ -351,12 +388,14 @@ class ClientPortalAPITestCase(APITestCase):
             state=self.active_state
         )
 
-        # Crear estados y prioridades de tickets
-        self.ticket_state_new = TicketState.objects.create(
+        # Estados: get_or_create por posible seed de migración C1.
+        self.ticket_state_new, _ = TicketState.objects.get_or_create(
             id='new',
-            name='Nuevo',
-            color='#3498db',
-            is_final=False
+            defaults={
+                'name': 'Nuevo',
+                'color': '#3498db',
+                'is_final': False,
+            },
         )
         self.priority_medium = TicketPriority.objects.create(
             id='medium',
@@ -1008,18 +1047,17 @@ class TicketPriorityInternalTestCase(APITestCase):
         )
 
     def test_admin_get_ticket_includes_priority(self):
+        """T9 R3: urgencia retirada — priority no se expone en API de tickets."""
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.get(f'/tickets/{self.ticket.id}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('priority', response.data)
-        self.assertEqual(response.data['priority'], 'medium')
+        self.assertNotIn('priority', response.data)
 
     def test_back_get_ticket_includes_priority(self):
         self.client.force_authenticate(user=self.back_user)
         response = self.client.get(f'/tickets/{self.ticket.id}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('priority', response.data)
-        self.assertEqual(response.data['priority'], 'medium')
+        self.assertNotIn('priority', response.data)
 
     def test_client_get_ticket_excludes_priority(self):
         self.client.force_authenticate(user=self.client_user)
@@ -1070,6 +1108,7 @@ class TicketPriorityInternalTestCase(APITestCase):
         self.assertEqual(self.ticket.priority_id, 'medium')
 
     def test_admin_can_change_priority(self):
+        """T9 R3: priority no se modifica vía PUT/PATCH (compatibilidad histórica)."""
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.patch(
             f'/tickets/{self.ticket.id}/',
@@ -1077,9 +1116,9 @@ class TicketPriorityInternalTestCase(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['priority'], 'high')
+        self.assertNotIn('priority', response.data)
         self.ticket.refresh_from_db()
-        self.assertEqual(self.ticket.priority_id, 'high')
+        self.assertEqual(self.ticket.priority_id, 'medium')
 
     def test_anonymous_cannot_list_priorities(self):
         self.client.force_authenticate(user=None)
@@ -1151,7 +1190,7 @@ class TicketPriorityInternalTestCase(APITestCase):
         self.client.force_authenticate(user=self.admin_user)
         admin_response = self.client.post('/tickets/', payload, format='json')
         self.assertEqual(admin_response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('priority', admin_response.data)
+        self.assertNotIn('priority', admin_response.data)
 
         self.client.force_authenticate(user=None)
         anon_response = self.client.post(
@@ -1300,7 +1339,7 @@ class TicketPriorityInternalTestCase(APITestCase):
 
     @patch('tickets.serializers.send_ticket_created_email')
     def test_internal_users_can_set_priority_on_create(self, mock_send):
-        """BackOffice conserva poder fijar prioridad al crear."""
+        """T9 R3: incluso internos reciben medium; urgencia retirada de ST."""
         mock_send.return_value = {'business': True, 'customer': True, 'errors': []}
         self.client.force_authenticate(user=self.admin_user)
         admin_response = self.client.post(
@@ -1308,16 +1347,16 @@ class TicketPriorityInternalTestCase(APITestCase):
             {
                 'contact_id': self.contact.id,
                 'product_name': 'Producto Admin High',
-                'description': 'Admin puede crear ticket con prioridad high.',
+                'description': 'Admin intenta crear ticket con prioridad high.',
                 'priority': 'high',
                 'numero_de_serie': 'SN-ADMIN-HIGH',
             },
             format='json',
         )
         self.assertEqual(admin_response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(admin_response.data['priority'], 'high')
+        self.assertNotIn('priority', admin_response.data)
         admin_ticket = ServiceTicket.objects.get(id=admin_response.data['id'])
-        self.assertEqual(admin_ticket.priority_id, 'high')
+        self.assertEqual(admin_ticket.priority_id, 'medium')
 
         self.client.force_authenticate(user=self.back_user)
         back_response = self.client.post(
@@ -1329,7 +1368,7 @@ class TicketPriorityInternalTestCase(APITestCase):
                     'last_name': 'Prio',
                 },
                 'ticket': {
-                    'description': 'Usuario back puede fijar prioridad en from-package.',
+                    'description': 'Usuario back intenta fijar prioridad en from-package.',
                     'producto_laqq': False,
                     'marca': 'MarcaB',
                     'modelo': 'ModeloB',
@@ -1341,7 +1380,7 @@ class TicketPriorityInternalTestCase(APITestCase):
         )
         self.assertEqual(back_response.status_code, status.HTTP_201_CREATED)
         back_ticket = ServiceTicket.objects.get(id=back_response.data['ticket']['id'])
-        self.assertEqual(back_ticket.priority_id, 'high')
+        self.assertEqual(back_ticket.priority_id, 'medium')
 
     def test_status_change_email_excludes_priority(self):
         from django.core import mail
@@ -1383,7 +1422,23 @@ class TicketPriorityInternalTestCase(APITestCase):
         self.assertEqual(mock_send.call_count, 1)
 
     def test_close_assign_start_resolve_still_work(self):
+        """Workflow operativo: assign + diagnose + quote + close."""
         self.client.force_authenticate(user=self.admin_user)
+        # Ticket en estado operativo para el workflow
+        received, _ = TicketState.objects.get_or_create(
+            id='received',
+            defaults={'name': 'Recibido', 'color': '#3498db', 'is_final': False},
+        )
+        TicketState.objects.get_or_create(
+            id='diagnosed',
+            defaults={'name': 'Diagnosticado', 'color': '#9b59b6', 'is_final': False},
+        )
+        TicketState.objects.get_or_create(
+            id='quoted',
+            defaults={'name': 'Presupuestado', 'color': '#f39c12', 'is_final': False},
+        )
+        self.ticket.state = received
+        self.ticket.save(update_fields=['state'])
 
         assign_response = self.client.post(
             f'/tickets/{self.ticket.id}/assign/',
@@ -1391,21 +1446,22 @@ class TicketPriorityInternalTestCase(APITestCase):
             format='json',
         )
         self.assertEqual(assign_response.status_code, status.HTTP_200_OK)
-        self.assertIn('priority', assign_response.data)
+        self.assertNotIn('priority', assign_response.data)
+        self.assertEqual(assign_response.data['state'], 'received')
 
         start_response = self.client.post(f'/tickets/{self.ticket.id}/start/')
         self.assertEqual(start_response.status_code, status.HTTP_200_OK)
         self.ticket.refresh_from_db()
-        self.assertEqual(self.ticket.state_id, 'in_progress')
+        self.assertEqual(self.ticket.state_id, 'diagnosed')
 
         resolve_response = self.client.post(
             f'/tickets/{self.ticket.id}/resolve/',
-            {'resolution_notes': 'Resuelto en 9B'},
+            {'resolution_notes': 'Presupuesto en 9B'},
             format='json',
         )
         self.assertEqual(resolve_response.status_code, status.HTTP_200_OK)
         self.ticket.refresh_from_db()
-        self.assertEqual(self.ticket.state_id, 'resolved')
+        self.assertEqual(self.ticket.state_id, 'quoted')
 
         close_response = self.client.post(f'/tickets/{self.ticket.id}/close/')
         self.assertEqual(close_response.status_code, status.HTTP_200_OK)

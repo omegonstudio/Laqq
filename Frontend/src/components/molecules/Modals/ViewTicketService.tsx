@@ -11,10 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useAppSelector } from "@/store/hooks";
 import { ServiceTicket } from "@/types/api";
 import { formatDate } from "@/utils/formatDate";
-import {
-  convertPrioritiesTicket,
-  convertStateTicket,
-} from "@/utils/quotesConvert";
+import { convertStateTicket } from "@/utils/quotesConvert";
 import { File } from "lucide-react";
 import { useState } from "react";
 
@@ -105,12 +102,24 @@ export function ViewTicketModal({
                 <p>{convertStateTicket(ticket.state)}</p>
               </div>
 
-              <div>
-                <Label>Prioridad</Label>
-                <p className="capitalize">
-                  {convertPrioritiesTicket(ticket.priority)}
-                </p>
-              </div>
+              {ticket.assigned_user && (
+                <div>
+                  <Label>Asignado</Label>
+                  <p>
+                    {ticket.assigned_user.first_name}{" "}
+                    {ticket.assigned_user.last_name}
+                  </p>
+                </div>
+              )}
+
+              {ticket.internal_notes != null && ticket.internal_notes !== "" && (
+                <div className="col-span-2">
+                  <Label>Notas internas</Label>
+                  <p className="whitespace-pre-wrap rounded-md border border-amber-600/40 bg-amber-50/40 p-3">
+                    {ticket.internal_notes}
+                  </p>
+                </div>
+              )}
 
               <div className="col-span-2">
                 <Label className="text-lg font-semibold underline">

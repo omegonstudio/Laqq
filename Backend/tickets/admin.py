@@ -57,30 +57,44 @@ class ServiceTicketAdmin(admin.ModelAdmin):
         'updated_at',
         'assigned_at',
         'started_at',
+        'diagnosed_at',
+        'quoted_at',
         'resolved_at',
-        'closed_at'
+        'closed_at',
     ]
     fieldsets = (
         ('Información básica', {
-            'fields': ('ticket_number', 'contact', 'product', 'product_name')
+            'fields': (
+                'ticket_number',
+                'contact',
+                'product',
+                'product_name',
+                'numero_de_serie',
+                'marca',
+                'modelo',
+                'producto_laqq',
+            )
         }),
         ('Descripción del problema', {
             'fields': ('description',)
         }),
-        ('Estado y prioridad', {
-            'fields': ('state', 'priority', 'assigned_user')
+        ('Estado y asignación', {
+            'fields': ('state', 'priority', 'assigned_user'),
+            'description': 'Priority es histórico; el workflow operativo no usa urgencia.',
         }),
-        ('Resolución', {
-            'fields': ('resolution_notes',)
+        ('Notas', {
+            'fields': ('resolution_notes', 'internal_notes'),
         }),
         ('Fechas de seguimiento', {
             'fields': (
                 'created_at',
                 'assigned_at',
                 'started_at',
+                'diagnosed_at',
+                'quoted_at',
                 'resolved_at',
                 'closed_at',
-                'updated_at'
+                'updated_at',
             ),
             'classes': ('collapse',)
         }),

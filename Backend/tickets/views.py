@@ -6,6 +6,7 @@ from rest_framework.permissions import (
     AllowAny
 )
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.http import HttpResponse
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
@@ -22,11 +23,16 @@ from .serializers import (
 from .permissions import (
     IsAdminOrBackOffice,
     CanRunTicketWorkflow,
+    CanReopenOrClassifyTicket,
+    CanExportTickets,
     IsAdminOnly,
     CanAttachFiles,
     CanCreateTicketOrStaff,
+    TICKET_VIEW_ALL,
+    user_can_access_internal_notes,
 )
 from .filters import ServiceTicketFilter
+from .workflow import transition_ticket, reopen_ticket, classify_ticket
 
 from attachments.models import Attachment
 from .emails import (
@@ -37,6 +43,20 @@ from .emails import (
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _serialize_ticket(request, ticket):
+    serializer_class = get_service_ticket_serializer_class(request)
+    return serializer_class(ticket, context={'request': request}).data
+
+
+def _send_status_email_safe(ticket):
+    try:
+        send_ticket_status_change_email(ticket)
+    except Exception as e:
+        logger.error(
+            f"Error sending status change email for ticket {ticket.ticket_number}: {e}"
+        )
 
 
 # -------------------------
@@ -60,7 +80,7 @@ class TicketStateViewSet(viewsets.ModelViewSet):
 
 
 # -------------------------
-# Ticket Priority
+# Ticket Priority (catálogo histórico; UI ST no lo usa)
 # -------------------------
 
 class TicketPriorityViewSet(viewsets.ModelViewSet):
@@ -74,7 +94,6 @@ class TicketPriorityViewSet(viewsets.ModelViewSet):
     ordering = ['-level']
 
     def get_permissions(self):
-        # Prioridad es catálogo interno: solo admin/back pueden leerlo
         if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
             return [IsAuthenticated(), IsAdminOrBackOffice()]
         return [IsAuthenticated(), IsAdminOnly()]
@@ -96,7 +115,7 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
         'ticket_number',
         'product_name',
         'description',
-        'resolution_notes'
+        'resolution_notes',
     ]
 
     ordering_fields = [
@@ -105,70 +124,58 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
         'updated_at',
         'assigned_at',
         'started_at',
+        'diagnosed_at',
+        'quoted_at',
         'resolved_at',
         'closed_at',
-        'priority__level'
+        'priority__level',
     ]
 
     ordering = ['-created_at']
 
-    # -------------------------
-    # Permissions / serializer dinámicos
-    # -------------------------
-
     def get_permissions(self):
-        # GET público (listar / detalle)
+        action = getattr(self, 'action', None)
+        # Acciones con permisos propios (el override de GET no debe anularlos)
+        if action == 'export':
+            return [IsAuthenticated(), CanExportTickets()]
+        if action in (
+            'assign', 'start', 'diagnose', 'resolve', 'quote', 'close',
+        ):
+            return [IsAuthenticated(), CanRunTicketWorkflow()]
+        if action in ('reopen', 'classify'):
+            return [IsAuthenticated(), CanReopenOrClassifyTicket()]
+        if action == 'statistics':
+            return [IsAuthenticated(), IsAdminOrBackOffice()]
+        if action == 'attach_file':
+            return [IsAuthenticated(), CanAttachFiles()]
+        if action == 'create_from_package':
+            return [AllowAny()]
         if self.request.method == 'GET':
             return [AllowAny()]
-
         return super().get_permissions()
 
     def get_serializer_class(self):
         return get_service_ticket_serializer_class(self.request)
 
-    # -------------------------
-    # Queryset filtering (por email)
-    # -------------------------
-
     def get_queryset(self):
-        """
-        GET público:
-        - requiere ?email=
-        - devuelve solo tickets de ese email
-
-        Usuarios autenticados:
-        - admin/backoffice: ven todos los tickets
-        - usuarios normales: solo ven sus propios tickets (filtrados por email)
-        """
         queryset = ServiceTicket.objects.all()
         request = self.request
         user = request.user
 
-        # GET público sin auth → filtrar por email obligatorio
         if request.method == 'GET' and not user.is_authenticated:
             email = request.query_params.get('email')
-
             if not email:
                 return queryset.none()
-
             return queryset.filter(contact__email=email)
 
-        # Usuario autenticado
         if user.is_authenticated:
-            # Admin/backoffice → todos los tickets
             if user.is_superuser or (
-                user.user_type_id and user.user_type_id in ['admin', 'back', 'back_full', 'servicio_tecnico']
+                user.user_type_id and user.user_type_id in TICKET_VIEW_ALL
             ):
                 return queryset
-
-            # Usuario normal → solo sus propios tickets
             return queryset.filter(contact__email=user.email)
 
         return queryset.none()
-
-    # -------------------------
-    # Create
-    # -------------------------
 
     # -------------------------
     # Attach single file
@@ -187,7 +194,6 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
         ticket = self.get_object()
         file_obj = request.FILES.get('file')
 
-        # Auto-detect role from content_type if not explicitly provided
         explicit_role = request.data.get('role')
         if explicit_role:
             role = explicit_role
@@ -249,109 +255,144 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
         )
 
     # -------------------------
-    # Assign / state changes
+    # Assign (no cambia estado)
     # -------------------------
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanRunTicketWorkflow])
     def assign(self, request, pk=None):
         ticket = self.get_object()
-
-        # Comparar por IDs (no por objetos): evita falsos positivos por identidad
-        # de instancia en memoria y detecta cambio real de responsable (Ticket 9C).
         previous_assigned_user_id = ticket.assigned_user_id
+        previous_state_id = ticket.state_id
 
-        # If ticket is in 'new' state, change to 'open'
         data = {'assigned_user_id': request.data.get('assigned_user')}
-        if ticket.state_id == 'new':
-            open_state = TicketState.objects.get(id='open')
-            data['state'] = open_state.id
-
         serializer = self.get_serializer(ticket, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
-        # Persistencia primero: el envío de correos no debe poder revertir la asignación.
         serializer.save()
         ticket.refresh_from_db()
+
+        # Invariante T9: assign no modifica estado
+        if ticket.state_id != previous_state_id:
+            ticket.state_id = previous_state_id
+            ticket.save(update_fields=['state', 'updated_at'])
+            ticket.refresh_from_db()
 
         new_assigned_user_id = ticket.assigned_user_id
         assignee_changed = previous_assigned_user_id != new_assigned_user_id
 
-        # Mail al técnico solo si hay un responsable nuevo distinto del anterior.
-        # - Primera asignación / reasignación a otro: sí, solo al nuevo (no al anterior).
-        # - Mismo técnico de nuevo: no (evita notificaciones inútiles).
-        # - Quitar asignación (null): no hay destinatario técnico.
         if assignee_changed and new_assigned_user_id is not None:
             try:
                 send_ticket_assigned_email(ticket)
             except Exception as e:
-                # Fallo de Resend/proveedor: loguear y continuar; ticket ya asignado.
                 logger.error(
                     f"Error sending assignment email for ticket {ticket.ticket_number}: {e}"
                 )
 
-        # Se conserva el mail de status al cliente independientemente del cambio
-        # de responsable (incluso si se reasigna el mismo técnico). Sin deduplicación
-        # en 9C: comportamiento previo intacto.
-        try:
-            send_ticket_status_change_email(ticket)
-        except Exception as e:
-            logger.error(f"Error sending status change email for ticket {ticket.ticket_number}: {e}")
+        _send_status_email_safe(ticket)
+        return Response(_serialize_ticket(request, ticket))
 
-        return Response(serializer.data)
+    # -------------------------
+    # Workflow operativo
+    # -------------------------
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanRunTicketWorkflow])
     def start(self, request, pk=None):
-        ticket = self.get_object()
-        state = TicketState.objects.get(id='in_progress')
-        serializer = self.get_serializer(ticket, data={'state': state.id}, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
+        """Alias de diagnosticar: received → diagnosed."""
+        ticket = transition_ticket(self.get_object(), 'diagnose')
+        _send_status_email_safe(ticket)
+        return Response(_serialize_ticket(request, ticket))
 
-        # Send status change email to customer
-        try:
-            send_ticket_status_change_email(ticket)
-        except Exception as e:
-            logger.error(f"Error sending status change email for ticket {ticket.ticket_number}: {e}")
-
-        return Response(serializer.data)
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanRunTicketWorkflow])
+    def diagnose(self, request, pk=None):
+        ticket = transition_ticket(self.get_object(), 'diagnose')
+        _send_status_email_safe(ticket)
+        return Response(_serialize_ticket(request, ticket))
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanRunTicketWorkflow])
     def resolve(self, request, pk=None):
-        ticket = self.get_object()
-        state = TicketState.objects.get(id='resolved')
-        serializer = self.get_serializer(
-            ticket,
-            data={
-                'state': state.id,
-                'resolution_notes': request.data.get('resolution_notes', '')
-            },
-            partial=True
+        """Alias de presupuestar: diagnosed → quoted."""
+        ticket = transition_ticket(
+            self.get_object(),
+            'quote',
+            resolution_notes=request.data.get('resolution_notes'),
         )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
+        _send_status_email_safe(ticket)
+        return Response(_serialize_ticket(request, ticket))
 
-        # Send status change email to customer
-        try:
-            send_ticket_status_change_email(ticket)
-        except Exception as e:
-            logger.error(f"Error sending status change email for ticket {ticket.ticket_number}: {e}")
-
-        return Response(serializer.data)
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanRunTicketWorkflow])
+    def quote(self, request, pk=None):
+        ticket = transition_ticket(
+            self.get_object(),
+            'quote',
+            resolution_notes=request.data.get('resolution_notes'),
+        )
+        _send_status_email_safe(ticket)
+        return Response(_serialize_ticket(request, ticket))
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanRunTicketWorkflow])
     def close(self, request, pk=None):
-        ticket = self.get_object()
-        state = TicketState.objects.get(id='closed')
-        serializer = self.get_serializer(ticket, data={'state': state.id}, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
+        ticket = transition_ticket(self.get_object(), 'close')
+        _send_status_email_safe(ticket)
+        return Response(_serialize_ticket(request, ticket))
 
-        # Send status change email to customer
+    @action(
+        detail=True,
+        methods=['post'],
+        permission_classes=[IsAuthenticated, CanReopenOrClassifyTicket],
+    )
+    def reopen(self, request, pk=None):
+        ticket = reopen_ticket(self.get_object())
+        _send_status_email_safe(ticket)
+        return Response(_serialize_ticket(request, ticket))
+
+    @action(
+        detail=True,
+        methods=['post'],
+        permission_classes=[IsAuthenticated, CanReopenOrClassifyTicket],
+    )
+    def classify(self, request, pk=None):
+        to_state = request.data.get('state')
+        if not to_state:
+            return Response(
+                {'state': 'Campo "state" operativo requerido'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        ticket = classify_ticket(self.get_object(), to_state)
+        return Response(_serialize_ticket(request, ticket))
+
+    # -------------------------
+    # Export
+    # -------------------------
+
+    @action(
+        detail=False,
+        methods=['get'],
+        url_path='export',
+        permission_classes=[IsAuthenticated, CanExportTickets],
+    )
+    def export(self, request):
+        from .exporter import build_tickets_workbook, export_queryset
+
+        queryset = self.filter_queryset(export_queryset())
+        include_notes = user_can_access_internal_notes(request.user)
         try:
-            send_ticket_status_change_email(ticket)
-        except Exception as e:
-            logger.error(f"Error sending status change email for ticket {ticket.ticket_number}: {e}")
+            buffer = build_tickets_workbook(
+                queryset,
+                include_internal_notes=include_notes,
+            )
+        except ImportError:
+            return Response(
+                {'error': 'openpyxl no está instalado en el servidor.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
-        return Response(serializer.data)
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type=(
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            ),
+        )
+        response['Content-Disposition'] = 'attachment; filename="tickets.xlsx"'
+        return response
 
     # -------------------------
     # Statistics
@@ -380,27 +421,6 @@ class ServiceTicketViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='from-package', permission_classes=[AllowAny])
     def create_from_package(self, request):
-        """
-        Crear un ticket con datos de contacto inline.
-        Permite la creación pública sin necesidad de tener un contact_id previo.
-
-        POST /tickets/from-package/
-        {
-            "contact": {
-                "email": "cliente@example.com",
-                "first_name": "Juan",
-                "last_name": "Pérez",
-                "company_name": "Empresa SA",
-                "phone": "+1234567890",
-                "country": "Argentina"
-            },
-            "ticket": {
-                "description": "El equipo no enciende correctamente desde ayer",
-                "product": "uuid-del-producto",
-                "priority": "medium"
-            }
-        }
-        """
         serializer = TicketPackageSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         result = serializer.save()
