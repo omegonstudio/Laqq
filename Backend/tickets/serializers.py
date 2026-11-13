@@ -1,9 +1,14 @@
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
 from .models import ServiceTicket, TicketState, TicketPriority
 from datetime import datetime
 from django.utils import timezone
 from .utils import generate_secure_password, generate_username_from_contact
 from .emails import send_ticket_created_email
+from .permissions import (
+    user_can_view_ticket_priority,
+    user_can_access_internal_notes,
+)
 from users.models import User, UserType, UserState
 from attachments.models import Attachment
 from attachments.serializers import AttachmentSerializer
@@ -14,6 +19,26 @@ from products.models import Product
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_required_serial(value):
+    """
+    Ticket 9E: número de serie obligatorio en creación.
+    Rechaza omitido/null/vacío/solo espacios; normaliza con strip.
+    """
+    if value is None:
+        raise serializers.ValidationError(
+            'numero_de_serie is required and cannot be blank'
+        )
+    if not isinstance(value, str):
+        value = str(value)
+    normalized = value.strip()
+    if not normalized:
+        raise serializers.ValidationError(
+            'numero_de_serie is required and cannot be blank'
+        )
+    return normalized
+
 
 class AssignedUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -66,9 +91,11 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
             'ticket_number',
             'assigned_at',
             'started_at',
+            'diagnosed_at',
             'resolved_at',
+            'quoted_at',
             'closed_at',
-            'attachments'
+            'attachments',
         ]
 
     def get_attachments(self, obj):
@@ -82,6 +109,16 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
         ).order_by('-created_at')
         return AttachmentSerializer(qs, many=True, context=self.context).data
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+        # Urgencia retirada de ST: no exponer priority en API operativa.
+        data.pop('priority', None)
+        if not user_can_access_internal_notes(user):
+            data.pop('internal_notes', None)
+        return data
+
     def validate_description(self, value):
         if not value or not value.strip():
             raise serializers.ValidationError("Description is required")
@@ -89,25 +126,42 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Validaciones cruzadas de campos"""
-        # Obtener producto_laqq (del data o de la instancia si existe, default True)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+
+        # Envío explícito de internal_notes por no autorizado → 403 (no silent drop).
+        initial = getattr(self, 'initial_data', None) or {}
+        if 'internal_notes' in initial and not user_can_access_internal_notes(user):
+            raise PermissionDenied(
+                'No tiene permiso para modificar internal_notes.'
+            )
+
         if self.instance:
-            # En update: usar el valor del data si está presente, sino el de la instancia
             producto_laqq = data.get('producto_laqq', self.instance.producto_laqq)
+            # PUT/PATCH: el estado solo cambia por acciones de workflow.
+            data.pop('state', None)
+            # Urgencia retirada: no modificar priority vía PUT/PATCH.
+            data.pop('priority', None)
         else:
-            # En create: usar el valor del data si está presente, sino True (default del modelo)
             producto_laqq = data.get('producto_laqq')
             if producto_laqq is None:
                 producto_laqq = True
 
-        # Validación condicional según producto_laqq
-        if producto_laqq is False:  # Explicitly check for False
-            # Producto externo: marca y modelo son obligatorios
+            # Ticket 9E: serie obligatoria solo en creación (no invalidar históricos).
+            if 'numero_de_serie' not in self.initial_data:
+                raise serializers.ValidationError({
+                    'numero_de_serie': 'numero_de_serie is required and cannot be blank'
+                })
+            data['numero_de_serie'] = _normalize_required_serial(
+                self.initial_data.get('numero_de_serie')
+            )
+
+        if producto_laqq is False:
             if not data.get('marca') and (not self.instance or not self.instance.marca):
                 raise serializers.ValidationError({'marca': 'Marca is required when producto_laqq is False'})
             if not data.get('modelo') and (not self.instance or not self.instance.modelo):
                 raise serializers.ValidationError({'modelo': 'Modelo is required when producto_laqq is False'})
         else:
-            # Producto Laqq: sincronizar product_name si hay product
             if 'product' in data and data['product']:
                 data['product_name'] = data['product'].name
 
@@ -115,10 +169,9 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """
-        Crear ticket con número automático, estado inicial,
+        Crear ticket con número automático, estado inicial received,
         usuario cliente automático y envío de email con credenciales
         """
-        # Auto-generate ticket_number
         if not validated_data.get('ticket_number'):
             year = datetime.now().year
             last_ticket = ServiceTicket.objects.filter(
@@ -136,21 +189,19 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
 
             validated_data['ticket_number'] = f'T-{year}-{new_number:05d}'
 
-        # Estado inicial: open
-        if 'state' not in validated_data:
-            try:
-                validated_data['state'] = TicketState.objects.get(id='open')
-            except TicketState.DoesNotExist:
-                pass
+        # Estado inicial operativo: received (T9)
+        try:
+            validated_data['state'] = TicketState.objects.get(id='received')
+        except TicketState.DoesNotExist:
+            pass
 
-        # Si no se especifica prioridad, usar 'medium'
-        if 'priority' not in validated_data:
-            try:
-                validated_data['priority'] = TicketPriority.objects.get(id='medium')
-            except TicketPriority.DoesNotExist:
-                pass
+        # Urgencia retirada: siempre medium en creación
+        validated_data.pop('priority', None)
+        try:
+            validated_data['priority'] = TicketPriority.objects.get(id='medium')
+        except TicketPriority.DoesNotExist:
+            pass
 
-        # Crear el ticket
         ticket = super().create(validated_data)
 
         # Crear usuario cliente automáticamente si no existe
@@ -201,49 +252,29 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
         return ticket
 
     def update(self, instance, validated_data):
-        """Actualizar ticket con lógica de transición de estados"""
-        # Obtener el estado anterior y nuevo
-        old_state = instance.state_id
-        new_state = validated_data.get('state')
-        new_state_id = new_state.id if new_state else None
-
-        # Obtener usuario asignado anterior y nuevo
+        """
+        Actualizar campos no-estado. assigned_at se setea en model.save().
+        El estado NUNCA se cambia aquí (congelado en validate).
+        """
+        validated_data.pop('state', None)
+        validated_data.pop('priority', None)
         old_assigned_user = instance.assigned_user
         new_assigned_user = validated_data.get('assigned_user', old_assigned_user)
-
-        # Lógica de fechas según transiciones de estado
-        now = timezone.now()
-
-        # Asignación: Si se asigna un usuario por primera vez
         if new_assigned_user and not old_assigned_user and not instance.assigned_at:
-            validated_data['assigned_at'] = now
-            # Si el estado es 'new', cambiar automáticamente a 'open'
-            if old_state == 'new':
-                try:
-                    validated_data['state'] = TicketState.objects.get(id='open')
-                    new_state_id = 'open'
-                except TicketState.DoesNotExist:
-                    pass
-
-        # Inicio de trabajo: Cambio a 'in_progress'
-        if new_state_id == 'in_progress' and old_state != 'in_progress':
-            if not instance.started_at:
-                validated_data['started_at'] = now
-
-        # Resolución: Cambio a 'resolved'
-        if new_state_id == 'resolved' and old_state != 'resolved':
-            if not instance.resolved_at:
-                validated_data['resolved_at'] = now
-
-        # Cierre: Cambio a 'closed'
-        if new_state_id == 'closed' and old_state != 'closed':
-            if not instance.closed_at:
-                validated_data['closed_at'] = now
-            # Si no tiene fecha de resolución, agregarla también
-            if not instance.resolved_at:
-                validated_data['resolved_at'] = now
-
+            validated_data['assigned_at'] = timezone.now()
         return super().update(instance, validated_data)
+
+
+class ServiceTicketClientSerializer(ServiceTicketSerializer):
+    """
+    Lectura para clientes/anónimos: sin priority ni internal_notes.
+    (to_representation del padre ya los elimina según permisos.)
+    """
+
+
+def get_service_ticket_serializer_class(request):
+    """Serializer único; campos sensibles se filtran en to_representation."""
+    return ServiceTicketSerializer
 
 
 class TicketPackageSerializer(serializers.Serializer):
@@ -258,6 +289,7 @@ class TicketPackageSerializer(serializers.Serializer):
     - contact.first_name: Nombre del contacto
     - contact.last_name: Apellido del contacto
     - ticket.description: Descripción del problema (mínimo 20 caracteres)
+    - ticket.numero_de_serie: Número de serie del producto
 
     CAMPOS OPCIONALES:
     - contact.company_name: Nombre de la empresa
@@ -265,7 +297,6 @@ class TicketPackageSerializer(serializers.Serializer):
     - contact.country: País del contacto
     - ticket.producto_laqq: Boolean (default: true) - True si es producto Laqq, False si es externo
     - ticket.product: UUID del producto (si producto_laqq=true)
-    - ticket.numero_de_serie: Número de serie del producto
     - ticket.marca: Marca del producto (OBLIGATORIO si producto_laqq=false)
     - ticket.modelo: Modelo del producto (OBLIGATORIO si producto_laqq=false)
     - ticket.priority: ID de la prioridad (default: "medium")
@@ -326,6 +357,13 @@ class TicketPackageSerializer(serializers.Serializer):
                 "Field 'description' is required in ticket data"
             )
 
+        # Ticket 9E: número de serie obligatorio en creación pública/package
+        if 'numero_de_serie' not in value:
+            raise serializers.ValidationError(
+                "Field 'numero_de_serie' is required in ticket data"
+            )
+        value['numero_de_serie'] = _normalize_required_serial(value.get('numero_de_serie'))
+
         # Obtener producto_laqq (default: True)
         producto_laqq = value.get('producto_laqq', True)
 
@@ -344,12 +382,21 @@ class TicketPackageSerializer(serializers.Serializer):
                         f"Product with id '{value['product']}' does not exist"
                     )
 
-        # Validar priority si está presente
-        if 'priority' in value and value['priority']:
-            if not TicketPriority.objects.filter(id=value['priority']).exists():
-                raise serializers.ValidationError(
-                    f"TicketPriority with id '{value['priority']}' does not exist"
-                )
+        # Validar priority solo si el usuario interno puede fijarla
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+        if user_can_view_ticket_priority(user):
+            if 'priority' in value and value['priority']:
+                if not TicketPriority.objects.filter(id=value['priority']).exists():
+                    raise serializers.ValidationError(
+                        f"TicketPriority with id '{value['priority']}' does not exist"
+                    )
+
+        # Envío explícito de internal_notes por no autorizado → 403
+        if 'internal_notes' in value and not user_can_access_internal_notes(user):
+            raise PermissionDenied(
+                'No tiene permiso para modificar internal_notes.'
+            )
 
         return value
 
@@ -391,13 +438,15 @@ class TicketPackageSerializer(serializers.Serializer):
                 suppress_contact_created_emails.reset(token)
             logger.info(f"New contact created with email {email}: {contact.id}")
         else:
+            # Ticket 9D: contacto existente se reutiliza sin mutar company_name
+            # ni otros campos (evita sobrescribir datos de BackOffice/otros módulos).
             logger.info(f"Contact found with email {email}: {contact.id}")
 
         # 2. Preparar datos del ticket
         ticket_create_data = {
             'contact': contact,
             'description': ticket_data['description'],
-            'numero_de_serie': ticket_data.get('numero_de_serie', ''),
+            'numero_de_serie': ticket_data['numero_de_serie'],  # ya normalizado en validate_ticket
             'producto_laqq': ticket_data.get('producto_laqq', True),
             'marca': ticket_data.get('marca', ''),
             'modelo': ticket_data.get('modelo', ''),
@@ -415,18 +464,17 @@ class TicketPackageSerializer(serializers.Serializer):
             # Producto externo: usar marca y modelo
             ticket_create_data['product_name'] = f"{ticket_data.get('marca', '')} {ticket_data.get('modelo', '')}".strip()
 
-        # Prioridad (opcional, default 'medium')
-        priority_id = ticket_data.get('priority', 'medium')
+        # Urgencia retirada de ST: siempre medium
         try:
-            ticket_create_data['priority'] = TicketPriority.objects.get(id=priority_id)
+            ticket_create_data['priority'] = TicketPriority.objects.get(id='medium')
         except TicketPriority.DoesNotExist:
             default_priority = TicketPriority.objects.first()
             if default_priority:
                 ticket_create_data['priority'] = default_priority
 
-        # Estado inicial: open
+        # Estado inicial operativo: received (T9)
         try:
-            ticket_create_data['state'] = TicketState.objects.get(id='open')
+            ticket_create_data['state'] = TicketState.objects.get(id='received')
         except TicketState.DoesNotExist:
             pass
 
@@ -471,7 +519,10 @@ class TicketPackageSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         context = {'request': self.context.get('request')}
+        ticket_serializer_class = get_service_ticket_serializer_class(
+            self.context.get('request')
+        )
         return {
             'contact': ContactSerializer(instance['contact'], context=context).data,
-            'ticket': ServiceTicketSerializer(instance['ticket'], context=context).data,
+            'ticket': ticket_serializer_class(instance['ticket'], context=context).data,
         }

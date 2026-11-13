@@ -397,22 +397,27 @@ export interface ServiceTicket {
   product: string | null;
   product_name: string;
   description: string;
-  state: "open" | "closed" | "in_progress" | "resolved";
-  priority: "urgent" | "high" | "medium" | "low";
+  state: string;
+  /** Retirado de la UI operativa de ST; puede venir ausente en API. */
+  priority?: string | null;
   assigned_user: {
     id: string;
     userName: string;
     first_name: string;
     last_name: string;
     email: string;
-  };
+  } | null;
   created_at: string | null;
   assigned_at: string | null;
   started_at: string | null;
+  diagnosed_at?: string | null;
+  quoted_at?: string | null;
   resolved_at: string | null;
   closed_at: string | null;
   updated_at: string;
   resolution_notes: string | null;
+  /** Solo admin / servicio_tecnico */
+  internal_notes?: string | null;
   attachments: Attachment[] | null;
   marca: string | null;
   modelo: string | null;
@@ -456,23 +461,24 @@ export interface TicketFormData {
 export interface UpdateTicketPayload {
   id: string;
   contact_id: string;
-  product_name: string;
+  product_name?: string;
   product?: string;
   description?: string;
   attachment?: string | null;
-  assigned_at: string | null;
-  started_at: string | null;
-  resolved_at: string | null;
-  created_at: string | null;
-  closed_at: string | null;
+  assigned_at?: string | null;
+  started_at?: string | null;
+  resolved_at?: string | null;
+  created_at?: string | null;
+  closed_at?: string | null;
   state?: string;
-  priority?: string;
+  priority?: string | null;
   assigned_user?: string | null;
   resolution_notes?: string | null;
+  internal_notes?: string | null;
   marca?: string;
   modelo?: string;
   numero_de_serie?: string;
-  producto_laqq: boolean;
+  producto_laqq?: boolean;
 }
 export interface TicketFormDataUpdate {
   product: string;

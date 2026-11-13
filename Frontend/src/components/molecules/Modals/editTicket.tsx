@@ -27,11 +27,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { updateTicket } from "@/store/ticketsSlice";
+import { closeTicket, fetchTickets, updateTicket } from "@/store/ticketsSlice";
 import { formatDate, formatDateForInput } from "@/utils/formatDate";
 import { CopyButton } from "@/components/atoms/CopyButton";
 import { ticketsApi } from "@/lib/api/tickets";
-import { Toggle } from "@/components/ui/toggle";
+import { convertStateTicket } from "@/utils/quotesConvert";
+import { useIsAdmin } from "@/hooks/usePermissions";
 
 interface EditContactModalProps {
   ticket: ServiceTicket | null;
@@ -40,10 +41,6 @@ interface EditContactModalProps {
   states: TicketState[];
   users: UserData[];
   priorities: TicketPriority[];
-  /**
-   * Si es false, el modal queda en solo lectura: no se pueden disparar
-   * acciones de workflow (assign/start/resolve/close). Default: true.
-   */
   canRunTicketActions?: boolean;
 }
 
@@ -51,9 +48,9 @@ export function EditTicketsService({
   ticket,
   open,
   onOpenChange,
-  states,
+  states: _states,
   users = [],
-  priorities,
+  priorities: _priorities,
   canRunTicketActions = true,
 }: EditContactModalProps) {
   const [formData, setFormData] = useState<UpdateTicketPayload>({
@@ -68,20 +65,25 @@ export function EditTicketsService({
     producto_laqq: false,
     product: "",
     description: "",
-    state: "open",
+    state: "received",
     priority: null,
     assigned_user: null,
     resolution_notes: "",
+    internal_notes: "",
   });
 
   const [isLoading, setIsLoading] = useState(false);
-
   const [closed, setIsClosed] = useState(false);
+  const [classifyTarget, setClassifyTarget] = useState<
+    "received" | "diagnosed" | "quoted" | "closed"
+  >("received");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const dispatch = useAppDispatch();
+  const isAdmin = useIsAdmin();
   const MAX_CHARS = 200;
   const [expanded, setExpanded] = useState(false);
   const { list } = useAppSelector((state) => state.products);
+
   useEffect(() => {
     if (ticket && open) {
       setFormData({
@@ -90,9 +92,10 @@ export function EditTicketsService({
         product: ticket.product,
         description: ticket.description,
         state: ticket.state,
-        priority: ticket.priority,
+        priority: ticket.priority ?? null,
         assigned_user: ticket.assigned_user?.id ?? null,
         resolution_notes: ticket.resolution_notes,
+        internal_notes: ticket.internal_notes ?? "",
         product_name: ticket.product_name,
         created_at: formatDateForInput(ticket.created_at),
         assigned_at: formatDateForInput(ticket.assigned_at),
@@ -104,6 +107,9 @@ export function EditTicketsService({
         modelo: ticket.modelo,
         numero_de_serie: ticket.numero_de_serie,
       });
+      setIsClosed(ticket.state === "closed");
+      setClassifyTarget("received");
+      setErrors({});
     }
   }, [ticket, open]);
 
@@ -149,16 +155,18 @@ export function EditTicketsService({
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
-  if (!ticket) return null;
+
   const description = ticket.description || "-";
   const isLong = description.length > MAX_CHARS;
   const visibleText =
     !expanded && isLong ? description.slice(0, MAX_CHARS) : description;
   const timelineItems = [
     { key: "created_at", label: "Creación", value: ticket.created_at },
-    { key: "started_at", label: "Iniciado", value: ticket.started_at },
     { key: "assigned_at", label: "Asignado", value: ticket.assigned_at },
-    { key: "resolved_at", label: "Resuelto", value: ticket.resolved_at },
+    { key: "diagnosed_at", label: "Diagnosticado", value: ticket.diagnosed_at },
+    { key: "quoted_at", label: "Presupuestado", value: ticket.quoted_at },
+    { key: "started_at", label: "Iniciado (legado)", value: ticket.started_at },
+    { key: "resolved_at", label: "Resuelto (legado)", value: ticket.resolved_at },
     { key: "closed_at", label: "Cerrado", value: ticket.closed_at },
     {
       key: "updated_at",
@@ -166,6 +174,7 @@ export function EditTicketsService({
       value: ticket.updated_at,
     },
   ];
+
   const RenderText = ({
     title,
     value,
@@ -180,15 +189,7 @@ export function EditTicketsService({
         <div className="grid gap-4 sm:grid-cols-3">
           <span className="text-muted-foreground">{title}:</span>
           <div className="sm:col-span-2 flex gap-2 min-w-0">
-            <span
-              className="
-                font-mono
-                w-full
-                min-w-0
-                break-words
-                whitespace-pre-wrap
-              "
-            >
+            <span className="font-mono w-full min-w-0 break-words whitespace-pre-wrap">
               {value ?? "-"}{" "}
               {expand && (
                 <Button
@@ -207,30 +208,43 @@ export function EditTicketsService({
       </div>
     );
   };
+
+  const currentState =
+    typeof ticket.state === "string" ? ticket.state : String(ticket.state);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData) return;
 
     setIsLoading(true);
+    setErrors({});
 
     try {
-      const newAssignedUserId = formData.assigned_user ?? null;
+      const newAssignedUserId =
+        formData.assigned_user === "none" || formData.assigned_user === ""
+          ? null
+          : formData.assigned_user ?? null;
       const originalAssignedUserId = ticket.assigned_user?.id ?? null;
-      // 2. Asignar siempre que cambie
-      if (newAssignedUserId && newAssignedUserId !== originalAssignedUserId) {
+
+      if (newAssignedUserId !== originalAssignedUserId) {
         await ticketsApi.assign(ticket.id, {
           assigned_user: newAssignedUserId,
         });
-        if (formData.started_at === null) {
-          await ticketsApi.start(ticket.id);
+      }
+
+      // Workflow: acciones explícitas (no PUT de state)
+      if (canRunTicketActions && currentState === "received") {
+        // Si el usuario marcó cierre desde received, close directo
+        if (!closed) {
+          // sin diagnose automático al guardar
         }
       }
 
       const newResolutionNotes = formData.resolution_notes ?? null;
       const originalResolutionNotes = ticket.resolution_notes ?? null;
-
-      // 2. Cambió y ahora hay contenido → resolver
       if (
+        canRunTicketActions &&
+        currentState === "diagnosed" &&
         newResolutionNotes &&
         newResolutionNotes.trim() !== "" &&
         newResolutionNotes !== originalResolutionNotes
@@ -238,26 +252,95 @@ export function EditTicketsService({
         await ticketsApi.resolve(ticket.id, {
           resolution_notes: newResolutionNotes,
         });
+      }
 
-        setFormData({ ...formData, state: "in_progress" });
+      if (canRunTicketActions && closed && currentState !== "closed") {
+        await dispatch(closeTicket(ticket.id)).unwrap();
       }
-      if (closed) {
-        await ticketsApi.close(ticket.id);
-        setFormData({ ...formData, state: "closed" });
-      }
+
+      // PUT sin state ni priority: solo campos editables (notas internas, etc.)
+      const dataToUpdate: Partial<UpdateTicketPayload> = {
+        id: formData.id,
+        contact_id: formData.contact_id,
+        description: formData.description,
+        product_name: formData.product_name,
+        producto_laqq: formData.producto_laqq,
+        product: formData.product,
+        marca: formData.marca,
+        modelo: formData.modelo,
+        numero_de_serie: formData.numero_de_serie,
+        resolution_notes: formData.resolution_notes,
+        internal_notes: formData.internal_notes,
+        assigned_user: newAssignedUserId,
+      };
 
       await dispatch(
         updateTicket({
           id: ticket.id,
-          data: formData,
+          data: dataToUpdate,
         })
       ).unwrap();
 
       onOpenChange(false);
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: string }).message)
+          : "No se pudo guardar el ticket";
+      setErrors({ form: message });
     } finally {
       setIsLoading(false);
     }
   };
+
+  const runWorkflow = async (action: "diagnose" | "quote" | "reopen" | "classify") => {
+    if (!ticket) return;
+    setIsLoading(true);
+    setErrors({});
+    try {
+      if (action === "diagnose") {
+        await ticketsApi.diagnose(ticket.id);
+      } else if (action === "quote") {
+        await ticketsApi.quote(ticket.id, {
+          resolution_notes: formData.resolution_notes || undefined,
+        });
+      } else if (action === "reopen") {
+        await ticketsApi.reopen(ticket.id);
+      } else if (action === "classify") {
+        await ticketsApi.classify(ticket.id, { state: classifyTarget });
+      }
+      if (formData.internal_notes !== (ticket.internal_notes ?? "")) {
+        await dispatch(
+          updateTicket({
+            id: ticket.id,
+            data: {
+              contact_id: ticket.contact.id,
+              description: ticket.description,
+              internal_notes: formData.internal_notes,
+            },
+          })
+        ).unwrap();
+      }
+      await dispatch(fetchTickets({ page: 1, page_size: 10 }));
+      onOpenChange(false);
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: string }).message)
+          : "Acción de workflow fallida";
+      setErrors({ form: message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const isLegacy = [
+    "new",
+    "open",
+    "in_progress",
+    "waiting_parts",
+    "resolved",
+  ].includes(currentState);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -280,7 +363,12 @@ export function EditTicketsService({
               }
             />
             <RenderText title="Email" value={ticket.contact.email} />
+            <RenderText title="Empresa" value={ticket.contact.company_name} />
             <RenderText title="Teléfono" value={ticket.contact.phone} />
+            <RenderText
+              title="Estado"
+              value={convertStateTicket(currentState)}
+            />
             <RenderText
               title="Descripción"
               value={`${visibleText}`}
@@ -304,13 +392,14 @@ export function EditTicketsService({
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="assigned_user">Usuario asignado</Label>
               <Select
-                value={formData.assigned_user || ""}
+                value={formData.assigned_user || "none"}
                 onValueChange={(value) =>
                   setFormData((prev) => ({
                     ...prev,
-                    assigned_user: value || null,
+                    assigned_user: value === "none" ? null : value,
                   }))
                 }
+                disabled={!canRunTicketActions}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sin asignar" />
@@ -326,41 +415,87 @@ export function EditTicketsService({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="priority">
-                Prioridad <span className="text-destructive">*</span>
-              </Label>
-              <Select
-                value={formData.priority || ""}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, priority: value }))
-                }
-              >
-                <SelectTrigger id="priority">
-                  <SelectValue placeholder="Seleccionar prioridad" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin asignar</SelectItem>
-                  {priorities.map((priority) => (
-                    <SelectItem key={priority.id} value={priority.id}>
-                      {priority.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.priority && (
-                <p className="text-xs text-destructive">{errors.priority}</p>
-              )}
-            </div>
-            <div className="space-y-2 flex items-end">
-              <Toggle
-                pressed={closed}
-                onPressedChange={(pressed) => setIsClosed(pressed)}
-                disabled={!canRunTicketActions}
-              >
-                {!closed ? "Cerrar ticket" : "Abrir ticket"}
-              </Toggle>
-            </div>
+            {canRunTicketActions && (
+              <div className="space-y-2 sm:col-span-2 flex flex-wrap gap-2">
+                {currentState === "received" && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={isLoading}
+                    onClick={() => runWorkflow("diagnose")}
+                  >
+                    Diagnosticar
+                  </Button>
+                )}
+                {currentState === "diagnosed" && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={isLoading}
+                    onClick={() => runWorkflow("quote")}
+                  >
+                    Presupuestar
+                  </Button>
+                )}
+                {currentState !== "closed" &&
+                  ["received", "diagnosed", "quoted"].includes(currentState) && (
+                    <Button
+                      type="button"
+                      variant={closed ? "default" : "outline"}
+                      disabled={isLoading}
+                      onClick={() => setIsClosed((v) => !v)}
+                    >
+                      {closed ? "Cierre marcado — guardar" : "Marcar cierre"}
+                    </Button>
+                  )}
+                {isAdmin && currentState === "closed" && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={isLoading}
+                    onClick={() => runWorkflow("reopen")}
+                  >
+                    Reabrir
+                  </Button>
+                )}
+                {isAdmin && isLegacy && (
+                  <div className="flex flex-wrap items-center gap-2 w-full">
+                    <Select
+                      value={classifyTarget}
+                      onValueChange={(value) =>
+                        setClassifyTarget(
+                          value as
+                            | "received"
+                            | "diagnosed"
+                            | "quoted"
+                            | "closed"
+                        )
+                      }
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger className="w-[220px]">
+                        <SelectValue placeholder="Estado destino" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="received">Recibido</SelectItem>
+                        <SelectItem value="diagnosed">Diagnosticado</SelectItem>
+                        <SelectItem value="quoted">Presupuestado</SelectItem>
+                        <SelectItem value="closed">Cerrado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={isLoading}
+                      onClick={() => runWorkflow("classify")}
+                    >
+                      Clasificar
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2 sm:col-span-2">
               <h4 className="text-sm font-medium flex items-center gap-2">
                 <Calendar className="size-4" />
@@ -390,8 +525,36 @@ export function EditTicketsService({
                 value={formData.resolution_notes || ""}
                 onChange={handleChange}
                 className="flex w-full rounded-md border px-3 py-2 text-sm"
+                disabled={!canRunTicketActions}
               />
+              <p className="text-xs text-muted-foreground">
+                Visibles para el cliente en el portal / correos de estado.
+              </p>
             </div>
+
+            {canRunTicketActions && (
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="internal_notes">Notas internas</Label>
+                <textarea
+                  id="internal_notes"
+                  name="internal_notes"
+                  rows={3}
+                  value={formData.internal_notes || ""}
+                  onChange={handleChange}
+                  className="flex w-full rounded-md border border-amber-600/40 bg-amber-50/40 px-3 py-2 text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Solo backoffice (admin / servicio técnico). No se envían al
+                  cliente.
+                </p>
+              </div>
+            )}
+
+            {errors.form && (
+              <p className="text-sm text-destructive sm:col-span-2">
+                {errors.form}
+              </p>
+            )}
           </div>
 
           <DialogFooter>
@@ -409,7 +572,7 @@ export function EditTicketsService({
               title={
                 canRunTicketActions
                   ? undefined
-                  : "Solo el administrador puede modificar el estado del ticket"
+                  : "Sin permiso para modificar el ticket"
               }
             >
               {isLoading && <Loader2 className="animate-spin mr-2" />}

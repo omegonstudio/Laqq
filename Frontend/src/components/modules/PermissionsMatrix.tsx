@@ -89,6 +89,27 @@ const ROWS: {
     admin: "Sí",
   },
   {
+    module: "Reabrir / clasificar tickets",
+    public: "No",
+    client: "No",
+    back: "No",
+    admin: "Sí",
+  },
+  {
+    module: "Notas internas de tickets",
+    public: "No",
+    client: "No",
+    back: "No",
+    admin: "Sí",
+  },
+  {
+    module: "Exportar tickets",
+    public: "No",
+    client: "No",
+    back: "No",
+    admin: "Sí",
+  },
+  {
     module: "Escribir en la librería",
     public: "No",
     client: "No",
@@ -122,6 +143,9 @@ const SERVICIO_TECNICO_ACCESS: Record<string, string> = {
   "Crear ticket (web)": "Sí",
   "Ver tickets": "Todos",
   "Workflow de tickets": "Sí",
+  "Reabrir / clasificar tickets": "No",
+  "Notas internas de tickets": "Sí",
+  "Exportar tickets": "Sí",
   Dashboard: "Según acceso",
 };
 

@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { Edit2, Trash2, Eye } from "lucide-react";
+import { Edit2, Trash2, Eye, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ticketsApi } from "@/lib/api/tickets";
+import { extractErrorMessage } from "@/lib/api/client";
 import Table from "@/components/common/Table";
 import InputField from "@/components/atoms/InputField";
 import Select from "@/components/atoms/Select";
@@ -21,7 +24,11 @@ import { fetchUsers } from "@/store/usersSlice";
 import { ViewTicketModal } from "../molecules/Modals/ViewTicketService";
 import { useUserAdmins } from "@/hooks/useUsers";
 import { fetchAllProducts } from "@/store/productSlice";
-import { useCanManageTickets, useCanRunTicketActions } from "@/hooks/usePermissions";
+import {
+  useCanManageTickets,
+  useCanRunTicketActions,
+  useCanExportTickets,
+} from "@/hooks/usePermissions";
 
 const TicketsABM = () => {
   // const [contacts] = useState<Contact[]>(mockContacts);
@@ -29,8 +36,10 @@ const TicketsABM = () => {
   const [selectedTicket, setSelectedTicket] = useState<ServiceTicket | null>(
     null
   );
+  const [exporting, setExporting] = useState(false);
   const canManageTickets = useCanManageTickets();
   const canRunTicketActions = useCanRunTicketActions();
+  const canExportTickets = useCanExportTickets();
 
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -139,6 +148,9 @@ const TicketsABM = () => {
     last_name: ticket.contact?.last_name || "-",
     email: ticket.contact?.email || "-",
     phone: ticket.contact?.phone || "-",
+    assigned_display: ticket.assigned_user
+      ? `${ticket.assigned_user.first_name} ${ticket.assigned_user.last_name}`.trim()
+      : "Sin asignar",
   }));
   const columns = [
     { key: "ticket_number", label: "N° Ticket", sortable: true },
@@ -151,6 +163,11 @@ const TicketsABM = () => {
     { key: "last_name", label: "Apellido", sortable: true },
     { key: "email", label: "Email", sortable: true },
     { key: "phone", label: "Teléfono", sortable: false },
+    {
+      key: "assigned_display",
+      label: "Asignado",
+      sortable: false,
+    },
     // { key: "country", label: "País", sortable: true },
     {
       key: "created_at",
@@ -202,27 +219,68 @@ const TicketsABM = () => {
     dispatch(fetchTickets(params));
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const params: {
+        search?: string;
+        state?: string;
+      } = {};
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+      if (statusFilter !== "all") params.state = statusFilter;
+      const { blob, filename } = await ticketsApi.exportExcel(params);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || "tickets.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error: unknown) {
+      toast({
+        title: extractErrorMessage(error, "Error al exportar tickets"),
+        variant: "destructive",
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <InputField
           placeholder="Buscar por empresa, nombre, apellido o email..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-md"
         />
-        <Select
-          options={[
-            { value: "all", label: "Todos los estados" },
-            ...states.map((item) => ({
-              value: item.id,
-              label: item.name,
-            })),
-          ]}
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-48"
-        />
+        <div className="flex items-center gap-2">
+          <Select
+            options={[
+              { value: "all", label: "Todos los estados" },
+              ...states.map((item) => ({
+                value: item.id,
+                label: item.name,
+              })),
+            ]}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-48"
+          />
+          {canExportTickets && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExport}
+              disabled={exporting}
+            >
+              <Download size={18} />
+              {exporting ? "Exportando..." : "Exportar tickets"}
+            </Button>
+          )}
+        </div>
       </div>
       <Table
         columns={columns}
