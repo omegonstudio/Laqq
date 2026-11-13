@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
 from .models import ServiceTicket, TicketState, TicketPriority
 from datetime import datetime
 from django.utils import timezone
@@ -128,15 +129,19 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         user = getattr(request, 'user', None) if request else None
 
+        # Envío explícito de internal_notes por no autorizado → 403 (no silent drop).
+        initial = getattr(self, 'initial_data', None) or {}
+        if 'internal_notes' in initial and not user_can_access_internal_notes(user):
+            raise PermissionDenied(
+                'No tiene permiso para modificar internal_notes.'
+            )
+
         if self.instance:
             producto_laqq = data.get('producto_laqq', self.instance.producto_laqq)
             # PUT/PATCH: el estado solo cambia por acciones de workflow.
             data.pop('state', None)
             # Urgencia retirada: no modificar priority vía PUT/PATCH.
             data.pop('priority', None)
-            # Notas internas: solo roles autorizados
-            if 'internal_notes' in data and not user_can_access_internal_notes(user):
-                data.pop('internal_notes', None)
         else:
             producto_laqq = data.get('producto_laqq')
             if producto_laqq is None:
@@ -150,10 +155,6 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
             data['numero_de_serie'] = _normalize_required_serial(
                 self.initial_data.get('numero_de_serie')
             )
-
-            # Cliente/anónimo no puede setear notas internas en create público
-            if 'internal_notes' in data and not user_can_access_internal_notes(user):
-                data.pop('internal_notes', None)
 
         if producto_laqq is False:
             if not data.get('marca') and (not self.instance or not self.instance.marca):
@@ -390,6 +391,12 @@ class TicketPackageSerializer(serializers.Serializer):
                     raise serializers.ValidationError(
                         f"TicketPriority with id '{value['priority']}' does not exist"
                     )
+
+        # Envío explícito de internal_notes por no autorizado → 403
+        if 'internal_notes' in value and not user_can_access_internal_notes(user):
+            raise PermissionDenied(
+                'No tiene permiso para modificar internal_notes.'
+            )
 
         return value
 

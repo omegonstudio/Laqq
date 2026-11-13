@@ -37,6 +37,11 @@ class TicketPriorityAdmin(admin.ModelAdmin):
 
 @admin.register(ServiceTicket)
 class ServiceTicketAdmin(admin.ModelAdmin):
+    """
+    internal_notes se gestiona solo vía API/backoffice (admin, superuser,
+    servicio_tecnico). Se excluye del Admin de Django para evitar lectura o
+    escritura por staff no autorizado (el Admin no aplica el ACL por user_type).
+    """
     list_display = [
         'ticket_number',
         'contact',
@@ -51,6 +56,7 @@ class ServiceTicketAdmin(admin.ModelAdmin):
     list_filter = ['state', 'priority', 'assigned_user', 'created_at']
     ordering = ['-created_at']
     inlines = [AttachmentInline]
+    exclude = ['internal_notes']
     readonly_fields = [
         'ticket_number',
         'created_at',
@@ -83,7 +89,11 @@ class ServiceTicketAdmin(admin.ModelAdmin):
             'description': 'Priority es histórico; el workflow operativo no usa urgencia.',
         }),
         ('Notas', {
-            'fields': ('resolution_notes', 'internal_notes'),
+            'fields': ('resolution_notes',),
+            'description': (
+                'Las notas internas (internal_notes) no se gestionan aquí; '
+                'usar el backoffice de Servicio Técnico con rol autorizado.'
+            ),
         }),
         ('Fechas de seguimiento', {
             'fields': (

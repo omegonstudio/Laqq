@@ -12,8 +12,6 @@ BASE_HEADERS = [
     'ticket_number',
     'state_id',
     'state_name',
-    'priority_id',
-    'priority_name',
     'contact_email',
     'contact_first_name',
     'contact_last_name',
@@ -49,7 +47,6 @@ def export_queryset():
         ServiceTicket.objects.select_related(
             'contact',
             'state',
-            'priority',
             'assigned_user',
             'product',
         ).order_by('-created_at')
@@ -99,8 +96,6 @@ def build_tickets_workbook(tickets, *, include_internal_notes=False):
             _cell(ticket.ticket_number),
             _cell(ticket.state_id),
             _cell(ticket.state.name if ticket.state_id else ''),
-            _cell(ticket.priority_id),
-            _cell(ticket.priority.name if ticket.priority_id else ''),
             _cell(contact.email if contact else ''),
             _cell(contact.first_name if contact else ''),
             _cell(contact.last_name if contact else ''),

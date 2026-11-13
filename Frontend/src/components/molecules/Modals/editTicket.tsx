@@ -74,6 +74,9 @@ export function EditTicketsService({
 
   const [isLoading, setIsLoading] = useState(false);
   const [closed, setIsClosed] = useState(false);
+  const [classifyTarget, setClassifyTarget] = useState<
+    "received" | "diagnosed" | "quoted" | "closed"
+  >("received");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const dispatch = useAppDispatch();
   const isAdmin = useIsAdmin();
@@ -105,6 +108,7 @@ export function EditTicketsService({
         numero_de_serie: ticket.numero_de_serie,
       });
       setIsClosed(ticket.state === "closed");
+      setClassifyTarget("received");
       setErrors({});
     }
   }, [ticket, open]);
@@ -303,7 +307,7 @@ export function EditTicketsService({
       } else if (action === "reopen") {
         await ticketsApi.reopen(ticket.id);
       } else if (action === "classify") {
-        await ticketsApi.classify(ticket.id, { state: "received" });
+        await ticketsApi.classify(ticket.id, { state: classifyTarget });
       }
       if (formData.internal_notes !== (ticket.internal_notes ?? "")) {
         await dispatch(
@@ -455,14 +459,39 @@ export function EditTicketsService({
                   </Button>
                 )}
                 {isAdmin && isLegacy && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={isLoading}
-                    onClick={() => runWorkflow("classify")}
-                  >
-                    Clasificar → Recibido
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2 w-full">
+                    <Select
+                      value={classifyTarget}
+                      onValueChange={(value) =>
+                        setClassifyTarget(
+                          value as
+                            | "received"
+                            | "diagnosed"
+                            | "quoted"
+                            | "closed"
+                        )
+                      }
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger className="w-[220px]">
+                        <SelectValue placeholder="Estado destino" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="received">Recibido</SelectItem>
+                        <SelectItem value="diagnosed">Diagnosticado</SelectItem>
+                        <SelectItem value="quoted">Presupuestado</SelectItem>
+                        <SelectItem value="closed">Cerrado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={isLoading}
+                      onClick={() => runWorkflow("classify")}
+                    >
+                      Clasificar
+                    </Button>
+                  </div>
                 )}
               </div>
             )}

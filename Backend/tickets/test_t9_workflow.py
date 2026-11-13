@@ -94,6 +94,13 @@ class T9WorkflowBase(APITestCase):
             user_type=self.back_type,
             state=self.active_state,
         )
+        self.back_full_user = User.objects.create_user(
+            username='t9backfull',
+            email='t9backfull@example.com',
+            password='pass',
+            user_type=self.back_full_type,
+            state=self.active_state,
+        )
         self.tech = User.objects.create_user(
             username='t9tech',
             email='t9tech@example.com',
@@ -319,18 +326,74 @@ class T9WorkflowTransitionsTestCase(T9WorkflowBase):
 
 
 class T9InternalNotesTestCase(T9WorkflowBase):
-    def test_internal_notes_isolation(self):
-        self.auth(self.admin)
+    def _ticket_with_notes(self, note='Secreto técnico'):
         t = self.create_ticket()
+        t.internal_notes = note
+        t.save(update_fields=['internal_notes'])
+        return t
+
+    def _assert_no_notes_in_list(self, response):
+        self.assertEqual(response.status_code, 200)
+        results = response.data.get('results', response.data)
+        if isinstance(results, dict):
+            results = [results]
+        self.assertTrue(len(results) >= 1)
+        for item in results:
+            self.assertNotIn('internal_notes', item)
+
+    def test_admin_and_st_can_read_and_write_notes(self):
+        t = self.create_ticket()
+
+        self.auth(self.admin)
         r = self.client.patch(
             f'/tickets/{t.id}/',
-            {'internal_notes': 'Secreto técnico'},
+            {'internal_notes': 'Nota admin'},
             format='json',
         )
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.data.get('internal_notes'), 'Secreto técnico')
+        self.assertEqual(r.data.get('internal_notes'), 'Nota admin')
 
-        # Cliente autenticado por email propio no ve notas
+        r = self.client.get(f'/tickets/{t.id}/')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data.get('internal_notes'), 'Nota admin')
+
+        r = self.client.get('/tickets/')
+        self.assertEqual(r.status_code, 200)
+        results = r.data.get('results', r.data)
+        match = next(item for item in results if item['id'] == str(t.id))
+        self.assertEqual(match.get('internal_notes'), 'Nota admin')
+
+        self.auth(self.st_user)
+        r = self.client.patch(
+            f'/tickets/{t.id}/',
+            {'internal_notes': 'Nota ST'},
+            format='json',
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data.get('internal_notes'), 'Nota ST')
+        r = self.client.get(f'/tickets/{t.id}/')
+        self.assertEqual(r.data.get('internal_notes'), 'Nota ST')
+
+    def test_back_and_back_full_do_not_receive_notes_on_list_or_detail(self):
+        t = self._ticket_with_notes('Privado BF')
+
+        self.auth(self.back_user)
+        r = self.client.get('/tickets/')
+        self._assert_no_notes_in_list(r)
+        r = self.client.get(f'/tickets/{t.id}/')
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn('internal_notes', r.data)
+
+        self.auth(self.back_full_user)
+        r = self.client.get('/tickets/')
+        self._assert_no_notes_in_list(r)
+        r = self.client.get(f'/tickets/{t.id}/')
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn('internal_notes', r.data)
+
+    def test_client_and_anonymous_do_not_receive_notes(self):
+        t = self._ticket_with_notes('Privado cliente')
+
         client_user = User.objects.create_user(
             username='t9client',
             email=self.contact.email,
@@ -343,22 +406,54 @@ class T9InternalNotesTestCase(T9WorkflowBase):
         self.assertEqual(r.status_code, 200)
         self.assertNotIn('internal_notes', r.data)
 
-        # Anónimo con email
         self.client.credentials()
         r = self.client.get(f'/tickets/{t.id}/', {'email': self.contact.email})
         self.assertEqual(r.status_code, 200)
         self.assertNotIn('internal_notes', r.data)
 
-        # Back no puede escribir
+    def test_unauthorized_write_of_notes_returns_403(self):
+        t = self._ticket_with_notes('Original')
+
+        # back: sin manage → 403 (permission class o serializer)
         self.auth(self.back_user)
         r = self.client.patch(
             f'/tickets/{t.id}/',
-            {'internal_notes': 'hack'},
+            {'internal_notes': 'hack back'},
+            format='json',
+        )
+        self.assertEqual(r.status_code, 403)
+
+        self.auth(self.back_full_user)
+        r = self.client.patch(
+            f'/tickets/{t.id}/',
+            {'internal_notes': 'hack back_full'},
+            format='json',
+        )
+        self.assertEqual(r.status_code, 403)
+
+        # create público con internal_notes explícito → 403 (no silent drop)
+        self.client.credentials()
+        r = self.client.post(
+            '/tickets/from-package/',
+            {
+                'contact': {
+                    'email': 'notes-leak@example.com',
+                    'first_name': 'Leak',
+                    'last_name': 'Test',
+                },
+                'ticket': {
+                    'description': 'Descripción suficientemente larga para crear ticket.',
+                    'numero_de_serie': 'SN-LEAK',
+                    'producto_laqq': True,
+                    'product_name': 'Equipo',
+                    'internal_notes': 'no deberia',
+                },
+            },
             format='json',
         )
         self.assertEqual(r.status_code, 403)
         t.refresh_from_db()
-        self.assertEqual(t.internal_notes, 'Secreto técnico')
+        self.assertEqual(t.internal_notes, 'Original')
 
 
 class T9ExportTestCase(T9WorkflowBase):
@@ -377,6 +472,8 @@ class T9ExportTestCase(T9WorkflowBase):
         headers = rows[0]
         self.assertIn('internal_notes', headers)
         self.assertIn('ticket_number', headers)
+        self.assertNotIn('priority_id', headers)
+        self.assertNotIn('priority_name', headers)
         note_idx = headers.index('internal_notes')
         self.assertTrue(
             any(row[note_idx] == 'Nota privada export' for row in rows[1:])
@@ -392,3 +489,5 @@ class T9ExportTestCase(T9WorkflowBase):
         wb = load_workbook(BytesIO(r.content))
         headers = list(wb.active.iter_rows(values_only=True))[0]
         self.assertIn('internal_notes', headers)
+        self.assertNotIn('priority_id', headers)
+        self.assertNotIn('priority_name', headers)
