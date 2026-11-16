@@ -634,6 +634,23 @@ class QuoteEmailNotificationTestCase(APITestCase):
             self.assertIn('3', content)
             self.assertIn('Urgente para laboratorio', content)
 
+    def test_web_message_is_stored_on_the_quote(self):
+        """El mensaje del formulario queda en la cotización que ve el back office."""
+        payload = {
+            'contact': {
+                'email': 'msg@empresa.com',
+                'first_name': 'Ana',
+                'last_name': 'Lopez',
+                'company_name': 'Lab Sur',
+                'message': 'Necesito entrega en CABA',
+            },
+            'quote': {'quote_type': self.quote_type.id},
+            'items': [{'product': str(self.product1.id), 'quantity': 1}],
+        }
+        response = self.client.post('/quotes/list/from-package/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(response.data['quote']['message'], 'Necesito entrega en CABA')
+
     def test_new_contact_from_quote_email_mentions_product_and_brand(self):
         """Contacto nuevo por cotización: aviso propio, con tipo y marca."""
         mail.outbox = []

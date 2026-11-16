@@ -604,10 +604,14 @@ class QuotePackageSerializer(serializers.Serializer):
             logger.info(f"New contact created with email {email}: {contact.id}")
 
         # 2. Crear la cotización
+        quote_message = (quote_data.get('message') or '').strip()
+        if not quote_message:
+            quote_message = (contact_data.get('message') or '').strip()
+
         quote_create_data = {
             'contact': contact,
             'user_id': quote_data.get('user'),
-            'message': quote_data.get('message', '')
+            'message': quote_message,
         }
 
         if 'quote_type' in quote_data and quote_data['quote_type']:
