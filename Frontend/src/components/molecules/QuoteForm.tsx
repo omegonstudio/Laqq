@@ -218,6 +218,10 @@ function QuoteForm() {
       const result = await dispatch(
         createQuoteFromForm({
           ...formState,
+          quote: {
+            ...formState.quote,
+            message: formState.contact.message || formState.quote.message,
+          },
           turnstile_token: turnstileToken || undefined,
           items: formState.items.map(({ variant, ...item }) => ({
             ...item,

@@ -166,6 +166,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         user: users?.results?.find(
           (item) => item.id === quote.user
         ) as UserData,
+        message: quote.message ?? "",
         observaciones: quote.observaciones,
       });
     }
@@ -194,6 +195,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         user: users?.results?.find(
           (item) => item.id === quote.user
         ) as UserData,
+        message: quote.message ?? "",
         observaciones: quote.observaciones,
       });
       setNewProducts(items);
@@ -221,6 +223,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         ? quote.items.map((item) => ({ ...item, existing: true }))
         : [],
       user: users?.results?.find((item) => item.id === quote.user) as UserData,
+      message: quote.message ?? "",
       observaciones: quote.observaciones,
     });
     setEdit(false);
@@ -546,7 +549,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
 
         <p className="font-medium">Mensaje:</p>
         <div className="border rounded p-3">
-          <p>{formState.message ?? "Sin mensaje"}</p>
+          <p>{formState.message || "Sin mensaje"}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4 text-sm">
