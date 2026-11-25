@@ -261,8 +261,9 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     () =>
       validateProductForm(localState, {
         skipBrandAndCategory: !localState.is_active,
+        categories,
       }),
-    [localState]
+    [localState, categories]
   );
 
   const isConsumiblesCategory = useMemo(
@@ -340,9 +341,38 @@ const ModalProduct: React.FC<ModalProductProps> = ({
     );
   }, [localState, initialData, carrouselDeleteIds]);
 
+  const consumiblesBlockReason = useMemo(() => {
+    if (!isConsumiblesCategory || !localState.is_active) return null;
+    if (!localState.articulo?.trim()) {
+      return "El campo Artículo es obligatorio para Consumibles";
+    }
+    if (!localState.cas?.trim()) {
+      return "El campo CAS es obligatorio para Consumibles";
+    }
+    return null;
+  }, [
+    isConsumiblesCategory,
+    localState.is_active,
+    localState.articulo,
+    localState.cas,
+  ]);
+
+  const saveBlockReason = useMemo(() => {
+    if (!validation.isValid) {
+      return validation.errorMessage || "Completá los campos obligatorios";
+    }
+    if (consumiblesBlockReason) return consumiblesBlockReason;
+    if (initialData && !hasChanges) {
+      return "No hay cambios para guardar";
+    }
+    return null;
+  }, [validation, consumiblesBlockReason, initialData, hasChanges]);
+
+  const canSave = !saveBlockReason;
+
   useEffect(() => {
-    setDisabled(validation.isValid && (!initialData || hasChanges));
-  }, [validation.isValid, initialData, hasChanges]);
+    setDisabled(canSave);
+  }, [canSave]);
 
   const handleSave = async () => {
     setDisabled(false);
@@ -350,29 +380,12 @@ const ModalProduct: React.FC<ModalProductProps> = ({
       const initialImage = initialData?.image_attachment ?? null;
       const currentImage = localState.image_file ?? null;
 
-      if (!validation.isValid) {
+      if (saveBlockReason) {
         toast({
-          title: validation.errorMessage || "Formulario inválido",
+          title: saveBlockReason,
           variant: "destructive",
         });
         return;
-      }
-
-      if (isConsumiblesCategory) {
-        if (!localState.articulo?.trim()) {
-          toast({
-            title: "El campo Artículo es obligatorio para Consumibles",
-            variant: "destructive",
-          });
-          return;
-        }
-        if (!localState.cas?.trim()) {
-          toast({
-            title: "El campo CAS es obligatorio para Consumibles",
-            variant: "destructive",
-          });
-          return;
-        }
       }
 
       let product: Product;
@@ -894,6 +907,7 @@ const ModalProduct: React.FC<ModalProductProps> = ({
                   onChange={handleCategoryChange}
                   maxLevel={3}
                   valueLabel={initialData?.category}
+                  requireLeaf
                 />
                 {/* <SelectCategories
                   editProductModal
@@ -1188,13 +1202,25 @@ const ModalProduct: React.FC<ModalProductProps> = ({
         </TabsContent>
 
         {/* Botones de acción (siempre visibles) */}
-        <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-border">
-          <Button variant="outline" onClick={handleCancel}>
-            Cancelar
-          </Button>
-          <Button variant="primary" onClick={handleSave} disabled={!disabled}>
-            Guardar
-          </Button>
+        <div className="mt-6 pt-4 border-t border-border space-y-2">
+          {saveBlockReason && (
+            <p className="text-sm text-amber-700 text-right" role="status">
+              {saveBlockReason}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={handleCancel}>
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSave}
+              disabled={!disabled}
+              title={saveBlockReason ?? undefined}
+            >
+              Guardar
+            </Button>
+          </div>
         </div>
       </Tabs>
     </Modal>

@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from django.conf import settings
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 from rest_framework.test import APITestCase, APIClient
@@ -58,7 +59,7 @@ class QuoteAPITestCase(APITestCase):
             state=self.contact_state
         )
         self.quote_type = QuoteType.objects.create(id='standard', name='Standard')
-        self.quote_state = QuoteState.objects.create(id='pending', name='Pendiente')
+        self.quote_state, _ = QuoteState.objects.get_or_create(id='abierto', defaults={'name': 'Abierto'})
 
         self.quote = Quote.objects.create(
             quote_number='Q-2025-00001',
@@ -87,7 +88,7 @@ class QuoteAPITestCase(APITestCase):
         self.assertIn('quote_number', response.data)
         self.assertTrue(response.data['quote_number'].startswith('Q-'))
         self.assertEqual(response.data['currency'], 'ARS')
-        self.assertEqual(response.data['state'], 'pending')
+        self.assertEqual(response.data['state'], 'abierto')
 
     def test_quote_defaults_to_ars(self):
         """Las cotizaciones existentes quedan en pesos."""
@@ -142,11 +143,11 @@ class QuoteAPITestCase(APITestCase):
         response = self.client.post('/quotes/list/', data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_assign_user_sets_assigned_state_and_emails(self):
-        """Al asignar un usuario, el estado pasa a Asignada y se envía un mail."""
-        assigned = QuoteState.objects.create(id='assigned', name='Asignada')
+    def test_assign_user_keeps_state_and_emails(self):
+        """Al asignar un usuario se envía mail y el estado no cambia solo."""
         self.quote.state = self.quote_state
         self.quote.save(update_fields=['state'])
+        previous_state = self.quote.state_id
 
         assignee = User.objects.create_user(
             username='vendedor',
@@ -165,15 +166,14 @@ class QuoteAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.quote.refresh_from_db()
         self.assertEqual(self.quote.user_id, assignee.id)
-        self.assertEqual(self.quote.state_id, assigned.id)
+        self.assertEqual(self.quote.state_id, previous_state)
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn('vendedor@laqq.com', mail.outbox[0].to)
         self.assertIn(self.quote.quote_number, mail.outbox[0].subject)
 
-    def test_assign_user_does_not_revert_sent_state(self):
-        """Si la cotización ya fue enviada, reasignar no vuelve el estado atrás."""
-        sent = QuoteState.objects.create(id='sent', name='Enviada')
-        QuoteState.objects.create(id='assigned', name='Asignada')
+    def test_assign_user_does_not_revert_enviado_state(self):
+        """Si la cotización ya fue enviada, reasignar no cambia el estado."""
+        sent, _ = QuoteState.objects.get_or_create(id='enviado', defaults={'name': 'Enviado'})
         self.quote.state = sent
         self.quote.save(update_fields=['state'])
         assignee = User.objects.create_user(
@@ -188,7 +188,7 @@ class QuoteAPITestCase(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.quote.refresh_from_db()
-        self.assertEqual(self.quote.state_id, 'sent')
+        self.assertEqual(self.quote.state_id, 'enviado')
 
 
 class QuoteItemAPITestCase(APITestCase):
@@ -260,6 +260,73 @@ class QuoteItemAPITestCase(APITestCase):
         response = self.client.post('/quotes/items/', data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(float(response.data['subtotal']), 150.00)
+
+    def test_create_quote_item_with_estimated_delivery(self):
+        """T14: crear ítem con plazo de entrega opcional"""
+        product = Product.objects.create(
+            name='Product With Delivery',
+            brand=self.brand,
+            category=self.category
+        )
+        data = {
+            'quote': self.quote.id,
+            'product': product.id,
+            'quantity': 1,
+            'unit_price': 10.00,
+            'estimated_delivery': '15-20 días hábiles',
+        }
+        response = self.client.post('/quotes/items/', data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['estimated_delivery'], '15-20 días hábiles')
+        item = QuoteItem.objects.get(id=response.data['id'])
+        self.assertEqual(item.estimated_delivery, '15-20 días hábiles')
+
+    def test_create_quote_item_without_estimated_delivery(self):
+        """T14: crear ítem sin plazo (histórico / opcional)"""
+        product = Product.objects.create(
+            name='Product Without Delivery',
+            brand=self.brand,
+            category=self.category
+        )
+        data = {
+            'quote': self.quote.id,
+            'product': product.id,
+            'quantity': 2,
+            'unit_price': 25.00,
+        }
+        response = self.client.post('/quotes/items/', data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data.get('estimated_delivery', ''), '')
+        item = QuoteItem.objects.get(id=response.data['id'])
+        self.assertEqual(item.estimated_delivery, '')
+
+    def test_update_quote_item_estimated_delivery(self):
+        """T14: actualizar plazo de entrega de un ítem existente"""
+        self.assertEqual(self.quote_item.estimated_delivery, '')
+        response = self.client.patch(
+            f'/quotes/items/{self.quote_item.id}/',
+            {'estimated_delivery': '30 días'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['estimated_delivery'], '30 días')
+        self.quote_item.refresh_from_db()
+        self.assertEqual(self.quote_item.estimated_delivery, '30 días')
+
+    def test_historical_quote_item_without_delivery_still_works(self):
+        """T14: ítems históricos sin plazo siguen listables y editables"""
+        response = self.client.get(f'/quotes/items/{self.quote_item.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data.get('estimated_delivery', ''), '')
+        response = self.client.patch(
+            f'/quotes/items/{self.quote_item.id}/',
+            {'quantity': 4, 'unit_price': 100.00},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.quote_item.refresh_from_db()
+        self.assertEqual(self.quote_item.quantity, 4)
+        self.assertEqual(self.quote_item.estimated_delivery, '')
 
     def test_validate_zero_quantity(self):
         """Validar que la cantidad sea mayor a cero"""
@@ -482,7 +549,7 @@ class QuoteEmailNotificationTestCase(APITestCase):
             state=self.contact_state
         )
         self.quote_type = QuoteType.objects.create(id='standard', name='Standard')
-        self.quote_state = QuoteState.objects.create(id='pending', name='Pendiente')
+        self.quote_state, _ = QuoteState.objects.get_or_create(id='abierto', defaults={'name': 'Abierto'})
 
         # Create products
         self.brand = Brand.objects.create(name='Test Brand')
@@ -567,6 +634,71 @@ class QuoteEmailNotificationTestCase(APITestCase):
             self.assertIn('3', content)
             self.assertIn('Urgente para laboratorio', content)
 
+    def test_web_message_is_stored_on_the_quote(self):
+        """El mensaje del formulario queda en la cotización que ve el back office."""
+        payload = {
+            'contact': {
+                'email': 'msg@empresa.com',
+                'first_name': 'Ana',
+                'last_name': 'Lopez',
+                'company_name': 'Lab Sur',
+                'message': 'Necesito entrega en CABA',
+            },
+            'quote': {'quote_type': self.quote_type.id},
+            'items': [{'product': str(self.product1.id), 'quantity': 1}],
+        }
+        response = self.client.post('/quotes/list/from-package/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(response.data['quote']['message'], 'Necesito entrega en CABA')
+
+    def test_new_contact_from_quote_email_mentions_product_and_brand(self):
+        """Contacto nuevo por cotización: aviso propio, con tipo y marca."""
+        mail.outbox = []
+        payload = {
+            'contact': {
+                'email': 'nuevo@empresa.com',
+                'first_name': 'Ana',
+                'last_name': 'Lopez',
+                'company_name': 'Lab Sur',
+            },
+            'quote': {'quote_type': self.quote_type.id},
+            'items': [{'product': str(self.product1.id), 'quantity': 2}],
+        }
+        response = self.client.post('/quotes/list/from-package/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+
+        subjects = [message.subject for message in mail.outbox]
+        self.assertFalse(any(subject.startswith('Nuevo Contacto:') for subject in subjects))
+        quote_notices = [
+            message for message in mail.outbox
+            if message.subject.startswith('Solicitud de cotización de un Nuevo Contacto:')
+        ]
+        self.assertEqual(len(quote_notices), 1)
+        notice = quote_notices[0]
+        self.assertIn('Ana Lopez - Lab Sur', notice.subject)
+        self.assertEqual(notice.to, [settings.BUSINESS_EMAIL])
+        body = notice.body
+        html = notice.alternatives[0][0]
+        for content in (body, html):
+            self.assertIn('Product 1', content)
+            self.assertIn('Test Category', content)
+            self.assertIn('Test Brand', content)
+            self.assertIn('Se recibió una solicitud de cotización', content)
+
+    def test_plain_contact_email_stays_unchanged(self):
+        """Un alta de contacto que no viene de una cotización conserva el aviso genérico."""
+        from contacts.emails import send_contact_to_business
+
+        mail.outbox = []
+        send_contact_to_business(self.contact)
+
+        self.assertEqual(len(mail.outbox), 1)
+        sent = mail.outbox[0]
+        self.assertTrue(sent.subject.startswith('Nuevo Contacto:'))
+        self.assertNotIn('Solicitud de cotización', sent.subject)
+        self.assertIn('Un nuevo contacto se ha registrado en el sistema', sent.body)
+        self.assertNotIn('Tipo de producto', sent.body)
+
 
 @override_settings(TESTING=False)
 class QuoteSendUpdatedTestCase(APITestCase):
@@ -597,8 +729,8 @@ class QuoteSendUpdatedTestCase(APITestCase):
             state=self.contact_state
         )
         self.quote_type = QuoteType.objects.create(id='standard', name='Standard')
-        self.quote_state = QuoteState.objects.create(id='pending', name='Pending')
-        self.sent_state = QuoteState.objects.create(id='sent', name='Enviada')
+        self.quote_state, _ = QuoteState.objects.get_or_create(id='abierto', defaults={'name': 'Abierto'})
+        self.sent_state, _ = QuoteState.objects.get_or_create(id='enviado', defaults={'name': 'Enviado'})
 
         # Create product for quote items
         self.brand = Brand.objects.create(name='Test Brand')
@@ -660,7 +792,7 @@ class QuoteSendUpdatedTestCase(APITestCase):
         self.assertIn('adrian@laqq.com', html)
 
         self.quote.refresh_from_db()
-        self.assertEqual(self.quote.state_id, 'sent')
+        self.assertEqual(self.quote.state_id, 'enviado')
 
     def test_send_updated_quote_no_email(self):
         """Verificar error cuando el contacto no tiene email"""
@@ -727,7 +859,7 @@ class QuoteFromPackageAntiSpamTestCase(APITestCase):
         self.client = APIClient()
         ContactState.objects.create(id='new', name='New')
         QuoteType.objects.create(id='standard', name='Standard')
-        QuoteState.objects.create(id='pending', name='Pendiente')
+        QuoteState.objects.get_or_create(id='abierto', defaults={'name': 'Abierto'})
         self.url = '/quotes/list/from-package/'
         self.payload = {
             'contact': {

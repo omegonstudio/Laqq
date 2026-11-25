@@ -12,63 +12,109 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write('Creando estados de tickets...')
 
-        states = [
+        # T9-C: estados operativos (únicos para tickets nuevos / workflow).
+        # update_or_create para alinear nombre/descripcion en ambientes existentes.
+        operational_states = [
             {
-                'id': 'new',
-                'name': 'Nuevo',
-                'color': '#3498db',  # Azul
-                'description': 'Ticket recién creado, sin asignar',
-                'is_final': False
+                'id': 'received',
+                'name': 'Recibido',
+                'color': '#3498db',
+                'description': 'Solicitud ingresada, pendiente de diagnóstico',
+                'is_final': False,
             },
             {
-                'id': 'open',
-                'name': 'Abierto',
-                'color': '#f39c12',  # Naranja
-                'description': 'Ticket asignado a un técnico',
-                'is_final': False
+                'id': 'diagnosed',
+                'name': 'Diagnosticado',
+                'color': '#9b59b6',
+                'description': 'El técnico revisó el equipo y determinó el problema',
+                'is_final': False,
             },
             {
-                'id': 'in_progress',
-                'name': 'En progreso',
-                'color': '#9b59b6',  # Púrpura
-                'description': 'Técnico trabajando en el ticket',
-                'is_final': False
-            },
-            {
-                'id': 'waiting_parts',
-                'name': 'Esperando repuestos',
-                'color': '#e74c3c',  # Rojo
-                'description': 'En espera de repuestos o materiales',
-                'is_final': False
-            },
-            {
-                'id': 'resolved',
-                'name': 'Resuelto',
-                'color': '#1abc9c',  # Verde agua
-                'description': 'Problema resuelto, esperando confirmación',
-                'is_final': False
+                'id': 'quoted',
+                'name': 'Presupuestado',
+                'color': '#f39c12',
+                'description': 'Existe un presupuesto comunicado al cliente',
+                'is_final': False,
             },
             {
                 'id': 'closed',
                 'name': 'Cerrado',
-                'color': '#27ae60',  # Verde
-                'description': 'Ticket cerrado y finalizado',
-                'is_final': True
+                'color': '#27ae60',
+                'description': 'Servicio técnico finalizado',
+                'is_final': True,
             },
         ]
 
-        for state_data in states:
-            state, created = TicketState.objects.get_or_create(
+        # Legacy: conservados para tickets históricos / filtros. No sobrescribir.
+        legacy_states = [
+            {
+                'id': 'new',
+                'name': 'Nuevo',
+                'color': '#3498db',
+                'description': 'Ticket recién creado, sin asignar (legado)',
+                'is_final': False,
+            },
+            {
+                'id': 'open',
+                'name': 'Abierto',
+                'color': '#f39c12',
+                'description': 'Ticket asignado a un técnico',
+                'is_final': False,
+            },
+            {
+                'id': 'in_progress',
+                'name': 'En progreso',
+                'color': '#9b59b6',
+                'description': 'Técnico trabajando en el ticket',
+                'is_final': False,
+            },
+            {
+                'id': 'waiting_parts',
+                'name': 'Esperando repuestos',
+                'color': '#e74c3c',
+                'description': 'En espera de repuestos o materiales',
+                'is_final': False,
+            },
+            {
+                'id': 'resolved',
+                'name': 'Resuelto',
+                'color': '#1abc9c',
+                'description': 'Problema resuelto, esperando confirmación',
+                'is_final': False,
+            },
+        ]
+
+        for state_data in operational_states:
+            state, created = TicketState.objects.update_or_create(
                 id=state_data['id'],
-                defaults=state_data
+                defaults={
+                    'name': state_data['name'],
+                    'color': state_data['color'],
+                    'description': state_data['description'],
+                    'is_final': state_data['is_final'],
+                },
             )
             if created:
                 self.stdout.write(
-                    self.style.SUCCESS(f'+ Estado creado: {state.name}')
+                    self.style.SUCCESS(f'+ Estado operativo creado: {state.name}')
                 )
             else:
                 self.stdout.write(
-                    self.style.WARNING(f'- Estado ya existe: {state.name}')
+                    self.style.SUCCESS(f'+ Estado operativo actualizado: {state.name}')
+                )
+
+        for state_data in legacy_states:
+            state, created = TicketState.objects.get_or_create(
+                id=state_data['id'],
+                defaults=state_data,
+            )
+            if created:
+                self.stdout.write(
+                    self.style.SUCCESS(f'+ Estado legado creado: {state.name}')
+                )
+            else:
+                self.stdout.write(
+                    self.style.WARNING(f'- Estado legado ya existe: {state.name}')
                 )
 
         self.stdout.write('\nCreando prioridades de tickets...')

@@ -201,10 +201,6 @@
                 {% endif %}
             </div>
 
-            <div style="background-color: #d4edda; border: 1px solid #28a745; padding: 10px; border-radius: 4px; margin-top: 10px; color: #155724;">
-                ✓ Se ha creado automáticamente una cuenta de cliente para seguimiento del ticket.
-                <br>El cliente ha recibido sus credenciales de acceso por email.
-            </div>
         </div>
 
         <!-- Ticket Details -->
@@ -219,13 +215,24 @@
                     <div class="info-label">Producto</div>
                     <div class="info-value">{{ product_name }}</div>
                 </div>
+                {% if numero_de_serie %}
                 <div class="info-item">
-                    <div class="info-label">Prioridad</div>
-                    <div class="info-value {% if priority.level >= 3 %}priority-high{% endif %} {% if priority.level >= 4 %}priority-urgent{% endif %}"
-                         style="color: {{ priority.color }};">
-                        {{ priority.name }} (Nivel {{ priority.level }})
-                    </div>
+                    <div class="info-label">N.º de serie</div>
+                    <div class="info-value">{{ numero_de_serie }}</div>
                 </div>
+                {% endif %}
+                {% if marca %}
+                <div class="info-item">
+                    <div class="info-label">Marca</div>
+                    <div class="info-value">{{ marca }}</div>
+                </div>
+                {% endif %}
+                {% if modelo %}
+                <div class="info-item">
+                    <div class="info-label">Modelo</div>
+                    <div class="info-value">{{ modelo }}</div>
+                </div>
+                {% endif %}
                 <div class="info-item">
                     <div class="info-label">Estado</div>
                     <div class="info-value" style="color: {{ state.color }};">{{ state.name }}</div>
@@ -242,11 +249,10 @@
 
         <!-- Next Actions -->
         <div class="actions-section">
-            <h3>⚡ Próximas Acciones Recomendadas</h3>
+            <h3>Próximas Acciones Recomendadas</h3>
             <ul class="actions-list">
                 <li>Revisar los detalles del ticket y verificar la información</li>
                 <li>Asignar el ticket a un técnico disponible</li>
-                <li>Evaluar la prioridad y ajustar si es necesario</li>
                 <li>Contactar al cliente si se requiere información adicional</li>
                 <li>Actualizar el estado conforme avance el trabajo</li>
             </ul>

@@ -43,6 +43,8 @@ import {
   formatQuoteAmount,
   QUOTE_CURRENCIES,
 } from "@/utils/quotesConvert";
+import { getMaxEstimatedDeliveryLabel } from "@/utils/estimatedDelivery";
+import { resolveQuoteSpecsForPreview } from "@/utils/quoteConditionsDefaults";
 import { fetchUsers } from "@/store/usersSlice";
 import { toast } from "@/hooks/use-toast";
 import { ProductSearchCombobox } from "../molecules/ProductSearch";
@@ -108,10 +110,15 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
     }, 0);
   };
   useEffect(() => {
-    if (quote?.specs) {
-      setSpecs(quote.specs);
-      setOriginalSpecs(quote.specs);
-    }
+    if (!quote) return;
+    // Defaults Tito solo en recibidas; misma ref lógica en specs/originalSpecs → sin dirty ni auto-save.
+    const resolved = resolveQuoteSpecsForPreview(
+      quote.specs,
+      quote.lifecycle,
+      quote.managed_at
+    );
+    setSpecs(resolved);
+    setOriginalSpecs(resolved);
   }, [quote]);
 
   useEffect(() => {
@@ -159,6 +166,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         user: users?.results?.find(
           (item) => item.id === quote.user
         ) as UserData,
+        message: quote.message ?? "",
         observaciones: quote.observaciones,
       });
     }
@@ -187,6 +195,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         user: users?.results?.find(
           (item) => item.id === quote.user
         ) as UserData,
+        message: quote.message ?? "",
         observaciones: quote.observaciones,
       });
       setNewProducts(items);
@@ -198,6 +207,9 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   }
 
   const contact = quote.contact;
+  const maxDeliveryLabel = getMaxEstimatedDeliveryLabel(
+    formState.items.map((item) => item.estimated_delivery)
+  );
 
   if (!quote) {
     return;
@@ -211,6 +223,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         ? quote.items.map((item) => ({ ...item, existing: true }))
         : [],
       user: users?.results?.find((item) => item.id === quote.user) as UserData,
+      message: quote.message ?? "",
       observaciones: quote.observaciones,
     });
     setEdit(false);
@@ -261,6 +274,14 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
     );
   };
 
+  const updateItemEstimatedDelivery = (index: number, value: string) => {
+    setNewProducts((prev) =>
+      prev.map((item, i) =>
+        i === index ? { ...item, estimated_delivery: value } : item
+      )
+    );
+  };
+
   const removeItem = (index: number) => {
     setNewProducts((prev) => prev.filter((_, i) => i !== index));
   };
@@ -275,6 +296,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         quantity: 1,
         unit_price: "0",
         subtotal: "0",
+        estimated_delivery: "",
         existing: false,
         variant: null, // 👈 cambio
       },
@@ -349,6 +371,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
               unit_price: item.unit_price,
               subtotal: item.subtotal,
               variant: item.variant?.id,
+              estimated_delivery: item.estimated_delivery ?? "",
             })
           ).unwrap()
         ),
@@ -363,6 +386,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                 unit_price: item.unit_price,
                 subtotal: item.subtotal,
                 variant: item.variant?.id,
+                estimated_delivery: item.estimated_delivery ?? "",
               },
             })
           ).unwrap()
@@ -525,7 +549,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
 
         <p className="font-medium">Mensaje:</p>
         <div className="border rounded p-3">
-          <p>{formState.message ?? "Sin mensaje"}</p>
+          <p>{formState.message || "Sin mensaje"}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4 text-sm">
@@ -545,11 +569,15 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {allowedNextQuoteStates(formState.state).map((stateId) => {
+                  {(quotesStates.length
+                    ? quotesStates.map((s) => s.id)
+                    : allowedNextQuoteStates(formState.state)
+                  ).map((stateId) => {
                     const fromApi = quotesStates.find((s) => s.id === stateId);
                     return (
                       <SelectItem key={stateId} value={stateId}>
-                        {fromApi?.name ?? convertQuotesState(stateId as QuoteStateType)}
+                        {fromApi?.name ??
+                          convertQuotesState(stateId as QuoteStateType)}
                       </SelectItem>
                     );
                   })}
@@ -692,26 +720,22 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         </div>
 
         {!edit && formState.items.length > 0 && (
-          <div className="border rounded overflow-hidden">
+          <div className="border rounded overflow-x-auto">
             <table className="w-full text-xs">
               <thead className="bg-muted">
                 <tr>
-                  <th className="text-center p-2 w-1/4 font-medium">
-                    Producto
-                  </th>
-                  <th className="text-center p-2 w-1/4 font-medium">
+                  <th className="text-center p-2 font-medium">Producto</th>
+                  <th className="text-center p-2 font-medium">
                     Variedad (Modelo)
                   </th>
-                  <th className="text-center p-2 w-1/4 font-medium">
+                  <th className="text-center p-2 font-medium">
                     Código producto
                   </th>
-                  <th className="text-center p-2 w-1/4 font-medium">Cant.</th>
-                  <th className="text-center p-2 w-1/4 font-medium">
+                  <th className="text-center p-2 font-medium">Cant.</th>
+                  <th className="text-center p-2 font-medium">
                     Precio unitario
                   </th>
-                  <th className="text-center p-2 w-1/4 font-medium">
-                    Subtotal
-                  </th>
+                  <th className="text-center p-2 font-medium">Subtotal</th>
                 </tr>
               </thead>
               <tbody>
@@ -747,7 +771,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         )}
 
         {edit && (
-          <>
+          <div className="space-y-3">
             {newProducts.map((item, index) => {
               const selectedProduct = item.product
                 ? getProductById(item.product.id)
@@ -759,64 +783,85 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
               return (
                 <div
                   key={item.id ?? index}
-                  className="grid grid-cols-2 gap-2 items-end"
+                  className="border rounded-md p-3 space-y-3"
                 >
-                  {!item.existing ? (
-                    <div className="flex flex-col gap-5">
-                      <ProductSearchCombobox
-                        products={products}
-                        selectedProduct={selectedProduct}
-                        onSelect={(product) =>
-                          updateItemProduct(index, product)
-                        }
-                      />
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      {!item.existing ? (
+                        <>
+                          <ProductSearchCombobox
+                            products={products}
+                            selectedProduct={selectedProduct}
+                            onSelect={(product) =>
+                              updateItemProduct(index, product)
+                            }
+                          />
 
-                      {/* ✅ CAMBIO: lógica condicional según cantidad de specs */}
-                      {specsCount === 0 && null}
+                          {specsCount === 1 && (
+                            <p className="text-xs text-muted-foreground">
+                              Variedad:{" "}
+                              <span className="font-medium">
+                                {item.variant?.code ??
+                                  selectedProduct?.variants?.[0]?.code}
+                              </span>
+                            </p>
+                          )}
 
-                      {specsCount === 1 && (
-                        <p className="text-xs text-muted-foreground">
-                          Variedad:{" "}
-                          <span className="font-medium">
-                            {item.variant?.code ??
-                              selectedProduct?.variants?.[0]?.code}
-                          </span>
-                        </p>
-                      )}
-
-                      {specsCount > 1 && (
-                        <Select
-                          value={item.variant?.id || ""}
-                          onValueChange={(value) => {
-                            const spec = selectedProduct?.variants.find(
-                              (s) => s.id === value
-                            );
-                            updateItemVariant(index, spec || null);
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar variedad" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {selectedProduct?.variants.map((spec) => (
-                              <SelectItem key={spec.id} value={spec.id}>
-                                {spec.code}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          {specsCount > 1 && (
+                            <Select
+                              value={item.variant?.id || ""}
+                              onValueChange={(value) => {
+                                const spec = selectedProduct?.variants.find(
+                                  (s) => s.id === value
+                                );
+                                updateItemVariant(index, spec || null);
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccionar variedad" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {selectedProduct?.variants.map((spec) => (
+                                  <SelectItem key={spec.id} value={spec.id}>
+                                    {spec.code}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </>
+                      ) : (
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium leading-snug">
+                            {item.product?.name}
+                            {item.product?.product_code
+                              ? ` (${item.product.product_code})`
+                              : ""}
+                          </p>
+                          {item.variant?.code ? (
+                            <p className="text-xs text-muted-foreground">
+                              Variedad:{" "}
+                              <span className="font-medium">
+                                {item.variant.code}
+                              </span>
+                            </p>
+                          ) : null}
+                        </div>
                       )}
                     </div>
-                  ) : (
-                    <p>{`${item.product?.name} (${item.product?.product_code})${
-                      item.variant !== null
-                        ? ` Variedad: ${item.variant?.code}`
-                        : ""
-                    }`}</p>
-                  )}
 
-                  <div className="flex items-end gap-2">
-                    <div>
+                    <Button
+                      type="button"
+                      className="shrink-0 bg-transparent text-red-600 hover:bg-red-600 hover:text-white"
+                      onClick={() => removeItem(index)}
+                      aria-label="Eliminar producto"
+                    >
+                      <Trash2 size={20} />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                    <div className="min-w-0">
                       <label className="text-xs">Cantidad:</label>
                       <InputField
                         aria-description="Cantidad"
@@ -835,7 +880,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                       />
                     </div>
 
-                    <div>
+                    <div className="min-w-0">
                       <label className="text-xs">
                         Precio ({currencySymbol(formState.currency)}):
                       </label>
@@ -848,22 +893,35 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
                       />
                     </div>
 
-                    <Button
-                      className="bg-transparent text-red-600 hover:bg-red-600 hover:text-white"
-                      onClick={() => removeItem(index)}
-                    >
-                      <Trash2 size={20} />
-                    </Button>
+                    <div className="min-w-0">
+                      <label className="text-xs">
+                        Tiempo estimado de entrega:
+                      </label>
+                      <InputField
+                        aria-description="Tiempo estimado de entrega"
+                        type="text"
+                        value={item.estimated_delivery ?? ""}
+                        onChange={(e) =>
+                          updateItemEstimatedDelivery(index, e.target.value)
+                        }
+                      />
+                    </div>
                   </div>
                 </div>
               );
             })}
-          </>
+          </div>
         )}
 
         <div className="text-right text-lg font-semibold pt-2 border-t">
           Total: {formatQuoteAmount(total, formState.currency)}
         </div>
+
+        {!edit && maxDeliveryLabel ? (
+          <p className="text-right text-sm font-medium pt-1">
+            Plazo de entrega: {maxDeliveryLabel}
+          </p>
+        ) : null}
 
         <label>Observaciones</label>
         {!edit ? (
@@ -887,7 +945,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
           className="mt-2"
           onClick={() => setOpenSpecs(true)}
         >
-          Especificaciones generales
+          CONDICIONES GENERALES
         </Button>
 
         <GeneralSpecificationsDialog

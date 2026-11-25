@@ -47,6 +47,28 @@ class Command(BaseCommand):
                     'tickets': ['read_own', 'attach_files'],
                 }
             },
+            {
+                'id': 'back_full',
+                'name': 'Back Office Full',
+                'description': 'Back Office con ABM completo de productos, marcas y categorías',
+                'permissions': {
+                    'products': ['create', 'read', 'update', 'delete'],
+                    'quotes': ['create', 'read', 'update'],
+                    'tickets': ['create', 'read', 'update', 'assign'],
+                    'contacts': ['create', 'read', 'update'],
+                    'users': ['read'],
+                    'reports': ['read'],
+                }
+            },
+            {
+                'id': 'servicio_tecnico',
+                'name': 'Servicio Técnico',
+                'description': 'Backoffice limitado a tickets de servicio y dashboard',
+                'permissions': {
+                    'tickets': ['create', 'read', 'update', 'assign'],
+                    'reports': ['read'],
+                }
+            },
         ]
 
         for user_type_data in user_types:

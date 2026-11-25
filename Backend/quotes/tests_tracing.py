@@ -13,9 +13,11 @@ User = get_user_model()
 
 
 class TracingHelpersTest(TestCase):
-    def test_can_transition_sent_to_confirmed(self):
-        self.assertTrue(can_transition_state('sent', 'confirmed'))
-        self.assertFalse(can_transition_state('rejected', 'sent'))
+    def test_can_transition_between_new_states(self):
+        self.assertTrue(can_transition_state('enviado', 'aceptado'))
+        self.assertTrue(can_transition_state('rechazado', 'abierto'))
+        self.assertTrue(can_transition_state('cerrado', 'enviado_fuera'))
+        self.assertTrue(can_transition_state('abierto', 'abierto'))
 
 
 class QuoteTraceAPITest(APITestCase):
@@ -29,12 +31,12 @@ class QuoteTraceAPITest(APITestCase):
 
         QuoteType.objects.get_or_create(id='standard', defaults={'name': 'Estándar'})
         for sid, name in [
-            ('pending', 'Pendiente'),
-            ('assigned', 'Asignada'),
-            ('sent', 'Enviada'),
-            ('confirmed', 'Confirmada'),
-            ('rejected', 'Rechazada'),
-            ('expired', 'Vencida'),
+            ('abierto', 'Abierto'),
+            ('enviado', 'Enviado'),
+            ('enviado_fuera', 'Enviado por fuera del sistema'),
+            ('aceptado', 'Aceptado'),
+            ('rechazado', 'Rechazado'),
+            ('cerrado', 'Cerrado'),
         ]:
             QuoteState.objects.get_or_create(id=sid, defaults={'name': name})
 
@@ -53,7 +55,7 @@ class QuoteTraceAPITest(APITestCase):
         self.quote = Quote.objects.create(
             contact=self.contact,
             quote_type_id='standard',
-            state_id='pending',
+            state_id='abierto',
             message='hola',
         )
         QuoteItem.objects.create(
@@ -93,13 +95,13 @@ class QuoteTraceAPITest(APITestCase):
         self.assertIn(str(self.quote.id), ids2)
 
     def test_state_transition_creates_trace(self):
-        self.quote.state_id = 'sent'
+        self.quote.state_id = 'enviado'
         self.quote.save(update_fields=['state'])
         resp = self.client.patch(
             f'/quotes/list/{self.quote.id}/',
             {
                 'contact_id': str(self.contact.id),
-                'state_id': 'confirmed',
+                'state_id': 'aceptado',
             },
             format='json',
         )
@@ -110,16 +112,30 @@ class QuoteTraceAPITest(APITestCase):
             ).exists()
         )
 
-    def test_invalid_state_transition_rejected(self):
+    def test_any_state_is_modifiable(self):
         resp = self.client.patch(
             f'/quotes/list/{self.quote.id}/',
             {
                 'contact_id': str(self.contact.id),
-                'state_id': 'confirmed',  # pending → confirmed no permitido
+                'state_id': 'cerrado',
             },
             format='json',
         )
-        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.quote.refresh_from_db()
+        self.assertEqual(self.quote.state_id, 'cerrado')
+
+        resp2 = self.client.patch(
+            f'/quotes/list/{self.quote.id}/',
+            {
+                'contact_id': str(self.contact.id),
+                'state_id': 'abierto',
+            },
+            format='json',
+        )
+        self.assertEqual(resp2.status_code, status.HTTP_200_OK)
+        self.quote.refresh_from_db()
+        self.assertEqual(self.quote.state_id, 'abierto')
 
     def test_traces_endpoint(self):
         record_quote_trace(self.quote, QuoteTrace.REASON_CREATED, mark_managed=False)

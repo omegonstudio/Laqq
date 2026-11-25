@@ -105,11 +105,18 @@ def _get_or_create_brand(name, brand_cache, summary):
         summary['created_brands'] += 1
     return obj
 
+def _assert_resolved_category_allows_products(category):
+    from .category_rules import ensure_product_category
+    ensure_product_category(category)
+    return category
+
+
 def _get_or_create_category_by_levels(level_0, level_1, level_2, level_3, category_cache, summary):
     """
     Resuelve la categoría a partir de hasta 4 niveles.
     - level_0: obligatorio, debe pre-existir en la base de datos (búsqueda case-insensitive).
     - level_1/2/3: opcionales, se crean si no existen. Cada uno requiere el anterior.
+    - La categoría final debe tener level >= 1 (nunca una raíz).
     Todas las búsquedas son case-insensitive para evitar duplicados.
     """
     level_0 = (level_0 or '').strip()
@@ -176,6 +183,7 @@ def _get_or_create_category_by_levels(level_0, level_1, level_2, level_3, catego
                 f"Se requiere categoria_nivel_2 para poder usar categoria_nivel_3 ('{level_3}'). "
                 f"Completá el nivel 2 antes de especificar el nivel 3."
             )
+        _assert_resolved_category_allows_products(parent)
         category_cache[cache_key] = parent
         return parent
 
@@ -192,6 +200,7 @@ def _get_or_create_category_by_levels(level_0, level_1, level_2, level_3, catego
         parent = obj
 
     if not level_3:
+        _assert_resolved_category_allows_products(parent)
         category_cache[cache_key] = parent
         return parent
 
@@ -200,6 +209,7 @@ def _get_or_create_category_by_levels(level_0, level_1, level_2, level_3, catego
     if not obj:
         obj = Category.objects.create(name=level_3, parent=parent, description='', display_order=0)
         summary['created_categories'] += 1
+    _assert_resolved_category_allows_products(obj)
     category_cache[cache_key] = obj
     return obj
 

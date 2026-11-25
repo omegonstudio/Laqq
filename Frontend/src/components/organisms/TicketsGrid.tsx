@@ -8,19 +8,14 @@ import { Button } from "@/components/ui/button";
 import TicketForm from "../molecules/TicketForm";
 import { CreateTicketPayload, ServiceTicket } from "@/types/api";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchTicketPriorities, fetchTicketStates } from "@/store/ticketsSlice";
+import { fetchTicketStates } from "@/store/ticketsSlice";
 import { RootState } from "@/store";
 import { TicketCard } from "../molecules/CardTicketClient";
 import { TicketDetailModal } from "../molecules/Modals/CardTicketDetailClient";
-import { convertStateTicket, stateEnum } from "@/utils/quotesConvert";
 
 interface ServiceTicketGridProps {
   tickets: ServiceTicket[];
 }
-
-// Función auxiliar para obtener clase de color según nivel
-
-// Crear configuración dinámica de prioridad
 
 function CreateTicketCard({ onClick }: { onClick: () => void }) {
   return (
@@ -45,7 +40,7 @@ function CreateTicketCard({ onClick }: { onClick: () => void }) {
 
 export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
   const dispatch = useAppDispatch();
-  const { priorities, states } = useAppSelector(
+  const { states } = useAppSelector(
     (state: RootState) => state.ticketsService
   );
   const [selectedTicket, setSelectedTicket] = useState<ServiceTicket | null>(
@@ -55,7 +50,6 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [stateFilter, setStateFilter] = useState<string>("all");
-  const [priorityFilter, setPriorityFilter] = useState<string>("all");
 
   const TicketInitialState: CreateTicketPayload = {
     ticket: {
@@ -81,14 +75,12 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
       state: "new",
     },
   };
-  // Cargar prioridades una sola vez al montar el componente
+
   useEffect(() => {
-    dispatch(fetchTicketPriorities({}));
     dispatch(fetchTicketStates({}));
   }, [dispatch]);
 
   const filteredTickets = tickets.filter((ticket) => {
-    // Filtro de búsqueda
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       const matchesSearch =
@@ -101,13 +93,7 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
       if (!matchesSearch) return false;
     }
 
-    // Filtro por estado
     if (stateFilter !== "all" && ticket.state !== stateFilter) {
-      return false;
-    }
-
-    // Filtro por prioridad
-    if (priorityFilter !== "all" && ticket.priority !== priorityFilter) {
       return false;
     }
 
@@ -119,13 +105,11 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
     setModalOpen(true);
   };
 
-  const hasFilters =
-    searchQuery || stateFilter !== "all" || priorityFilter !== "all";
+  const hasFilters = searchQuery || stateFilter !== "all";
 
   const clearFilters = () => {
     setSearchQuery("");
     setStateFilter("all");
-    setPriorityFilter("all");
   };
 
   if (tickets.length === 0) {
@@ -167,45 +151,6 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
               onChange={(e) => setStateFilter(e.target.value)}
               className="w-48"
             />
-
-            <Select
-              options={[
-                { value: "all", label: "Todas las prioridades" },
-                ...priorities.map((item) => ({
-                  value: item.id,
-                  label: item.name,
-                })),
-              ]}
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="w-48"
-            />
-            {/* <Select value={stateFilter} onValueChange={setStateFilter}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                {states.map((priority) => (
-                  <SelectItem key={priority.id} value={priority.id}>
-                    {priority.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select> */}
-            {/* <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Prioridad" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las prioridades</SelectItem>
-                {priorities.map((priority) => (
-                  <SelectItem key={priority.id} value={priority.id}>
-                    {priority.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select> */}
           </div>
         </div>
         {hasFilters && (
@@ -240,7 +185,6 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
               key={ticket.id}
               ticket={ticket}
               onClick={() => handleTicketClick(ticket)}
-              priorities={priorities}
               states={states}
             />
           ))}
@@ -257,7 +201,6 @@ export function ServiceTicketGrid({ tickets }: ServiceTicketGridProps) {
         states={states}
         open={modalOpen}
         onOpenChange={setModalOpen}
-        priorities={priorities}
       />
     </>
   );

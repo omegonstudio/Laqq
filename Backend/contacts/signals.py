@@ -1,3 +1,5 @@
+from contextvars import ContextVar
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.conf import settings
@@ -7,6 +9,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Suppress Contact create emails for the current request/context only
+# (e.g. ticket from-package creating a Contact). Default: notifications on.
+suppress_contact_created_emails: ContextVar[bool] = ContextVar(
+    'suppress_contact_created_emails',
+    default=False,
+)
+
 
 @receiver(post_save, sender=Contact)
 def send_contact_notification(sender, instance, created, **kwargs):
@@ -15,6 +24,9 @@ def send_contact_notification(sender, instance, created, **kwargs):
     """
     # No enviar emails durante tests
     if getattr(settings, 'TESTING', False):
+        return
+
+    if suppress_contact_created_emails.get():
         return
 
     # Evitar recursión: solo enviar si es creación y no viene de un guardado interno

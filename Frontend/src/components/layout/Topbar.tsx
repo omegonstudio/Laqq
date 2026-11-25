@@ -10,7 +10,9 @@ import { logout as logoutAction } from "@/store/authSlice";
 const USER_TYPE_LABEL: Record<string, string> = {
   admin: "Administrador",
   back: "Backoffice",
+  back_full: "Back Office Full",
   client: "Cliente",
+  servicio_tecnico: "Servicio Técnico",
 };
 
 const getUserTypeLabel = (

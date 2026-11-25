@@ -5,6 +5,7 @@ from .models import (
     Brand, Category, Product, ProductVariant, ProductRelation,
     TechnicalSpec, ProductTechnicalSpec, VariantTechnicalSpec,
 )
+from .category_rules import PRODUCT_CATEGORY_LEVEL_ERROR, ensure_product_category
 from attachments.models import Attachment
 from attachments.serializers import AttachmentSerializer
 from drf_yasg import openapi
@@ -432,13 +433,16 @@ class ProductSerializer(serializers.ModelSerializer):
         if self.instance:
             is_active = data.get('is_active', self.instance.is_active)
 
+        if self.instance:
+            category = data['category'] if 'category' in data else self.instance.category
+        else:
+            category = data.get('category')
+
         if is_active:
             if self.instance:
                 brand = data['brand'] if 'brand' in data else self.instance.brand
-                category = data['category'] if 'category' in data else self.instance.category
             else:
                 brand = data.get('brand')
-                category = data.get('category')
             if not brand:
                 raise serializers.ValidationError({
                     'brand_id': 'Brand is required for active products'
@@ -446,6 +450,14 @@ class ProductSerializer(serializers.ModelSerializer):
             if not category:
                 raise serializers.ValidationError({
                     'category_id': 'Category is required for active products'
+                })
+
+        if category is not None:
+            try:
+                ensure_product_category(category)
+            except ValueError:
+                raise serializers.ValidationError({
+                    'category_id': PRODUCT_CATEGORY_LEVEL_ERROR,
                 })
 
         return data

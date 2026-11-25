@@ -20,6 +20,8 @@ import { toast } from "@/hooks/use-toast";
 import { useAppSelector } from "@/store/hooks";
 import { RootState } from "@/store";
 import { useCanManageUsers } from "@/hooks/usePermissions";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 type UserRow = {
   id: string;
@@ -63,6 +65,7 @@ const UsersTable = () => {
   const deleteUserMutation = useDeleteUser();
   const { user: authUser } = useAppSelector((state: RootState) => state.auth);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showClients, setShowClients] = useState(false);
   const [isUpsertOpen, setIsUpsertOpen] = useState(false);
   const [upsertMode, setUpsertMode] = useState<"create" | "edit">("create");
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
@@ -101,14 +104,17 @@ const UsersTable = () => {
 
   const filteredUsers = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
-    if (!q) return tableRows;
-    return tableRows.filter(
-      (user) =>
+    return tableRows.filter((user) => {
+      const isClient = user.raw.user_type?.id === "client";
+      if (!showClients && isClient) return false;
+      if (!q) return true;
+      return (
         user.nombre.toLowerCase().includes(q) ||
         user.apellido.toLowerCase().includes(q) ||
         user.email.toLowerCase().includes(q)
-    );
-  }, [searchTerm, tableRows]);
+      );
+    });
+  }, [searchTerm, tableRows, showClients]);
   const userTypeOptions = useMemo(() => {
     const items = userTypesData?.results ?? [];
     return [
@@ -278,17 +284,33 @@ const UsersTable = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-4 flex-1">
-        <InputField
-          placeholder="Buscar por nombre, apellido o email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-md"
-        />
+      <div className="flex gap-4 flex-1 items-center">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-full max-w-md">
+            <InputField
+              placeholder="Buscar por nombre, apellido o email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Switch
+              id="show-client-users"
+              checked={showClients}
+              onCheckedChange={setShowClients}
+            />
+            <Label
+              htmlFor="show-client-users"
+              className="text-sm font-normal whitespace-nowrap"
+            >
+              Mostrar clientes
+            </Label>
+          </div>
+        </div>
         {canManageUsers && (
           <Button
             variant="primary"
-            className="whitespace-nowrap w-fit"
+            className="whitespace-nowrap w-fit ml-auto"
             onClick={openCreateModal}
           >
             <Plus size={18} />

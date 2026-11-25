@@ -215,7 +215,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
         - contact.country: País
         - contact.message: Mensaje del contacto
         - quote.quote_type: ID del tipo de cotización (default: "standard")
-        - quote.state: ID del estado de cotización (default: "pending")
+        - quote.state: ID del estado de cotización (default: "abierto")
         - quote.user: UUID del usuario asignado a la cotización
         - quote.message: Mensaje/notas de la cotización
         - items: Array de items (puede omitirse para cotización sin items)
@@ -259,7 +259,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
             },
             "quote": {
                 "quote_type": "standard",
-                "state": "pending",
+                "state": "abierto",
                 "user": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
                 "message": "Cotización para proyecto de renovación"
             },
@@ -300,7 +300,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
                 "quote_number": "Q-2026-00015",
                 "contact": "uuid-contacto",
                 "quote_type": "standard",
-                "state": "pending",
+                "state": "abierto",
                 "total_amount": "677.50",
                 "message": "Cotización para proyecto de renovación",
                 "created_at": "2026-01-19T10:30:00Z",
@@ -474,7 +474,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
 
             if success:
                 old_state_id = quote.state_id
-                sent_state = QuoteState.objects.filter(id='sent').first()
+                sent_state = QuoteState.objects.filter(id='enviado').first()
                 if sent_state and quote.state_id != sent_state.id:
                     quote.state = sent_state
                     quote.save(update_fields=['state', 'updated_at'])

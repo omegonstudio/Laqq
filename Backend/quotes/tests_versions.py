@@ -22,7 +22,7 @@ class QuoteVersionAPITest(APITestCase):
         self.client.force_authenticate(user=self.user)
 
         QuoteType.objects.get_or_create(id='standard', defaults={'name': 'Estándar'})
-        QuoteState.objects.get_or_create(id='pending', defaults={'name': 'Pendiente'})
+        QuoteState.objects.get_or_create(id='abierto', defaults={'name': 'Abierto'})
 
         cs = ContactState.objects.create(id='new', name='Nuevo')
         self.contact = Contact.objects.create(
@@ -39,7 +39,7 @@ class QuoteVersionAPITest(APITestCase):
         self.quote = Quote.objects.create(
             contact=self.contact,
             quote_type_id='standard',
-            state_id='pending',
+            state_id='abierto',
             message='hola',
         )
         QuoteItem.objects.create(

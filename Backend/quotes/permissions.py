@@ -26,10 +26,10 @@ class CanCreateOrAdmin(BasePermission):
 
         # GET: admin o backoffice
         if request.method in SAFE_METHODS:
-            return user.user_type_id in ['admin', 'back']
+            return user.user_type_id in ['admin', 'back', 'back_full']
 
         # PUT/PATCH/DELETE: admin o backoffice (ambos editan cotizaciones)
-        return user.user_type_id in ['admin', 'back']
+        return user.user_type_id in ['admin', 'back', 'back_full']
 
 
 class AllowPublicQuoteItems(BasePermission):
@@ -57,6 +57,6 @@ class AllowPublicQuoteItems(BasePermission):
             return True
 
         if request.method in SAFE_METHODS:
-            return user.user_type_id in ['admin', 'back']
+            return user.user_type_id in ['admin', 'back', 'back_full']
 
-        return user.user_type_id in ['admin', 'back']  # admin o backoffice editan items
+        return user.user_type_id in ['admin', 'back', 'back_full']  # admin o backoffice editan items
