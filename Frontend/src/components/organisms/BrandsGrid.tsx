@@ -1,11 +1,11 @@
 import { useAppSelector } from "@/store/hooks";
 import { Link } from "react-router-dom";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { ensureHttpsUrl } from "@/utils/secureUrl";
 // import { brands } from "@/utils/data/brands";
 
 const BrandsGrid = () => {
-  const { list, loading } = useAppSelector((state) => state.brands);
+  const { list, loading, error } = useAppSelector((state) => state.brands);
   const sortedBrands = useMemo(
     () =>
       [...list].sort((a, b) =>
@@ -13,6 +13,36 @@ const BrandsGrid = () => {
       ),
     [list]
   );
+
+  // #region agent log
+  useEffect(() => {
+    const names = sortedBrands.map((b) => b.name);
+    fetch("http://127.0.0.1:7282/ingest/ab0e328b-2eba-4587-bb8f-7d705e5fa936", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "5407fd",
+      },
+      body: JSON.stringify({
+        sessionId: "5407fd",
+        runId: "pre-fix",
+        hypothesisId: "B",
+        location: "BrandsGrid.tsx:render-state",
+        message: "Home Marcas Lideres brands state",
+        data: {
+          listLen: list.length,
+          sortedLen: sortedBrands.length,
+          loading,
+          error,
+          hasOmegon: names.some((n) => /omegon/i.test(n)),
+          withLogo: sortedBrands.filter((b) => !!b.logo_url).length,
+          namesSample: names.slice(0, 8),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }, [list, loading, error, sortedBrands]);
+  // #endregion
 
   return (
     <section className="py-16 bg-background" style={{ minHeight: 420 }}>
