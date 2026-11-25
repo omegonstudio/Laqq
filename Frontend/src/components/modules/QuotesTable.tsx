@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -67,6 +67,7 @@ const QuotesTable = () => {
   >({});
   const [loadingVersions, setLoadingVersions] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const listRequest = useRef<{ abort: () => void } | null>(null);
 
   const reload = () => {
     const params: {
@@ -86,7 +87,8 @@ const QuotesTable = () => {
     if (typesFilters !== "all") params.quote_type = typesFilters;
     if (searchTerm.trim()) params.search = searchTerm.trim();
 
-    dispatch(fetchQuotes(params));
+    listRequest.current?.abort();
+    listRequest.current = dispatch(fetchQuotes(params));
   };
 
   useEffect(() => {
@@ -98,6 +100,9 @@ const QuotesTable = () => {
     reload();
     setExpandedId(null);
     setVersionsByQuote({});
+    return () => {
+      listRequest.current?.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, statusFilter, searchTerm, typesFilters, lifecycle]);
 

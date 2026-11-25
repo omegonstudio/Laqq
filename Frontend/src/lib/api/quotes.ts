@@ -37,10 +37,11 @@ export interface QuoteItemListParams {
 
 export const quotesApi = {
   // =================== QUOTES ===================
-  list: (params?: QuoteListParams) =>
+  list: (params?: QuoteListParams, signal?: AbortSignal) =>
     api.get<PaginatedResponse<QuoteRender>>(
       `${BASE}/list/`,
-      cleanParams(params as QueryParams)
+      cleanParams(params as QueryParams),
+      signal
     ),
 
   get: (id: string) => api.get<QuoteRender>(`${BASE}/list/${id}/`),

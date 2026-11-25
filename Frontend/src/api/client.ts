@@ -334,11 +334,16 @@ class ApiClient {
   /**
    * GET request
    */
-  async get<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
+  async get<T>(
+    endpoint: string,
+    params?: Record<string, any>,
+    signal?: AbortSignal
+  ): Promise<T> {
     const queryString = this.serializeParams(params);
 
     return this.request<T>(`${endpoint}${queryString}`, {
       method: "GET",
+      signal,
     });
   }
 
