@@ -49,8 +49,8 @@ const wrap = async <T>(fn: () => Promise<T>): Promise<T> => {
 };
 
 export const api = {
-  get: <T>(path: string, params?: Record<string, any>) =>
-    wrap(() => apiClient.get<T>(path, params)),
+  get: <T>(path: string, params?: Record<string, any>, signal?: AbortSignal) =>
+    wrap(() => apiClient.get<T>(path, params, signal)),
   getBlob: (path: string, params?: Record<string, any>) =>
     wrap(() => apiClient.getBlob(path, params)),
   post: <T>(path: string, data?: any) =>
