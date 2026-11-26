@@ -14,7 +14,6 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   deleteQuote,
   fetchQuoteVersions,
-  fetchQuotes,
   fetchQuoteStates,
   fetchQuoteTypes,
 } from "@/store/quotesSlice";
@@ -35,7 +34,23 @@ import ModalDelete from "../molecules/Modals/ModalDelete";
 import { toast } from "@/hooks/use-toast";
 import { useCanManageQuotes } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
-import { quotesApi } from "@/lib/api/quotes";
+import { quotesApi, QuoteListParams } from "@/lib/api/quotes";
+
+const PAGE_SIZE = 10;
+
+type QuoteBucket = {
+  results: QuoteRender[];
+  count: number;
+  totalPages: number;
+  page: number;
+};
+
+const emptyBucket = (): QuoteBucket => ({
+  results: [],
+  count: 0,
+  totalPages: 1,
+  page: 1,
+});
 
 const formatDateTime = (value?: string | null) =>
   value
@@ -52,12 +67,15 @@ const QuotesTable = () => {
   const dispatch = useAppDispatch();
   const canManageQuotes = useCanManageQuotes();
 
-  const { list: quotes, pagination } = useAppSelector((state) => state.quotes);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typesFilters, setTypesFilters] = useState("all");
   const [lifecycle, setLifecycle] = useState<QuoteLifecycle>("received");
+  const [buckets, setBuckets] = useState<Record<QuoteLifecycle, QuoteBucket>>({
+    received: emptyBucket(),
+    managed: emptyBucket(),
+  });
   const [isModalEditOpen, setIsModalEditOpen] = useState(false);
 
   const [previewQuote, setPreviewQuote] = useState<QuoteRender | null>(null);
@@ -67,28 +85,76 @@ const QuotesTable = () => {
   >({});
   const [loadingVersions, setLoadingVersions] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const listRequest = useRef<{ abort: () => void } | null>(null);
+  const aborts = useRef<Partial<Record<QuoteLifecycle, AbortController>>>({});
+  const tabGen = useRef<Record<QuoteLifecycle, number>>({
+    received: 0,
+    managed: 0,
+  });
 
-  const reload = () => {
-    const params: {
-      page: number;
-      page_size: number;
-      state?: string;
-      search?: string;
-      quote_type?: string;
-      lifecycle: QuoteLifecycle;
-    } = {
-      page: 1,
-      page_size: 50,
-      lifecycle,
+  const listParams = (
+    tab: QuoteLifecycle,
+    page: number
+  ): QuoteListParams => {
+    const params: QuoteListParams = {
+      page,
+      page_size: PAGE_SIZE,
+      lifecycle: tab,
     };
-
     if (statusFilter !== "all") params.state = statusFilter;
     if (typesFilters !== "all") params.quote_type = typesFilters;
     if (searchTerm.trim()) params.search = searchTerm.trim();
+    return params;
+  };
 
-    listRequest.current?.abort();
-    listRequest.current = dispatch(fetchQuotes(params));
+  const pullBucket = async (
+    tab: QuoteLifecycle,
+    page: number,
+    signal: AbortSignal
+  ): Promise<QuoteBucket> => {
+    const data = await quotesApi.list(listParams(tab, page), signal);
+    return {
+      results: data.results ?? [],
+      count: data.count ?? 0,
+      totalPages: data.total_pages || 1,
+      page: data.current_page || page,
+    };
+  };
+
+  const fetchTab = (tab: QuoteLifecycle, page: number) => {
+    aborts.current[tab]?.abort();
+    const controller = new AbortController();
+    aborts.current[tab] = controller;
+    const requestId = ++tabGen.current[tab];
+
+    const run = async (targetPage: number): Promise<QuoteBucket> => {
+      try {
+        return await pullBucket(tab, targetPage, controller.signal);
+      } catch (error) {
+        const status = (error as { status?: number }).status;
+        if (status === 404 && targetPage > 1) return run(targetPage - 1);
+        throw error;
+      }
+    };
+
+    run(page)
+      .then((bucket) => {
+        if (requestId !== tabGen.current[tab]) return;
+        setBuckets((prev) => ({ ...prev, [tab]: bucket }));
+      })
+      .catch((error: { message?: string }) => {
+        if (controller.signal.aborted || requestId !== tabGen.current[tab]) {
+          return;
+        }
+        toast({
+          title: error?.message || "Error obteniendo cotizaciones",
+          variant: "destructive",
+        });
+      });
+  };
+
+  const refreshTabs = () => {
+    fetchTab("received", buckets.received.page);
+    fetchTab("managed", buckets.managed.page);
   };
 
   useEffect(() => {
@@ -97,19 +163,24 @@ const QuotesTable = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    reload();
     setExpandedId(null);
     setVersionsByQuote({});
+    fetchTab("received", 1);
+    fetchTab("managed", 1);
     return () => {
-      listRequest.current?.abort();
+      aborts.current.received?.abort();
+      aborts.current.managed?.abort();
     };
+    // fetchTab usa los filtros de este render; las deps de abajo alcanzan.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, statusFilter, searchTerm, typesFilters, lifecycle]);
+  }, [statusFilter, searchTerm, typesFilters]);
 
   const quotesStates = useAppSelector((state) => state.quotes.states);
   const quotesTypes = useAppSelector((state) => state.quotes.types);
 
-  const filteredQuotes = quotes.map((quote) => ({
+  const activeBucket = buckets[lifecycle];
+
+  const filteredQuotes = activeBucket.results.map((quote) => ({
     ...quote,
     company_name: quote.contact?.company_name || "-",
     email: quote.contact?.email || "-",
@@ -280,7 +351,7 @@ const QuotesTable = () => {
       await dispatch(deleteQuote(previewQuote.id)).unwrap();
       toast({ title: "Cotización eliminada exitosamente" });
       setIsModalDeleteOpen(false);
-      reload();
+      refreshTabs();
     } catch (error: unknown) {
       console.error("Error eliminando cotización:", error);
       toast({
@@ -368,7 +439,10 @@ const QuotesTable = () => {
           <button
             key={tab.id}
             type="button"
-            onClick={() => setLifecycle(tab.id)}
+            onClick={() => {
+              setLifecycle(tab.id);
+              setExpandedId(null);
+            }}
             className={cn(
               "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
               lifecycle === tab.id
@@ -419,7 +493,7 @@ const QuotesTable = () => {
             if (!open) {
               setPreviewQuote(null);
               setVersionsByQuote({});
-              reload();
+              refreshTabs();
             }
           }}
           quoteId={previewQuote.id}
@@ -430,6 +504,16 @@ const QuotesTable = () => {
         columns={columns}
         data={filteredQuotes}
         actions={actions}
+        serverPagination={{
+          currentPage: activeBucket.page,
+          totalPages: activeBucket.totalPages,
+          totalItems: activeBucket.count,
+          pageSize: PAGE_SIZE,
+          onPageChange: (page) => {
+            setExpandedId(null);
+            fetchTab(lifecycle, page);
+          },
+        }}
         renderExpandedRow={
           lifecycle === "managed"
             ? (row: QuoteRender) =>
