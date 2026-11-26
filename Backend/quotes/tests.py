@@ -74,6 +74,21 @@ class QuoteAPITestCase(APITestCase):
         response = self.client.get('/quotes/list/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
+        self.assertIsNone(response.data['results'][0]['user_name'])
+
+    def test_list_quotes_includes_assigned_user_name(self):
+        assignee = User.objects.create_user(
+            username='ana',
+            password='testpass123',
+            first_name='Ana',
+            last_name='Lopez',
+        )
+        self.quote.user = assignee
+        self.quote.save(update_fields=['user'])
+
+        response = self.client.get('/quotes/list/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['results'][0]['user_name'], 'Ana Lopez')
 
     def test_create_quote_auto_number(self):
         """Crear cotización con número automático (Q-YYYY-XXXXX)"""

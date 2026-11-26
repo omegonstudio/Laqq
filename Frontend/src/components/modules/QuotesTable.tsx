@@ -282,6 +282,12 @@ const QuotesTable = () => {
       render: (value: QuoteStateType) => convertQuotesState(value),
     },
     {
+      key: "user_name",
+      label: "Asignado",
+      sortable: false,
+      render: (value: string | null) => value || "—",
+    },
+    {
       key: "created_at",
       label: "Creado",
       sortable: true,
