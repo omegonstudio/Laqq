@@ -204,6 +204,7 @@ class QuoteSerializer(serializers.ModelSerializer):
     traces_count = serializers.SerializerMethodField()
     versions_count = serializers.SerializerMethodField()
     lifecycle = serializers.SerializerMethodField()
+    user_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Quote
@@ -227,6 +228,13 @@ class QuoteSerializer(serializers.ModelSerializer):
 
     def get_lifecycle(self, obj):
         return 'managed' if obj.managed_at else 'received'
+
+    def get_user_name(self, obj):
+        user = obj.user
+        if not user:
+            return None
+        full = f'{user.first_name} {user.last_name}'.strip()
+        return full or user.username or user.email
 
     def validate_total_amount(self, value):
         if value is not None and value < 0:

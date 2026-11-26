@@ -245,6 +245,7 @@ export interface QuoteRender {
   contact: Contact; // Objeto completo
   contact_id: string;
   user: string | null;
+  user_name?: string | null;
   quote_type: QuoteTypeEnum;
   state: QuoteStateType;
   message: string | null;
