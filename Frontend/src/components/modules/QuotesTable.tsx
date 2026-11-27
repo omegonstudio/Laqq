@@ -39,6 +39,7 @@ import { cn } from "@/lib/utils";
 import { quotesApi, QuoteListParams } from "@/lib/api/quotes";
 
 const PAGE_SIZE = 10;
+const SAME_SAVE_WINDOW_MS = 2 * 60 * 1000;
 
 type QuoteBucket = {
   results: QuoteRender[];
@@ -402,17 +403,42 @@ const QuotesTable = () => {
     }
     const history = historyByQuote[quoteId];
     if (!history) return null;
+
+    const assignmentByVersion = new Map<string, QuoteTrace>();
+    const pairedTraces = new Set<string>();
+    history.assignments.forEach((trace) => {
+      const traceAt = new Date(trace.created_at).getTime();
+      let best: QuoteVersion | null = null;
+      let bestGap = Infinity;
+      history.versions.forEach((version) => {
+        if (assignmentByVersion.has(version.id)) return;
+        if ((version.actor ?? null) !== (trace.actor ?? null)) return;
+        const gap = Math.abs(new Date(version.created_at).getTime() - traceAt);
+        if (gap <= SAME_SAVE_WINDOW_MS && gap < bestGap) {
+          best = version;
+          bestGap = gap;
+        }
+      });
+      if (best) {
+        assignmentByVersion.set((best as QuoteVersion).id, trace);
+        pairedTraces.add(trace.id);
+      }
+    });
+
     const rows = [
       ...history.versions.map((version) => ({
         kind: "version" as const,
         at: version.created_at,
         version,
+        assignment: assignmentByVersion.get(version.id),
       })),
-      ...history.assignments.map((trace) => ({
-        kind: "assignment" as const,
-        at: trace.created_at,
-        trace,
-      })),
+      ...history.assignments
+        .filter((trace) => !pairedTraces.has(trace.id))
+        .map((trace) => ({
+          kind: "assignment" as const,
+          at: trace.created_at,
+          trace,
+        })),
     ].sort((a, b) => b.at.localeCompare(a.at));
     if (rows.length === 0) {
       return (
@@ -439,6 +465,11 @@ const QuotesTable = () => {
                 <span className="text-muted-foreground">
                   {convertQuoteVersionReason(row.version.reason)}
                 </span>
+                {row.assignment && (
+                  <span className="text-muted-foreground">
+                    · {assigneeTraceLabel(row.assignment)}
+                  </span>
+                )}
                 <span className="text-muted-foreground">
                   {formatDateTime(row.version.created_at)}
                 </span>
