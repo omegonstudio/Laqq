@@ -111,7 +111,7 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   };
   useEffect(() => {
     if (!quote) return;
-    // Defaults Tito solo en recibidas; misma ref lógica en specs/originalSpecs → sin dirty ni auto-save.
+    // Specs persistidas tal cual (vacías en cotizaciones nuevas); misma ref → sin dirty ni auto-save.
     const resolved = resolveQuoteSpecsForPreview(
       quote.specs,
       quote.lifecycle,
