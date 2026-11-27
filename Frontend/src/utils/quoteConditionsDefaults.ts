@@ -1,6 +1,8 @@
 import { QuoteLifecycle, SpecificationsForm } from "@/types/api";
 
-/** Textos predeterminados Tito (literales; no resumir ni corregir). */
+/**
+ * Se usan solo como opciones de los dropdowns; no se precargan al crear.
+ */
 export const QUOTE_CONDITION_DEFAULTS = {
   precios: "Precio neto + IVA",
   forma_pago: "Contado",
@@ -57,30 +59,11 @@ export const GARANTIA_OPTIONS = [
   },
 ];
 
-const CONDITION_KEYS = [
-  "precios",
-  "forma_pago",
-  "clausula_pago",
-  "validez_oferta",
-  "orden_compra",
-  "garantia",
-] as const;
-
 type SpecsLike = Partial<SpecificationsForm> & Record<string, unknown>;
 
 function readField(raw: SpecsLike | null | undefined, key: string): string {
   const value = raw?.[key];
   return typeof value === "string" ? value : "";
-}
-
-/** Cotización nueva = recibida (aún no gestionada). */
-export function isReceivedQuote(
-  lifecycle?: QuoteLifecycle | null,
-  managedAt?: string | null
-): boolean {
-  if (lifecycle === "managed") return false;
-  if (lifecycle === "received") return true;
-  return managedAt == null;
 }
 
 function normalizeSpecs(
@@ -99,24 +82,14 @@ function normalizeSpecs(
 
 /**
  * Resuelve specs para QuotePreview.
- * - received: aplica los 6 defaults Tito (sin tocar observaciones).
- * - managed: conserva valores tal cual; no rellena vacíos.
+ * Conserva los valores persistidos tal cual; campos ausentes quedan vacíos
+ * (sin precargar condiciones preestablecidas).
+ * lifecycle/managedAt se mantienen por compatibilidad de firma.
  */
 export function resolveQuoteSpecsForPreview(
   raw: SpecsLike | null | undefined,
-  lifecycle?: QuoteLifecycle | null,
-  managedAt?: string | null
+  _lifecycle?: QuoteLifecycle | null,
+  _managedAt?: string | null
 ): SpecificationsForm {
-  const base = normalizeSpecs(raw);
-
-  if (!isReceivedQuote(lifecycle, managedAt)) {
-    return base;
-  }
-
-  return {
-    ...base,
-    ...Object.fromEntries(
-      CONDITION_KEYS.map((key) => [key, QUOTE_CONDITION_DEFAULTS[key]])
-    ),
-  } as SpecificationsForm;
+  return normalizeSpecs(raw);
 }
