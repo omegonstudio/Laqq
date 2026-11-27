@@ -63,9 +63,10 @@ export const quotesApi = {
   createFromForm: (payload: QuoteFormState) =>
     api.post<QuoteRender>(`${BASE}/list/from-package/`, payload),
 
-  listTraces: (id: string) =>
+  listTraces: (id: string, params?: { page?: number; page_size?: number }) =>
     api.get<PaginatedResponse<QuoteTrace> | QuoteTrace[]>(
-      `${BASE}/list/${id}/traces/`
+      `${BASE}/list/${id}/traces/`,
+      params ? cleanParams(params as QueryParams) : undefined
     ),
 
   listVersions: (id: string) =>

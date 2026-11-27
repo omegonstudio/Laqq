@@ -121,6 +121,16 @@ export const convertQuoteTraceReason = (reason: string): string => {
   }
 };
 
+export const assigneeTraceLabel = (trace: {
+  snapshot?: Record<string, unknown> | null;
+}): string => {
+  const user = (
+    trace.snapshot as { user?: { full_name?: string } } | null | undefined
+  )?.user;
+  const name = user?.full_name?.trim();
+  return name ? `Cambio de responsable: ${name}` : "Cambio de responsable";
+};
+
 export const convertQuoteVersionReason = (reason: string): string => {
   switch (reason) {
     case "saved":

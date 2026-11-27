@@ -79,6 +79,41 @@ type QuoteItemEditable = QuoteItemRender & {
   variant?: Variants | null; // 👈 nuevo campo normalizado
 };
 
+const sameText = (a?: string | null, b?: string | null) =>
+  (a ?? "").trim() === (b ?? "").trim();
+
+const sameAmount = (
+  a?: string | number | null,
+  b?: string | number | null
+) => {
+  const left = Number(a ?? 0);
+  const right = Number(b ?? 0);
+  if (Number.isNaN(left) || Number.isNaN(right)) {
+    return String(a ?? "") === String(b ?? "");
+  }
+  return left === right;
+};
+
+const quoteItemsChanged = (
+  current: QuoteItemEditable[],
+  original: QuoteItemRender[]
+) => {
+  if (current.some((item) => item.id.startsWith("new-"))) return true;
+  if (current.length !== original.length) return true;
+  const originalById = new Map(original.map((item) => [item.id, item]));
+  return current.some((item) => {
+    const prev = originalById.get(item.id);
+    if (!prev) return true;
+    return (
+      (item.product?.id ?? null) !== (prev.product?.id ?? null) ||
+      (item.variant?.id ?? null) !== (prev.variant?.id ?? null) ||
+      Number(item.quantity) !== Number(prev.quantity) ||
+      !sameAmount(item.unit_price, prev.unit_price) ||
+      (item.estimated_delivery ?? "") !== (prev.estimated_delivery ?? "")
+    );
+  });
+};
+
 const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
   const dispatch = useAppDispatch();
   const { data: users, error } = useUserAdmins({
@@ -414,28 +449,41 @@ const QuotePreviewDialog = ({ open, onOpenChange, quoteId }: Props) => {
         observaciones: updatedQuote.observaciones,
       });
 
-      // Versión inmutable + PDF del navegador (primera versión = primer save BO)
-      try {
-        const next = await quotesApi.nextVersion(updatedQuote.id);
-        const { generateQuotePdfBlob } = await import("@/utils/useQuotePDF");
-        const pdfBlob = await generateQuotePdfBlob(
-          updatedQuote,
-          next.version_label
-        );
-        const formData = new FormData();
-        formData.append(
-          "pdf_file",
-          pdfBlob,
-          `${next.version_label}.pdf`
-        );
-        formData.append("reason", options?.versionReason || "saved");
-        await quotesApi.createVersion(updatedQuote.id, formData);
-      } catch (versionError) {
-        console.error(versionError);
-        toast({
-          title: "Cotización guardada, pero no se pudo crear la versión PDF",
-          variant: "destructive",
-        });
+      const documentChanged =
+        formState.state !== quote.state ||
+        formState.quote_type !== quote.quote_type ||
+        (formState.currency ?? "ARS") !== (quote.currency ?? "ARS") ||
+        !sameText(formState.observaciones, quote.observaciones) ||
+        !sameText(formState.message, quote.message) ||
+        JSON.stringify(specs ?? null) !==
+          JSON.stringify(originalSpecs ?? null) ||
+        quoteItemsChanged(newProducts, quote.items ?? []);
+      const shouldVersion =
+        options?.versionReason === "sent" || documentChanged;
+
+      if (shouldVersion) {
+        try {
+          const next = await quotesApi.nextVersion(updatedQuote.id);
+          const { generateQuotePdfBlob } = await import("@/utils/useQuotePDF");
+          const pdfBlob = await generateQuotePdfBlob(
+            updatedQuote,
+            next.version_label
+          );
+          const formData = new FormData();
+          formData.append(
+            "pdf_file",
+            pdfBlob,
+            `${next.version_label}.pdf`
+          );
+          formData.append("reason", options?.versionReason || "saved");
+          await quotesApi.createVersion(updatedQuote.id, formData);
+        } catch (versionError) {
+          console.error(versionError);
+          toast({
+            title: "Cotización guardada, pero no se pudo crear la versión PDF",
+            variant: "destructive",
+          });
+        }
       }
 
       toast({ title: "Cotización actualizada correctamente" });
