@@ -166,7 +166,8 @@ class QuoteVersion(models.Model):
     Versión inmutable de una cotización (snapshot + PDF).
 
     Numeración: {quote.quote_number}-{version_number}  →  Q-2026-00002-1
-    La primera versión se crea en el primer save del BO (no en el alta web).
+    Se crea al editar el documento desde el BO (no en el alta web
+    ni cuando el guardado solo asigna un responsable).
     """
 
     REASON_SAVED = 'saved'

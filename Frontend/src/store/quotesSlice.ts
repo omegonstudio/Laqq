@@ -18,15 +18,20 @@ import { PaginationInfo } from "@/types/types";
 // QUOTES
 export const fetchQuotes = createAsyncThunk(
   "quotes/fetchAll",
-  async (params?: {
-    page?: number;
-    page_size?: number;
-    search?: string;
-    state?: string;
-    quote_type?: string;
-    lifecycle?: string;
-  }) => {
-    return quotesApi.list(params);
+  async (
+    params:
+      | {
+          page?: number;
+          page_size?: number;
+          search?: string;
+          state?: string;
+          quote_type?: string;
+          lifecycle?: string;
+        }
+      | undefined,
+    { signal }
+  ) => {
+    return quotesApi.list(params, signal);
   }
 );
 
@@ -195,6 +200,8 @@ interface QuotesState {
   pagination: PaginationInfo;
   loading: boolean;
   error: string | null;
+  /** Id de la última petición de listado. Las respuestas viejas no pisan la tabla. */
+  listRequestId: string | null;
 
   selected: QuoteRender | null;
   selectedLoading: boolean;
@@ -230,6 +237,7 @@ const initialState: QuotesState = {
   pagination: initialPagination,
   loading: false,
   error: null,
+  listRequestId: null,
 
   selected: null,
   selectedLoading: false,
@@ -264,11 +272,13 @@ export const quotesSlice = createSlice({
   extraReducers: (builder) => {
     // ================= QUOTES =================
     builder
-      .addCase(fetchQuotes.pending, (state) => {
+      .addCase(fetchQuotes.pending, (state, action) => {
+        state.listRequestId = action.meta.requestId;
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchQuotes.fulfilled, (state, action) => {
+        if (state.listRequestId !== action.meta.requestId) return;
         state.loading = false;
         state.list = action.payload.results;
         state.pagination = {
@@ -281,7 +291,9 @@ export const quotesSlice = createSlice({
         };
       })
       .addCase(fetchQuotes.rejected, (state, action) => {
+        if (state.listRequestId !== action.meta.requestId) return;
         state.loading = false;
+        if (action.meta.aborted) return;
         state.error = action.error.message ?? "Error obteniendo cotizaciones";
       });
 

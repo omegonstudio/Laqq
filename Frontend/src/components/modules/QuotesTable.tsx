@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -14,7 +14,6 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   deleteQuote,
   fetchQuoteVersions,
-  fetchQuotes,
   fetchQuoteStates,
   fetchQuoteTypes,
 } from "@/store/quotesSlice";
@@ -22,11 +21,13 @@ import {
   QuoteLifecycle,
   QuoteRender,
   QuoteStateType,
+  QuoteTrace,
   QuoteTypeEnum,
   QuoteVersion,
 } from "@/types/api";
 import QuotePreviewDialog from "../atoms/QuotePreview";
 import {
+  assigneeTraceLabel,
   convertQuoteVersionReason,
   convertQuotesState,
   convertQuotesTypes,
@@ -35,7 +36,23 @@ import ModalDelete from "../molecules/Modals/ModalDelete";
 import { toast } from "@/hooks/use-toast";
 import { useCanManageQuotes } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
-import { quotesApi } from "@/lib/api/quotes";
+import { quotesApi, QuoteListParams } from "@/lib/api/quotes";
+
+const PAGE_SIZE = 10;
+
+type QuoteBucket = {
+  results: QuoteRender[];
+  count: number;
+  totalPages: number;
+  page: number;
+};
+
+const emptyBucket = (): QuoteBucket => ({
+  results: [],
+  count: 0,
+  totalPages: 1,
+  page: 1,
+});
 
 const formatDateTime = (value?: string | null) =>
   value
@@ -52,41 +69,94 @@ const QuotesTable = () => {
   const dispatch = useAppDispatch();
   const canManageQuotes = useCanManageQuotes();
 
-  const { list: quotes, pagination } = useAppSelector((state) => state.quotes);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typesFilters, setTypesFilters] = useState("all");
   const [lifecycle, setLifecycle] = useState<QuoteLifecycle>("received");
+  const [buckets, setBuckets] = useState<Record<QuoteLifecycle, QuoteBucket>>({
+    received: emptyBucket(),
+    managed: emptyBucket(),
+  });
   const [isModalEditOpen, setIsModalEditOpen] = useState(false);
 
   const [previewQuote, setPreviewQuote] = useState<QuoteRender | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [versionsByQuote, setVersionsByQuote] = useState<
-    Record<string, QuoteVersion[]>
+  const [historyByQuote, setHistoryByQuote] = useState<
+    Record<string, { versions: QuoteVersion[]; assignments: QuoteTrace[] }>
   >({});
   const [loadingVersions, setLoadingVersions] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const aborts = useRef<Partial<Record<QuoteLifecycle, AbortController>>>({});
+  const tabGen = useRef<Record<QuoteLifecycle, number>>({
+    received: 0,
+    managed: 0,
+  });
 
-  const reload = () => {
-    const params: {
-      page: number;
-      page_size: number;
-      state?: string;
-      search?: string;
-      quote_type?: string;
-      lifecycle: QuoteLifecycle;
-    } = {
-      page: 1,
-      page_size: 50,
-      lifecycle,
+  const listParams = (
+    tab: QuoteLifecycle,
+    page: number
+  ): QuoteListParams => {
+    const params: QuoteListParams = {
+      page,
+      page_size: PAGE_SIZE,
+      lifecycle: tab,
     };
-
     if (statusFilter !== "all") params.state = statusFilter;
     if (typesFilters !== "all") params.quote_type = typesFilters;
     if (searchTerm.trim()) params.search = searchTerm.trim();
+    return params;
+  };
 
-    dispatch(fetchQuotes(params));
+  const pullBucket = async (
+    tab: QuoteLifecycle,
+    page: number,
+    signal: AbortSignal
+  ): Promise<QuoteBucket> => {
+    const data = await quotesApi.list(listParams(tab, page), signal);
+    return {
+      results: data.results ?? [],
+      count: data.count ?? 0,
+      totalPages: data.total_pages || 1,
+      page: data.current_page || page,
+    };
+  };
+
+  const fetchTab = (tab: QuoteLifecycle, page: number) => {
+    aborts.current[tab]?.abort();
+    const controller = new AbortController();
+    aborts.current[tab] = controller;
+    const requestId = ++tabGen.current[tab];
+
+    const run = async (targetPage: number): Promise<QuoteBucket> => {
+      try {
+        return await pullBucket(tab, targetPage, controller.signal);
+      } catch (error) {
+        const status = (error as { status?: number }).status;
+        if (status === 404 && targetPage > 1) return run(targetPage - 1);
+        throw error;
+      }
+    };
+
+    run(page)
+      .then((bucket) => {
+        if (requestId !== tabGen.current[tab]) return;
+        setBuckets((prev) => ({ ...prev, [tab]: bucket }));
+      })
+      .catch((error: { message?: string }) => {
+        if (controller.signal.aborted || requestId !== tabGen.current[tab]) {
+          return;
+        }
+        toast({
+          title: error?.message || "Error obteniendo cotizaciones",
+          variant: "destructive",
+        });
+      });
+  };
+
+  const refreshTabs = () => {
+    fetchTab("received", buckets.received.page);
+    fetchTab("managed", buckets.managed.page);
   };
 
   useEffect(() => {
@@ -95,16 +165,24 @@ const QuotesTable = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    reload();
     setExpandedId(null);
-    setVersionsByQuote({});
+    setHistoryByQuote({});
+    fetchTab("received", 1);
+    fetchTab("managed", 1);
+    return () => {
+      aborts.current.received?.abort();
+      aborts.current.managed?.abort();
+    };
+    // fetchTab usa los filtros de este render; las deps de abajo alcanzan.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, statusFilter, searchTerm, typesFilters, lifecycle]);
+  }, [statusFilter, searchTerm, typesFilters]);
 
   const quotesStates = useAppSelector((state) => state.quotes.states);
   const quotesTypes = useAppSelector((state) => state.quotes.types);
 
-  const filteredQuotes = quotes.map((quote) => ({
+  const activeBucket = buckets[lifecycle];
+
+  const filteredQuotes = activeBucket.results.map((quote) => ({
     ...quote,
     company_name: quote.contact?.company_name || "-",
     email: quote.contact?.email || "-",
@@ -116,11 +194,31 @@ const QuotesTable = () => {
       return;
     }
     setExpandedId(quote.id);
-    if (versionsByQuote[quote.id]) return;
+    if (historyByQuote[quote.id]) return;
     setLoadingVersions(quote.id);
     try {
       const versions = await dispatch(fetchQuoteVersions(quote.id)).unwrap();
-      setVersionsByQuote((prev) => ({ ...prev, [quote.id]: versions }));
+      let assignments: QuoteTrace[] = [];
+      try {
+        const payload = await quotesApi.listTraces(quote.id, {
+          page_size: 100,
+        });
+        const traces = Array.isArray(payload)
+          ? payload
+          : payload.results ?? [];
+        assignments = traces.filter(
+          (trace) => trace.reason === "assignee_changed"
+        );
+      } catch {
+        toast({
+          title: "No se pudo cargar el historial de responsables",
+          variant: "destructive",
+        });
+      }
+      setHistoryByQuote((prev) => ({
+        ...prev,
+        [quote.id]: { versions, assignments },
+      }));
     } catch {
       toast({
         title: "No se pudo cargar el historial de versiones",
@@ -206,6 +304,12 @@ const QuotesTable = () => {
       render: (value: QuoteStateType) => convertQuotesState(value),
     },
     {
+      key: "user_name",
+      label: "Asignado",
+      sortable: false,
+      render: (value: string | null) => value || "—",
+    },
+    {
       key: "created_at",
       label: "Creado",
       sortable: true,
@@ -275,7 +379,7 @@ const QuotesTable = () => {
       await dispatch(deleteQuote(previewQuote.id)).unwrap();
       toast({ title: "Cotización eliminada exitosamente" });
       setIsModalDeleteOpen(false);
-      reload();
+      refreshTabs();
     } catch (error: unknown) {
       console.error("Error eliminando cotización:", error);
       toast({
@@ -292,60 +396,93 @@ const QuotesTable = () => {
     if (loadingVersions === quoteId) {
       return (
         <p className="text-sm text-muted-foreground pl-2">
-          Cargando versiones…
+          Cargando historial…
         </p>
       );
     }
-    const versions = versionsByQuote[quoteId] || [];
-    if (!versionsByQuote[quoteId]) return null;
-    if (versions.length === 0) {
+    const history = historyByQuote[quoteId];
+    if (!history) return null;
+    const rows = [
+      ...history.versions.map((version) => ({
+        kind: "version" as const,
+        at: version.created_at,
+        version,
+      })),
+      ...history.assignments.map((trace) => ({
+        kind: "assignment" as const,
+        at: trace.created_at,
+        trace,
+      })),
+    ].sort((a, b) => b.at.localeCompare(a.at));
+    if (rows.length === 0) {
       return (
         <p className="text-sm text-muted-foreground pl-2">
-          Sin versiones. Se generan al guardar desde el backoffice.
+          Sin historial. Las versiones se generan al editar la cotización.
         </p>
       );
     }
     return (
       <div className="pl-2">
         <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
-          Versiones
+          Historial
         </p>
         <ul className="space-y-2 border-l-2 border-primary/30 pl-3">
-          {versions.map((version) => (
-            <li
-              key={version.id}
-              className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
-            >
-              <span className="font-medium font-mono">
-                {version.version_label}
-              </span>
-              <span className="text-muted-foreground">
-                {convertQuoteVersionReason(version.reason)}
-              </span>
-              <span className="text-muted-foreground">
-                {formatDateTime(version.created_at)}
-              </span>
-              {version.actor_name && (
-                <span className="text-muted-foreground">
-                  por {version.actor_name}
+          {rows.map((row) =>
+            row.kind === "version" ? (
+              <li
+                key={`version-${row.version.id}`}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
+              >
+                <span className="font-medium font-mono">
+                  {row.version.version_label}
                 </span>
-              )}
-              {version.has_pdf && (
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
-                  disabled={downloadingId === version.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDownloadPdf(quoteId, version);
-                  }}
-                >
-                  <Download size={12} />
-                  {downloadingId === version.id ? "Descargando…" : "PDF"}
-                </button>
-              )}
-            </li>
-          ))}
+                <span className="text-muted-foreground">
+                  {convertQuoteVersionReason(row.version.reason)}
+                </span>
+                <span className="text-muted-foreground">
+                  {formatDateTime(row.version.created_at)}
+                </span>
+                {row.version.actor_name && (
+                  <span className="text-muted-foreground">
+                    por {row.version.actor_name}
+                  </span>
+                )}
+                {row.version.has_pdf && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
+                    disabled={downloadingId === row.version.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownloadPdf(quoteId, row.version);
+                    }}
+                  >
+                    <Download size={12} />
+                    {downloadingId === row.version.id
+                      ? "Descargando…"
+                      : "PDF"}
+                  </button>
+                )}
+              </li>
+            ) : (
+              <li
+                key={`trace-${row.trace.id}`}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
+              >
+                <span className="text-muted-foreground">
+                  {assigneeTraceLabel(row.trace)}
+                </span>
+                <span className="text-muted-foreground">
+                  {formatDateTime(row.trace.created_at)}
+                </span>
+                {row.trace.actor_name && (
+                  <span className="text-muted-foreground">
+                    por {row.trace.actor_name}
+                  </span>
+                )}
+              </li>
+            )
+          )}
         </ul>
       </div>
     );
@@ -363,7 +500,10 @@ const QuotesTable = () => {
           <button
             key={tab.id}
             type="button"
-            onClick={() => setLifecycle(tab.id)}
+            onClick={() => {
+              setLifecycle(tab.id);
+              setExpandedId(null);
+            }}
             className={cn(
               "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
               lifecycle === tab.id
@@ -413,8 +553,8 @@ const QuotesTable = () => {
             setIsModalEditOpen(open);
             if (!open) {
               setPreviewQuote(null);
-              setVersionsByQuote({});
-              reload();
+              setHistoryByQuote({});
+              refreshTabs();
             }
           }}
           quoteId={previewQuote.id}
@@ -425,6 +565,16 @@ const QuotesTable = () => {
         columns={columns}
         data={filteredQuotes}
         actions={actions}
+        serverPagination={{
+          currentPage: activeBucket.page,
+          totalPages: activeBucket.totalPages,
+          totalItems: activeBucket.count,
+          pageSize: PAGE_SIZE,
+          onPageChange: (page) => {
+            setExpandedId(null);
+            fetchTab(lifecycle, page);
+          },
+        }}
         renderExpandedRow={
           lifecycle === "managed"
             ? (row: QuoteRender) =>

@@ -37,10 +37,11 @@ export interface QuoteItemListParams {
 
 export const quotesApi = {
   // =================== QUOTES ===================
-  list: (params?: QuoteListParams) =>
+  list: (params?: QuoteListParams, signal?: AbortSignal) =>
     api.get<PaginatedResponse<QuoteRender>>(
       `${BASE}/list/`,
-      cleanParams(params as QueryParams)
+      cleanParams(params as QueryParams),
+      signal
     ),
 
   get: (id: string) => api.get<QuoteRender>(`${BASE}/list/${id}/`),
@@ -62,9 +63,10 @@ export const quotesApi = {
   createFromForm: (payload: QuoteFormState) =>
     api.post<QuoteRender>(`${BASE}/list/from-package/`, payload),
 
-  listTraces: (id: string) =>
+  listTraces: (id: string, params?: { page?: number; page_size?: number }) =>
     api.get<PaginatedResponse<QuoteTrace> | QuoteTrace[]>(
-      `${BASE}/list/${id}/traces/`
+      `${BASE}/list/${id}/traces/`,
+      params ? cleanParams(params as QueryParams) : undefined
     ),
 
   listVersions: (id: string) =>
